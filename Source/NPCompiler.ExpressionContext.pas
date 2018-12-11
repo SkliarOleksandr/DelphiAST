@@ -80,7 +80,7 @@ type
 implementation
 
 uses
-  NPCompiler, NPCompiler.Errors;
+  OPCompiler, NPCompiler.Errors;
 
 { TRPN }
 

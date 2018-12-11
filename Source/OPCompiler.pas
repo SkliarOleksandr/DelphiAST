@@ -7,9 +7,13 @@ interface
 
 {$I compilers.inc}
 
-uses SysUtils, Classes, StrUtils, Types, OPCompiler.Parser, NPCompiler.Classes, NPCompiler.DataTypes, iDStringParser, IOUtils,
-     IL.Types, IL.Instructions, AVL, NPCompiler.Operators, Math, NPCompiler.Errors, NPCompiler.Utils, Generics.Collections,
-     NPCompiler.Intf, NPCompiler.Options;  // system, dateutils
+uses SysUtils, Classes, StrUtils, Types, OPCompiler.Parser, NPCompiler.Classes, NPCompiler.DataTypes,
+iDStringParser, IOUtils, IL.Types, IL.Instructions, AVL, NPCompiler.Operators, Math, NPCompiler.Errors,
+NPCompiler.Utils, Generics.Collections,
+NPCompiler.Intf,
+NPCompiler.Contexts,
+NPCompiler.ExpressionContext,
+NPCompiler.Options;  // system, dateutils
 
 type
 
@@ -19,97 +23,7 @@ type
   TIDPlatform = class
 
   end;
-
-  {try context - контекст оброботки исключений}
-  PTryContext = ^TTryContext;
-  TTryContext = record
-  type
-    TExitType = (etCallFinally, etJumpToFinally);
-    TExitListItem = record
-      ExitType: TExitType;
-      Instruction: TILInstruction;
-    end;
-    PExitListItem = ^TExitListItem;
-    TExitList = array of TExitListItem;
-    TTrySection = (SectionTry, SectionFinally, SectionExcept);
-  var
-    Parent: PTryContext;   // внешняя try... секция
-    ExitList: TExitList;   // список инструкций [EXIT, BREAK, CONTINUE] из try... секции, которые надо перенапрвить на секцию FINALLY (если она имеется)
-    Section: TTrySection;
-    procedure AddExit(ExitType: TExitType; const Instruction: TILInstruction);
-  end;
-
-  {loop context - контекст цикла}
-  PLContext = ^TLContext;
-  TLContext = record
-    Parent: PLContext;               // цикл верхнего уровня
-    TryContext: PTryContext;         // try контекст, который был на момент начала цикла
-    BeginInstuction: TILInstruction; // инструкция начала итерации цикла (код проверки условия или тело)
-    EndInstruction: TILInstruction;  // последняя инструкции тела цикла
-  end;
-
-  {statements context - контекст кода процедуры}
-  PSContext = ^TSContext;
-  TSContext = record
-    IL: TIL;
-    WriteIL: Boolean;                // показывает нужно ли генерить IL код
-    ExpandMacro: Boolean;            // показывает нужно ли раскрывать макрос или нужно взять его как строку
-    LContext: PLContext;             // контекст цикла  (если есть)
-    TryBlock: PTryContext;           // указывает на текущую try... секцию (если есть)
-    Proc: TIDProcedure;
-    procedure Initialize;
-    procedure Assign(const Source: PSContext);
-    procedure ILWrite(Instruction: TILInstruction); inline;
-    function ILLast: TILInstruction; inline;
-    function ILFirst: TILInstruction; inline;
-    function CurUnit: TNPUnit; inline;
-    function GetTMPVar(DataType: TIDType): TIDVariable; overload; inline;
-    function GetTMPVar(DataType: TIDType; VarFlags: TVariableFlags): TIDVariable; overload; inline;
-    function GetTMPVarExpr(DataType: TIDType; const TextPos: TTextPosition): TIDExpression; inline;
-  end;
-
-  PBoolExprNode = ^TBoolExprNode;
-  TBoolExprNode = record
-  type
-    TNodeOrientation = (NodeRoot, NodeLeft, NodeRight);
-    TNodeType = (
-      ntCmp,   // любое сравнение
-      ntAnd,   // логическое AND
-      ntOr     // логическое OR
-    );
-  var
-    NodeType: TNodeType;             // Тип нода
-    Parent: PBoolExprNode;           // Parent в дереве
-    Orientation: TNodeOrientation;   // Ориентация нода относительно Parent-а
-    Instruction: TILInstruction;     // это последняя инструкция выражения; для типа ntNode это JMP инструкция
-                                     // для типов ntAnd, ntOr это IL последняя инструкциия правого выражения
-    LeftChild: PBoolExprNode;        // Левый child
-    RightChild: PBoolExprNode;       // Правый child
-    Condition: TILCondition;         // Условия сравнения (только для типа ntNode)
-    LeftNode: PBoolExprNode;         // Левый нод (по исходному коду)
-    RightNode: PBoolExprNode;        // Правый нод (по исходному коду)
-    PrevNode: PBoolExprNode;         // Предыдущий нод (в стеке)
-  end;
-
-  TExpessionPosition = (ExprRValue, ExprLValue, ExprNested, ExprNestedGeneric);
-
-  {expression context - контекст выражения}
-  TEContext = record
-  private
-    RPNLastItem: TOperatorID;        // последний входной элемент, для операндов = opNone
-    RPNPrevPriority: Integer;        // приоритет предыдущей операции
-  public
-    SContext: PSContext;             // statement контекст
-    ResultExpression: TIDExpression; // результатурющее выражение контекста
-    StartInPos: Integer;             // стартовый индекс в RPN массиве операций для данного контекста
-    StartOutPos: Integer;            // стартовый индекс в RPN массиве выражений для данного контекста
-    EPosition: TExpessionPosition;   // позиция выражения (RValue, LValue);
-    LastBoolNode: PBoolExprNode;     // содерижт Root узел boolean выражений
-    LastInstruction: TILInstruction; // последняя инструкция на момент начала выражения
-    procedure Initialize;
-  end;
-  PEContext = ^TEContext;
-
+  
   TExprPool = TPool<TIDExpression>;
 
   {parse members context - контекст парсинга выражений вид a.b.c или a[1, 2, 3].b...}
@@ -196,44 +110,22 @@ type
   end;
 
 
-
-
   TNPUnit = class(TObject)
   type
     TVarModifyPlace = (vmpAssignment, vmpPassArgument);
     TBENodesPool = TPool<TBoolExprNode>;
     TLoopPool = TPool<TLContext>;
     TIdentifiersPool = TPool<TIdentifier>;
-    TRPNStatus = (rprOk, rpOperand, rpOperation);
-    TRPNError = (reDublicateOperation, reUnnecessaryClosedBracket, reUnclosedOpenBracket);
     TCondIFValue = (condIFFalse, condIfTrue, condIFUnknown);
   strict private
     FBENodesPool: TBENodesPool;       // Пул нодов для формирования булевых выражений
     FLoopPool: TLoopPool;             // Пул контекстов циклов
   ////////////////////////////////////////////////////////////////////////////////////////////
-  // RPN:
-  type
-    TRPNItems = array of TOperatorID;
-  var
-    FRPNInput: TRPNItems;          // входной список операций
-    FRPNInputSize: Integer;        // пердвычисленный размер входного списка
-    FRPNInputPos: Integer;         // указывает на следющий свободный элемент входного списка
-    FRPNOut: TIDExpressions;       // выходной список
-    FRPNOutSize: Integer;          // пердвычисленный размер выходного списка
-    FRPNOutPos: Integer;           // указывает на следющий свободный элемент выходного списка
     //////////////////////////////////////////////////////////////////////////////////////////
-    procedure RPNCheckInputSize;
     procedure RPNPushExpression(var EContext: TEContext; Operand: TIDExpression); inline;
-    procedure RPNError(Status: TRPNError);
-    procedure RPNPushOpenRaund(var EContext: TEContext); inline;
-    procedure RPNPushCloseRaund(var EContext: TEContext);
-    function RPNPopOperator(var EContext: TEContext): TIDExpression;
-    function RPNFinish(var EContext: TEContext): TIDExpression;
-    function RPNPushOperator(var EContext: TEContext; OpID: TOperatorID): TRPNStatus; overload;
-    function RPNReadExpression(Index: Integer): TIDExpression; overload;
-    function RPNLastOperator: TOperatorID;
-  public
-    function RPNPopExpression: TIDExpression; overload;
+    function RPNPushOperator(var EContext: TEContext; OpID: TOperatorID): TEContext.TRPNStatus; inline;
+    function RPNReadExpression(var EContext: TEContext; Index: Integer): TIDExpression; inline;
+    function RPNPopExpression(var EContext: TEContext): TIDExpression; inline;
   private
     FID: Integer;                      // ID модуля в пакете
     FPackage: INPPackage;
@@ -413,12 +305,12 @@ type
     class function IsConstRangesIntersect(const Left, Right: TIDRangeConstant): Boolean; static;
     class function IsConstEqual(const Left, Right: TIDExpression): Boolean; static;
     function Process_operators(var EContext: TEContext; OpID: TOperatorID): TIDExpression;
-    function Process_operator_Period(SContext: PSContext): TIDExpression;
-    function Process_operator_Addr(SContext: PSContext): TIDExpression;
+    function Process_operator_Period(var EContext: TEContext): TIDExpression;
+    function Process_operator_Addr(var EContext: TEContext): TIDExpression;
     function Process_operator_Deref(var EContext: TEContext): TIDExpression;
     function Process_operator_In(var EContext: TEContext; const Left, Right: TIDExpression): TIDExpression;
-    function Process_operator_Is(const SContext: PSContext): TIDExpression;
-    function Process_operator_As(const SContext: PSContext): TIDExpression;
+    function Process_operator_Is(var EContext: TEContext): TIDExpression;
+    function Process_operator_As(var EContext: TEContext): TIDExpression;
     { общая функция генерации вызова процедуры }
     function Process_CALL(var EContext: TEContext): TIDExpression;
     function process_CALL_constructor(SContext: PSContext; CallExpression: TIDCallExpression; const CallArguments: TIDExpressions): TIDExpression;
@@ -436,33 +328,34 @@ type
     procedure ProcessMoveSet(SContext: PSContext; Dest, Source: TIDExpression);
     //======================================================================================================================================
     function ProcessBuiltin_Assigned(SContext: PSContext; var EContext: TEContext): TIDExpression;
-    function ProcessBuiltin_IncDec(SContext: PSContext; MacroID: TBuiltInFunctionID): TIDExpression;
-    function ProcessBuiltin_Length(SContext: PSContext): TIDExpression;
-    function ProcessBuiltin_SetLength(SContext: PSContext): TIDExpression;
-    function ProcessBuiltin_Copy(SContext: PSContext): TIDExpression;
-    function ProcessBuiltin_Move(SContext: PSContext): TIDExpression;
-    function ProcessBuiltin_MemSet(SContext: PSContext): TIDExpression;
-    function ProcessBuiltin_SizeOf(SContext: PSContext): TIDExpression;
-    function ProcessBuiltin_Assert(SContext: PSContext; const ParamsTest: string; SourceRow: Integer): TIDExpression;
-    function ProcessBuiltin_TypeName: TIDExpression;
-    function ProcessBuiltin_New(Scontext: PSContext): TIDExpression;
-    function ProcessBuiltin_Free(Scontext: PSContext): TIDExpression;
-    function ProcessBuiltin_GetRef(SContext: PSContext): TIDExpression;
-    function ProcessBuiltin_TypeInfo(SContext: PSContext): TIDExpression;
-    function ProcessBuiltin_LoHiBound(SContext: PSContext; HiBound: Boolean): TIDExpression;
-    function ProcessBuiltin_Ord(SContext: PSContext): TIDExpression;
-    function ProcessBuiltin_Include(SContext: PSContext): TIDExpression;
-    function ProcessBuiltin_Exclude(SContext: PSContext): TIDExpression;
-    function ProcessBuiltin_RefCount(SContext: PSContext): TIDExpression;
-    function ProcessBuiltin_GetBit(SContext: PSContext): TIDExpression;
-    function ProcessBuiltin_SetBit(SContext: PSContext): TIDExpression;
+    function ProcessBuiltin_IncDec(var EContext: TEContext; MacroID: TBuiltInFunctionID): TIDExpression;
+    function ProcessBuiltin_Length(var EContext: TEContext): TIDExpression;
+    function ProcessBuiltin_SetLength(var EContext: TEContext): TIDExpression;
+    function ProcessBuiltin_Copy(var EContext: TEContext): TIDExpression;
+    function ProcessBuiltin_Move(var EContext: TEContext): TIDExpression;
+    function ProcessBuiltin_MemSet(var EContext: TEContext): TIDExpression;
+    function ProcessBuiltin_SizeOf(var EContext: TEContext): TIDExpression;
+    function ProcessBuiltin_Assert(var EContext: TEContext; const ParamsTest: string; SourceRow: Integer): TIDExpression;
+    function ProcessBuiltin_TypeName(var EContext: TEContext): TIDExpression;
+    function ProcessBuiltin_New(var EContext: TEContext): TIDExpression;
+    function ProcessBuiltin_Free(var EContext: TEContext): TIDExpression;
+    function ProcessBuiltin_GetRef(var EContext: TEContext): TIDExpression;
+    function ProcessBuiltin_TypeInfo(var EContext: TEContext): TIDExpression;
+    function ProcessBuiltin_LoHiBound(var EContext: TEContext; HiBound: Boolean): TIDExpression;
+    function ProcessBuiltin_Ord(var EContext: TEContext): TIDExpression;
+    function ProcessBuiltin_Include(var EContext: TEContext): TIDExpression;
+    function ProcessBuiltin_Exclude(var EContext: TEContext): TIDExpression;
+    function ProcessBuiltin_RefCount(var EContext: TEContext): TIDExpression;
+    function ProcessBuiltin_GetBit(var EContext: TEContext): TIDExpression;
+    function ProcessBuiltin_SetBit(var EContext: TEContext): TIDExpression;
     //======================================================================================================================================
     class procedure ILWrite(SContext: PSContext; Instruction: TILInstruction); overload; static; inline;
+    class procedure ILWrite(const EContext: TEContext; Instruction: TILInstruction); overload; static; inline;
     class procedure ILWrite(Proc: TIDProcedure; Instruction: TILInstruction); overload; static; inline;
     class procedure ILWriteFirst(SContext: PSContext; Instruction: TILInstruction); static; inline;
     class procedure ILDelete(SContext: PSContext; FromInstruction, ToInstruction: TILInstruction); static; inline;
     { процедура CheckUnusedExprResult проверяет есть ли неиспользуемый результат последнего выражения }
-    procedure CheckUnusedExprResult(const EContext: TEContext);
+    procedure CheckUnusedExprResult(var EContext: TEContext);
     { Поиск и удаление неиспользуемых переменных/типов/процедур }
     procedure CheckUnusedVariables(VarSpace: PVarSpace);
     function CheckUnusedRecordType(Struct: TIDStructure): Boolean;
@@ -482,7 +375,7 @@ type
 
     procedure CheckIntfSectionMissing(Scope: TScope); inline;
     procedure CheckImplicitTypes(Src, Dst: TIDType; Position: TTextPosition); inline;
-    procedure CheckLeftOperand(const Status: TRPNStatus); inline;
+    procedure CheckLeftOperand(const Status: TEContext.TRPNStatus); inline;
     procedure CheckEmptyExpression(Expression: TIDExpression); inline;
     procedure CheckArrayExpression(Expression: TIDExpression); inline;
     procedure CheckIncompletedProcs(ProcSpace: PProcSpace);
@@ -692,9 +585,9 @@ type
     function CheckAndMakeClosure(SContext: PSContext; const ProcDecl: TIDProcedure): TIDClosure;
     procedure SetProcGenericArgs(CallExpr: TIDCallExpression; Args: TIDExpressions);
     procedure ParseASMStatement(Scope: TScope; Platform: TIDPlatform; SContext: PSContext);
-    procedure ParseIIFStatement(Scope: TScope; SContext: PSContext);
+    procedure ParseIIFStatement(Scope: TScope; var EContext: TEContext);
     { функция парсинга вектор(кортеж) вид [a, b, ... z]}
-    procedure ParseVector(Scope: TScope; SContext: PSContext);
+    procedure ParseVector(Scope: TScope; var EContext: TEContext);
     { функция пост-оброботки откомпилированного модуля}
     procedure PostCompileProcessUnit;
     procedure CheckManagedInitFinal(const Proc: TIDProcedure);
@@ -706,6 +599,7 @@ type
     procedure CheckProc(Proc: TIDProcedure);
     procedure ReleaseExpression(Expr: TIDExpression); overload;
     procedure ReleaseExpression(SContext: PSContext; Expr: TIDExpression); overload;
+    procedure ReleaseExpression(const EContext: TEContext; Expr: TIDExpression); overload;
     procedure ReleaseExpressions(SContext: PSContext; Exprs: TIDExpressions);
     procedure EmitDynCheckBound(SContext: PSContext; ArrDecl: TIDDeclaration; Idx: TIDExpression);
     function EmitCreateClosure(SContext: PSContext; Closure: TIDClosure): TIDExpression;
@@ -730,8 +624,10 @@ type
     class function CreateStructCopyProc(const Struct: TIDStructure): TIDProcedure;
     function CreateStructFinalProc(const Struct: TIDStructure): TIDProcedure;
     
-    {функция возвращает специальную анонимную переменную - результат булевых выражений}
-    class function GetBoolExprVar(var EContext: TEContext; Expr: TIDExpression {text position use only}): TIDExpression;
+    {функция возвращает специальную анонимную переменную - результат логических булевых выражений}
+    {такая переменная не используется для генерации IL кода, а используется лишь для определения типа выражения}
+    class function GetBoolResultExpr(ExistExpr: TIDExpression): TIDBoolResultExpression; overload; static; inline;
+    function GetBoolResultExpr(SContext: PSContext): TIDBoolResultExpression; overload; inline;
 
     {функция CheckImplicit проверяет, возможно ли неявное преобразование}
     class function CheckImplicit(Source: TIDExpression; Dest: TIDType): TIDDeclaration; static;
@@ -773,7 +669,8 @@ type
     function MatchBinarOperatorWithImplicit(SContext: PSContext; Op: TOperatorID; var Left, Right: TIDexpression): TIDDeclaration;
     function MatchBinarOperatorWithTuple(SContext: PSContext; Op: TOperatorID; var CArray: TIDExpression; const SecondArg: TIDExpression): TIDDeclaration;
 
-    function CreateAnonymousConstant(Scope: TScope; const ID: TIdentifier; IdentifierType: TIdentifierType): TIDExpression;
+    function CreateAnonymousConstant(Scope: TScope; var EContext: TEContext; const ID: TIdentifier;
+                                     IdentifierType: TIdentifierType): TIDExpression;
     function CreateAnonymousConstTuple(Scope: TScope; ElementDataType: TIDType): TIDExpression;
     function FindID(Scope: TScope; const ID: TIdentifier): TIDDeclaration; overload; inline;
     function FindID(Scope: TScope; const ID: TIdentifier; out Expression: TIDExpression): TIDDeclaration; overload;
@@ -781,12 +678,15 @@ type
     function FindIDNoAbort(Scope: TScope; const ID: string): TIDDeclaration; overload; inline;
     function FindIDNoAbort(Scope: TScope; const ID: TIdentifier; out Expression: TIDExpression): TIDDeclaration; overload; inline;
     function GetTMPVar(SContext: PSContext; DataType: TIDType): TIDVariable; overload;
+    function GetTMPVar(var EContext: TEContext; DataType: TIDType): TIDVariable; overload;
     function GetTMPVar(SContext: PSContext; DataType: TIDType; VarFlags: TVariableFlags): TIDVariable; overload;
     function GetTMPRef(SContext: PSContext; DataType: TIDType): TIDVariable;
     function GetTMPRefExpr(SContext: PSContext; DataType: TIDType): TIDExpression; overload; inline;
     function GetTMPVarExpr(SContext: PSContext; DataType: TIDType): TIDExpression; overload; inline;
+    function GetTMPVarExpr(const EContext: TEContext; DataType: TIDType): TIDExpression; overload; inline;
     function GetTMPVarExpr(SContext: PSContext; DataType: TIDType; VarFlags: TVariableFlags): TIDExpression; overload; inline;
     function GetTMPVarExpr(SContext: PSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline;
+    function GetTMPVarExpr(var EContext: TEContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline;
   public
     ////////////////////////////////////////////////////////////////////////////
     constructor Create(const Package: INPPackage; const Source: string); virtual;
@@ -830,7 +730,7 @@ type
 
   TIDSysRuntimeFunction = class(TIDBuiltInFunction)
   protected
-    function Process(const SContext: PSContext): TIDExpression; virtual;
+    function Process(var EContext: TEContext): TIDExpression; virtual;
   end;
 
   TSysFunctionContext = record
@@ -952,11 +852,25 @@ type
     function Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
   end;
 
+  function GetUnit(const SContext: PSContext): TNPUnit; overload;
+  function GetUnit(const EContext: TEContext): TNPUnit; overload;
+
 implementation
 
 { TCompiler }
 
 uses SystemUnit, NPCompiler.Messages, TypInfo, NPCompiler.ConstCalculator;
+
+function GetUnit(const SContext: PSContext): TNPUnit;
+begin
+  Result := TNPUnit(SContext.Proc.DeclUnit);
+end;
+
+function GetUnit(const EContext: TEContext): TNPUnit;
+begin
+  Result := TNPUnit(EContext.SContext.Proc.DeclUnit);
+end;
+
 
 function ScopeToVarList(Scope: TScope; SkipFirstCount: Integer): TVariableList; forward;
 
@@ -1742,6 +1656,11 @@ begin
   end;
 end;
 
+procedure TNPUnit.ReleaseExpression(const EContext: TEContext; Expr: TIDExpression);
+begin
+  ReleaseExpression(EContext.SContext, Expr);
+end;
+
 procedure TNPUnit.ReleaseExpression(Expr: TIDExpression);
 begin
 
@@ -1752,16 +1671,6 @@ begin
   // в цепочке A.B.C... только первый элемент может быть временной переменной
   if Length(Exprs) > 0 then
     ReleaseExpression(SContext, Exprs[0]);
-end;
-
-{RPN inline methods}
-
-procedure TNPUnit.RPNCheckInputSize;
-begin
-  if FRPNInputPos >= FRPNInputSize then begin
-    Inc(FRPNInputSize, 8);
-    SetLength(FRPNInput, FRPNInputSize);
-  end;
 end;
 
 {parser inline methods}
@@ -1802,6 +1711,12 @@ begin
     SContext.IL.Write(Instruction);
 end;
 
+class procedure TNPUnit.ILWrite(const EContext: TEContext; Instruction: TILInstruction);
+begin
+  if Assigned(EContext.SContext) and EContext.SContext.WriteIL then
+    EContext.SContext.IL.Write(Instruction);
+end;
+
 class procedure TNPUnit.ILWrite(Proc: TIDProcedure; Instruction: TILInstruction);
 begin
   if Assigned(Proc.IL) then
@@ -1835,70 +1750,6 @@ class procedure TNPUnit.InsertToScope(Scope: TScope; const ID: string; Declarati
 begin
   if Assigned(Scope.InsertNode(ID, Declaration)) then
     ERROR_ID_REDECLARATED(Declaration);
-end;
-
-{ TSContext }
-
-procedure TSContext.Assign(const Source: PSContext);
-begin
-  IL := Source.IL;
-  Proc := Source.Proc;
-  WriteIL := Source.WriteIL;
-  ExpandMacro := Source.ExpandMacro;
-  LContext := Source.LContext;
-  TryBlock := Source.TryBlock;
-end;
-
-function TSContext.CurUnit: TNPUnit;
-begin
-  Result := TNPUnit(Proc.DeclUnit)
-end;
-
-function TSContext.GetTMPVar(DataType: TIDType): TIDVariable;
-begin
-  Result := Proc.GetTMPVar(DataType);
-end;
-
-function TSContext.GetTMPVar(DataType: TIDType; VarFlags: TVariableFlags): TIDVariable;
-begin
-  Result := Proc.GetTMPVar(DataType, VarFlags);
-end;
-
-function TSContext.GetTMPVarExpr(DataType: TIDType; const TextPos: TTextPosition): TIDExpression;
-begin
-  Result := TIDExpression.Create(Proc.GetTMPVar(DataType), TextPos);
-end;
-
-function TSContext.ILFirst: TILInstruction;
-begin
-  if Assigned(IL) then
-    Result := IL.First
-  else
-    Result := nil;
-end;
-
-function TSContext.ILLast: TILInstruction;
-begin
-  if Assigned(IL) then
-    Result := IL.Last
-  else
-    Result := nil;
-end;
-
-procedure TSContext.ILWrite(Instruction: TILInstruction);
-begin
-  if WriteIL then
-    IL.Write(Instruction);
-end;
-
-procedure TSContext.Initialize;
-begin
-  IL := nil;
-  LContext := nil;
-  WriteIL := True;
-  ExpandMacro := True;
-  TryBlock := nil;
-  Proc := nil;
 end;
 
 class function TNPUnit.MatchUnarOperator(Op: TOperatorID; Right: TIDType): TIDType;
@@ -2703,7 +2554,6 @@ begin
                (Dest.IsReferenced or (Dest is TIDProcType)) then
               Exit(Source);
 
-
             if (SrcDTID = dtPointer) and (DstDTID = dtPointer) then
             begin
               if (TIDPointer(SDataType).ReferenceType = nil) and
@@ -3024,16 +2874,16 @@ begin
   ConstSpace.Reindex;
 end;
 
-procedure TNPUnit.CheckUnusedExprResult(const EContext: TEContext);
+procedure TNPUnit.CheckUnusedExprResult(var EContext: TEContext);
 var
   Expr: TIDExpression;
   ExprCnt: Integer;
 begin
-  Assert(EContext.StartOutPos >= 0);
-  ExprCnt := (FRPNOutPos - EContext.StartOutPos);
+  Assert(EContext.RPNExprCount >= 0);
+  ExprCnt := (EContext.RPNExprCount);
   if ExprCnt > 0 then
   begin
-    Expr := RPNReadExpression(ExprCnt - 1);
+    Expr := RPNReadExpression(EContext, ExprCnt - 1);
     ReleaseExpression(EContext.SContext, Expr);
     HINT_RESULT_EXPR_IS_NOT_USED(Expr);
   end;
@@ -4613,11 +4463,6 @@ begin
     FIntfImportedUnits.AddObject('system', SYSUnit);
   end;
   FOptions := TCompilerOptions.Create(Package.Options);
-  // RPN:
-  FRPNInputSize := 16;
-  SetLength(FRPNInput, FRPNInputSize);
-  FRPNOutSize := 16;
-  SetLength(FRPNOut, FRPNOutSize);
 
   Scope := TProcScope.CreateInBody(FImplScope);
   FInitProc := TIDProcedure.CreateAsSystem(Scope, '$initialization');
@@ -4634,7 +4479,8 @@ begin
   fCondStack.OnPopError := procedure begin ERROR_INVALID_COND_DIRECTIVE() end;
 end;
 
-function TNPUnit.CreateAnonymousConstant(Scope: TScope; const ID: TIdentifier; IdentifierType: TIdentifierType): TIDExpression;
+function TNPUnit.CreateAnonymousConstant(Scope: TScope; var EContext: TEContext; const ID: TIdentifier;
+                                         IdentifierType: TIdentifierType): TIDExpression;
 var
   i: Integer;
   IntValue: Int64;
@@ -4659,7 +4505,6 @@ begin
       CItem.Index := FPackage.GetStringConstant(TIDStringConstant(CItem));
     end;
     itInteger: begin
-      // todo: fix parsing #10#13 strings...
       if Value[1] = '#' then begin
         Value := Copy(Value, 2, Length(Value) - 1);
         if TryStrToInt(Value, Int32Value) then
@@ -4669,11 +4514,11 @@ begin
       end else begin
         if not TryStrToInt64(Value, IntValue) then
         begin
-          if (RPNLastOperator = TOperatorID.opNegative) then
+          if (EContext.RPNLastOperator = TOperatorID.opNegative) then
           begin
             // хак для обработки MinInt64 !!!
             if TryStrToInt64('-' + Value, IntValue) then
-              Dec(FRPNInputPos)
+              EContext.RPNEraiseTopOperator
             else
               AbortWork('Invalid decimal value: %s', [Value], parser_Position);
           end else
@@ -5062,7 +4907,7 @@ begin
         ResultProc.AddParam(Param);
         CallArg := TIDExpression.Create(Param, ID.TextPosition);
       end else
-        CallArg := CreateAnonymousConstant(Scope, ID, FParser.IdentifireType);
+        CallArg := CreateAnonymousConstant(Scope, EContext, ID, FParser.IdentifireType);
       CallArgs := CallArgs + [CallArg];
 
       Result := parser_NextToken(Scope);
@@ -5181,10 +5026,10 @@ begin
   end;
 
   IdxCount := 0;
+  InitEContext(InnerEContext, EContext.SContext, ExprNested);
   while True do begin
-    InitEContext(InnerEContext, EContext.SContext, ExprNested);
     Result := ParseExpression(Scope, InnerEContext, parser_NextToken(Scope));
-    Expr := InnerEContext.ResultExpression;
+    Expr := InnerEContext.Result;
     CheckEmptyExpression(Expr);
     if Assigned(InnerEContext.LastBoolNode) then
       Bool_CompleteImmediateExpression(InnerEContext, Expr);
@@ -5200,9 +5045,11 @@ begin
 
     PMContext.Add(Expr);
     Inc(IdxCount);
-    RPNPopExpression;
     if Result = token_coma then
+    begin
+      InnerEContext.Reset;
       Continue;
+    end;
     parser_MatchToken(Result, token_closeblock);
     Result := parser_NextToken(Scope);
     Break;
@@ -5442,7 +5289,7 @@ begin
           // если выражение продолжается дальше, генерируем вызов процедуры
           if Result in [token_dot, token_openblock] then
           begin
-            Expression := RPNPopOperator(EContext);
+            Expression := EContext.RPNPopOperator();
             Decl := Expression.Declaration;
             PMContext.Clear;
           end else begin
@@ -5704,7 +5551,7 @@ begin
   CFBBegin(SContext, CFB_CASE);
   InitEContext(EContext, SContext, ExprRValue);
   Result := ParseExpression(Scope, EContext, parser_NextToken(Scope));
-  SExpression := RPNPopExpression;
+  SExpression := RPNPopExpression(EContext);
   CheckEmptyExpression(SExpression);
   if Assigned(EContext.LastBoolNode) then
     Bool_CompleteImmediateExpression(EContext, SExpression);
@@ -5728,7 +5575,7 @@ begin
         // запоминаем начало секции
         StartMIInstruction := SContext.ILLast;
         Result := ParseExpression(Scope, EContext, Result);
-        DExpression := RPNPopExpression;
+        DExpression := RPNPopExpression(EContext);
         CheckEmptyExpression(DExpression);
         // проверка на совпадение типа
         if DExpression.DataTypeID = dtRange then
@@ -6064,13 +5911,13 @@ begin
 
     if not Assigned(DataType) then
     begin
-      DataType := EContext.ResultExpression.DataType;
+      DataType := EContext.Result.DataType;
       for i := 0 to c do
         Vars[i].DataType := DataType
     end;
 
     RPNPushOperator(EContext, opAssignment);
-    RPNFinish(EContext);
+    EContext.RPNFinish;
 
     parser_MatchSemicolon(Result);
     break;
@@ -6305,7 +6152,7 @@ var
 begin
   parser_ReadNextIdentifier(Scope, ID);
 
-  if FPackage.Target = '' then
+  if (FPackage.Target = '') or (FPackage.Target = 'ANY') then
     FPackage.Target := ID.Name
   else
     AbortWork('Target is already defined as "%s"', [FPackage.Target], ID.TextPosition);
@@ -6402,10 +6249,15 @@ end;
 procedure TNPUnit.PutMessage(Message: TCompilerMessage);
 begin
   Message.UnitName := Self.Name;
+  if Message.Row <=0 then
+  begin
+    Message.Row := parser_Position.Row;
+    Message.Col := parser_Position.Col;
+  end;
   FMessages.Add(Message);
 end;
 
-procedure TNPUnit.ParseVector(Scope: TScope; SContext: PSContext);
+procedure TNPUnit.ParseVector(Scope: TScope; var EContext: TEContext);
   function MaxType(Type1, Type2: TIDType): TIDType;
   begin
     if Type1 = Type2 then
@@ -6426,7 +6278,7 @@ procedure TNPUnit.ParseVector(Scope: TScope; SContext: PSContext);
   end;
 var
   i, c, Capacity: Integer;
-  EContext: TEContext;
+  InnerEContext: TEContext;
   AConst: TIDDynArrayConstant;
   Expr: TIDExpression;
   Token: TTokenID;
@@ -6440,15 +6292,15 @@ begin
   Capacity := 8;
   IsStatic := True;
   SetLength(SItems, Capacity);
+  InitEContext(InnerEContext, EContext.SContext, ExprNested);
   while True do begin
-    InitEContext(EContext, SContext, ExprNested);
-    Token := ParseExpression(Scope, EContext, FParser.NextToken);
-    Expr := EContext.ResultExpression;
+    Token := ParseExpression(Scope, InnerEContext, FParser.NextToken);
+    Expr := InnerEContext.Result;
     if Assigned(Expr) then begin
       if Expr.Declaration.ItemType <> itConst then
         IsStatic := False;
       Inc(c);
-      SItems[i] := RPNPopExpression;
+      SItems[i] := Expr;
     end else
     if i > 0 then
       CheckEmptyExpression(Expr);
@@ -6461,6 +6313,7 @@ begin
           Capacity := Capacity * 2;
           SetLength(SItems, Capacity);
         end;
+        InnerEContext.Reset;
         Continue;
       end;
       token_closeblock: Break;
@@ -6511,7 +6364,7 @@ begin
   InitEContext(EContext, addr(SContext), EPosition);
   Result := ParseExpression(Scope, EContext, SrartToken);
   CheckEndOfFile(Result);
-  Expr := EContext.ResultExpression;
+  Expr := EContext.Result;
   if not Assigned(Expr) then
     Exit;
   if Expr.IsAnonymous then
@@ -6530,7 +6383,7 @@ begin
   SContext.ExpandMacro := False;
   InitEContext(EContext, addr(SContext), ExprRValue);
   Result := ParseExpression(Scope, EContext, parser_NextToken(Scope));
-  Expr := EContext.ResultExpression;
+  Expr := EContext.Result;
   if not Assigned(Expr) then
     Exit;
   if Expr.IsAnonymous then
@@ -6539,7 +6392,7 @@ begin
     CheckConstExpression(Expr);
 end;
 
-procedure TNPUnit.CheckLeftOperand(const Status: TRPNStatus);
+procedure TNPUnit.CheckLeftOperand(const Status: TEContext.TRPNStatus);
 begin
   if Status <> rpOperand then
     ERROR_EXPRESSION_EXPECTED;
@@ -6553,7 +6406,7 @@ end;
 function TNPUnit.ParseExpression(Scope: TScope; var EContext: TEContext; SrartToken: TTokenID): TTokenID;
 var
   ID: TIdentifier;
-  Status: TRPNStatus;
+  Status: TEContext.TRPNStatus;
   Expr: TIDExpression;
   RoundCount: Integer;
   SContext: PSContext;
@@ -6564,10 +6417,10 @@ begin
   SContext := EContext.SContext;
   while True do begin
     case Result of
-      token_eof: Exit;// ERROR_END_OF_FILE;
+      token_eof: Break;// ERROR_END_OF_FILE;
       token_openround: begin
         Inc(RoundCount);
-        RPNPushOpenRaund(EContext);
+        EContext.RPNPushOpenRaund();
         Status := rprOk;
       end;
       token_closeround: begin
@@ -6579,15 +6432,15 @@ begin
 
           ERROR_UNNECESSARY_CLOSED_ROUND;
         end;
-        RPNPushCloseRaund(EContext);
+        EContext.RPNPushCloseRaund();
         Status := rpOperand;
       end;
       token_iif: begin
-        ParseIIFStatement(Scope, SContext);
+        ParseIIFStatement(Scope, EContext);
         Status := rpOperand;
       end;
       token_openblock: begin
-        ParseVector(Scope, SContext);
+        ParseVector(Scope, EContext);
         Status := rpOperand;
       end;
       token_closeblock: begin
@@ -6596,7 +6449,6 @@ begin
         else
           ERROR_UNNECESSARY_CLOSED_BLOCK;
       end;
-      token_not: Status := RPNPushOperator(EContext, opNot);
       token_plus: begin
         if Status = rpOperand then
           Status := RPNPushOperator(EContext, opAdd)
@@ -6704,6 +6556,7 @@ begin
         CheckLeftOperand(Status);
         Status := RPNPushOperator(EContext, opXor);
       end;
+      token_not: Status := RPNPushOperator(EContext, opNot);
       token_shl: begin
         CheckLeftOperand(Status);
         Status := RPNPushOperator(EContext, opShiftLeft);
@@ -6777,7 +6630,7 @@ begin
         end else begin
           {анонимная константа}
           parser_ReadCurrIdentifier(ID);
-          Expr := CreateAnonymousConstant(Scope, ID, parser_IdentifireType);
+          Expr := CreateAnonymousConstant(Scope, EContext, ID, parser_IdentifireType);
           Result := parser_NextToken(Scope);
           Status := rpOperand;
         end;
@@ -6790,10 +6643,10 @@ begin
     Result := parser_NextToken(Scope);
   end;
 
-  if (EContext.EPosition <> ExprNested) and (Status <> rpOperand) and NeedRValue(EContext.RPNLastItem) then
+  if (EContext.EPosition <> ExprNested) and (Status <> rpOperand) and NeedRValue(EContext.RPNLastOp) then
     ERROR_EXPRESSION_EXPECTED;
 
-  EContext.ResultExpression := RPNFinish(EContext);
+  EContext.RPNFinish();
 end;
 
 function TNPUnit.ParseStaticArrayType(Scope: TScope; Decl: TIDArray): TTokenID;
@@ -7147,7 +7000,7 @@ end;
 
 function TNPUnit.ParseStatements(Scope: TScope; SContext: PSContext; IsBlock: Boolean): TTokenID;
 var
-  EContext: TEContext;
+  EContext, REContext: TEContext;
   NewScope: TScope;
   Platform: TIDPlatform;
 begin
@@ -7228,12 +7081,15 @@ begin
         begin
           Result := ParseExpression(Scope, EContext, parser_CurTokenID);
           if Result = token_assign then begin
+            InitEContext(REContext, SContext, ExprRValue);
             Result := parser_NextToken(Scope);
-            EContext.EPosition := ExprRValue;
-            EContext.ResultExpression := nil;
-            Result := ParseExpression(Scope, EContext, Result);
+            Result := ParseExpression(Scope, REContext, Result);
+            if Assigned(REContext.LastBoolNode) then
+              Bool_CompleteImmediateExpression(REContext, REContext.Result);
+
+            RPNPushExpression(EContext, REContext.Result);
             RPNPushOperator(EContext, opAssignment);
-            RPNFinish(EContext);
+            EContext.RPNFinish();
           end else
           if Result = token_coma then begin
             parser_NextToken(Scope);
@@ -7277,14 +7133,14 @@ begin
   InitEContext(EContext, SContext, ExprRValue);
   CFBBegin(SContext, CFB_IF);
   Result := ParseExpression(Scope, EContext, parser_NextToken(Scope));
-  Expression := EContext.ResultExpression;
+  Expression := EContext.Result;
   CheckEmptyExpression(Expression);
   CheckBooleanExpression(Expression);
   ToElseJump := nil;
   ThenSContext.Assign(SContext);
   ElseSContext.Assign(SContext);
   case Expression.ItemType of
-    itVar: if not (Expression.Declaration is TIDBoolVariable) then begin // Если if условие соотоит из одной boolean переменной
+    itVar: if not (Expression is TIDBoolResultExpression) then begin // Если if условие соотоит из одной boolean переменной
       ILWrite(SContext, TIL.IL_Test(Expression, Expression));
       ToElseJump := TIL.IL_JmpNext(Expression.Line, cZero, nil);
       ILWrite(SContext, ToElseJump);
@@ -7362,11 +7218,11 @@ begin
   CFBEnd(SContext, CFB_IF);
 end;
 
-procedure TNPUnit.ParseIIFStatement(Scope: TScope; SContext: PSContext);
+procedure TNPUnit.ParseIIFStatement(Scope: TScope; var EContext: TEContext);
   procedure ProcessSimpleMove(const EContext: TEContext; Dst, Src: TIDExpression);
   begin
-    if (FRPNOutPos = 1) and Assigned(Src.Instruction) and
-       (TILInstruction(Src.Instruction) = SContext.IL.Last) and
+    if (EContext.RPNExprCount = 1) and Assigned(Src.Instruction) and
+       (TILInstruction(Src.Instruction) = EContext.SContext.IL.Last) and
        not (Src.Instruction is TILGetPtrMulti) then
     begin
       TILDestInstruction(Src.Instruction).Destination := Dst;
@@ -7377,18 +7233,19 @@ var
   Expression: TIDExpression;
   ToElseJump,
   ToEndJump: TILJmpNext;
-  EContext, TEEContext: TEContext;
-
+  InnerEContext, TEEContext: TEContext;
+  SContext: PSContext;
   ThenSContext: TSContext;
   ElseSContext: TSContext;
   Result: TTokenID;
   ThenExpr, ElseExpr: TIDExpression;
   ResultExpr: TIDExpression;
 begin
+  SContext := EContext.SContext;
   parser_MatchToken(parser_NextToken(Scope), token_openround);
-  InitEContext(EContext, SContext, ExprRValue);
-  Result := ParseExpression(Scope, EContext, parser_NextToken(Scope));
-  Expression := RPNPopExpression;
+  InitEContext(InnerEContext, SContext, ExprRValue);
+  Result := ParseExpression(Scope, InnerEContext, parser_NextToken(Scope));
+  Expression := RPNPopExpression(InnerEContext);
   CheckEmptyExpression(Expression);
   CheckBooleanExpression(Expression);
   ToElseJump := nil;
@@ -7415,7 +7272,7 @@ begin
   parser_MatchToken(Result, token_coma);
   InitEContext(TEEContext, @ThenSContext, ExprRValue);
   Result := ParseExpression(Scope, TEEContext, parser_NextToken(Scope));
-  ThenExpr := RPNPopExpression;
+  ThenExpr := RPNPopExpression(TEEContext);
   CheckEmptyExpression(ThenExpr);
   // выводим тип результата
   ResultExpr.Declaration := GetTMPVar(SContext, ThenExpr.DataType);
@@ -7433,10 +7290,10 @@ begin
   if Assigned(ToElseJump) then
     ToElseJump.Destination := SContext.ILLast
   else
-    Bool_CompleteExpression(EContext.LastBoolNode, SContext.ILLast);
+    Bool_CompleteExpression(InnerEContext.LastBoolNode, SContext.ILLast);
   InitEContext(TEEContext, @ElseSContext, ExprNested);
   Result := ParseExpression(Scope, TEEContext, parser_NextToken(Scope));
-  ElseExpr := RPNPopExpression;
+  ElseExpr := RPNPopExpression(TEEContext);
   CheckEmptyExpression(ElseExpr);
   // проверяем тип "else" выражения
   if not Assigned(CheckImplicit(ElseExpr, ResultExpr.DataType)) then
@@ -7474,7 +7331,7 @@ begin
   // парсим выражение-коллекцию
   InitEContext(EContext, SContext, ExprRValue);
   Result := ParseExpression(Scope, EContext, parser_NextToken(Scope));
-  AExpr := EContext.ResultExpression;
+  AExpr := EContext.Result;
   CheckArrayExpression(AExpr);
   LoopArrayDT := (AExpr.DataType as TIDArray).ElementDataType;
 
@@ -7596,12 +7453,12 @@ begin
 
   // начальное значение
   Result := ParseExpression(Scope, EContext, parser_NextToken(Scope));
-  StartExpr := EContext.ResultExpression;
+  StartExpr := EContext.Result;
   CheckEmptyExpression(StartExpr);
 
   // пишем инструкцию присваениея начального значения
   RPNPushOperator(EContext, opAssignment);
-  RPNFinish(EContext);
+  EContext.RPNFinish();
 
   // устанавливаем флаг цикловой переменной
   with TIDVariable(LoopVar) do Flags := Flags + [VarLoopIndex];
@@ -7621,7 +7478,7 @@ begin
   // конечное значение
   InitEContext(EContext, SContext, ExprRValue);
   Result := ParseExpression(Scope, EContext, parser_NextToken(Scope));
-  StopExpr := EContext.ResultExpression;
+  StopExpr := EContext.Result;
   CheckEmptyExpression(StopExpr);
 
   // если для вычисления конечного выражения использовалась временная переменная
@@ -7650,7 +7507,7 @@ begin
   if Result = token_step then begin
     InitEContext(EContext, SContext, ExprRValue);
     Result := ParseExpression(Scope, EContext, parser_NextToken(Scope));
-    DeltaExpr := EContext.ResultExpression;
+    DeltaExpr := EContext.Result;
     CheckEmptyExpression(DeltaExpr);
     if (DeltaExpr.ItemType = itConst) and (DeltaExpr.AsIntConst.Value = 0) then
       Warning(msgZeroDeltaInForLoop, [], parser_PrevPosition);
@@ -7706,7 +7563,7 @@ begin
   while true do begin
     InitEContext(EContext, SContext, ExprNestedGeneric);
     Result := ParseExpression(Scope, EContext, parser_NextToken(Scope));
-    Expr := EContext.ResultExpression;
+    Expr := EContext.Result;
     if Assigned(Expr) then begin
       if Expr.DataType = SYSUnit._Boolean then
       begin
@@ -7718,7 +7575,7 @@ begin
 
     Inc(ArgsCount);
     SetLength(Args, ArgsCount);
-    Args[ArgsCount - 1] := RPNPopExpression;
+    Args[ArgsCount - 1] := RPNPopExpression(EContext);
 
     case Result of
       token_coma: begin
@@ -7793,14 +7650,14 @@ begin
   // while выражение
   InitEContext(EContext, SContext, ExprRValue);
   Result := ParseExpression(Scope, EContext, FParser.NextToken);
-  Expression := EContext.ResultExpression;
+  Expression := EContext.Result;
   CheckEmptyExpression(Expression);
   CheckBooleanExpression(Expression);
   ToEndJump := nil;
   NewSContext.Assign(SContext);
   NewSContext.LContext := LContext;
   case Expression.ItemType of
-    itVar: if not (Expression.Declaration is TIDBoolVariable) then
+    itVar: if not (Expression is TIDBoolResultExpression) then
     begin // Если if условие соотоит из одной boolean переменной
       ILWrite(SContext, TIL.IL_Test(Expression, Expression));
       ToEndJump := TIL.IL_JmpNext(Expression.Line, cZero, nil);
@@ -7866,18 +7723,18 @@ begin
     Result := parser_NextToken(Scope);
     TmpVar := nil;
     Expression := TIDExpression.Create(nil);
+    InitEContext(EContext, SContext, ExprRValue);
     RPNPushExpression(EContext, Expression);
     parser_MatchToken(Result, token_identifier);
-    InitEContext(EContext, SContext, ExprRValue);
     Result := ParseExpression(Scope, EContext, Result);
     // Если выражение простое, удаляем временное выражение
-    if EContext.ResultExpression.ExpressionType = etDeclaration then
+    if EContext.Result.ExpressionType = etDeclaration then
     begin
-      Expression := EContext.ResultExpression;
+      Expression := EContext.Result;
     end else begin
     // Если выражение сложное, создаем временную переменную и присваеваем ей вычисленное выше выражение
       //RPNPushExpression(EContext.ResultExpression);
-      TmpVar := SContext.Proc.GetTMPVar(EContext.ResultExpression.DataType, True);
+      TmpVar := SContext.Proc.GetTMPVar(EContext.Result.DataType, True);
       Expression.Declaration := TmpVar;
       Process_operator_Assign(EContext);
     end;
@@ -7979,6 +7836,7 @@ var
   InnerEContext: TEContext;
 begin
   ArgumentsCount := 0;
+  InitEContext(InnerEContext, SContext, ExprNested);
   {цикл парсинга аргументов}
   while true do begin
     Result := parser_NextToken(Scope);
@@ -7987,9 +7845,8 @@ begin
       Result := parser_NextToken(Scope);
       Break;
     end;
-    InitEContext(InnerEContext, SContext, ExprNested);
     Result := ParseExpression(Scope, InnerEContext, Result);
-    Expr := InnerEContext.ResultExpression;
+    Expr := InnerEContext.Result;
 
     if Assigned(Expr) then begin
       if Expr.DataType = SYSUnit._Boolean then
@@ -8007,6 +7864,7 @@ begin
 
     case Result of
       token_coma: begin
+        InnerEContext.Reset;
         continue;
       end;
       token_closeround: begin
@@ -8028,6 +7886,7 @@ var
 begin
   ArgumentsCount := 0;
   SContext := EContext.SContext;
+  InitEContext(InnerEContext, SContext, ExprNested);
   {цикл парсинга аргументов}
   while true do begin
     Result := parser_NextToken(Scope);
@@ -8036,15 +7895,15 @@ begin
       Result := parser_NextToken(Scope);
       Break;
     end;
-    InitEContext(InnerEContext, SContext, ExprNested);
     Result := ParseExpression(Scope, InnerEContext, Result);
-    Expr := InnerEContext.ResultExpression;
+    Expr := InnerEContext.Result;
     if Assigned(Expr) then begin
       if Expr.DataType = SYSUnit._Boolean then
       begin
         if (Expr.ItemType = itVar) and Expr.IsAnonymous then
           Bool_CompleteImmediateExpression(InnerEContext, Expr);
       end;
+      RPNPushExpression(EContext, Expr);
     end else begin
       // Добавляем пустой Expression для значения по умолчанию
       RPNPushExpression(EContext, nil);
@@ -8052,6 +7911,7 @@ begin
     Inc(ArgumentsCount);
     case Result of
       token_coma: begin
+        InnerEContext.Reset;
         continue;
       end;
       token_closeround: begin
@@ -8102,10 +7962,10 @@ begin
   begin
     ParamsBeginPos := FParser.SourcePosition;
     ParamsBeginRow := FParser.LinePosition.Row;
-    while true do begin
       InitEContext(InnerEContext, SContext, ExprNested);
+    while True do begin
       Result := ParseExpression(Scope, InnerEContext, parser_NextToken(Scope));
-      Expr := InnerEContext.ResultExpression;
+      Expr := InnerEContext.Result;
       if Assigned(Expr) then begin
         if Expr.DataType = SYSUnit._Boolean then
         begin
@@ -8113,6 +7973,7 @@ begin
             Bool_CompleteImmediateExpression(InnerEContext, Expr);
         end;
         Inc(ArgsCount);
+        RPNPushExpression(EContext, Expr);
       end else begin
         // Добавляем пустой Expression для значения по умолчанию
         if FuncDecl.ParamsCount > 0 then
@@ -8120,6 +7981,7 @@ begin
       end;
       case Result of
         token_coma: begin
+          InnerEContext.Reset;
           continue;
         end;
         token_closeround: begin
@@ -8159,33 +8021,33 @@ begin
 
   MacroID := FuncDecl.FunctionID;
   case MacroID of
-    bf_sysrtfunction: Expr := TIDSysRuntimeFunction(FuncDecl).Process(SContext);
+    bf_sysrtfunction: Expr := TIDSysRuntimeFunction(FuncDecl).Process(EContext);
     bf_sysctfunction: Expr := TIDSysCompileFunction(FuncDecl).Process(Ctx);
     bf_assigned: Expr := ProcessBuiltin_Assigned(SContext, EContext);
-    bf_inc, bf_dec: Expr := ProcessBuiltin_IncDec(SContext, MacroID);
-    bf_length: Expr := ProcessBuiltin_Length(SContext);
-    bf_setlength: Expr := ProcessBuiltin_SetLength(SContext);
-    bf_copy: Expr := ProcessBuiltin_Copy(SContext);
-    bf_move: Expr := ProcessBuiltin_Move(SContext);
-    bf_memset: Expr := ProcessBuiltin_MemSet(SContext);
-    bf_sizeof: Expr := ProcessBuiltin_SizeOf(SContext);
-    bf_assert: Expr := ProcessBuiltin_Assert(SContext, ParamsText, ParamsBeginRow);
-    bf_typename: Expr := ProcessBuiltin_TypeName;
+    bf_inc, bf_dec: Expr := ProcessBuiltin_IncDec(EContext, MacroID);
+    bf_length: Expr := ProcessBuiltin_Length(EContext);
+    bf_setlength: Expr := ProcessBuiltin_SetLength(EContext);
+    bf_copy: Expr := ProcessBuiltin_Copy(EContext);
+    bf_move: Expr := ProcessBuiltin_Move(EContext);
+    bf_memset: Expr := ProcessBuiltin_MemSet(EContext);
+    bf_sizeof: Expr := ProcessBuiltin_SizeOf(EContext);
+    bf_assert: Expr := ProcessBuiltin_Assert(EContext, ParamsText, ParamsBeginRow);
+    bf_typename: Expr := ProcessBuiltin_TypeName(EContext);
     bf_current_unit: Expr := StrConstExpression(FUnitName.Name);
     bf_current_function: Expr := StrConstExpression(SContext.Proc.Name);
     bf_current_line: Expr := IntConstExpression(FParser.Position.Row);
-    bf_new: Expr := ProcessBuiltin_New(SContext);
-    bf_free: Expr := ProcessBuiltin_Free(SContext);
-    bf_getref: Expr := ProcessBuiltin_GetRef(SContext);
-    bf_typeinfo: Expr := ProcessBuiltin_TypeInfo(SContext);
-    bf_LoBound: Expr := ProcessBuiltin_LoHiBound(SContext, False);
-    bf_HiBound: Expr := ProcessBuiltin_LoHiBound(SContext, True);
-    bf_Ord: Expr := ProcessBuiltin_Ord(SContext);
-    bf_include: Expr := ProcessBuiltin_Include(SContext);
-    bf_exclude: Expr := ProcessBuiltin_Exclude(SContext);
-    bf_refcount: Expr := ProcessBuiltin_RefCount(SContext);
-    bf_getbit: Expr := ProcessBuiltin_GetBit(SContext);
-    bf_setbit: Expr := ProcessBuiltin_SetBit(SContext);
+    bf_new: Expr := ProcessBuiltin_New(EContext);
+    bf_free: Expr := ProcessBuiltin_Free(EContext);
+    bf_getref: Expr := ProcessBuiltin_GetRef(EContext);
+    bf_typeinfo: Expr := ProcessBuiltin_TypeInfo(EContext);
+    bf_LoBound: Expr := ProcessBuiltin_LoHiBound(EContext, False);
+    bf_HiBound: Expr := ProcessBuiltin_LoHiBound(EContext, True);
+    bf_Ord: Expr := ProcessBuiltin_Ord(EContext);
+    bf_include: Expr := ProcessBuiltin_Include(EContext);
+    bf_exclude: Expr := ProcessBuiltin_Exclude(EContext);
+    bf_refcount: Expr := ProcessBuiltin_RefCount(EContext);
+    bf_getbit: Expr := ProcessBuiltin_GetBit(EContext);
+    bf_setbit: Expr := ProcessBuiltin_SetBit(EContext);
   else
     AbortWork('Unknown macro %d', [Integer(MacroID)], FParser.Position);
     Expr := nil;
@@ -8229,14 +8091,14 @@ begin
     begin
       PrevWriteIL := SContext.WriteIL;
       SContext.WriteIL := False;
+      InitEContext(InnerEContext, SContext, ExprNested);
       while true do begin
         Expr := nil;
         APos := FParser.SourcePosition;
         FParser.SaveState(PrevPos);
-        InitEContext(InnerEContext, SContext, ExprNested);
         try
           Result := ParseExpression(Scope, InnerEContext, parser_NextToken(Scope));
-          Expr := InnerEContext.ResultExpression;
+          Expr := InnerEContext.Result;
           IsInvalidArg := False;
         except
           on e: ECompilerAbort do begin
@@ -8253,7 +8115,7 @@ begin
             if (Expr.ItemType = itVar) and Expr.IsAnonymous then
               Bool_CompleteImmediateExpression(InnerEContext, Expr);
           end;
-          RPNPopExpression; // убираем из стека
+          //RPNPopExpression(InnerEContext); // убираем из стека
         end;
 
         if Assigned(Expr) or IsInvalidArg then
@@ -8268,6 +8130,7 @@ begin
 
         case Result of
           token_coma: begin
+            InnerEContext.Reset;
             continue;
           end;
           token_closeround: begin
@@ -8403,7 +8266,7 @@ begin
     Result := ParseExpression(Scope, EContext, parser_NextToken(Scope));
     parser_MatchToken(Result, token_closeround);
     RPNPushOperator(EContext, opAssignment);
-    RPNFinish(EContext);
+    EContext.RPNFinish();
     Result := parser_NextToken(Scope);
   end;
   {проверка на выход из try... секции}
@@ -8666,9 +8529,9 @@ begin
   // геттер
   if Result = token_read then
   begin
-    EContext.Initialize;
+    InitEContext(EContext, nil, ExprRValue);
     Result := ParseExpression(Scope, EContext, parser_NextToken(Scope));
-    Expr := EContext.ResultExpression;
+    Expr := EContext.Result;
     if Expr.ItemType = itProcedure then
     begin
       Proc := Expr.AsProcedure;
@@ -8689,9 +8552,9 @@ begin
   // сеттер
   if Result = token_write then
   begin
-    EContext.Initialize;
+    InitEContext(EContext, nil, ExprRValue);
     Result := ParseExpression(Scope, EContext, parser_NextToken(Scope));
-    Expr := EContext.ResultExpression;
+    Expr := EContext.Result;
     case Expr.ItemType of
       itConst: AbortWork(sFieldOrProcRequiredForSetter, Expr.TextPosition);
       itProcedure: MatchPropSetter(Prop, Expr, PropParams);
@@ -9510,7 +9373,7 @@ var
 begin
   InitEContext(EContext, SContext, ExprRValue);
   Result := ParseExpression(Scope, EContext, parser_NextToken(Scope));
-  EExcept := EContext.ResultExpression;
+  EExcept := EContext.Result;
   CheckEmptyExpression(EExcept);
   CheckClassExpression(EExcept);
   ILWrite(SContext, TIL.IL_EThrow(cNone, EExcept));
@@ -9559,9 +9422,9 @@ begin
   Result := parser_NextToken(Scope);
   case Result of
     token_identifier: begin
-      EContext.Initialize;
+      InitEContext(EContext, nil, ExprRValue);
       Result := ParseExpression(Scope, EContext, Result);
-      Expression := EContext.ResultExpression;
+      Expression := EContext.Result;
       if Expression.ItemType = itType then begin
         Base := Expression.Declaration;
         if not TIDType(Base).Ordinal then
@@ -9909,9 +9772,9 @@ begin
       Scope.AddVariable(Field);
     end;
 
-
     if Result <> token_identifier then
       Exit;
+    c := 0;
   end;
 end;
 
@@ -10018,12 +9881,12 @@ begin
   // выражение цикла
   InitEContext(EContext, @NewSContext, ExprRValue);
   Result := ParseExpression(Scope, EContext, parser_NextToken(Scope));
-  Expression := EContext.ResultExpression;
+  Expression := EContext.Result;
   CheckEmptyExpression(Expression);
   CheckBooleanExpression(Expression);
 
   case Expression.ItemType of
-    itVar: if not (Expression.Declaration is TIDBoolVariable) then
+    itVar: if not (Expression is TIDBoolResultExpression) then
     begin // Если if условие соотоит из одной boolean переменной
       ILWrite(@NewSContext, TIL.IL_Test(Expression, Expression));
       if Assigned(FirstLoopBodyCode) then
@@ -10271,18 +10134,19 @@ var
 begin
   ArgumentsCount := 0;
   SContext := EContext.SContext;
+  InitEContext(InnerEContext, SContext, ExprNested);
   {цикл парсинга аргументов}
   while true do begin
     Result := parser_NextToken(Scope);
-    InitEContext(InnerEContext, SContext, ExprNested);
     Result := ParseExpression(Scope, InnerEContext, Result);
-    Expr := InnerEContext.ResultExpression;
+    Expr := InnerEContext.Result;
     if Assigned(Expr) then begin
       if Expr.DataType = SYSUnit._Boolean then
       begin
         if (Expr.ItemType = itVar) and Expr.IsAnonymous then
           Bool_CompleteImmediateExpression(InnerEContext, Expr);
       end;
+      RPNPushExpression(EContext, Expr);
     end else begin
       // Добавляем пустой Expression для значения по умолчанию
       RPNPushExpression(EContext, nil);
@@ -10290,6 +10154,7 @@ begin
     Inc(ArgumentsCount);
     case Result of
       token_coma: begin
+        InnerEContext.Reset;
         continue;
       end;
       token_closeblock: begin
@@ -10607,9 +10472,9 @@ var
   EContext: TEContext;
   Expr: TIDExpression;
 begin
-  EContext.Initialize;
+  InitEContext(EContext, nil, ExprRValue);
   Result := ParseExpression(Scope, EContext, parser_NextToken(Scope));
-  Expr := EContext.ResultExpression;
+  Expr := EContext.Result;
   CheckEmptyExpression(Expr);
   if Expr.ExpressionType <> etDeclaration then
     AbortWork(sSingleExpressionRequired, FParser.Position);
@@ -10708,15 +10573,15 @@ begin
 
   case Result of
     /////////////////////////////////////////////////////////////////////////
-    // type
+    // type of
     /////////////////////////////////////////////////////////////////////////
     token_type: begin
-      EContext.Initialize;
+      InitEContext(EContext, nil, ExprRValue);
       Result := parser_NextToken(Scope);
       Result := ParseExpression(Scope, EContext, Result);
-      if EContext.ResultExpression.ItemType = itType then
+      if EContext.Result.ItemType = itType then
       begin
-        Decl := TIDAliasType.CreateAlias(Scope, ID, EContext.ResultExpression.AsType);
+        Decl := TIDAliasType.CreateAlias(Scope, ID, EContext.Result.AsType);
         InsertToScope(Scope, Decl);
       end;
       Exit;
@@ -10821,16 +10686,16 @@ begin
     // other
     /////////////////////////////////////////////////////////////////////////
     token_identifier: begin
-      EContext.Initialize;
+      InitEContext(EContext, nil, ExprRValue);
       Result := ParseExpression(Scope, EContext, Result);
       {alias type}
-      if EContext.ResultExpression.ItemType = itType then begin
-        Decl := TIDAliasType.CreateAlias(Scope, ID, EContext.ResultExpression.AsType);
+      if EContext.Result.ItemType = itType then begin
+        Decl := TIDAliasType.CreateAlias(Scope, ID, EContext.Result.AsType);
       end else
       {range type}
       begin
         Decl := TIDRangeType.Create(Scope, ID);
-        ParseRangeType(Scope, EContext.ResultExpression, TIDRangeType(Decl));
+        ParseRangeType(Scope, EContext.Result, TIDRangeType(Decl));
       end;
       if not IsAnonimous then
         InsertToScope(Scope, Decl);
@@ -11388,7 +11253,7 @@ begin
   while true do begin
     InitEContext(EContext, SContext, ExprRValue);
     Result := ParseExpression(UScope, EContext, parser_NextToken(UScope));
-    Expr := RPNPopExpression;
+    Expr := RPNPopExpression(EContext);
     {проверка выражения на корректность}
     CheckEmptyExpression(Expr);
 
@@ -11440,14 +11305,14 @@ begin
   CFBEnd(SContext, CFB_IF);
 end;
 
-function TNPUnit.Process_operator_Addr(SContext: PSContext): TIDExpression;
+function TNPUnit.Process_operator_Addr(var EContext: TEContext): TIDExpression;
 var
   Expr: TIDExpression;
   TmpDecl: TIDVariable;
   DataType: TIDType;
   LEAInstruction: TILInstruction;
 begin
-  Expr := RPNPopExpression;
+  Expr := RPNPopExpression(EContext);
   if (Expr.ItemType <> itVar) and
      ((Expr.ItemType = itConst) and not (Expr.DataType.DataTypeID in [dtRecord, dtStaticArray, dtGuid])) and
      (Expr.ItemType <> itProcedure) then
@@ -11462,19 +11327,19 @@ begin
 
   if Expr.IsTMPVar and Expr.AsVariable.Reference then
   begin
-    Result := GetTMPVarExpr(SContext, DataType, Expr.TextPosition);
+    Result := GetTMPVarExpr(EContext.SContext, DataType, Expr.TextPosition);
     Result.AsVariable.Absolute := Expr.AsVariable;
   end else begin
-    TmpDecl := GetTMPVar(SContext, DataType);
+    TmpDecl := GetTMPVar(EContext.SContext, DataType);
     TmpDecl.IncludeFlags([VarNotNull]);
     Result := TIDExpression.Create(TmpDecl, Expr.TextPosition);
 
     LEAInstruction := TIL.IL_LoadAddress(Result, Expr);
     Result.Instruction := LEAInstruction;
 
-    ILWrite(SContext, LEAInstruction);
+    ILWrite(EContext.SContext, LEAInstruction);
   end;
-  ReleaseExpression(SContext, Expr);
+  ReleaseExpression(EContext.SContext, Expr);
 end;
 
 procedure TNPUnit.Process_operator_logical_AND_OR(var EContext: TEContext; Op: TOperatorID; Left, Right, Result: TIDExpression);
@@ -11565,17 +11430,31 @@ begin
     RNode := EContext.LastBoolNode;
   end;
 
-  // если правое выражение не было результатом сравнения
-  // до генерируем сравнение на True
   LNode := RNode.PrevNode;
+  // if LNode is not assigned, that because one of left or right expressions is simple bool variable
+  // and we need to generate TEST instruction for this variable:
   if not Assigned(LNode) then
   begin
+    // if right expression is simple bool variable:
+    if not (Right is TIDBoolResultExpression) then
+    begin
     Instruction := TIL.IL_Test(Right, Right);
     ILWrite(SContext, Instruction);
     ILWrite(SContext, TILJmpNext.Create(Instruction.Line));
     Bool_AddExprNode(EContext, Instruction.Next, cNonZero);
     LNode := RNode;
     RNode := EContext.LastBoolNode;
+    end else
+    // if left expression is simple bool variable:
+    if not (Left is TIDBoolResultExpression) then
+    begin
+      LeftLastCode := TILInstruction(Left.Instruction);
+      Instruction := TIL.IL_Test(Left, Left);
+      SContext.IL.InsertAfter(LeftLastCode, Instruction);
+      SContext.IL.InsertAfter(Instruction, TILJmpNext.Create(Instruction.Line));
+      Bool_AddExprNode(EContext, Instruction.Next, cNonZero);
+      LNode := EContext.LastBoolNode;
+    end;
   end;
 
   // создаем новый нод для AND/OR операции
@@ -11615,10 +11494,10 @@ var
   Instruction: TILInstruction;
 begin
   // читаем аргумент
-  Expr := RPNPopExpression;
+  Expr := RPNPopExpression(EContext);
   CheckReferenceType(Expr);
 
-  Result := GetBoolExprVar(EContext, Expr);
+  Result := GetBoolResultExpr(SContext);
 
   Instruction := TIL.IL_Cmp(Expr, SYSUnit._NullPtrExpression);
   ILWrite(SContext, Instruction);
@@ -11629,18 +11508,18 @@ begin
   ReleaseExpression(SContext, Expr);
 end;
 
-function TNPUnit.ProcessBuiltin_Copy(SContext: PSContext): TIDExpression;
+function TNPUnit.ProcessBuiltin_Copy(var EContext: TEContext): TIDExpression;
 var
   Arr, From, Cnt, Len, NCnt: TIDExpression;
   TmpVar: TIDVariable;
   Code: TILInstruction;
 begin
   // читаем третий аргумент
-  Cnt := RPNPopExpression;
+  Cnt := RPNPopExpression(EContext);
   // читаем второй аргумент
-  From := RPNPopExpression;
+  From := RPNPopExpression(EContext);
   // читаем первый аргумент
-  Arr := RPNPopExpression;
+  Arr := RPNPopExpression(EContext);
 
   CheckEmptyExpression(Arr);
   CheckEmptyExpression(From);
@@ -11648,7 +11527,7 @@ begin
 
   CheckArrayExpression(Arr);
 
-  TmpVar := GetTMPVar(SContext, Arr.DataType);
+  TmpVar := GetTMPVar(EContext, Arr.DataType);
   TmpVar.IncludeFlags([VarTmpResOwner]);
   Result := TIDExpression.Create(TmpVar, parser_PrevPosition);
 
@@ -11664,96 +11543,96 @@ begin
         ERROR_FEATURE_NOT_SUPPORTED;
       end;
     end else begin
-      Cnt := GetTMPVarExpr(SContext, SYSUnit._Int32, parser_PrevPosition);
+      Cnt := GetTMPVarExpr(EContext, SYSUnit._Int32, parser_PrevPosition);
       Code := TIL.IL_Length(Cnt, Arr);
-      ILWrite(SContext, Code);
+      ILWrite(EContext, Code);
     end;
   end;
 
   if not Arr.IsConstant then
   begin
-    Len := GetTMPVarExpr(SContext, SYSUnit._Int32, parser_PrevPosition);
-    ILWrite(SContext, TIL.IL_Length(Len, Arr))
+    Len := GetTMPVarExpr(EContext, SYSUnit._Int32, parser_PrevPosition);
+    ILWrite(EContext, TIL.IL_Length(Len, Arr))
   end else
     Len := IntConstExpression(Arr.AsStrConst.StrLength);
 
   // проверка From на значение < 0
   if not From.IsConstant then
   begin
-    ILWrite(SContext, TIL.IL_Cmp(From, SYSUnit._ZeroExpression));
-    ILWrite(SContext, TIL.IL_Move(cLess, From, SYSUnit._ZeroExpression));
+    ILWrite(EContext, TIL.IL_Cmp(From, SYSUnit._ZeroExpression));
+    ILWrite(EContext, TIL.IL_Move(cLess, From, SYSUnit._ZeroExpression));
 
-    ILWrite(SContext, TIL.IL_Cmp(From, Len));
-    ILWrite(SContext, TIL.IL_Move(cGreater, From, Len));
+    ILWrite(EContext, TIL.IL_Cmp(From, Len));
+    ILWrite(EContext, TIL.IL_Move(cGreater, From, Len));
   end;
   // проверка Cnt на значение < 0
   if not Cnt.IsConstant then
   begin
-    ILWrite(SContext, TIL.IL_Cmp(Cnt, SYSUnit._ZeroExpression));
-    ILWrite(SContext, TIL.IL_Move(cLess, Cnt, SYSUnit._ZeroExpression));
+    ILWrite(EContext, TIL.IL_Cmp(Cnt, SYSUnit._ZeroExpression));
+    ILWrite(EContext, TIL.IL_Move(cLess, Cnt, SYSUnit._ZeroExpression));
   end;
 
   if (not From.IsConstant) or (From.AsIntConst.Value > 0) then
   begin
-    NCnt := GetTMPVarExpr(SContext, SYSUnit._Int32, parser_PrevPosition);
-    ILWrite(SContext, TIL.IL_Sub(NCnt, Len, From));
-    ILWrite(SContext, TIL.IL_Cmp(NCnt, Cnt));
-    ILWrite(SContext, TIL.IL_Move(cGreater, NCnt, Cnt)); {}
+    NCnt := GetTMPVarExpr(EContext, SYSUnit._Int32, parser_PrevPosition);
+    ILWrite(EContext, TIL.IL_Sub(NCnt, Len, From));
+    ILWrite(EContext, TIL.IL_Cmp(NCnt, Cnt));
+    ILWrite(EContext, TIL.IL_Move(cGreater, NCnt, Cnt)); {}
   end else
     NCnt := Cnt;
 
   Code := TIL.IL_DAlloc(Result, NCnt);
-  ILWrite(SContext, Code);
+  ILWrite(EContext, Code);
 
   Code := TIL.IL_Copy(Result, Arr, From, NCnt);
-  ILWrite(SContext, Code);
+  ILWrite(EContext, Code);
 
   {освобожадем временные переменные}
-  ReleaseExpression(SContext, Arr);
-  ReleaseExpression(SContext, From);
-  ReleaseExpression(SContext, Cnt);
+  ReleaseExpression(EContext, Arr);
+  ReleaseExpression(EContext, From);
+  ReleaseExpression(EContext, Cnt);
 end;
 
-function TNPUnit.ProcessBuiltin_MemSet(SContext: PSContext): TIDExpression;
+function TNPUnit.ProcessBuiltin_MemSet(var EContext: TEContext): TIDExpression;
 var
   Value, BytePattern: TIDExpression;
 begin
   // читаем второй аргумент
-  BytePattern := RPNPopExpression;
+  BytePattern := RPNPopExpression(EContext);
   CheckEmptyExpression(BytePattern);
 
   // читаем первый аргумент
-  Value := RPNPopExpression;
+  Value := RPNPopExpression(EContext);
   CheckEmptyExpression(Value);
 
-  ILWrite(SContext, TIL.IL_MemSet(Value, BytePattern));
+  ILWrite(EContext, TIL.IL_MemSet(Value, BytePattern));
   ReleaseExpression(BytePattern);
   ReleaseExpression(Value);
   Result := nil;
 end;
 
-function TNPUnit.ProcessBuiltin_Move(SContext: PSContext): TIDExpression;
+function TNPUnit.ProcessBuiltin_Move(var EContext: TEContext): TIDExpression;
 var
   SrcArr, SrcIdx, DstArr, DstIdx, Cnt: TIDExpression;
   Code: TILInstruction;
 begin
   Result := nil;
   // читаем пятый аргумент
-  Cnt := RPNPopExpression;
+  Cnt := RPNPopExpression(EContext);
   // читаем четвертый аргумент
-  DstIdx := RPNPopExpression;
+  DstIdx := RPNPopExpression(EContext);
   // читаем третий аргумент
-  DstArr := RPNPopExpression;
+  DstArr := RPNPopExpression(EContext);
   // читаем второй аргумент
-  SrcIdx := RPNPopExpression;
+  SrcIdx := RPNPopExpression(EContext);
   // читаем первый аргумент
-  SrcArr := RPNPopExpression;
+  SrcArr := RPNPopExpression(EContext);
 
   CheckArrayExpression(SrcArr);
   CheckArrayExpression(DstArr);
 
   Code := TIL.IL_MoveArray(SrcArr, SrcIdx, DstArr, DstIdx, Cnt);
-  ILWrite(SContext, Code);
+  ILWrite(EContext, Code);
 
   CheckEmptyExpression(SrcArr);
   CheckEmptyExpression(SrcIdx);
@@ -11762,17 +11641,17 @@ begin
   CheckEmptyExpression(Cnt);
 end;
 
-function TNPUnit.ProcessBuiltin_IncDec(SContext: PSContext; MacroID: TBuiltInFunctionID): TIDExpression;
+function TNPUnit.ProcessBuiltin_IncDec(var EContext: TEContext; MacroID: TBuiltInFunctionID): TIDExpression;
 var
   Increment, Value, NewIncrement: TIDExpression;
   Instruction: TILInstruction;
   DataType, RefType: TIDType;
 begin
   // читаем второй аргумент (значение инкремента/декримента)
-  Increment := RPNPopExpression;
+  Increment := RPNPopExpression(EContext);
 
   // читаем первый аргумент (переменная)
-  Value := RPNPopExpression;
+  Value := RPNPopExpression(EContext);
 
   CheckVarExpression(Value, TVarModifyPlace.vmpPassArgument);
 
@@ -11791,9 +11670,9 @@ begin
       if Increment.IsConstant then
         Increment := IntConstExpression(Increment.AsIntConst.Value * RefType.DataSize)
       else begin
-        NewIncrement := GetTMPVarExpr(SContext, SYSUnit._Int32);
+        NewIncrement := GetTMPVarExpr(EContext, SYSUnit._Int32);
         Instruction := TIL.IL_Mul(NewIncrement, Increment, IntConstExpression(RefType.DataSize));
-        ILWrite(SContext, Instruction);
+        ILWrite(EContext, Instruction);
         Increment := NewIncrement;
       end;
     end;
@@ -11808,17 +11687,17 @@ begin
       ERROR_INTERNAL;
       Exit(nil);
     end;
-    ILWrite(SContext, Instruction);
+    ILWrite(EContext, Instruction);
   end else
     ERROR_ORDINAL_TYPE_REQUIRED(FParser.Position);
 
-  ReleaseExpression(SContext, Value);
-  ReleaseExpression(SContext, Increment);
+  ReleaseExpression(EContext, Value);
+  ReleaseExpression(EContext, Increment);
 
   Result := nil;
 end;
 
-function TNPUnit.ProcessBuiltin_Length(SContext: PSContext): TIDExpression;
+function TNPUnit.ProcessBuiltin_Length(var EContext: TEContext): TIDExpression;
 var
   Expr: TIDExpression;
   DataType: TIDType;
@@ -11826,7 +11705,7 @@ var
   ParamName: string;
 begin
   // читаем аргумент
-  Expr := RPNPopExpression;
+  Expr := RPNPopExpression(EContext);
   DataType := Expr.DataType;
   case DataType.DataTypeID of
     // статические массивы
@@ -11852,8 +11731,8 @@ begin
       if Expr.IsConstant then
         Result := IntConstExpression(Expr.AsStrConst.StrLength)
       else begin
-        Result := TIDExpression.Create(SContext.Proc.GetTMPVar(SYSUnit._UInt32), Expr.TextPosition);
-        ILWrite(SContext, TIL.IL_Length(Result, Expr));
+        Result := GetTMPVarExpr(EContext, SYSUnit._UInt32, Expr.TextPosition);
+        ILWrite(EContext, TIL.IL_Length(Result, Expr));
       end;
     end;
     else begin
@@ -11861,10 +11740,10 @@ begin
       Result := nil;
     end;
   end;
-  ReleaseExpression(SContext, Expr);
+  ReleaseExpression(EContext, Expr);
 end;
 
-function TNPUnit.ProcessBuiltin_SetLength(SContext: PSContext): TIDExpression;
+function TNPUnit.ProcessBuiltin_SetLength(var EContext: TEContext): TIDExpression;
 var
   ArrExpr, LenExpr: TIDExpression;
   DataType: TIDType;
@@ -11872,9 +11751,9 @@ var
   //NewArr: TIDExpression;
 begin
   // читаем второй аргумент (NewLength)
-  LenExpr := RPNPopExpression;
+  LenExpr := RPNPopExpression(EContext);
   // читаем первый аргумент (массив/строка)
-  ArrExpr := RPNPopExpression;
+  ArrExpr := RPNPopExpression(EContext);
   DataType := ArrExpr.DataType;
   if DataType.DataTypeID in [dtDynArray, dtString, dtAnsiString] then begin
     CheckVarExpression(ArrExpr, vmpPassArgument);
@@ -11889,16 +11768,16 @@ begin
     //NewArr := GetTMPVarExpr(SContext, DataType);
     Instruction := TIL.IL_RAlloc(ArrExpr, LenExpr);
 
-    ILWrite(SContext, Instruction);
+    ILWrite(EContext, Instruction);
     //CheckAndCallArrayInit(SContext.Proc, ArrExpr.AsVariable);
   end else
     AbortWork(sArrayOrStringTypeRequired, ArrExpr.TextPosition);
 
-  ReleaseExpression(SContext, LenExpr);
+  ReleaseExpression(EContext, LenExpr);
   Result := nil;
 end;
 
-function TNPUnit.ProcessBuiltin_Assert(SContext: PSContext; const ParamsTest: string; SourceRow: Integer): TIDExpression;
+function TNPUnit.ProcessBuiltin_Assert(var EContext: TEContext; const ParamsTest: string; SourceRow: Integer): TIDExpression;
 var
   AssertExpr, ETextExpr: TIDExpression;
   Instr: TILInstruction;
@@ -11909,9 +11788,9 @@ var
   Args: TIDExpressions;
 begin
   // читаем второй аргумент (текст ошибки)
-  ETextExpr := RPNPopExpression;
+  ETextExpr := RPNPopExpression(EContext);
   // читаем первый аргумент (утверждение)
-  AssertExpr := RPNPopExpression;
+  AssertExpr := RPNPopExpression(EContext);
   // выражение длоджно быть булевым
   CheckBooleanExpression(AssertExpr);
 
@@ -11924,7 +11803,7 @@ begin
   Decl.Index := FPackage.GetStringConstant(AssertText);
   ETextExpr := TIDExpression.Create(Decl, AssertExpr.TextPosition);
 
-  LastInst := SContext.ILLast;
+  LastInst := EContext.SContext.ILLast;
   if AssertExpr.IsConstant then
   begin
     {если выражение - константа}
@@ -11937,32 +11816,32 @@ begin
     {если выражение - результат сравнения}
     Condition := InverseCondition(LastInst.Condition);
     // удаляем инструкцию SetBool
-    SContext.IL.Delete(LastInst);
+    EContext.SContext.IL.Delete(LastInst);
   end else begin
     {если выражение - результат переменная}
     Instr := TIL.IL_Test(AssertExpr, AssertExpr);
-    ILWrite(SContext, Instr);
+    ILWrite(EContext, Instr);
     Condition := cZero;
   end;
   Args := [ETextExpr];
   Instr := TIL.IL_ProcCall(TIDCallExpression.Create(SYSUnit._AssertProc), nil, nil, Args);
   Instr.Condition := Condition;
-  ILWrite(SContext, Instr);
+  ILWrite(EContext, Instr);
 
-  ReleaseExpression(SContext, AssertExpr);
-  ReleaseExpression(SContext, ETextExpr);
+  ReleaseExpression(EContext, AssertExpr);
+  ReleaseExpression(EContext, ETextExpr);
 
   Result := nil;
 end;
 
-function TNPUnit.ProcessBuiltin_SizeOf(SContext: PSContext): TIDExpression;
+function TNPUnit.ProcessBuiltin_SizeOf(var EContext: TEContext): TIDExpression;
 var
   Expr: TIDExpression;
   Decl: TIDDeclaration;
   DataType: TIDType;
 begin
   // читаем аргумент
-  Expr := RPNPopExpression;
+  Expr := RPNPopExpression(EContext);
   Decl := Expr.Declaration;
   if Decl.ItemType <> itType then
     DataType := Decl.DataType.ActualDataType
@@ -11976,21 +11855,21 @@ begin
     Decl := TIDSizeofConstant.CreateAnonymous(FImplScope, SYSUnit._Int32, DataType);
     Result := TIDExpression.Create(Decl, Expr.TextPosition);
   end;
-  ReleaseExpression(SContext, Expr);
+  ReleaseExpression(EContext, Expr);
 end;
 
-function TNPUnit.ProcessBuiltin_New(Scontext: PSContext): TIDExpression;
+function TNPUnit.ProcessBuiltin_New(var EContext: TEContext): TIDExpression;
 var
   Expr, PExpr: TIDExpression;
   Code: TILInstruction;
   DataType: TIDType;
 begin
   // читаем аргумент
-  Expr := RPNPopExpression;
+  Expr := RPNPopExpression(EContext);
   CheckPointerType(Expr);
   CheckVarExpression(Expr, TVarModifyPlace.vmpPassArgument);
   Code := TIL.IL_New(Expr);
-  ILWrite(Scontext, Code);
+  ILWrite(EContext, Code);
   DataType := (Expr.DataType as TIDPointer).ReferenceType;
   // проверка на наличие инициализатора
   if Assigned(DataType.InitProc) then
@@ -12000,26 +11879,26 @@ begin
       Code := TIL.IL_ProcCall(PExpr, nil, Expr, [])
     else
       Code := TIL.IL_ProcCall(PExpr, nil, nil, [Expr]);
-    ILWrite(Scontext, Code);
+    ILWrite(EContext, Code);
   end;
   // проверка на наличие статического конструктора у структуры
   if (DataType.DataTypeID = dtRecord) and Assigned(TIDRecord(DataType).StaticConstructor) then
   begin
     PExpr := TIDExpression.Create(TIDRecord(DataType).StaticConstructor, Expr.TextPosition);
     Code := TIL.IL_ProcCall(PExpr, nil, Expr, []);
-    ILWrite(Scontext, Code);
+    ILWrite(EContext, Code);
   end;
   Result := nil;
 end;
 
-function TNPUnit.ProcessBuiltin_Free(Scontext: PSContext): TIDExpression;
+function TNPUnit.ProcessBuiltin_Free(var EContext: TEContext): TIDExpression;
 var
   Expr, PExpr: TIDExpression;
   Code: TILInstruction;
   DataType: TIDType;
 begin
   // читаем аргумент
-  Expr := RPNPopExpression;
+  Expr := RPNPopExpression(EContext);
   CheckPointerType(Expr);
 
   // проверка на наличие статического конструктора у структуры
@@ -12028,7 +11907,7 @@ begin
   begin
     PExpr := TIDExpression.Create(TIDRecord(DataType).StaticDestructor, Expr.TextPosition);
     Code := TIL.IL_ProcCall(PExpr, nil, Expr, []);
-    ILWrite(Scontext, Code);
+    ILWrite(EContext, Code);
   end;
   // проверка на наличие финализатора
   if Assigned(DataType.FinalProc) then
@@ -12038,55 +11917,55 @@ begin
       Code := TIL.IL_ProcCall(PExpr, nil, Expr, [])
     else
       Code := TIL.IL_ProcCall(PExpr, nil, nil, [Expr]);
-    ILWrite(Scontext, Code);
+    ILWrite(EContext, Code);
   end;
 
   Code := TIL.IL_FreeInstance(Expr);
-  ILWrite(Scontext, Code);
+  ILWrite(EContext, Code);
 
   Result := nil;
 end;
 
-function TNPUnit.ProcessBuiltin_GetBit(SContext: PSContext): TIDExpression;
+function TNPUnit.ProcessBuiltin_GetBit(var EContext: TEContext): TIDExpression;
 var
   Value, BitIndex: TIDExpression;
 begin
   // читаем аргумент 2
-  BitIndex := RPNPopExpression;
+  BitIndex := RPNPopExpression(EContext);
   CheckIntExpression(BitIndex);
   // читаем аргумент 1
-  Value := RPNPopExpression;
+  Value := RPNPopExpression(EContext);
   // результат функции
-  Result := GetTMPVarExpr(SContext, SYSUnit._Boolean);
+  Result := GetTMPVarExpr(EContext, SYSUnit._Boolean);
 
   // проверка константного индекса на вызод за диаппазон
   if BitIndex.IsConstant then
     CheckIntConstInRange(BitIndex, Value.DataType.DataSize*8 - 1, 0);
 
-  ILWrite(SContext, TIL.IL_GetBit(Result, Value, BitIndex));
+  ILWrite(EContext, TIL.IL_GetBit(Result, Value, BitIndex));
 
   ReleaseExpression(Value);
   ReleaseExpression(BitIndex);
 end;
 
-function TNPUnit.ProcessBuiltin_SetBit(SContext: PSContext): TIDExpression;
+function TNPUnit.ProcessBuiltin_SetBit(var EContext: TEContext): TIDExpression;
 var
   Value, BitIndex, BitValue: TIDExpression;
 begin
   // читаем аргумент 3
-  BitValue := RPNPopExpression;
+  BitValue := RPNPopExpression(EContext);
   CheckBooleanExpression(BitValue);
   // читаем аргумент 2
-  BitIndex := RPNPopExpression;
+  BitIndex := RPNPopExpression(EContext);
   CheckIntExpression(BitIndex);
   // читаем аргумент 1
-  Value := RPNPopExpression;
+  Value := RPNPopExpression(EContext);
 
   // проверка константного индекса на вызод за диаппазон
   if BitIndex.IsConstant then
     CheckIntConstInRange(BitIndex, Value.DataType.DataSize*8 - 1, 0);
 
-  ILWrite(SContext, TIL.IL_SetBit(Value, BitIndex, BitValue));
+  ILWrite(EContext, TIL.IL_SetBit(Value, BitIndex, BitValue));
 
   Result := nil;
   ReleaseExpression(Value);
@@ -12094,36 +11973,36 @@ begin
   ReleaseExpression(BitValue);
 end;
 
-function TNPUnit.ProcessBuiltin_GetRef(SContext: PSContext): TIDExpression;
+function TNPUnit.ProcessBuiltin_GetRef(var EContext: TEContext): TIDExpression;
 var
   Src, Dst: TIDExpression;
 begin
   // читаем аргумент StrongPtr
-  Dst := RPNPopExpression;
+  Dst := RPNPopExpression(EContext);
   // читаем аргумент WeakPtr
-  Src := RPNPopExpression;
-  ILWrite(Scontext, TIL.IL_StrongRef(Dst, Src));
-  ILWrite(Scontext, TIL.IL_Cmp(Dst, SYSUnit._NullPtrExpression));
-  Result := GetTMPVarExpr(SContext, SYSUnit._Boolean);
-  ILWrite(Scontext, TIL.IL_SetBool(cNotEqual, Result));
+  Src := RPNPopExpression(EContext);
+  ILWrite(EContext, TIL.IL_StrongRef(Dst, Src));
+  ILWrite(EContext, TIL.IL_Cmp(Dst, SYSUnit._NullPtrExpression));
+  Result := GetTMPVarExpr(EContext, SYSUnit._Boolean);
+  ILWrite(EContext, TIL.IL_SetBool(cNotEqual, Result));
 end;
 
-function TNPUnit.ProcessBuiltin_Include(SContext: PSContext): TIDExpression;
+function TNPUnit.ProcessBuiltin_Include(var EContext: TEContext): TIDExpression;
 var
   ASet, ASubSet, SValue: TIDExpression;
   SetDT: TIDSet;
 begin
   // читаем аргумент SubSet
-  ASubSet := RPNPopExpression;
+  ASubSet := RPNPopExpression(EContext);
   // читаем аргумент Set
-  ASet := RPNPopExpression;
+  ASet := RPNPopExpression(EContext);
   CheckSetType(ASet);
   SetDT := TIDSet(ASet.DataType.ActualDataType);
   case ASubSet.DataTypeID of
     dtSet: begin
       if ASubSet.DataType.ActualDataType <> SetDT then
         ERROR_INCOMPATIBLE_TYPES(ASubSet, SetDT.BaseType);
-      ILWrite(Scontext, TIL.IL_Or(ASet, ASet, ASubSet));
+      ILWrite(EContext, TIL.IL_Or(ASet, ASet, ASubSet));
     end;
     dtEnum: begin
       if ASubSet.DataType.ActualDataType <> SetDT.BaseType.ActualDataType then
@@ -12133,11 +12012,11 @@ begin
         SValue := IntConstExpression(1 shl ASubSet.AsIntConst.Value);
       end else
         SValue := nil;
-      ILWrite(Scontext, TIL.IL_Or(ASet, ASet, SValue));
+      ILWrite(EContext, TIL.IL_Or(ASet, ASet, SValue));
     end;
     dtDynArray: begin
       SValue := ConstDynArrayToSet(ASubSet, SetDT);
-      ILWrite(Scontext, TIL.IL_Or(ASet, ASet, SValue));
+      ILWrite(EContext, TIL.IL_Or(ASet, ASet, SValue));
     end;
   else
     ERROR_ORDINAL_OR_SET_REQUIRED(ASubSet);
@@ -12145,24 +12024,24 @@ begin
   Result := nil;
 end;
 
-function TNPUnit.ProcessBuiltin_Exclude(SContext: PSContext): TIDExpression;
+function TNPUnit.ProcessBuiltin_Exclude(var EContext: TEContext): TIDExpression;
 var
   ASet, ASubSet, SValue: TIDExpression;
   SetDT: TIDSet;
 begin
   // читаем аргумент SubSet
-  ASubSet := RPNPopExpression;
+  ASubSet := RPNPopExpression(EContext);
   // читаем аргумент Set
-  ASet := RPNPopExpression;
+  ASet := RPNPopExpression(EContext);
   CheckSetType(ASet);
   SetDT := TIDSet(ASet.DataType.ActualDataType);
   case ASubSet.DataTypeID of
     dtSet: begin
       if ASubSet.DataType.ActualDataType <> SetDT then
         ERROR_INCOMPATIBLE_TYPES(ASubSet, SetDT.BaseType);
-      SValue := GetTMPVarExpr(SContext, SetDT);
-      ILWrite(Scontext, TIL.IL_Not(SValue, ASubSet));
-      ILWrite(Scontext, TIL.IL_And(ASet, ASet, SValue));
+      SValue := GetTMPVarExpr(EContext, SetDT);
+      ILWrite(EContext, TIL.IL_Not(SValue, ASubSet));
+      ILWrite(EContext, TIL.IL_And(ASet, ASet, SValue));
     end;
     dtEnum: begin
       if ASubSet.DataType.ActualDataType <> SetDT.BaseType.ActualDataType then
@@ -12172,12 +12051,12 @@ begin
         SValue := IntConstExpression(not (1 shl ASubSet.AsIntConst.Value));
       end else
         SValue := nil;  // todo
-      ILWrite(Scontext, TIL.IL_And(ASet, ASet, SValue));
+      ILWrite(EContext, TIL.IL_And(ASet, ASet, SValue));
     end;
     dtDynArray: begin
       SValue := ConstDynArrayToSet(ASubSet, SetDT);
       SValue.AsIntConst.Value := not SValue.AsIntConst.Value;
-      ILWrite(Scontext, TIL.IL_And(ASet, ASet, SValue));
+      ILWrite(EContext, TIL.IL_And(ASet, ASet, SValue));
     end;
   else
     ERROR_ORDINAL_OR_SET_REQUIRED(ASubSet);
@@ -12185,24 +12064,24 @@ begin
   Result := nil;
 end;
 
-function TNPUnit.ProcessBuiltin_TypeInfo(SContext: PSContext): TIDExpression;
+function TNPUnit.ProcessBuiltin_TypeInfo(var EContext: TEContext): TIDExpression;
 var
   Expr: TIDExpression;
 begin
   // читаем аргумент
-  Expr := RPNPopExpression;
+  Expr := RPNPopExpression(EContext);
   CheckEmptyExpression(Expr);
-  Result := GetTMPVarExpr(SContext, SYSUnit._TObject);
-  ILWrite(SContext, TIL.IL_TypeInfo(Result, Expr));
+  Result := GetTMPVarExpr(EContext, SYSUnit._TObject);
+  ILWrite(EContext, TIL.IL_TypeInfo(Result, Expr));
 end;
 
-function TNPUnit.ProcessBuiltin_Ord(SContext: PSContext): TIDExpression;
+function TNPUnit.ProcessBuiltin_Ord(var EContext: TEContext): TIDExpression;
 var
   Expr: TIDExpression;
   CValue: Int64;
 begin
   // читаем аргумент
-  Expr := RPNPopExpression;
+  Expr := RPNPopExpression(EContext);
   CheckEmptyExpression(Expr);
   CheckOrdinalExpression(Expr);
   if Expr.IsConstant then begin
@@ -12211,32 +12090,32 @@ begin
   end else
     Result := TIDCastExpression.Create(Expr.Declaration, SYSUnit._Int32, parser_PrevPosition);
 
-  ReleaseExpression(SContext, Expr);
+  ReleaseExpression(EContext, Expr);
 end;
 
-function TNPUnit.ProcessBuiltin_RefCount(SContext: PSContext): TIDExpression;
+function TNPUnit.ProcessBuiltin_RefCount(var EContext: TEContext): TIDExpression;
 var
   Expr: TIDExpression;
 begin
   // читаем аргумент
-  Expr := RPNPopExpression;
+  Expr := RPNPopExpression(EContext);
   if not (Expr.DataTypeID in [dtString, dtAnsiString, dtDynArray, dtClass, dtInterface]) then
     ERROR_REFERENCE_TYPE_EXPECTED(Expr);
 
-  Result := GetTMPVarExpr(SContext, SYSUnit._Int32);
+  Result := GetTMPVarExpr(EContext, SYSUnit._Int32);
   Result.TextPosition := parser_Position;
 
-  ILWrite(SContext, TIL.IL_RefCount(Result, Expr));
+  ILWrite(EContext, TIL.IL_RefCount(Result, Expr));
 end;
 
-function TNPUnit.ProcessBuiltin_LoHiBound(SContext: PSContext; HiBound: Boolean): TIDExpression;
+function TNPUnit.ProcessBuiltin_LoHiBound(var EContext: TEContext; HiBound: Boolean): TIDExpression;
 var
   Expr: TIDExpression;
   Decl: TIDDeclaration;
   DataType: TIDType;
 begin
   // читаем аргумент
-  Expr := RPNPopExpression;
+  Expr := RPNPopExpression(EContext);
   CheckEmptyExpression(Expr);
 
   Decl := Expr.Declaration;
@@ -12270,10 +12149,10 @@ begin
     case HiBound of
       False: Exit(SYSUnit._ZeroExpression);
       True: begin
-        Result := GetTMPVarExpr(SContext, SYSUnit._Int32);
+        Result := GetTMPVarExpr(EContext, SYSUnit._Int32);
         Result.TextPosition := parser_Position;
-        ILWrite(SContext, TIL.IL_Length(Result, Expr));
-        ILWrite(SContext, TIL.IL_Sub(Result, Result, SYSUnit._OneExpression));
+        ILWrite(EContext, TIL.IL_Length(Result, Expr));
+        ILWrite(EContext, TIL.IL_Sub(Result, Result, SYSUnit._OneExpression));
         Exit;
       end;
     end;
@@ -12283,13 +12162,13 @@ begin
   Result := TIDExpression.Create(Decl, parser_Position);
 end;
 
-function TNPUnit.ProcessBuiltin_TypeName: TIDExpression;
+function TNPUnit.ProcessBuiltin_TypeName(var EContext: TEContext): TIDExpression;
 var
   Expr: TIDExpression;
   Decl: TIDDeclaration;
 begin
   // читаем аргумент
-  Expr := RPNPopExpression;
+  Expr := RPNPopExpression(EContext);
   Decl := Expr.Declaration;
 
   case Decl.ItemType of
@@ -12341,13 +12220,13 @@ var
 begin
   SContext := EContext.SContext;
   // читаем декларацию функции
-  PExpr := TIDCallExpression(RPNPopExpression);
+  PExpr := TIDCallExpression(RPNPopExpression(EContext));
 
   {вычитка явно указанных аргументов функции}
   ArgsCount := PExpr.ArgumentsCount;
   SetLength(UserArguments, ArgsCount);
   for AIndex := ArgsCount - 1 downto 0 do
-    UserArguments[AIndex] := RPNPopExpression;
+    UserArguments[AIndex] := RPNPopExpression(EContext);
 
   ProcDecl := nil;
   Decl := PExpr.Declaration;
@@ -12497,7 +12376,7 @@ begin
         {добовляем скрытй аргумент}
         RPNPushExpression(EContext, AExpr);
         Inc(PIndex);
-        CallArguments[PIndex] := ProcessBuiltin_Length(SContext);
+        CallArguments[PIndex] := ProcessBuiltin_Length(EContext);
       end;
 
       Inc(PIndex);
@@ -12706,7 +12585,7 @@ begin
     end;
   end else begin
     if Left.IsConstant then
-      LeftExpr := CreateAnonymousConstant(nil, Identifier(IntToStr(1 shl Left.AsIntConst.Value)), itInteger)
+      LeftExpr := CreateAnonymousConstant(nil, EContext, Identifier(IntToStr(1 shl Left.AsIntConst.Value)), itInteger)
     else
       LeftExpr := Left;
 
@@ -12717,28 +12596,28 @@ begin
   Result := TIDExpression.Create(SContext.Proc.GetTMPVar(SYSUnit._Boolean));
 end;
 
-function TNPUnit.Process_operator_Is(const SContext: PSContext): TIDExpression;
+function TNPUnit.Process_operator_Is(var EContext: TEContext): TIDExpression;
 var
   Src, Dst: TIDExpression;
 begin
-  Dst := RPNPopExpression();
-  Src := RPNPopExpression();
+  Dst := RPNPopExpression(EContext);
+  Src := RPNPopExpression(EContext);
   CheckClassOrIntfType(Src.DataType, Src.TextPosition);
   CheckClassOrIntfType(Dst);
-  Result := GetTMPVarExpr(SContext, SYSUnit._Boolean, Dst.TextPosition);
-  ILWrite(SContext, TIL.IL_QueryType(Result, Src, Dst));
+  Result := GetTMPVarExpr(EContext, SYSUnit._Boolean, Dst.TextPosition);
+  ILWrite(EContext, TIL.IL_QueryType(Result, Src, Dst));
 end;
 
-function TNPUnit.Process_operator_As(const SContext: PSContext): TIDExpression;
+function TNPUnit.Process_operator_As(var EContext: TEContext): TIDExpression;
 var
   Src, Dst: TIDExpression;
 begin
-  Dst := RPNPopExpression();
-  Src := RPNPopExpression();
+  Dst := RPNPopExpression(EContext);
+  Src := RPNPopExpression(EContext);
   CheckClassOrIntfType(Src.DataType, Src.TextPosition);
   CheckClassOrIntfType(Dst);
-  Result := GetTMPVarExpr(SContext, Dst.AsType, Dst.TextPosition);
-  ILWrite(SContext, TIL.IL_QueryType(Result, Src, Dst));
+  Result := GetTMPVarExpr(EContext, Dst.AsType, Dst.TextPosition);
+  ILWrite(EContext, TIL.IL_QueryType(Result, Src, Dst));
 end;
 
 function TNPUnit.ParseExplicitCast(Scope: TScope; SContext: PSContext; var DstExpression: TIDExpression): TTokenID;
@@ -12751,7 +12630,7 @@ var
 begin
   InitEContext(EContext, SContext, ExprNested);
   Result := ParseExpression(Scope, EContext, FParser.NextToken);
-  SrcExpr := RPNPopExpression;
+  SrcExpr := RPNPopExpression(EContext);
 
   if Assigned(EContext.LastBoolNode) then
     Bool_CompleteExpression(EContext.LastBoolNode, SContext.ILLast);
@@ -12901,7 +12780,7 @@ var
   Src: TIDExpression;
   RefDt: TIDType;
 begin
-  Src := RPNPopExpression();
+  Src := RPNPopExpression(EContext);
   CheckPointerType(Src);
   RefDt := TIDPointer(Src.DataType).ReferenceType;
   if not Assigned(RefDt) then
@@ -12916,11 +12795,11 @@ var
   Instruction: TILInstruction;
   i: Integer;
 begin
-  Source := RPNPopExpression;
-  for i := EContext.StartOutPos to FRPNOutPos - 1 do
+  Source := RPNPopExpression(EContext);
+  for i := 0 to EContext.RPNExprCount - 1 do
   begin
     {вычитываем очередной приемник (читаем слево-направо)}
-    Dest := RPNReadExpression(i);
+    Dest := RPNReadExpression(EContext, i);
     {находим Implicit оператор}
     NewSrc := MatchImplicit3(EContext.SContext, Source, Dest.DataType);
     if not Assigned(NewSrc) then
@@ -12939,7 +12818,7 @@ begin
 
     CheckUnique(Dest, EContext.SContext.IL);
 
-    if (FRPNOutPos - EContext.StartOutPos) = 1 then
+    if EContext.RPNExprCount = 1 then
     begin
       if (Dest.DataType = SYSUnit._Boolean) then
         if Bool_CompleteImmediateExpression(EContext, Dest) then
@@ -12951,7 +12830,6 @@ begin
       ILWrite(EContext.SContext, Instruction);
     end;
   end;
-  FRPNOutPos := EContext.StartOutPos;
 end;
 
 procedure TNPUnit.Process_operator_Assign(var EContext: TEContext);
@@ -12967,10 +12845,10 @@ var
   SContext: PSContext;
   Instruction: TILDestInstruction;
 begin
-  if (FRPNOutPos - EContext.StartOutPos) = 2 then
+  if EContext.RPNExprCount = 2 then
   begin
-    Source := RPNPopExpression;
-    Dest := RPNPopExpression;
+    Source := RPNPopExpression(EContext);
+    Dest := RPNPopExpression(EContext);
 
     SContext := EContext.SContext;
     ReleaseExpression(Source);
@@ -13029,7 +12907,7 @@ begin
       Instruction := TIL.IL_Move(Dest, Source);
     ILWrite(SContext, Instruction);
   end else
-  if (FRPNOutPos - EContext.StartOutPos) >  2 then
+  if EContext.RPNExprCount >  2 then
     Process_operator_AssignMulti(EContext)
   else
     ERROR_EMPTY_EXPRESSION;
@@ -13048,16 +12926,16 @@ begin
   case OpID of
     opAssignment: Process_operator_Assign(EContext);
     opNegative, opNot: Result := Process_operators_unar(EContext, OpID);
-    opPositive: Result := RPNPopExpression;
+    opPositive: Result := RPNPopExpression(EContext);
     opDereference: Result := Process_operator_Deref(EContext);
     opCall: Result := Process_CALL(EContext);
-    opPeriod: Result := Process_operator_Period(SContext);
-    opAddr: Result := Process_operator_Addr(SContext);
-    opIs: Result := Process_operator_Is(SContext);
-    opAs: Result := Process_operator_As(SContext);
+    opPeriod: Result := Process_operator_Period(EContext);
+    opAddr: Result := Process_operator_Addr(EContext);
+    opIs: Result := Process_operator_Is(EContext);
+    opAs: Result := Process_operator_As(EContext);
     opPostInc: begin
       // Читаем левый операнд
-      Left := RPNPopExpression;
+      Left := RPNPopExpression(EContext);
       Op := TIDType(MatchUnarOperator(OpID, Left.DataType));
       TmpVar := GetTMPVar(SContext, TIDType(Op));
       Result := TIDExpression.Create(TmpVar, Left.TextPosition);
@@ -13066,7 +12944,7 @@ begin
     end;
     opPostDec: begin
       // Читаем левый операнд
-      Left := RPNPopExpression;
+      Left := RPNPopExpression(EContext);
       Op := TIDType(MatchUnarOperator(OpID, Left.DataType));
       TmpVar := GetTMPVar(SContext, TIDType(Op));
       Result := TIDExpression.Create(TmpVar, Left.TextPosition);
@@ -13075,9 +12953,9 @@ begin
     end;
     else begin
       // Читаем первый операнд
-      Right := RPNPopExpression;
+      Right := RPNPopExpression(EContext);
       // Читаем второй операнд
-      Left := RPNPopExpression;
+      Left := RPNPopExpression(EContext);
 
       // проверяем и если нужно разименовываем аргументы
       CheckAndMatchDerefExpression(SContext, Left);
@@ -13129,7 +13007,7 @@ begin
           opLessOrEqual,
           opGreater,
           opGreaterOrEqual: begin
-            Result := GetBoolExprVar(EContext, Left);
+            Result := GetBoolResultExpr(Result);
             ILWrite(SContext, TIL.IL_Cmp(Left, Right));
             {освобожадем временные переменные}
             ReleaseExpression(SContext, Left);
@@ -13144,7 +13022,7 @@ begin
             begin
               // логические операции
               ReleaseExpression(Result);
-              Result := GetBoolExprVar(EContext, Left);
+              Result := GetBoolResultExpr(Result);
               Process_operator_logical_AND_OR(EContext, OpID, Left, Right, Result);
             end else begin
               // бинарные операции
@@ -13181,7 +13059,7 @@ begin
   end;
 end;
 
-function TNPUnit.Process_operator_Period(SContext: PSContext): TIDExpression;
+function TNPUnit.Process_operator_Period(var EContext: TEContext): TIDExpression;
 var
   ValueType: TIDDeclaration;
   RangeType: TIDRangeType;
@@ -13189,8 +13067,8 @@ var
   LB, HB: TIDExpression;
   RExpression: TIDRangeExpression;
 begin
-  HB := RPNPopExpression;
-  LB := RPNPopExpression;
+  HB := RPNPopExpression(EContext);
+  LB := RPNPopExpression(EContext);
 
   CheckEmptyExpression(LB);
   CheckEmptyExpression(HB);
@@ -13237,7 +13115,7 @@ var
   OperatorItem: TIDType;
 begin
   // Читаем операнд
-  Right := RPNPopExpression;
+  Right := RPNPopExpression(EContext);
 
   ReleaseExpression(EContext.SContext, Right);
 
@@ -13270,7 +13148,7 @@ begin
         end else begin
           // инвертируем условия сравнения
           InverseNode(EContext.LastBoolNode);
-          Result := GetBoolExprVar(EContext, Right);
+          Result := GetBoolResultExpr(EContext.SContext);
         end;
       end;
     else
@@ -13436,6 +13314,11 @@ begin
   Result := TIDExpression.Create(GetTMPVar(SContext, DataType), TextPos);
 end;
 
+function TNPUnit.GetTMPVarExpr(var EContext: TEContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression;
+begin
+  Result := GetTMPVarExpr(EContext.SContext, DataType, TextPos);
+end;
+
 function TNPUnit.GetTMPVarExpr(SContext: PSContext; DataType: TIDType; VarFlags: TVariableFlags): TIDExpression;
 begin
   Result := TIDExpression.Create(GetTMPVar(SContext, DataType, VarFlags));
@@ -13464,6 +13347,16 @@ begin
   end;
 end;
 
+function TNPUnit.GetTMPVar(var EContext: TEContext; DataType: TIDType): TIDVariable;
+begin
+  Result := GetTMPVar(EContext.SContext, DataType);
+end;
+
+function TNPUnit.GetTMPVarExpr(const EContext: TEContext; DataType: TIDType): TIDExpression;
+begin
+  Result := GetTMPVarExpr(EContext.SContext, DataType);
+end;
+
 function TNPUnit.GetWeakRefType(Scope: TScope; SourceDataType: TIDType): TIDWeekRef;
 begin
    if not (SourceDataType.DataTypeID in [dtClass, dtInterface]) then
@@ -13480,13 +13373,17 @@ begin
    end;
 end;
 
-class function TNPUnit.GetBoolExprVar(var EContext: TEContext; Expr: TIDExpression {text position use only}): TIDExpression;
-var
-  Decl: TIDBoolVariable;
+class function TNPUnit.GetBoolResultExpr(ExistExpr: TIDExpression): TIDBoolResultExpression;
 begin
-  Decl := TIDBoolVariable.CreateAsTemporary(Expr.Declaration.Scope, SYSUnit._Boolean);
-  Decl.Node := EContext.LastBoolNode;
-  Result := TIDExpression.Create(Decl, Expr.TextPosition);
+  Result := TIDBoolResultExpression.Create(ExistExpr.Declaration, ExistExpr.TextPosition);
+end;
+
+function TNPUnit.GetBoolResultExpr(SContext: PSContext): TIDBoolResultExpression;
+var
+  Decl: TIDVariable;
+begin
+  Decl := SContext.GetTMPVar(SYSUnit._Boolean);
+  Result := TIDBoolResultExpression.Create(Decl, parser_Position);
 end;
 
 function TNPUnit.GetILText: string;
@@ -13555,18 +13452,11 @@ end;
 
 procedure TNPUnit.InitEContext(var EContext: TEContext; SContext: PSContext; EPosition: TExpessionPosition);
 begin
+  EContext.Initialize(Process_operators);
   EContext.SContext := SContext;
-  EContext.StartInPos := FRPNInputPos;
-  EContext.StartOutPos := FRPNOutPos;
   if Assigned(SContext) then
-    EContext.LastInstruction := SContext.ILLast
-  else
-    EContext.LastInstruction := nil;
-  EContext.LastBoolNode := nil;
-  EContext.ResultExpression := nil;
+    EContext.LastInstruction := SContext.ILLast;
   EContext.EPosition := EPosition;
-  EContext.RPNLastItem := opNone;
-  EContext.RPNPrevPriority := 0;
 end;
 
 class function TNPUnit.IsConstEqual(const Left, Right: TIDExpression): Boolean;
@@ -13648,152 +13538,28 @@ begin
     Result := ParseCondStatements(Scope, Result);
 end;
 
-procedure TNPUnit.RPNError(Status: TRPNError);
+function TNPUnit.RPNPushOperator(var EContext: TEContext; OpID: TOperatorID): TEContext.TRPNStatus;
 begin
-  with FParser do
-  case Status of
-    reUnclosedOpenBracket: AbortWork(sUnclosedOpenBracket, PrevPosition);
-    reDublicateOperation: AbortWork(sDublicateOperationFmt, [TokenLexem(TTokenID(CurrentTokenID))], PrevPosition);
-  end;
-end;
-
-function TNPUnit.RPNFinish(var EContext: TEContext): TIDExpression;
-var
-  op: TOperatorID;
-begin
-  while FRPNInputPos > EContext.StartInPos do
-  begin
-    Dec(FRPNInputPos);
-    op := FRPNInput[FRPNInputPos];
-    if op <> opOpenRound then
-    begin
-      Result := Process_operators(EContext, op);
-      FRPNOut[FRPNOutPos] := Result;
-      if Assigned(Result) then
-        Inc(FRPNOutPos);
-      if FRPNInputPos > 0 then
-        EContext.RPNLastItem := FRPNInput[FRPNInputPos - 1]
-      else
-        EContext.RPNLastItem := opNone;
-      EContext.RPNPrevPriority := cOperatorPriorities[EContext.RPNLastItem];
-    end else
-      RPNError(reUnclosedOpenBracket);
-  end;
-
-  if FRPNOutPos > EContext.StartOutPos then
-    Result := FRPNOut[FRPNOutPos - 1]
-  else
-    Result := nil;
-end;
-
-function TNPUnit.RPNPushOperator(var EContext: TEContext; OpID: TOperatorID): TRPNStatus;
-var
-  Priority: Integer;
-  Op: TOperatorID;
-begin
-  if OpID = EContext.RPNLastItem then
-    RPNError(reDublicateOperation);
-
-  EContext.RPNLastItem := OpID;
-
-  Priority := cOperatorPriorities[OpID];
-  if (Priority <= EContext.RPNPrevPriority) then begin
-    while (FRPNInputPos - EContext.StartInPos) > 0 do begin
-      Op := FRPNInput[FRPNInputPos - 1];
-      if (cOperatorPriorities[Op] >= Priority) and (Op <> opOpenRound) then
-      begin
-        Dec(FRPNInputPos);
-        FRPNOut[FRPNOutPos] := Process_operators(EContext, Op);
-        Inc(FRPNOutPos);
-      end else
-        Break;
-    end;
-  end;
-  EContext.RPNPrevPriority := Priority;
-  FRPNInput[FRPNInputPos] := OpID;
-  Inc(FRPNInputPos);
-  RPNCheckInputSize;
-  Result := rpOperation;
-end;
-
-function TNPUnit.RPNPopOperator(var EContext: TEContext): TIDExpression;
-var
-  Op: TOperatorID;
-begin
-  if FRPNInputPos > EContext.StartInPos then
-  begin
-    Dec(FRPNInputPos);
-    Op := FRPNInput[FRPNInputPos];
-    Result := Process_operators(EContext, op);
-  end else
-    Result := nil;
-end;
-
-procedure TNPUnit.RPNPushCloseRaund(var EContext: TEContext);
-var
-  op: TOperatorID;
-begin
-  EContext.RPNLastItem := opCloseRound;
-  while FRPNInputPos > 0 do begin
-    Dec(FRPNInputPos);
-    op := FRPNInput[FRPNInputPos];
-    if op <> opOpenRound then begin
-      FRPNOut[FRPNOutPos] := Process_operators(EContext, Op);
-      Inc(FRPNOutPos);
-    end else
-      Exit;
-  end;
-  RPNError(reUnnecessaryClosedBracket);
-end;
-
-procedure TNPUnit.RPNPushOpenRaund(var EContext: TEContext);
-begin
-  FRPNInput[FRPNInputPos] := opOpenRound;
-  Inc(FRPNInputPos);
-  RPNCheckInputSize;
-  EContext.RPNLastItem := opOpenRound;
+  Result := EContext.RPNPushOperator(OpID);
 end;
 
 procedure TNPUnit.RPNPushExpression(var EContext: TEContext; Operand: TIDExpression);
 begin
-  FRPNOut[FRPNOutPos] := Operand;
-  Inc(FRPNOutPos);
-  if FRPNOutPos >= FRPNOutSize then begin
-    Inc(FRPNOutSize, 8);
-    SetLength(FRPNOut, FRPNOutSize);
-  end;
-  EContext.RPNLastItem := opNone;
+  EContext.RPNPushExpression(Operand);
 end;
 
-function TNPUnit.RPNPopExpression: TIDExpression;
-begin
-  Dec(FRPNOutPos);
-  if FRPNOutPos >= 0 then begin
-    Result := FRPNOut[FRPNOutPos];
-    if Assigned(Result) then
-      Exit;
-  end;
-  ERROR_EMPTY_EXPRESSION;
-  Result := nil; // for prevent compiler warning
-end;
-
-function TNPUnit.RPNReadExpression(Index: Integer): TIDExpression;
+function TNPUnit.RPNReadExpression(var EContext: TEContext; Index: Integer): TIDExpression;
 begin
   {$IFDEF DEBUG}
-  if (Index < 0) or (Index >= FRPNOutPos) then
+  if (Index < 0) or (Index >= EContext.RPNExprCount) then
     AbortWork(sInvalidIndex, FParser.Position);
   {$ENDIF}
-  Result := FRPNOut[Index];
-//  if (Result.ItemType = itVar) and Result.IsAnonymous then // Освобождаем временный Expression
-//    TIDVariable(Result.Declaration).UseInExpression := False;
+  Result := EContext.RPNReadExpression(Index);
 end;
 
-function TNPUnit.RPNLastOperator: TOperatorID;
+function TNPUnit.RPNPopExpression(var EContext: TEContext): TIDExpression;
 begin
-  if FRPNInputPos > 0 then
-    Result := FRPNInput[FRPNInputPos - 1]
-  else
-    Result := TOperatorID.opNone;
+  Result := EContext.RPNPopExpression();
 end;
 
 procedure TNPUnit.SaveConstsToStream(Stream: TStream);
@@ -14323,33 +14089,15 @@ end;
 
 procedure TNPUnit.HINT_RESULT_EXPR_IS_NOT_USED(const Expr: TIDExpression);
 begin
-  PutMessage(cmtHint, 'Expression result (type: ' + Expr.DataType.DisplayName + ') is not used', Expr.TextPosition);
+  if Assigned(Expr.DataType) then
+    PutMessage(cmtHint, 'Expression result (type: ' + Expr.DataType.DisplayName + ') is not used', Expr.TextPosition)
+  else
+    PutMessage(cmtHint, 'Expression result is not used', Expr.TextPosition);
 end;
 
 procedure TNPUnit.HINT_TEXT_AFTER_END;
 begin
   PutMessage(cmtHint, 'Text after final END. - ignored by compiler', parser_PrevPosition);
-end;
-
-{ TExprContext }
-
-procedure TEContext.Initialize;
-begin
-  FillChar(Self, SizeOf(TEContext), #0);
-end;
-
-{ TTryContext }
-
-procedure TTryContext.AddExit(ExitType: TExitType; const Instruction: TILInstruction);
-var
-  l: Integer;
-  PItem: PExitListItem;
-begin
-  l := Length(ExitList);
-  SetLength(ExitList, l + 1);
-  PItem := @ExitList[l];
-  PItem.ExitType := ExitType;
-  PItem.Instruction := Instruction;
 end;
 
 { TIDInternalCastOperator }
@@ -14373,7 +14121,7 @@ begin
 
   Intf := Src.AsType as TIDInterface;
 
-  UN := SContext.CurUnit;
+  UN := GetUnit(SContext);
   if Intf.GUID = GUID_NULL then
     UN.Warning('Interface type "%s" is has empty GUID', [Intf.DisplayName], Src.TextPosition);
 
@@ -14487,7 +14235,7 @@ var
   Constant: TIDGuidConstant;
   UN: TNPUnit;
 begin
-  UN := SContext.CurUnit;
+  UN := GetUnit(SContext);
   if Src.IsConstant then
   begin
     if TryStrToGUID(Src.AsStrConst.Value, GUID) then
@@ -14530,7 +14278,7 @@ begin
     Str := Src.AsStrConst.Value;
     if IsAnsiString(Str) then
     begin
-      UN := SContext.CurUnit;
+      UN := GetUnit(SContext);
       Constant := TIDStringConstant.CreateAnonymous(UN.ImplSection, SYSUnit._AnsiString, Str);
       Constant.Index := UN.Package.GetStringConstant(Constant);
       Result := TIDExpression.Create(Constant, Src.TextPosition);
@@ -14562,7 +14310,7 @@ begin
     Result := TIDExpression.Create(TmpVar);
     SContext.ILWrite(TIL.IL_Convert(Result, Src));
   end else begin
-    UN := SContext.CurUnit;
+    UN := GetUnit(SContext);
     Str := Src.AsStrConst.Value;
     Constant := TIDStringConstant.CreateAnonymous(UN.ImplSection, SYSUnit._String, Str);
     Constant.Index := UN.Package.GetStringConstant(Constant);
@@ -14596,7 +14344,7 @@ begin
   end else begin
     if not SContext.WriteIL then
       Exit(Src);
-    UN := SContext.CurUnit;
+    UN := GetUnit(SContext);
     Chr := Src.AsCharConst.Value;
     Constant := TIDStringConstant.CreateAnonymous(UN.ImplSection, SYSUnit._String, Chr);
     Constant.Index := UN.Package.GetStringConstant(Constant);
@@ -14797,7 +14545,7 @@ end;
 
 { TIDBuiltin }
 
-function TIDSysRuntimeFunction.Process(const SContext: PSContext): TIDExpression;
+function TIDSysRuntimeFunction.Process(var EContext: TEContext): TIDExpression;
 begin
   AbortWorkInternal('Method "Process" must be override');
   Result := nil;

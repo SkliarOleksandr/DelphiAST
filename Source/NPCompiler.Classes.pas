@@ -1113,6 +1113,11 @@ type
     constructor Create(Src: TIDExpression); reintroduce;
   end;
 
+  {result of logical boolean expression lile: a < b, x = y, ... }
+  TIDBoolResultExpression = class(TIDExpression)
+  end;
+
+
   TVariableFlags = set of
   (
     VarIn,           // входной параметр
@@ -1198,11 +1203,6 @@ type
     constructor Create(Struct: TIDStructure; const Identifier: TIdentifier); reintroduce;
     property Struct: TIDStructure read FStruct;
     property FieldIndex: Integer read GetFieldIndex;
-  end;
-
-  TIDBoolVariable = class(TIDVariable)
-  public
-    Node: Pointer;
   end;
 
   {свойство структуры}
