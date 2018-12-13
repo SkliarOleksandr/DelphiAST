@@ -12,22 +12,22 @@ type
   type
     TNodeOrientation = (NodeRoot, NodeLeft, NodeRight);
     TNodeType = (
-      ntCmp,   // любое сравнение
-      ntAnd,   // логическое AND
-      ntOr     // логическое OR
+      ntCmp,   // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+      ntAnd,   // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ AND
+      ntOr     // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ OR
     );
   var
-    NodeType: TNodeType;             // Тип нода
-    Parent: PBoolExprNode;           // Parent в дереве
-    Orientation: TNodeOrientation;   // Ориентация нода относительно Parent-а
-    Instruction: TILInstruction;     // это последняя инструкция выражения; для типа ntNode это JMP инструкция
-                                     // для типов ntAnd, ntOr это IL последняя инструкциия правого выражения
-    LeftChild: PBoolExprNode;        // Левый child
-    RightChild: PBoolExprNode;       // Правый child
-    Condition: TILCondition;         // Условия сравнения (только для типа ntNode)
-    LeftNode: PBoolExprNode;         // Левый нод (по исходному коду)
-    RightNode: PBoolExprNode;        // Правый нод (по исходному коду)
-    PrevNode: PBoolExprNode;         // Предыдущий нод (в стеке)
+    NodeType: TNodeType;             // пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
+    Parent: PBoolExprNode;           // Parent пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+    Orientation: TNodeOrientation;   // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ Parent-пїЅ
+    Instruction: TILInstruction;     // пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ; пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ ntNode пїЅпїЅпїЅ JMP пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+                                     // пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ ntAnd, ntOr пїЅпїЅпїЅ IL пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    LeftChild: PBoolExprNode;        // пїЅпїЅпїЅпїЅпїЅ child
+    RightChild: PBoolExprNode;       // пїЅпїЅпїЅпїЅпїЅпїЅ child
+    Condition: TILCondition;         // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ ntNode)
+    LeftNode: PBoolExprNode;         // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ (пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ)
+    RightNode: PBoolExprNode;        // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ (пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ)
+    PrevNode: PBoolExprNode;         // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ (пїЅ пїЅпїЅпїЅпїЅпїЅ)
   end;
 
   TExpessionPosition = (ExprNested, ExprLValue, ExprRValue, ExprNestedGeneric);
@@ -42,20 +42,20 @@ type
   private
     fRPNOArray: TRPNItems;              // Operations array
     fRPNEArray: TIDExpressions;         // Operands array
-    fRPNOArrayLen: Integer;             // пердвычисленный размер входного списка
-    fRPNOpCount: Integer;               // указывает на следющий свободный элемент входного списка
-    fRPNEArrayLen: Integer;             // пердвычисленный размер выходного списка
-    fRPNExprCount: Integer;             // указывает на следющий свободный элемент выходного списка
+    fRPNOArrayLen: Integer;             // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+    fRPNOpCount: Integer;               // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+    fRPNEArrayLen: Integer;             // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+    fRPNExprCount: Integer;             // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
     fRPNLastOp: TOperatorID;
     fRPNPrevPriority: Integer;
     fProcessProc: TRPNPocessProc;
-    fPosition: TExpessionPosition;      // позиция выражения (Nested, LValue, RValue...);
+    fPosition: TExpessionPosition;      // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (Nested, LValue, RValue...);
     procedure RPNCheckInputSize;
     function GetExpression: TIDExpression;
   public
-    SContext: PSContext;             // statement контекст
-    LastBoolNode: PBoolExprNode;     // содерижт Root узел boolean выражений
-    LastInstruction: TILInstruction; // последняя инструкция на момент начала выражения
+    SContext: PSContext;             // statement пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    LastBoolNode: PBoolExprNode;     // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ Root пїЅпїЅпїЅпїЅ boolean пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    LastInstruction: TILInstruction; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     procedure Initialize(const ProcessProc: TRPNPocessProc);
     procedure Reset;                 // clear RPN stack and reinit
     procedure RPNPushExpression(Expr: TIDExpression);
@@ -186,7 +186,11 @@ begin
 
   fRPNLastOp := OpID;
   Priority := cOperatorPriorities[OpID];
-  if (Priority <= fRPNPrevPriority) then begin
+
+  if cOperatorTypes[OpID] <> opUnarPrefix then
+  begin
+    if (Priority <= fRPNPrevPriority) then
+    begin
     while fRPNOpCount > 0 do begin
       Op := fRPNOArray[fRPNOpCount - 1];
       if (cOperatorPriorities[Op] >= Priority) and (Op <> opOpenRound) then
@@ -197,6 +201,7 @@ begin
       end else
         Break;
     end;
+  end;
   end;
 
   fRPNPrevPriority := Priority;
