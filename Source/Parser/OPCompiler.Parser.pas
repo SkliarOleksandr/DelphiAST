@@ -165,6 +165,7 @@ type
     token_constructor,              // keyword: constructor
     token_destructor,               // keyword: destructor
     token_default,                  // keyword: default
+    token_varargs,                  // keyword: varargs
 
     token_cond_macro,               // #macro
     token_cond_emit,                // #emit
@@ -417,7 +418,8 @@ begin
   RegisterToken('unsafe', token_unsafe);
   RegisterToken('uses', token_uses);
   RegisterToken('using', token_using);
-  RegisterToken('var', token_Var);
+  RegisterToken('var', token_var);
+  RegisterToken('varargs', token_varargs);
   RegisterToken('virtual', token_virtual);
   RegisterToken('weak', token_weak);
   RegisterToken('with', token_with);

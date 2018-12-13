@@ -59,6 +59,8 @@ type
     FSysTObjDynArray: TIDDynArray;
     FSysTVarDynArray: TIDDynArray;
     fExtended: TIDAliasType;
+    fWideString: TIDType;
+    fShortString: TIDType;
     fDeprecatedDefaultStr: TIDStringConstant;
     procedure AddImplicists;
     procedure AddExplicists;
@@ -79,6 +81,7 @@ type
     procedure InsertToScope(Declaration: TIDDeclaration);
     function RegisterBuiltin(const Name: string; MacroID: TBuiltInFunctionID; ResultDataType: TIDType; Flags: TProcFlags = [pfPure]): TIDBuiltInFunction;
     function RegisterType(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
+    function RegisterTypeCustom(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
     function RegisterRefType(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
     function RegisterOrdinal(const TypeName: string; DataType: TDataTypeID; LowBound: Int64; HighBound: UInt64): TIDType;
     function RegisterTypeAlias(const TypeName: string; OriginalType: TIDType): TIDAliasType;
@@ -623,6 +626,17 @@ begin
   AddType(Result);
 end;
 
+function TSYSTEMUnit.RegisterTypeCustom(const TypeName: string; TypeClass: TIDTypeClass;
+  DataType: TDataTypeID): TIDType;
+begin
+  Result := TypeClass.Create(IntfSection, Identifier(TypeName));
+  Result.Elementary := True;
+  Result.DataTypeID := DataType;
+  Result.ItemType := itType;
+  InsertToScope(Result);
+  AddType(Result);
+end;
+
 procedure TSYSTEMUnit.SearchSystemTypes;
 begin
 {  FTObject := GetPublicClass('TObject');
@@ -865,10 +879,18 @@ begin
   RegisterType('String', TIDString, dtString);
   TIDString(_String).ElementDataType := _Char;
   TIDString(_String).AddBound(TIDOrdinal(_NativeUInt));
-  //===============================================================
   RegisterType('Variant', TIDVariant, dtVariant);
   FImplicitAnyToVariant := TIDOpImplicitAnyToVariant.CreateInternal(_Variant);
   FImplicitVariantToAny := TIDOpImplicitVariantToAny.CreateInternal(nil);
+  //===============================================================
+  fWideString := RegisterTypeCustom('WideString', TIDString, dtString);
+  TIDString(fWideString).ElementDataType := _Char;
+  TIDString(fWideString).AddBound(TIDOrdinal(_NativeUInt));
+  //===============================================================
+  fShortString := RegisterTypeCustom('ShortString', TIDString, dtString);
+  TIDString(fShortString).ElementDataType := _Char;
+  TIDString(fShortString).AddBound(TIDOrdinal(_NativeUInt));
+  //===============================================================
   // TObject ========================================================
   {FTObject := TIDClass.CreateAsSystem(UnitInterface, 'TObject');
   FTObject.NeedForward := True; // forward declaration
@@ -922,8 +944,7 @@ begin
   RegisterTypeAlias('Cardinal', _UInt32);
   RegisterTypeAlias('Byte', _UInt8);
   RegisterTypeAlias('Word', _UInt16);
-  RegisterTypeAlias('ShortString', _AnsiString);
-  RegisterTypeAlias('WideString', _String);
+  RegisterTypeAlias('_ShortString', fShortString);
   RegisterTypeAlias('UnicodeString', _String);
   RegisterTypeAlias('WideChar', _Char);
 

@@ -317,7 +317,8 @@ type
     { быстрая функция генерации вызова явно указанной процедуры (без перебора перегруженных процедур) }
     function Process_CALL_direct(SContext: PSContext; PExpr: TIDCallExpression; CallArguments: TIDExpressions): TIDExpression;
     //======================================================================================================================================
-    function Process_operators_unar(var EContext: TEContext; Operation: TOperatorID): TIDExpression;
+    function Process_operator_neg(var EContext: TEContext): TIDExpression;
+    function Process_operator_not(var EContext: TEContext): TIDExpression;
     { оброботка присвоения для цепочек (a.x := b.y )}
     function Process_operator_assign_complex(Src: TIDExpression; Dst: TIDMultiExpression; var EContext: TEContext): Boolean;
     { оброботка одиночного присвоения (a := b )}
@@ -6684,7 +6685,6 @@ begin
           else
             Bound.HighBound := 0;
         end else begin
-          // todo: fixit
           Bound.LowBound := Expr.AsRangeConst.Value.LBExpression.AsConst.AsInt64;
           Bound.HighBound := Expr.AsRangeConst.Value.HBExpression.AsConst.AsInt64;
         end;
@@ -9014,6 +9014,10 @@ begin
       token_stdcall: Result := ProcSpec_StdCall(Scope, CallConv);
       token_fastcall: Result := ProcSpec_FastCall(Scope, CallConv);
       token_cdecl: Result := ProcSpec_CDecl(Scope, CallConv);
+      token_varargs: begin
+        parser_ReadSemicolon(Scope);
+        Result := parser_NextToken(Scope);
+      end;
       token_deprecated: begin
         Result := CheckAndParseDeprecated(Scope, token_deprecated);
         Result := parser_NextToken(Scope);
@@ -11449,6 +11453,9 @@ begin
     if not (Left is TIDBoolResultExpression) then
     begin
       LeftLastCode := TILInstruction(Left.Instruction);
+      if not Assigned(LeftLastCode) then
+        LeftLastCode := RNode.Instruction.Prev.Prev;
+
       Instruction := TIL.IL_Test(Left, Left);
       SContext.IL.InsertAfter(LeftLastCode, Instruction);
       SContext.IL.InsertAfter(Instruction, TILJmpNext.Create(Instruction.Line));
@@ -12925,7 +12932,8 @@ begin
   SContext := EContext.SContext;
   case OpID of
     opAssignment: Process_operator_Assign(EContext);
-    opNegative, opNot: Result := Process_operators_unar(EContext, OpID);
+    opNegative: Result := Process_operator_neg(EContext);
+    opNot: Result := Process_operator_not(EContext);
     opPositive: Result := RPNPopExpression(EContext);
     opDereference: Result := Process_operator_Deref(EContext);
     opCall: Result := Process_CALL(EContext);
@@ -13021,7 +13029,7 @@ begin
             if (OpID in [opAnd, opOr]) and (TmpVar.DataType = SYSUnit._Boolean) then
             begin
               // логические операции
-              ReleaseExpression(Result);
+              //ReleaseExpression(Result);
               Result := GetBoolResultExpr(Result);
               Process_operator_logical_AND_OR(EContext, OpID, Left, Right, Result);
             end else begin
@@ -13095,7 +13103,29 @@ begin
   Result := TIDExpression.Create(Decl, HB.TextPosition);
 end;
 
-function TNPUnit.Process_operators_unar(var EContext: TEContext; Operation: TOperatorID): TIDExpression;
+function TNPUnit.Process_operator_neg(var EContext: TEContext): TIDExpression;
+var
+  Right: TIDExpression;
+  OperatorItem: TIDType;
+begin
+  // Читаем операнд
+  Right := RPNPopExpression(EContext);
+
+  ReleaseExpression(EContext.SContext, Right);
+
+  OperatorItem := MatchUnarOperator(opNegative, Right.DataType);
+  if not Assigned(OperatorItem) then
+    ERROR_NO_OVERLOAD_OPERATOR_FOR_TYPES(opNegative, Right);
+
+  if (Right.ItemType = itConst) and (Right.ClassType <> TIDSizeofConstant) then
+    Result := ProcessConstOperation(Right, Right, opNegative)
+  else begin
+    Result := GetTMPVarExpr(EContext.SContext, OperatorItem, Right.TextPosition);
+    ILWrite(EContext.SContext, TIL.IL_Neg(Result, Right));
+  end;
+end;
+
+function TNPUnit.Process_operator_not(var EContext: TEContext): TIDExpression;
   procedure InverseNode(Node: PBoolExprNode); inline;
   begin
     case Node.NodeType of
@@ -13119,21 +13149,15 @@ begin
 
   ReleaseExpression(EContext.SContext, Right);
 
-  OperatorItem := MatchUnarOperator(Operation, Right.DataType);
+  OperatorItem := MatchUnarOperator(opNot, Right.DataType);
   if not Assigned(OperatorItem) then
-    ERROR_NO_OVERLOAD_OPERATOR_FOR_TYPES(Operation, Right);
+    ERROR_NO_OVERLOAD_OPERATOR_FOR_TYPES(opNot, Right);
 
   if (Right.ItemType = itConst) and (Right.ClassType <> TIDSizeofConstant) then
-    Result := ProcessConstOperation(Right, Right, Operation)
+    Result := ProcessConstOperation(Right, Right, opNot)
   else begin
-    case Operation of
-      opNegative: begin
-        Result := GetTMPVarExpr(EContext.SContext, OperatorItem, Right.TextPosition);
-        ILWrite(EContext.SContext, TIL.IL_Neg(Result, Right));
-      end;
-      opNot: begin
         // если это просто выражение (not Bool_Value)
-        if (Right.DataTypeID = dtBoolean) and not Assigned(EContext.LastBoolNode) then
+    if (Right.DataTypeID = dtBoolean) and not (Right is TIDBoolResultExpression) then
         begin
           ILWrite(EContext.SContext, TIL.IL_Test(Right, Right));
           ILWrite(EContext.SContext, TIL.IL_JmpNext(Right.Line, cNone, nil));
@@ -13151,11 +13175,6 @@ begin
           Result := GetBoolResultExpr(EContext.SContext);
         end;
       end;
-    else
-      ERROR_FEATURE_NOT_SUPPORTED;
-      Result := nil;
-    end;
-  end;
 end;
 
 function TNPUnit.GetMessagesText: string;
@@ -14753,4 +14772,5 @@ initialization
   FormatSettings.DecimalSeparator := '.';
 
 end.
+
 

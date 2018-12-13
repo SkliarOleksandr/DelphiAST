@@ -52,6 +52,15 @@ type
   );
 
 
+  TOperatorType =
+  (
+    opSpecial,
+    opBinary,
+    opUnarPrefix,
+    opUnarSufix
+
+  );
+
 { signatures of operators:
 |--------------------|------------|------------------------------------------------|-------------------|
 |  Operator          | Category	  | Declaration Signature	                         | Symbol Mapping    |
@@ -92,6 +101,7 @@ function GetOperatorID(const Name: string): TOperatorID; inline;
 
 
 
+
 const
   // Приоритеты операций (-1 - низший приоритет, 10 - высшый приоритет)
   cOperatorPriorities: array [TOperatorID] of Integer = (
@@ -114,7 +124,7 @@ const
   {opPositive}             2,
   {opPostInc}              7,
   {opPostDec}              7,
-  {opLogicalNot}           1,
+  {opLogicalNot}           8,
 
   {opIn}                   1,
   {opEqual}                5,
@@ -135,6 +145,54 @@ const
   {opLogicalOr}            2,
   {opLogicalXor}           2
   );
+
+
+
+
+const
+  // Приоритеты операций (-1 - низший приоритет, 10 - высшый приоритет)
+  cOperatorTypes: array [TOperatorID] of TOperatorType = (
+
+  {opNone}                opSpecial,
+  {opOpenRound}           opSpecial,
+  {opCloseRound}          opSpecial,
+  {opSubExpression}       opSpecial,
+  {opCall}		            opSpecial,
+  {opDereference}         opUnarSufix,
+  {opPeriod}              opBinary,
+  {opAddr}                opUnarPrefix,
+  {opIS}                  opBinary,
+  {opAS}                  opBinary,
+
+  {opAssign}              opBinary,
+  {opImplicit}            opSpecial,
+  {opExplicit}            opSpecial,
+  {opNegative}            opUnarPrefix,
+  {opPositive}            opUnarPrefix,
+  {opPostInc}             opUnarSufix,
+  {opPostDec}             opUnarSufix,
+  {opLogicalNot}          opUnarPrefix,
+
+  {opIn}                   opBinary,
+  {opEqual}                opBinary,
+  {opNotEqual}             opBinary,
+  {opGreaterThan}          opBinary,
+  {opGreaterThanOrEqual}   opBinary,
+  {opLessThan}             opBinary,
+  {opLessThanOrEqual}      opBinary,
+  {opAdd}                  opBinary,
+  {opSubtract}             opBinary,
+  {opMultiply}             opBinary,
+  {opDivide}               opBinary,
+  {opIntDiv}               opBinary,
+  {opModDiv}               opBinary,
+  {opLeftShift}            opBinary,
+  {opRightShift}           opBinary,
+  {opLogicalAnd}           opBinary,
+  {opLogicalOr}            opBinary,
+  {opLogicalXor}           opBinary
+  );
+
 
 var
   _operators: TStringList = nil;

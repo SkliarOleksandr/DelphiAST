@@ -112,29 +112,31 @@
             <Form>frmTestAppMain</Form>
             <FormType>dfm</FormType>
         </DCCReference>
-        <DCCReference Include="..\DCA\DelphiAST\ARC.pas"/>
-        <DCCReference Include="..\DCA\DelphiAST\AVL.pas"/>
-        <DCCReference Include="..\DCA\DelphiAST\IL.Instructions.pas"/>
-        <DCCReference Include="..\DCA\DelphiAST\IL.TypeInfo.pas"/>
-        <DCCReference Include="..\DCA\DelphiAST\IL.Types.pas"/>
-        <DCCReference Include="..\DCA\DelphiAST\NPCompiler.Classes.pas"/>
-        <DCCReference Include="..\DCA\DelphiAST\NPCompiler.ConstCalculator.pas"/>
-        <DCCReference Include="..\DCA\DelphiAST\NPCompiler.DataTypes.pas"/>
-        <DCCReference Include="..\DCA\DelphiAST\NPCompiler.Errors.pas"/>
-        <DCCReference Include="..\DCA\DelphiAST\NPCompiler.Evaluater.pas"/>
-        <DCCReference Include="..\DCA\DelphiAST\NPCompiler.Evaluater.VM.pas"/>
-        <DCCReference Include="..\DCA\DelphiAST\NPCompiler.Intf.pas"/>
-        <DCCReference Include="..\DCA\DelphiAST\NPCompiler.Messages.pas"/>
-        <DCCReference Include="..\DCA\DelphiAST\NPCompiler.Operators.pas"/>
-        <DCCReference Include="..\DCA\DelphiAST\NPCompiler.Options.pas"/>
-        <DCCReference Include="..\DCA\DelphiAST\NPCompiler.Package.pas"/>
-        <DCCReference Include="..\DCA\DelphiAST\OPCompiler.pas"/>
-        <DCCReference Include="..\DCA\DelphiAST\NPCompiler.SysFunctions.pas"/>
-        <DCCReference Include="..\DCA\DelphiAST\NPCompiler.Utils.pas"/>
-        <DCCReference Include="..\DCA\DelphiAST\SystemUnit.pas"/>
-        <DCCReference Include="..\DCA\DelphiAST\Parser\iDStringParser.pas"/>
-        <DCCReference Include="..\DCA\DelphiAST\Parser\OPCompiler.Parser.pas"/>
-        <DCCReference Include="..\DCA\DelphiAST\NPLCompiler.Targets.pas"/>
+        <DCCReference Include="..\Source\ARC.pas"/>
+        <DCCReference Include="..\Source\AVL.pas"/>
+        <DCCReference Include="..\Source\IL.Instructions.pas"/>
+        <DCCReference Include="..\Source\IL.TypeInfo.pas"/>
+        <DCCReference Include="..\Source\IL.Types.pas"/>
+        <DCCReference Include="..\Source\NPCompiler.Classes.pas"/>
+        <DCCReference Include="..\Source\NPCompiler.ConstCalculator.pas"/>
+        <DCCReference Include="..\Source\NPCompiler.Contexts.pas"/>
+        <DCCReference Include="..\Source\NPCompiler.DataTypes.pas"/>
+        <DCCReference Include="..\Source\NPCompiler.Errors.pas"/>
+        <DCCReference Include="..\Source\NPCompiler.Evaluater.pas"/>
+        <DCCReference Include="..\Source\NPCompiler.Evaluater.VM.pas"/>
+        <DCCReference Include="..\Source\NPCompiler.ExpressionContext.pas"/>
+        <DCCReference Include="..\Source\NPCompiler.Intf.pas"/>
+        <DCCReference Include="..\Source\NPCompiler.Messages.pas"/>
+        <DCCReference Include="..\Source\NPCompiler.Operators.pas"/>
+        <DCCReference Include="..\Source\NPCompiler.Options.pas"/>
+        <DCCReference Include="..\Source\NPCompiler.Package.pas"/>
+        <DCCReference Include="..\Source\NPCompiler.SysFunctions.pas"/>
+        <DCCReference Include="..\Source\NPCompiler.Utils.pas"/>
+        <DCCReference Include="..\Source\NPLCompiler.Targets.pas"/>
+        <DCCReference Include="..\Source\OPCompiler.pas"/>
+        <DCCReference Include="..\Source\SystemUnit.pas"/>
+        <DCCReference Include="..\Source\Parser\iDStringParser.pas"/>
+        <DCCReference Include="..\Source\Parser\OPCompiler.Parser.pas"/>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
             <CfgParent>Base</CfgParent>
