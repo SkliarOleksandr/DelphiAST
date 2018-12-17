@@ -61,7 +61,6 @@ type
     token_using,                    // keyword: using
 
     token_program,                  // keyword: program
-    token_pure,                     // keyword: pure
     token_library,                  // keyword: library
 
     token_export,                   // keyword: export
@@ -83,14 +82,12 @@ type
     token_function,                 // keyword: function
     token_overload,                 // keyword: overload
     token_override,                 // keyword: override
-    token_openarray,                // keyword: openarray
     token_type,                     // keyword: type
     token_token,                    // keyword: #token
     token_class,                    // keyword: class
     token_record,                   // keyword: record
     token_packed,                   // keyword: packed
     token_package,                  // keyword: package
-    token_bindf,                    // keyword: bind
     token_set,                      // keyword: set
     token_array,                    // keyword: array
     token_if,                       // keyword: if
@@ -103,15 +100,10 @@ type
     token_then,                     // keyword: if
     token_else,                     // keyword: else
     token_forward,                  // keyword: forward
-    token_noreturn,                 // keyword: noreturn
-    //token_namespace,                // keyword: namespace
     token_helper,                   // keyword: helper
 
     token_continue,                 // keyword: continue
     token_break,                    // keyword: break
-
-    token_async,                    // keyword: async
-    token_await,                    // keyword: await
 
     token_not,                      // keyword: not
     token_and,                      // keyword: and
@@ -124,7 +116,6 @@ type
     token_shr,                      // keyword: shr
     token_rol,                      // keyword: rol
     token_ror,                      // keyword: ror
-    token_ref,                      // keyword: ref
 
     token_as,                       // keyword: as
     token_for,                      // keyword: for
@@ -167,25 +158,8 @@ type
     token_default,                  // keyword: default
     token_varargs,                  // keyword: varargs
 
-    token_cond_macro,               // #macro
-    token_cond_emit,                // #emit
-    token_cond_target,              // #target
-
-    token_cond_define,              // {$DEFINE
-    //token_cond_undefine,            // #undefine
-    //token_cond_ifdef,               // #ifdef
-    //token_cond_ifndef,              // #ifndef
-//    token_cond_if,                  // #if
-//    token_cond_error,               // #error
-//    token_cond_warning,             // #warning
-//    token_cond_hint,                // #hint
-//    token_cond_skip,                // #skip
-//    token_cond_doc,                 // #doc
-//    token_cond_breakpoint,          // #bpt
-//    token_cond_opt_set,             // #set
-//    token_cond_opt_push,            // #push
-//    token_cond_opt_pop,             // #pop
-    token_cond_else,                  // #else
+    token_cond_define,              // {$DEFINE...
+    token_cond_else,                // {$ELSE...
     token_cond_else_if,             // {$ELSEIF (condition)}
     token_cond_end,                 // {$END... / {$IFEND... / {$ENDIF...
     token_cond_include,             // {$INCLUDE
@@ -193,10 +167,11 @@ type
     token_cond_ifdef,               // {$IFDEF
     token_cond_ifndef,              // {$IFNDEF
     token_cond_if,                  // {$IF...
-    token_cond_ifopt                // {$IFOPT...
+    token_cond_ifopt,               // {$IFOPT...
+    token_cond_message              // {$MESSAGE...
   );
 
-  TNPParser = class(TStringParser)
+  TDelphiParser = class(TStringParser)
   public
     function NextToken: TTokenID; inline;
     function TokenLexem(TokenID: TTokenID): string;
@@ -217,7 +192,7 @@ var
 
 implementation
 
-{ TiDealParser }
+{ TDelphiParser }
 
 
 function TokenCanBeID(TokenID: TTokenID): Boolean;
@@ -225,13 +200,13 @@ begin
   Result := (TokenID = token_identifier) or FTokensAttr[TokenID];
 end;
 
-procedure TNPParser.ReadCurrIdentifier(var Identifier: TIdentifier);
+procedure TDelphiParser.ReadCurrIdentifier(var Identifier: TIdentifier);
 begin
   Identifier.Name := OriginalToken;
   Identifier.TextPosition := Position;
 end;
 
-procedure TNPParser.ReadNextIdentifier(var Identifier: TIdentifier);
+procedure TDelphiParser.ReadNextIdentifier(var Identifier: TIdentifier);
 begin
   if NextToken = token_Identifier then begin
     Identifier.Name := OriginalToken;
@@ -240,13 +215,13 @@ begin
     AbortWork(sIdExpectedButFoundFmt, [TokenLexem(TTokenID(CurrentTokenID))], PrevPosition);
 end;
 
-procedure TNPParser.MatchToken(ActualToken, ExpectedToken: TTokenID);
+procedure TDelphiParser.MatchToken(ActualToken, ExpectedToken: TTokenID);
 begin
   if ActualToken <> ExpectedToken then
     AbortWork(sExpected, [UpperCase(TokenLexem(ExpectedToken))], PrevPosition);
 end;
 
-constructor TNPParser.Create(const Source: string);
+constructor TDelphiParser.Create(const Source: string);
 begin
   inherited Create(Source);
   IdentifireID := integer(token_identifier);
@@ -255,30 +230,6 @@ begin
   TokenCaptions.AddObject('identifier', TObject(token_identifier));
   SeparatorChars := '#$ '''#9#10#13'%^&*@()+-{}[]\/,.;:<>=~!?';
   RegisterToken('#', token_NumberSign, '', ttCharCode);
-
-{  RegisterToken('#define', token_cond_define);
-  RegisterToken('#else', token_cond_else);
-  RegisterToken('#end', token_cond_end);
-  RegisterToken('#if', token_cond_if);
-  RegisterToken('#ifdef', token_cond_ifdef);
-  RegisterToken('#ifndef', token_cond_ifndef);
-  RegisterToken('#undefine', token_cond_undefine);
-  RegisterToken('#include', token_cond_include);
-  RegisterToken('#error', token_cond_error);
-  RegisterToken('#warning', token_cond_warning);
-  RegisterToken('#hint', token_cond_hint);
-  RegisterToken('#token', token_token);
-  RegisterToken('#target', token_cond_target);
-  RegisterToken('#skip', token_cond_skip);
-  RegisterToken('#doc', token_cond_doc);
-  RegisterToken('#bpt', token_cond_breakpoint);
-
-  RegisterToken('#macro', token_cond_macro);
-  RegisterToken('#emit', token_cond_emit);
-
-  RegisterToken('#set', token_cond_opt_set);
-  RegisterToken('#push', token_cond_opt_push);
-  RegisterToken('#pop', token_cond_opt_pop); }
 
   RegisterToken('$', token_Unknown, '', ttHexPrefix);
   RegisterToken('%', token_Unknown, '', ttBinPrefix);
@@ -324,8 +275,6 @@ begin
   RegisterToken('asm', token_asm);
   RegisterToken('and', token_and);
   RegisterToken('array', token_array);
-  RegisterToken('async', token_async);
-  RegisterToken('await', token_await);
   RegisterToken('begin', token_begin, True);
   RegisterToken('break', token_break);
   RegisterToken('case', token_case);
@@ -368,9 +317,7 @@ begin
   RegisterToken('library', token_library);
   RegisterToken('mod', token_mod);
   RegisterToken('not', token_not);
-  RegisterToken('noreturn', token_noreturn);
   RegisterToken('name', token_name, true);
-  //RegisterToken('namespace', token_namespace, true);
   RegisterToken('object', token_object, True);
   RegisterToken('of', token_of);
   RegisterToken('or', token_or);
@@ -378,16 +325,13 @@ begin
   RegisterToken('override', token_Override);
   RegisterToken('overload', token_Overload);
   RegisterToken('operator', token_operator);
-  RegisterToken('openarray', token_openarray);
   RegisterToken('package', token_package);
-  RegisterToken('bind', token_bindf);
   RegisterToken('procedure', token_procedure);
   RegisterToken('program', token_program);
   RegisterToken('property', token_property);
   RegisterToken('protected', token_protected);
   RegisterToken('program', token_program);
   RegisterToken('private', token_private);
-  RegisterToken('pure', token_pure);
   RegisterToken('public', token_public);
   RegisterToken('published', token_published);
   RegisterToken('packed', token_packed);
@@ -395,7 +339,6 @@ begin
   RegisterToken('raise', token_raise);
   RegisterToken('read', token_read, True);
   RegisterToken('record', token_record);
-  RegisterToken('ref', token_ref, True);
   RegisterToken('repeat', token_repeat);
   RegisterToken('reintroduce', token_reintroduce);
   RegisterToken('rol', token_rol);
@@ -439,32 +382,33 @@ begin
   RegisterToken('{$ENDIF', token_cond_end);
   RegisterToken('{$IFEND}', token_cond_end);
   RegisterToken('{$IFOPT', token_cond_ifopt);
+  RegisterToken('{$MESSAGE', token_cond_message);
 end;
 
-procedure TNPParser.MatchNextToken(ExpectedToken: TTokenID);
+procedure TDelphiParser.MatchNextToken(ExpectedToken: TTokenID);
 begin
   if TTokenID(NextTokenID) <> ExpectedToken then
     AbortWork(sExpected, [UpperCase(TokenLexem(ExpectedToken))], PrevPosition);
 end;
 
-function TNPParser.NextToken: TTokenID;
+function TDelphiParser.NextToken: TTokenID;
 begin
   Result := TTokenID(NextTokenID);
 end;
 
-procedure TNPParser.RegisterToken(const Token: string; TokenID: TTokenID; const TokenCaption: string; TokenType: TTokenType);
+procedure TDelphiParser.RegisterToken(const Token: string; TokenID: TTokenID; const TokenCaption: string; TokenType: TTokenType);
 begin
   inherited RegisterToken(Token, Integer(TokenID), TokenType, TokenCaption);
   FTokensAttr[TokenID] := False;
 end;
 
-procedure TNPParser.RegisterToken(const Token: string; TokenID: TTokenID; CanBeID: Boolean);
+procedure TDelphiParser.RegisterToken(const Token: string; TokenID: TTokenID; CanBeID: Boolean);
 begin
   inherited RegisterToken(Token, Integer(TokenID), ttToken, Token);
   FTokensAttr[TokenID] := CanBeID;
 end;
 
-function TNPParser.TokenLexem(TokenID: TTokenID): string;
+function TDelphiParser.TokenLexem(TokenID: TTokenID): string;
 begin
   Result := inherited TokenLexem(Integer(TokenID));
 end;

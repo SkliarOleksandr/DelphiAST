@@ -284,7 +284,7 @@ var
   i: Integer;
 begin
   for i := 0 to Length(Sources) - 1 do
-     DataTypes[Sources[i]].OverloadExplicit(Dest);
+     DataTypes[Sources[i]].OverloadExplicitTo(Dest);
 end;
 
 procedure TSYSTEMUnit.AddExplicists;
@@ -293,14 +293,14 @@ procedure TSYSTEMUnit.AddExplicists;
     i: TDataTypeID;
   begin
     for i := dtInt8 to dtFloat64 do
-      DataType.OverloadExplicit(DataTypes[i]);
+      DataType.OverloadExplicitTo(DataTypes[i]);
   end;
   procedure AddExplicits(DataType: TIDType; LB, HB: TDataTypeID);
   var
     i: TDataTypeID;
   begin
     for i := LB to HB do
-      DataType.OverloadExplicit(DataTypes[i]);
+      DataType.OverloadExplicitTo(DataTypes[i]);
   end;
 begin
   AddBaseExplicits(_Int8);
@@ -321,10 +321,10 @@ begin
   AddExplicits(_Float32, dtFloat32, dtFloat64);
   AddExplicits(_Float64, dtFloat32, dtFloat64);
 
-  _String.OverloadExplicit(_Pointer);
-  _Pointer.OverloadExplicit(_NativeInt);
-  _Pointer.OverloadExplicit(_NativeUInt);
-  _AnsiString.OverloadExplicit(_Pointer);
+  _String.OverloadExplicitTo(_Pointer);
+  _Pointer.OverloadExplicitTo(_NativeInt);
+  _Pointer.OverloadExplicitTo(_NativeUInt);
+  _AnsiString.OverloadExplicitTo(_Pointer);
 
   AddCustomExplicits([dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean], _Char);
   AddCustomExplicits([dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean], _AnsiChar);

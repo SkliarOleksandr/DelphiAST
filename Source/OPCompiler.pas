@@ -8,12 +8,12 @@ interface
 {$I compilers.inc}
 
 uses SysUtils, Classes, StrUtils, Types, OPCompiler.Parser, NPCompiler.Classes, NPCompiler.DataTypes,
-iDStringParser, IOUtils, IL.Types, IL.Instructions, AVL, NPCompiler.Operators, Math, NPCompiler.Errors,
-NPCompiler.Utils, Generics.Collections,
-NPCompiler.Intf,
-NPCompiler.Contexts,
-NPCompiler.ExpressionContext,
-NPCompiler.Options;  // system, dateutils
+     iDStringParser, IOUtils, IL.Types, IL.Instructions, AVL, NPCompiler.Operators, Math, NPCompiler.Errors,
+     NPCompiler.Utils, Generics.Collections,
+     NPCompiler.Intf,
+     NPCompiler.Contexts,
+     NPCompiler.ExpressionContext,
+     NPCompiler.Options;  // system, dateutils
 
 type
 
@@ -129,7 +129,7 @@ type
   private
     FID: Integer;                      // ID модуля в пакете
     FPackage: INPPackage;
-    FParser: TNPParser;
+    FParser: TDelphiParser;
     FUnitName: TIdentifier;
     FIntfScope: TScope;                // interface scope
     FImplScope: TScope;                // implementation scope
@@ -274,8 +274,8 @@ type
     function ProcSpec_Forward(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
     function ProcSpec_Import(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
     function ProcSpec_Overload(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
-    function ProcSpec_Pure(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
-    function ProcSpec_NoReturn(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+    //function ProcSpec_Pure(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+    //function ProcSpec_NoReturn(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
     function ProcSpec_Virtual(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
     function ProcSpec_Override(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
     function ProcSpec_Reintroduce(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
@@ -518,6 +518,7 @@ type
     function ParseCondHint(Scope: TScope): TTokenID;
     function ParseCondWarn(Scope: TScope): TTokenID;
     function ParseCondError(Scope: TScope): TTokenID;
+    function ParseCondMessage(Scope: TScope): TTokenID;
     function ParseCondIf(Scope: TScope; out ExpressionResult: TCondIFValue): TTokenID;
     function ParseDelphiCondIfDef(Scope: TScope): Boolean;
     function Defined(const Name: string): Boolean;
@@ -525,10 +526,10 @@ type
     function ParseCondOptSet(Scope: TScope): TTokenID;
     function ParseCondOptPush(Scope: TScope): TTokenID;
     function ParseCondOptPop(Scope: TScope): TTokenID;
-    function ParseCondMacro(Scope: TScope): TTokenID;
-    function ParseCondEmit(Scope: TScope; SContext: PSContext): TTokenID;
+    //function ParseCondMacro(Scope: TScope): TTokenID;
+    //function ParseCondEmit(Scope: TScope; SContext: PSContext): TTokenID;
     function ParseMacroArg(Scope: TScope; const ExprID: TIdentifier; Arg: TIDMacroArgument; out Expression: TIDExpression; var EContext: TEContext): TTokenID;
-    function ParseCondTarget(Scope: TScope): TTokenID;
+    //function ParseCondTarget(Scope: TScope): TTokenID;
     procedure ParseCondDefine(Scope: TScope; add_define: Boolean);
 
     //=======================================================================================================================
@@ -569,7 +570,7 @@ type
     function ParseMember(Scope: TScope; out Expression: TIDExpression; var EContext: TEContext): TTokenID;
     function ParseExpression(Scope: TScope; var EContext: TEContext; SrartToken: TTokenID): TTokenID;
     function ParseLambdaExpression(Scope: TScope; var EContext: TEContext): TTokenID;
-    function ParseBindFunctionExpression(Scope: TScope; var EContext: TEContext): TTokenID;
+    //function ParseBindFunctionExpression(Scope: TScope; var EContext: TEContext): TTokenID;
     function ParseLambdaExpressionBody(Scope: TScope; var EContext: TEContext; const LPContext: TLambaParseContext): TTokenID;
     function ParseClosureCapturedVarsDecl(Scope: TScope; out CapturedVars: TIDClosure.TCapturedVars): TTokenID;
     function ParseConstExpression(Scope: TScope; out Expr: TIDExpression; SrartToken: TTokenID; EPosition: TExpessionPosition): TTokenID;
@@ -655,7 +656,7 @@ type
     { функция проверяет возможно ли приведение кортежа к битовому набору }
     class function CheckSetImplicit(Source: TIDExpression; Destination: TIDSet): TIDDeclaration; static;
 
-    class function MatchExplicit(const Source: TIDExpression; Destination: TIDType): TIDType; static; inline;
+    class function MatchExplicit(const Source: TIDExpression; Destination: TIDType): TIDDeclaration; static; inline;
     class function MatchConstDynArrayImplicit(Source: TIDExpression; Destination: TIDType): TIDType; static;
     class function MatchDynArrayImplicit(Source: TIDExpression; Destination: TIDType): TIDType; static;
     class function MatchProcedureTypes(Src: TIDProcType; Dst: TIDProcType): TIDType; static;
@@ -709,6 +710,7 @@ type
     function GetILText: string;
     function CheckUsed: Boolean;
     function UsedUnit(const UnitName: string): Boolean;
+    function GetDefinesAsString: string;
     property _ID: TIdentifier read FUnitName;
     property UnitID: Integer read FID write FID;
     property Name: string read FUnitName.Name;
@@ -2668,7 +2670,7 @@ begin
   Result := nil;
 end;
 
-class function TNPUnit.MatchExplicit(const Source: TIDExpression; Destination: TIDType): TIDType;
+class function TNPUnit.MatchExplicit(const Source: TIDExpression; Destination: TIDType): TIDDeclaration;
 var
   SrcDataType: TIDType;
   DstDataType: TIDType;
@@ -4262,11 +4264,11 @@ begin
           parser_NextToken(Scope);
           Token := ParseVarSection(Scope, vLocal, nil, False);
         end;
-        token_ref: begin
-          CheckIntfSectionMissing(Scope);
-          parser_NextToken(Scope);
-          Token := ParseVarSection(Scope, vLocal, nil, False, True);
-        end;
+//        token_ref: begin
+//          CheckIntfSectionMissing(Scope);
+//          parser_NextToken(Scope);
+//          Token := ParseVarSection(Scope, vLocal, nil, False, True);
+//        end;
         token_interface: begin
           Scope := FIntfScope;
           Token := parser_NextToken(Scope);
@@ -4283,11 +4285,11 @@ begin
             HINT_TEXT_AFTER_END;
           Break;
         end;
-        token_cond_macro: Token := ParseCondMacro(Scope);
+        //token_cond_macro: Token := ParseCondMacro(Scope);
         token_initialization: Token := ParseInitSection;
         token_finalization: Token := ParseFinalSection;
         token_token: Token := ParseTokenStatement(Scope);
-        token_cond_target: Token := ParseCondTarget(Scope);
+        //token_cond_target: Token := ParseCondTarget(Scope);
         token_eof: Break;
       else
         if Token >= token_cond_define then
@@ -4393,11 +4395,11 @@ begin
           parser_NextToken(Scope);
           Token := ParseVarSection(Scope, vLocal, nil, False);
         end;
-        token_ref: begin
-          CheckIntfSectionMissing(Scope);
-          parser_NextToken(Scope);
-          Token := ParseVarSection(Scope, vLocal, nil, False, True);
-        end;
+//        token_ref: begin
+//          CheckIntfSectionMissing(Scope);
+//          parser_NextToken(Scope);
+//          Token := ParseVarSection(Scope, vLocal, nil, False, True);
+//        end;
         token_interface: begin
           Scope := FIntfScope;
           Token := parser_NextToken(Scope);
@@ -4413,11 +4415,11 @@ begin
             HINT_TEXT_AFTER_END;
           Break;
         end;
-        token_cond_macro: Token := ParseCondMacro(Scope);
+        //token_cond_macro: Token := ParseCondMacro(Scope);
         token_initialization: Token := ParseInitSection;
         token_finalization: Token := ParseFinalSection;
         token_token: Token := ParseTokenStatement(Scope);
-        token_cond_target: Token := ParseCondTarget(Scope);
+        //token_cond_target: Token := ParseCondTarget(Scope);
         token_eof: Break;
       else
         if Token >= token_cond_define then
@@ -4444,7 +4446,7 @@ var
 begin
   FDefines := TDefines.Create();
   FPackage := Package;
-  FParser := TNPParser.Create(Source);
+  FParser := TDelphiParser.Create(Source);
   FMessages := TCompilerMessages.Create;
   //FVisibility := vPublic;
   FIntfScope := TScope.Create(stGlobal, @FVarSpace, @FProcSpace, nil, Self);
@@ -4768,10 +4770,10 @@ begin
         Include(VarFlags, VarOut);
         Result := parser_NextToken(Scope);
       end;
-      token_ref: begin
-        Include(VarFlags, VarNotNull);
-        Result := parser_NextToken(Scope);
-      end;
+//      token_ref: begin
+//        Include(VarFlags, VarNotNull);
+//        Result := parser_NextToken(Scope);
+//      end;
     end;
     parser_MatchIdentifier(Result);
     NamesCnt := 1;
@@ -4856,7 +4858,7 @@ begin
   end;
 end;
 
-function TNPUnit.ParseBindFunctionExpression(Scope: TScope; var EContext: TEContext): TTokenID;
+(*function TNPUnit.ParseBindFunctionExpression(Scope: TScope; var EContext: TEContext): TTokenID;
 var
   Idx: Integer;
   ProcID, ID: TIdentifier;
@@ -4945,7 +4947,7 @@ begin
 
   Expr := TIDExpression.Create(ResultProc, ResultProc.TextPosition);
   RPNPushExpression(EContext, Expr);
-end;
+end;*)
 
 procedure TNPUnit.StaticCheckBounds(ConstValue: TIDConstant; Decl: TIDDeclaration; DimNumber: Integer);
 var
@@ -5726,7 +5728,7 @@ begin
   Result := Defined(ID.Name);
 end;
 
-function TNPUnit.ParseCondMacro(Scope: TScope): TTokenID;
+(*function TNPUnit.ParseCondMacro(Scope: TScope): TTokenID;
 var
   ID: TIdentifier;
   Decl: TIDUserDefinedMacro;
@@ -5766,9 +5768,9 @@ begin
 
   parser_MatchSemicolon(Result);
   Result := parser_NextToken(Params);
-end;
+end; *)
 
-function TNPUnit.ParseCondEmit(Scope: TScope; SContext: PSContext): TTokenID;
+(*function TNPUnit.ParseCondEmit(Scope: TScope; SContext: PSContext): TTokenID;
 var
   Expr: TIDExpression;
   PrevPos: TParserPosition;
@@ -5813,7 +5815,7 @@ begin
   FParser.Source := PrevSrc;
   FParser.LoadState(PrevPos);
   Result := parser_CurTokenID;
-end;
+end; *)
 
 function TNPUnit.ParseCondOptPop(Scope: TScope): TTokenID;
 var
@@ -5954,6 +5956,20 @@ begin
   parser_ReadNextIdentifier(Scope, ID);
   AbortWork(ID.Name, ID.TextPosition);
   Result := parser_NextToken(Scope);
+end;
+
+function TNPUnit.ParseCondMessage(Scope: TScope): TTokenID;
+var
+  ID: TIdentifier;
+  MsgType: string;
+begin
+  parser_ReadNextIdentifier(Scope, ID);
+  MsgType := UpperCase(ID.Name);
+  parser_ReadNextIdentifier(Scope, ID);
+  if MsgType = 'ERROR' then
+    AbortWork(ID.Name, ID.TextPosition);
+  // todo:
+  Result := FParser.NextToken;
 end;
 
 function TNPUnit.ParseCondHint(Scope: TScope): TTokenID;
@@ -6133,6 +6149,9 @@ begin
         fCondStack.Push(False);
         Result := SkipToElseOrEnd(False);
       end;
+      //////////////////////////////////////////
+      // {$MESSAGE...}
+      token_cond_message: Result := ParseCondMessage(Scope);
     else
       ERROR_FEATURE_NOT_SUPPORTED;
       Result := token_unknown;
@@ -6147,7 +6166,7 @@ begin
     Result := FParser.NextToken;}
 end;
 
-function TNPUnit.ParseCondTarget(Scope: TScope): TTokenID;
+(*function TNPUnit.ParseCondTarget(Scope: TScope): TTokenID;
 var
   ID: TIdentifier;
 begin
@@ -6163,7 +6182,7 @@ begin
 
   parser_ReadSemicolon(Scope);
   Result := parser_NextToken(Scope);
-end;
+end;*)
 
 function TNPUnit.ParseConstSection(Scope: TScope): TTokenID;
 var
@@ -6478,11 +6497,11 @@ begin
         Status := rpOperand;
         continue;
       end;
-      token_bindf: begin
-        Result := ParseBindFunctionExpression(Scope, EContext);
-        Status := rpOperand;
-        continue;
-      end;
+//      token_bindf: begin
+//        Result := ParseBindFunctionExpression(Scope, EContext);
+//        Status := rpOperand;
+//        continue;
+//      end;
       token_notequal: begin
         CheckLeftOperand(Status);
         Status := RPNPushOperator(EContext, opNotEqual);
@@ -7072,7 +7091,7 @@ begin
       {VAR}
       token_var: Result := ParseImmVarStatement(Scope, SContext);
 
-      token_cond_emit: Result := ParseCondEmit(Scope, SContext);
+      //token_cond_emit: Result := ParseCondEmit(Scope, SContext);
 
       {IDENTIFIER}
       token_identifier: begin
@@ -8300,10 +8319,10 @@ begin
         parser_NextToken(Scope);
         Result := ParseVarSection(Scope, vLocal, nil, False);
       end;
-      token_ref: begin
-        parser_NextToken(Scope);
-        Result := ParseVarSection(Scope, vLocal, nil, False, True);
-      end;
+//      token_ref: begin
+//        parser_NextToken(Scope);
+//        Result := ParseVarSection(Scope, vLocal, nil, False, True);
+//      end;
       token_weak: begin
         parser_NextToken(Scope);
         Result := ParseVarSection(Scope, vLocal, nil, True);
@@ -8724,23 +8743,23 @@ begin
   Result := parser_NextToken(Scope);
 end;
 
-function TNPUnit.ProcSpec_NoReturn(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+{function TNPUnit.ProcSpec_NoReturn(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
 begin
   if pfNoReturn in Flags then
     ERROR_DUPLICATE_SPECIFICATION(PS_NORETURN);
   Include(Flags, pfNoReturn);
   parser_ReadSemicolon(Scope);
   Result := parser_NextToken(Scope);
-end;
+end;}
 
-function TNPUnit.ProcSpec_Pure(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+{function TNPUnit.ProcSpec_Pure(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
 begin
   if pfPure in Flags then
     ERROR_DUPLICATE_SPECIFICATION(PS_PURE);
   Proc.Flags := Proc.Flags + [pfPure];
   parser_ReadSemicolon(Scope);
   Result := parser_NextToken(Scope);
-end;
+end;}
 
 function TNPUnit.ProcSpec_Reintroduce(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
 begin
@@ -9785,8 +9804,8 @@ end;
 function TNPUnit.ParseRecordType(Scope: TScope; Decl: TIDStructure): TTokenID;
 var
   Visibility: TVisibility;
-  Expr: TIDExpression;
-  Ancestor: TIDRecord;
+  //Expr: TIDExpression;
+  //Ancestor: TIDRecord;
 begin
   Visibility := vPublic;
   Result := parser_NextToken(Scope);
@@ -10635,14 +10654,14 @@ begin
     /////////////////////////////////////////////////////////////////////////
     // open array
     /////////////////////////////////////////////////////////////////////////
-    token_openarray: begin
+    (*token_openarray: begin
       if not IsAnonimous then
         AbortWork(sOpenArrayAllowedOnlyAsTypeOfParam, FParser.Position);
       parser_MatchToken(parser_NextToken(Scope), token_of);
       Decl := TIDOpenArray.CreateAsAnonymous(Scope);
       Result := ParseTypeSpec(Scope, DataType);
       TIDArray(Decl).ElementDataType := DataType;
-    end;
+    end;*)
     /////////////////////////////////////////////////////////////////////////
     // set
     /////////////////////////////////////////////////////////////////////////
@@ -11025,17 +11044,25 @@ begin
       Struct.Members.ProcSpace.Add(Proc);
     end;
 
-    if OperatorID = opImplicit then
-    begin
+    case OperatorID of
+      opImplicit: begin
       if ResultType = Struct then
         Struct.OverloadImplicitFrom(Parameters.VarSpace.Last.DataType, Proc)
       else
         Struct.OverloadImplicitTo(ResultType, Proc);
-    end else
+      end;
+      opExplicit: begin
+        if ResultType = Struct then
+          Struct.OverloadExplicitFrom(Parameters.VarSpace.Last.DataType, Proc)
+        else
+          Struct.OverloadExplicitTo(ResultType, Proc);
+      end;
+    else
     if OperatorID < opIn then
       Struct.OverloadUnarOperator(OperatorID, Proc)
     else
       Struct.OverloadBinarOperator(OperatorID, TIDOperator(Proc));
+    end;
 
   end else begin
     if Assigned(Proc.GenericDescriptor) then
@@ -11048,10 +11075,10 @@ begin
       token_forward: Result := ProcSpec_Forward(Scope, Proc, ProcFlags);
       token_export: Result := ProcSpec_Export(Scope, Proc, ProcFlags);
       token_inline: Result := ProcSpec_Inline(Scope, Proc, ProcFlags);
-      token_noreturn: Result := ProcSpec_Import(Scope, Proc, ProcFlags);
+      //token_noreturn: Result := ProcSpec_Import(Scope, Proc, ProcFlags);
       token_external: Result := ProcSpec_Import(Scope, Proc, ProcFlags);
       token_overload: Result := ProcSpec_Overload(Scope, Proc, ProcFlags);
-      token_pure: Result := ProcSpec_Pure(Scope, Proc, ProcFlags);
+      //token_pure: Result := ProcSpec_Pure(Scope, Proc, ProcFlags);
     else
       if (Scope.ScopeClass = scInterface) or (pfImport in ProcFlags) then
       begin
@@ -11082,8 +11109,6 @@ begin
       ERROR_PROC_NEED_BODY;
     Break;}
   end;
-  if (FwdDeclState = dsDifferent) and not (pfOveload in Proc.Flags) then
-    ERROR_OVERLOADED_MUST_BE_MARKED(ID);
 end;
 
 function TNPUnit.ParseUnionSection(Scope: TScope; Struct: TIDStructure): TTokenID;
@@ -12631,7 +12656,7 @@ function TNPUnit.ParseExplicitCast(Scope: TScope; SContext: PSContext; var DstEx
 var
   EContext: TEContext;
   SrcExpr: TIDExpression;
-  OperatorDecl: TIDType;
+  OperatorDecl: TIDDeclaration;
   CallExpr: TIDCallExpression;
   TargetType: TIDType;
 begin
@@ -12685,7 +12710,7 @@ begin
   begin
     if (SrcExpr.ItemType = itConst) and (SrcExpr.IsAnonymous) then
     begin
-      TIDConstant(SrcExpr.Declaration).ExplicitDataType := OperatorDecl;
+      TIDConstant(SrcExpr.Declaration).ExplicitDataType := OperatorDecl as TIDType;
       DstExpression := TIDExpression.Create(SrcExpr.Declaration);
     end else
       DstExpression := TIDCastExpression.Create(SrcExpr.Declaration, TIDType(DstExpression.Declaration), DstExpression.TextPosition);
@@ -13888,10 +13913,10 @@ begin
       token_forward: Result := ProcSpec_Forward(Scope, Proc, ProcFlags);
       token_export: Result := ProcSpec_Export(Scope, Proc, ProcFlags);
       token_inline: Result := ProcSpec_Inline(Scope, Proc, ProcFlags);
-      token_noreturn: Result := ProcSpec_NoReturn(Scope, Proc, ProcFlags);
+      //token_noreturn: Result := ProcSpec_NoReturn(Scope, Proc, ProcFlags);
       token_external: Result := ProcSpec_Import(Scope, Proc, ProcFlags);
       token_overload: Result := ProcSpec_Overload(Scope, Proc, ProcFlags);
-      token_pure: Result := ProcSpec_Pure(Scope, Proc, ProcFlags);
+      //token_pure: Result := ProcSpec_Pure(Scope, Proc, ProcFlags);
       token_procedure,
       token_function,
       token_const,
@@ -14765,6 +14790,11 @@ end;
 function TNPUnit.ParsePlatform(Scope: TScope): TTokenID;
 begin
   Result := parser_NextToken(Scope);
+end;
+
+function TNPUnit.GetDefinesAsString: string;
+begin
+  Result := FDefines.Text;
 end;
 
 initialization

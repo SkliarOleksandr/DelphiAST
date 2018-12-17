@@ -333,10 +333,11 @@ type
     FWeakType: TIDWeekRef;
     FDataTypeID: TDataTypeID;
     FTypeKind: TTypeKind;
-    FImplicitsTo: TIDPairList;      // пара (self -> dest)
-    FImplicitsIDTo: TIDPairList;    // пара (self -> dest)
-    FImplicitsFrom: TIDPairList;    // пара (src -> self)
-
+    // lists of implicit operators
+    FImplicitsTo: TIDPairList;      // self -> dest
+    FImplicitsIDTo: TIDPairList;    // self -> dest
+    FImplicitsFrom: TIDPairList;    // src -> self
+    // lists of explicits operators
     FExplicitsTo: TIDPairList;
     FExplicitsFrom: TIDPairList;
     FExplicitToEny: TIDOperator;     // явное вриведенеие типа к любому
@@ -390,8 +391,8 @@ type
     function FindImplicitOperatorTo(const Destination: TIDType): TIDDeclaration;
     function FindImplicitOperatorFrom(const Source: TIDType): TIDDeclaration;
 
-    function GetExplicitOperatorTo(const Destination: TIDType): TIDType;
-    function GetExplicitOperatorFrom(const Source: TIDType): TIDType;
+    function GetExplicitOperatorTo(const Destination: TIDType): TIDDeclaration;
+    function GetExplicitOperatorFrom(const Source: TIDType): TIDDeclaration;
 
     function UnarOperator(Op: TOperatorID; Right: TIDType): TIDType; overload; inline;
     function BinarOperator(Op: TOperatorID; Right: TIDType): TIDType; inline;
@@ -413,8 +414,11 @@ type
     procedure OverloadImplicitFrom(const Source: TIDDeclaration); overload;
     procedure OverloadImplicitFrom(const Source, Proc: TIDDeclaration); overload;
 
-    procedure OverloadExplicit(const Destination: TIDDeclaration);
-    procedure OverloadExplicitFrom(const Source: TIDDeclaration);
+    procedure OverloadExplicitTo(const Destination: TIDDeclaration); overload;
+    procedure OverloadExplicitTo(const Destination, Proc: TIDDeclaration); overload;
+    procedure OverloadExplicitFrom(const Source: TIDDeclaration); overload;
+    procedure OverloadExplicitFrom(const Source, Proc: TIDDeclaration); overload;
+
     procedure OverloadExplicitToEny(const Op: TIDOperator);
     procedure OverloadExplicitFromEny(const Op: TIDOperator);
 
@@ -2752,7 +2756,10 @@ begin
   FImplicitsTo.Free;
   FImplicitsIDTo.Free;
   FImplicitsFrom.Free;
+
   FExplicitsTo.Free;
+  FExplicitsFrom.Free;
+
   for i := opIn to High(TOperatorID)  do
   begin
     FBinarOperators[i].Free;
@@ -2763,7 +2770,7 @@ begin
   inherited;
 end;
 
-function TIDType.GetExplicitOperatorFrom(const Source: TIDType): TIDType;
+function TIDType.GetExplicitOperatorFrom(const Source: TIDType): TIDDeclaration;
 var
   Node: TIDPairList.PAVLNode;
 begin
@@ -2771,18 +2778,18 @@ begin
   begin
     Node := FExplicitsFrom.Find(Source);
     if Assigned(Node) then
-      Exit(Source);
+      Exit(TIDDeclaration(Node.Data));
   end;
   Result := nil;
 end;
 
-function TIDType.GetExplicitOperatorTo(const Destination: TIDType): TIDType;
+function TIDType.GetExplicitOperatorTo(const Destination: TIDType): TIDDeclaration;
 var
   Node: TIDPairList.PAVLNode;
 begin
   Node := FExplicitsTo.Find(Destination);
   if Assigned(Node) then
-    Exit(Destination);
+    Exit(TIDDeclaration(Node.Data));
   Result := nil;
 end;
 
@@ -3071,10 +3078,16 @@ begin
   OverloadBinarOperator2(Op, Declaration.ExplicitParams[1].DataType, Declaration);
 end;
 
-procedure TIDType.OverloadExplicit(const Destination: TIDDeclaration);
+procedure TIDType.OverloadExplicitTo(const Destination: TIDDeclaration);
 begin
   if Assigned(FExplicitsTo.InsertNode(Destination, Destination)) then
     ERROR_OPERATOR_ALREADY_OVERLOADED(opExplicit, Self, Destination, TextPosition);
+end;
+
+procedure TIDType.OverloadExplicitTo(const Destination, Proc: TIDDeclaration);
+begin
+  if Assigned(FExplicitsTo.InsertNode(Destination, Proc)) then
+    ERROR_OPERATOR_ALREADY_OVERLOADED(opExplicit, Self, Proc.DataType, TextPosition);
 end;
 
 procedure TIDType.OverloadExplicitFrom(const Source: TIDDeclaration);
@@ -3084,6 +3097,15 @@ begin
 
   if Assigned(FExplicitsFrom.InsertNode(Source, Source)) then
     ERROR_OPERATOR_ALREADY_OVERLOADED(opExplicit, Self, Source, TextPosition);
+end;
+
+procedure TIDType.OverloadExplicitFrom(const Source, Proc: TIDDeclaration);
+begin
+  if not Assigned(FExplicitsFrom) then
+    FExplicitsFrom := TIDPairList.Create;
+
+  if Assigned(FExplicitsFrom.InsertNode(Source, Proc)) then
+    ERROR_OPERATOR_ALREADY_OVERLOADED(opExplicit, Source, Proc.DataType, TextPosition);
 end;
 
 procedure TIDType.OverloadExplicitFromEny(const Op: TIDOperator);
@@ -3833,7 +3855,7 @@ begin
   FMembers := TStructScope.CreateAsStruct(Scope, Self, @FVarSpace, @FProcSpace, Scope.DeclUnit);
   {$IFDEF DEBUG}FMembers.Name := FID.Name + '.members';{$ENDIF}
   OverloadImplicitTo(Self);
-  OverloadExplicit(Self);
+  OverloadExplicitTo(Self);
 end;
 
 function TIDStructure.FindMethod(const Name: string): TIDProcedure;
@@ -4592,8 +4614,8 @@ begin
     OverloadBinarOperator2(opNotEqual, SYSUnit._NilPointer, SYSUnit._Boolean);
     OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
     OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
-    OverloadExplicit(SYSUnit._NativeInt);
-    OverloadExplicit(SYSUnit._NativeUInt);
+    OverloadExplicitTo(SYSUnit._NativeInt);
+    OverloadExplicitTo(SYSUnit._NativeUInt);
     OverloadImplicitTo(SYSUnit._Pointer);
 
     OverloadBinarOperator2(opAdd, Self, Self);
@@ -4613,8 +4635,8 @@ begin
   if Assigned(SYSUnit) then begin
     OverloadBinarOperator2(opEqual, SYSUnit._NilPointer, SYSUnit._Boolean);
     OverloadBinarOperator2(opNotEqual, SYSUnit._NilPointer, SYSUnit._Boolean);
-    OverloadExplicit(SYSUnit._NativeInt);
-    OverloadExplicit(SYSUnit._NativeUInt);
+    OverloadExplicitTo(SYSUnit._NativeInt);
+    OverloadExplicitTo(SYSUnit._NativeUInt);
     OverloadImplicitTo(SYSUnit._Pointer);
 
     OverloadBinarOperator2(opAdd, Self, Self);
