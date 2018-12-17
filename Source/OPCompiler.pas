@@ -8674,22 +8674,24 @@ begin
   // читаем имя библиотеки
   Result := ParseConstExpression(Scope, LibExpr, parser_NextToken(Scope), ExprRValue);
 
-  CheckEmptyExpression(LibExpr);
-  CheckStringExpression(LibExpr);
-
-  Decl.ImportLib := TIDConstant(LibExpr.Declaration).Index;
-
-  if Result = token_name then
+  if Assigned(LibExpr) then
   begin
-    // читаем имя декларации
-    Result := ParseConstExpression(Scope, NameExpr, parser_NextToken(Scope), ExprRValue);
+    CheckStringExpression(LibExpr);
 
-    CheckEmptyExpression(NameExpr);
-    CheckStringExpression(NameExpr);
+    Decl.ImportLib := TIDConstant(LibExpr.Declaration).Index;
 
-    Decl.ImportName := TIDConstant(NameExpr.Declaration).Index;
-  end else
-    Decl.ImportName := FPackage.GetStringConstant(Decl.Name);
+    if Result = token_name then
+    begin
+      // читаем имя декларации
+      Result := ParseConstExpression(Scope, NameExpr, parser_NextToken(Scope), ExprRValue);
+
+      CheckEmptyExpression(NameExpr);
+      CheckStringExpression(NameExpr);
+
+      Decl.ImportName := TIDConstant(NameExpr.Declaration).Index;
+    end else
+      Decl.ImportName := FPackage.GetStringConstant(Decl.Name);
+  end; // else todo:
 
   parser_MatchSemicolon(Result);
 end;
