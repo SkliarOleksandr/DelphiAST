@@ -61,6 +61,7 @@ type
     fExtended: TIDAliasType;
     fWideString: TIDType;
     fShortString: TIDType;
+    fOpenString: TIDType;
     fDeprecatedDefaultStr: TIDStringConstant;
     procedure AddImplicists;
     procedure AddExplicists;
@@ -85,6 +86,7 @@ type
     function RegisterRefType(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
     function RegisterOrdinal(const TypeName: string; DataType: TDataTypeID; LowBound: Int64; HighBound: UInt64): TIDType;
     function RegisterTypeAlias(const TypeName: string; OriginalType: TIDType): TIDAliasType;
+    function RegisterPointer(const TypeName: string; TargetType: TIDType): TIDPointer;
     function RegisterConstInt(const Name: string; DataType: TIDType; Value: Int64): TIDIntConstant;
   private
     procedure CreateCopyArrayOfObjProc;
@@ -676,6 +678,11 @@ begin
 
   // now
   AddSysRTFunction(TSF_now, 'Now', _DateTime);
+
+  // AtomicExchange
+  Decl := AddSysRTFunction(TSF_AtomicExchange, 'AtomicExchange', _NativeInt);
+  Decl.AddParam('Left', _Void, [VarInOut]);
+  Decl.AddParam('Right', _Void, [VarInOut]);
 end;
 
 function TSYSTEMUnit.RegisterBuiltin(const Name: string; MacroID: TBuiltInFunctionID; ResultDataType: TIDType; Flags: TProcFlags = [pfPure]): TIDBuiltInFunction;
@@ -823,10 +830,8 @@ begin
     if Result = CompileSuccess then
     begin
       SearchSystemTypes;
-      Result := CompileFail;
       PostCompileProcessUnit;
     end;
-    Result := CompileSuccess;
   except
     on e: ECompilerStop do Exit;
     on e: ECompilerSkip do Exit(CompileSkip);
@@ -891,6 +896,10 @@ begin
   TIDString(fShortString).ElementDataType := _Char;
   TIDString(fShortString).AddBound(TIDOrdinal(_NativeUInt));
   //===============================================================
+  fOpenString := RegisterTypeCustom('OpenString', TIDString, dtString);
+  TIDString(fOpenString).ElementDataType := _Char;
+  TIDString(fOpenString).AddBound(TIDOrdinal(_NativeUInt));
+  //===============================================================
   // TObject ========================================================
   {FTObject := TIDClass.CreateAsSystem(UnitInterface, 'TObject');
   FTObject.NeedForward := True; // forward declaration
@@ -942,6 +951,7 @@ begin
   RegisterTypeAlias('SmallInt', _Int16);
   RegisterTypeAlias('Integer', _Int32);
   RegisterTypeAlias('Cardinal', _UInt32);
+  RegisterTypeAlias('Comp', _Int64);
   RegisterTypeAlias('Byte', _UInt8);
   RegisterTypeAlias('Word', _UInt16);
   RegisterTypeAlias('_ShortString', fShortString);
@@ -953,9 +963,9 @@ begin
   RegisterTypeAlias('OleVariant', _Variant);
 
   // todo: make RegisterPointer method
-  RegisterTypeAlias('PAnsiChar', _Pointer);
-  RegisterTypeAlias('PWideChar', _Pointer);
-  RegisterTypeAlias('PChar', _Pointer);
+  RegisterPointer('PAnsiChar', _AnsiChar);
+  RegisterPointer('PWideChar', _Char);
+  RegisterTypeAlias('PChar', _Char);
   RegisterTypeAlias('Text', _Pointer);
   //RegisterTypeAlias('FixedInt', _Int32);
   //RegisterTypeAlias('FixedUInt', _UInt32);
@@ -1149,6 +1159,14 @@ begin
   Result.DataType := DataType;
   Result.Value := Value;
   InsertToScope(Result);
+end;
+
+function TSYSTEMUnit.RegisterPointer(const TypeName: string; TargetType: TIDType): TIDPointer;
+begin
+  Result := TIDPointer.CreateAsSystem(IntfSection, TypeName);
+  Result.ReferenceType := TargetType;
+  InsertToScope(Result);
+  AddType(Result);
 end;
 
 initialization

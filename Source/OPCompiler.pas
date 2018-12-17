@@ -155,6 +155,8 @@ type
     FOptions: TCompilerOptions;
     FBreakPoints: TBreakPoints;
     FUseCheckBound: Boolean;
+    fInitProcSConect: TSContext;
+    fFinalProcSConect: TSContext;
     function GetMessagesText: string;
     //========================================================================================================
     // процедуры генерации ошибок компиляции
@@ -434,6 +436,7 @@ type
     procedure parser_ReadNextIdentifier(Scope: TScope; var Identifier: TIdentifier); inline;
     procedure parser_MatchParamNameIdentifier(ActualToken: TTokenID); inline;
     function parser_CurTokenID: TTokenID; inline;
+    function parser_ReadSemicolonAndToken(Scope: TScope): TTokenID; inline;
     function parser_NextToken(Scope: TScope): TTokenID; inline;
     function parser_Position: TTextPosition; inline;
     function parser_PrevPosition: TTextPosition; inline;
@@ -4471,11 +4474,17 @@ begin
   FInitProc := TIDProcedure.CreateAsSystem(Scope, '$initialization');
   FInitProc.EntryScope := Scope;
   FInitProc.IL := TIL.Create(FInitProc);
+  fInitProcSConect.Proc := FInitProc;
+  fInitProcSConect.IL := TIL(FInitProc.IL);
+  fInitProcSConect.WriteIL := True;
 
   Scope := TProcScope.CreateInBody(FImplScope);
   FFinalProc := TIDProcedure.CreateAsSystem(Scope, '$finalization');
   FFinalProc.EntryScope := Scope;
   FFinalProc.IL := TIL.Create(FFinalProc);
+  fFinalProcSConect.Proc := FInitProc;
+  fFinalProcSConect.IL := TIL(FInitProc.IL);
+  fFinalProcSConect.WriteIL := True;
 
   FBreakPoints := TBreakPoints.Create;
   fCondStack := TSimpleStack<Boolean>.Create(0);
@@ -6123,7 +6132,7 @@ begin
       // {$IFNDEF ...}
       token_cond_ifndef: begin
         CondResult := ParseDelphiCondIfDef(Scope);
-        fCondStack.Push(CondResult);
+        fCondStack.Push(not CondResult);
         if CondResult then
           Result := SkipToElseOrEnd(False)
         else
@@ -8739,8 +8748,7 @@ begin
   if pfOveload in Flags then
     ERROR_DUPLICATE_SPECIFICATION(PS_OVELOAD);
   Include(Flags, pfOveload);
-  parser_ReadSemicolon(Scope);
-  Result := parser_NextToken(Scope);
+  Result := parser_ReadSemicolonAndToken(Scope);
 end;
 
 {function TNPUnit.ProcSpec_NoReturn(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
@@ -9664,6 +9672,13 @@ function TNPUnit.ParseVarStaticArrayDefaultValue(Scope: TScope; ArrType: TIDArra
     Expr: TIDExpression;
   begin
     Result := parser_NextToken(Scope);
+    // first element initializer
+    if Result = token_identifier then
+    begin
+      Result := ParseConstExpression(Scope, Expr, Result, ExprRValue);
+      Exit; // todo:
+    end;
+
     parser_MatchToken(Result, token_openround);
 
     c := ArrType.Dimensions[DimIndex].ElementsCount - 1;
@@ -9692,21 +9707,30 @@ end;
 
 function TNPUnit.ParseVarDefaultValue(Scope: TScope; DataType: TIDType; out DefaultValue: TIDExpression): TTokenID;
 var
-  SContext: TSContext;
+  SContext: PSContext;
+  EContext: TEContext;
 begin
   if DataType.DataTypeID = dtStaticArray then
     Result := ParseVarStaticArrayDefaultValue(Scope, DataType as TIDArray, DefaultValue)
   else begin
-    Result := ParseConstExpression(Scope, DefaultValue, parser_NextToken(Scope), ExprNested);
+
+    SContext := @fInitProcSConect;
+
+    Result := parser_NextToken(Scope);
+
+    if Scope.ScopeType = stLocal then
+      Result := ParseConstExpression(Scope, DefaultValue, Result, ExprRValue)
+    else begin
+      InitEContext(EContext, SContext, ExprRValue);
+      Result := ParseExpression(Scope, EContext, Result);
+      DefaultValue := EContext.Result;
+    end;
     CheckEmptyExpression(DefaultValue);
+
     if CheckImplicit(DefaultValue, DataType) = nil then
       ERROR_INCOMPATIBLE_TYPES(DefaultValue, DataType);
 
-    SContext.Initialize;
-    SContext.WriteIL := False;
-    SContext.Proc := FInitProc;
-
-    DefaultValue := MatchImplicit3(@SContext, DefaultValue, DataType);
+    DefaultValue := MatchImplicit3(SContext, DefaultValue, DataType);
 
     if DefaultValue.IsAnonymous then
       DefaultValue.Declaration.DataType := DataType; // подгоняем фактичиский тип константы под необходимый
@@ -9787,7 +9811,14 @@ begin
         DataType := GetWeakRefType(Scope, DataType);
       Field.DataType := DataType;
       Field.Visibility := Visibility;
+
+      // if the init value for global var is not constant value
+      if Assigned(DefaultValue) and DefaultValue.IsTMPVar then
+      begin
+        ILWrite(@fInitProcSConect, TIL.IL_Move(TIDExpression.Create(Field), DefaultValue));
+      end else
       Field.DefaultValue := DefaultValue;
+
       Field.Absolute := TIDVariable(DeclAbsolute);
       Field.Flags := Field.Flags + VarFlags;
       if isRef then
@@ -11093,9 +11124,7 @@ begin
       Proc.EntryScope := Parameters;
       if (FwdDeclState = dsDifferent) then
       begin
-        if Assigned(Proc.IL) then
-          ERROR_OVERLOADED_MUST_BE_MARKED(ID)
-        else
+        if not Assigned(Proc.IL) then
           ERROR_DECL_DIFF_WITH_PREV_DECL(ID);
       end;
       Result := ParseProcBody(Proc, nil);
@@ -13540,6 +13569,13 @@ procedure TNPUnit.parser_ReadSemicolon(Scope: TScope);
 begin
   if parser_NextToken(Scope) <> token_semicolon then
     ERROR_SEMICOLON_EXPECTED;
+end;
+
+function TNPUnit.parser_ReadSemicolonAndToken(Scope: TScope): TTokenID;
+begin
+  Result := parser_NextToken(Scope);
+  if Result = token_semicolon then
+    Result := parser_NextToken(Scope);
 end;
 
 procedure TNPUnit.parser_ReadToken(Scope: TScope; const Token: TTokenID);

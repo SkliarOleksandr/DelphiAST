@@ -30,6 +30,12 @@ type
     function Process(const Ctx: TSysFunctionContext): TIDExpression; override;
   end;
 
+  {function: AtomicExchange}
+  TSF_AtomicExchange = class(TIDSysRuntimeFunction)
+  protected
+    function Process(var EContext: TEContext): TIDExpression; override;
+  end;
+
 implementation
 
 { TSF_typeid }
@@ -106,6 +112,18 @@ begin
     Result := SYSUnit._TrueExpression
   else
     Result := SYSUnit._FalseExpression;
+end;
+
+{ TSF_AtomicExchange }
+
+function TSF_AtomicExchange.Process(var EContext: TEContext): TIDExpression;
+var
+  Left, Right: TIDExpression;
+begin
+  Right := EContext.RPNPopExpression();
+  Left := EContext.RPNPopExpression();
+  // todo:
+  Result := Left;
 end;
 
 end.
