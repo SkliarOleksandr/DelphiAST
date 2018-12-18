@@ -468,6 +468,7 @@ type
     // функция парсинга секции переменных/полей
     function ParseVarDefaultValue(Scope: TScope; DataType: TIDType; out DefaultValue: TIDExpression): TTokenID;
     function ParseVarStaticArrayDefaultValue(Scope: TScope; ArrType: TIDArray; out DefaultValue: TIDExpression): TTokenID;
+    function ParseVarRecordDefaultValue(Scope: TScope; Struct: TIDStructure; out DefaultValue: TIDExpression): TTokenID;
     function ParseVarSection(Scope: TScope; Visibility: TVisibility; Struct: TIDStructure; IsWeak: Boolean = False; isRef: Boolean = False): TTokenID;
     function ParseVarInCaseRecord(Scope: TScope; Visibility: TVisibility; Struct: TIDStructure): TTokenID;
     function ParseInplaceVarDecl(Scope: TScope; out Expression: TIDExpression): TTokenID;
@@ -9738,10 +9739,10 @@ var
   SContext: PSContext;
   EContext: TEContext;
 begin
-  if DataType.DataTypeID = dtStaticArray then
-    Result := ParseVarStaticArrayDefaultValue(Scope, DataType as TIDArray, DefaultValue)
-  else begin
-
+  case DataType.DataTypeID of
+    dtStaticArray: Result := ParseVarStaticArrayDefaultValue(Scope, DataType as TIDArray, DefaultValue);
+    dtRecord: Result := ParseVarRecordDefaultValue(Scope, DataType as TIDStructure, DefaultValue);
+  else
     SContext := @fInitProcSConect;
 
     Result := parser_NextToken(Scope);
@@ -14874,6 +14875,33 @@ begin
     Result := Dst
   else
     Result := nil;
+end;
+
+function TNPUnit.ParseVarRecordDefaultValue(Scope: TScope; Struct: TIDStructure;
+                                            out DefaultValue: TIDExpression): TTokenID;
+var
+  i: Integer;
+  ID: TIdentifier;
+  Expr: TIDExpression;
+  Expressions: TIDExpressions;
+begin
+  i := 0;
+  parser_MatchNextToken(Scope, token_openround);
+  SetLength(Expressions, Struct.FieldsCount);
+  while True do begin
+    parser_ReadNextIdentifier(Scope, ID);
+    parser_MatchNextToken(Scope, token_colon);
+    Result := parser_NextToken(Scope);
+    Result := ParseConstExpression(Scope, Expr, Result, ExprRValue);
+    Expressions[i] := Expr;
+    Inc(i);
+    if Result = token_coma then
+      Continue;
+    Break;
+  end;
+  // todo: finish
+  parser_MatchToken(Result, token_closeround);
+  Result := parser_NextToken(Scope);
 end;
 
 
