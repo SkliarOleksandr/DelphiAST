@@ -596,6 +596,12 @@ type
     property Instance: TIDExpression read FInstance;
   end;
 
+  TILProcCallUnSafe = class(TILProcCall)
+  public
+    function ILCode: TILCode; override;
+    procedure Write(Proc: TIDProcedure; Stream: TStream); override;
+  end;
+
   TILInheritedCall = class(TILProcCall)
   public
     function ILCode: TILCode; override;
@@ -877,6 +883,7 @@ type
     class function IL_Ret(Line: Integer; Condition: TILCondition = cNone): TILRet; static; inline;
     class function IL_Unique(Dst: TIDExpression): TILUniqueInstruction; static; inline;
     class function IL_ProcCall(Proc, Dst, Instance: TIDExpression; const Args: TIDExpressions): TILProcCall; static; inline;
+    class function IL_ProcCallUnSafe(Proc, Dst, Instance: TIDExpression; const Args: TIDExpressions): TILProcCallUnSafe; static; inline;
     class function IL_VirtCall(Proc, Dst, Instance: TIDExpression; const Args: TIDExpressions): TILVirtCall; static; inline;
     class function IL_InheritedCall(Proc, Dst, Instance: TIDExpression; const Args: TIDExpressions): TILInheritedCall; static; inline;
     class function IL_GetPtr(Dst: TIDExpression; const Args: TIDExpressions): TILGetPtrMulti; overload; static; inline;
@@ -1833,6 +1840,12 @@ begin
   Result.Init(cNone, Proc, Dst, Instance, Args);
 end;
 
+class function TIL.IL_ProcCallUnSafe(Proc, Dst, Instance: TIDExpression; const Args: TIDExpressions): TILProcCallUnSafe;
+begin
+  Result := TILProcCallUnSafe.Create;
+  Result.Init(cNone, Proc, Dst, Instance, Args);
+end;
+
 class function TIL.IL_QueryType(const Dst, Src, DstType: TIDExpression): TILQueryType;
 begin
   Result := TILQueryType.Create;
@@ -2767,6 +2780,38 @@ begin
   Stream.WriteStretchUInt(Cnt);
 
   // пишем аргуметы
+  if Assigned(FDestination) then
+    WriteILArgument(Proc, Stream, FDestination);
+  WriteILArguments(Proc, Stream, FArgs, False);
+end;
+
+{ TILProcCallUnSafe }
+
+function TILProcCallUnSafe.ILCode: TILCode;
+begin
+  Result := icUSafeCall;
+end;
+
+procedure TILProcCallUnSafe.Write(Proc: TIDProcedure; Stream: TStream);
+var
+  Cnt, UnitID: Integer;
+  ProcDecl: TIDProcedure;
+begin
+  // write il code header
+  WriteILCode(Stream, ILCode, Condition);
+
+  // write ptr-variable arg
+  WriteILArgument(Proc, Stream, FProc);
+  // write the casted-type arg
+  WriteILArgument(Proc, Stream, TIDCastedCallExpression(FProc).DataType);
+
+  // write count of args
+  Cnt := Length(FArgs);
+  if Assigned(FDestination) then
+    Inc(Cnt);
+  Stream.WriteStretchUInt(Cnt);
+
+  // write the args...
   if Assigned(FDestination) then
     WriteILArgument(Proc, Stream, FDestination);
   WriteILArguments(Proc, Stream, FArgs, False);
@@ -4357,7 +4402,9 @@ begin
 end;
 
 end.
-//end
+
+
+
 
 
 

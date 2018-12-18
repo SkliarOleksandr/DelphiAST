@@ -49,6 +49,7 @@ type
     FImplicitAnyToVariant: TIDInternalOpImplicit;
     FImplicitVariantToAny: TIDInternalOpImplicit;
     FExplicitEnumFromAny: TIDInternalOpImplicit;
+    fExplicitTProcFromAny: TIDInternalOpImplicit;
     FCopyArrayOfObjProc: TIDProcedure;
     FCopyArrayOfStrProc: TIDProcedure;
     FFinalArrayOfObjProc: TIDProcedure;
@@ -154,6 +155,7 @@ type
     property _FinalArrayOfStrProc: TIDProcedure read FFinalArrayOfStrProc;
     property _FinalArrayOfVarProc: TIDProcedure read FFinalArrayOfVarProc;
     property _ExplicitEnumFromAny: TIDInternalOpImplicit read FExplicitEnumFromAny;
+    property _ExplicitTProcFromAny: TIDInternalOpImplicit read fExplicitTProcFromAny;
     property _AssertProc: TIDProcedure read FAsserProc;
     property _TypeID: TIDType read FTypeIDType;
     property _DeprecatedDefaultStr: TIDStringConstant read fDeprecatedDefaultStr;
@@ -856,6 +858,7 @@ begin
 
   FOrdinalType := TIDOrdinal.CreateAsSystem(nil, 'ordinal');
   FExplicitEnumFromAny := TIDOpExplicitIntToEnum.CreateAsIntOp;
+  fExplicitTProcFromAny := TIDOpExplicitTProcFromAny.CreateAsIntOp;
 
   {!!! Ïîðÿäîê ðåãèñòðàöèè òèïîâ ñîîòâåòñòâóåò ïîðÿäêîâîìó íîìåðó êîíñòàíòû DataTypeID !!!}
   //===============================================================

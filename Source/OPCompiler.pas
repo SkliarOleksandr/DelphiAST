@@ -562,7 +562,7 @@ type
     function ParseImmVarStatement(Scope: TScope; Scontext: PSContext): TTokenID;
     function ParsePlatform(Scope: TScope): TTokenID;
     function ParseAttribute(Scope: TScope): TTokenID;
-    function ParseDeprecated(Scope: TScope; out Deprecated: TIDExpression): TTokenID;
+    function ParseDeprecated(Scope: TScope; out &Deprecated: TIDExpression): TTokenID;
     function CheckAndParseDeprecated(Scope: TScope; CurrToken: TTokenID): TTokenID;
     function CheckAndParseAttribute(Scope: TScope): TTokenID;
     function CheckAndParseProcTypeCallConv(Scope: TScope; TypeDecl: TIDType): TTokenID;
@@ -853,6 +853,13 @@ type
 
   {внутренний explicit оператор Int -> Enum}
   TIDOpExplicitIntToEnum = class(TIDInternalOpImplicit)
+  public
+    function Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; override;
+    function Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
+  end;
+
+  {внутренний explicit оператор Any -> TProc}
+  TIDOpExplicitTProcFromAny = class(TIDInternalOpImplicit)
   public
     function Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; override;
     function Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
@@ -2692,9 +2699,9 @@ begin
     Exit;
 
   ExplicitIntOp := DstDataType.ExplicitFromEny;
-  if ExplicitIntOp is TIDOpExplicitIntToEnum then
+  if ExplicitIntOp is TIDInternalOpImplicit then
   begin
-    if TIDOpExplicitIntToEnum(ExplicitIntOp).Check(Source, Destination) <> nil then
+    if TIDInternalOpImplicit(ExplicitIntOp).Check(Source, Destination) <> nil then
       Exit(Destination);
   end;
   Result := nil;
@@ -5207,6 +5214,7 @@ var
   Expr, NExpr: TIDExpression;
   StrictSearch: Boolean;
   GenericArgs: TIDExpressions;
+  CallExpr: TIDCallExpression;
   PMContext: TPMContext;
   WasProperty: Boolean;
   SContext: PSContext;
@@ -5383,6 +5391,24 @@ begin
         Expression := nil;
         Break;
       end;
+    end;
+
+    {call} // todo: make this code as main (remove previous same code)
+    if Result = token_openround then
+    begin
+      if Expression.DataTypeID <> dtProcType then
+        ERROR_PROC_OR_PROCVAR_REQUIRED(PMContext.ID);
+
+      if not (Expression is TIDCastExpression) then
+        CallExpr := TIDCallExpression.Create(Expression.Declaration, Expression.TextPosition)
+      else begin
+        CallExpr := TIDCastedCallExpression.Create(Expression.Declaration, Expression.TextPosition);
+        TIDCastedCallExpression(CallExpr).DataType := Expression.DataType;
+      end;
+
+      Result := ParseEntryCall(Scope, CallExpr, EContext);
+      Expression := nil;
+      Break;
     end;
 
     {struct/class/interafce/enum/unit/namespace}
@@ -12324,8 +12350,10 @@ begin
 
   end else
   {вызов через переменную процедурного типа}
-  if Decl.DataTypeID = dtProcType then begin
-    Decl := Decl.DataType;
+  if PExpr.DataTypeID = dtProcType then begin
+
+    Decl := PExpr.DataType;
+
     ProcParams := TIDProcType(Decl).Params;
     ProcResult := TIDProcType(Decl).ResultType;
     MatchProc(PExpr, ProcParams, UserArguments);
@@ -12483,7 +12511,11 @@ begin
       PExpr.TextPosition := AExpr.TextPosition;
       PExpr.ArgumentsCount := ArgsCount;
     end;
-    ILWrite(SContext, TIL.IL_ProcCall(PExpr, Result, nil, CallArguments));
+    if PExpr is TIDCastedCallExpression then
+       CallCode := TIL.IL_ProcCallUnSafe(PExpr, Result, PExpr.Instance, CallArguments)
+    else
+       CallCode := TIL.IL_ProcCall(PExpr, Result, nil, CallArguments);
+    ILWrite(SContext, CallCode);
     Exit;
   end;
 
@@ -14814,7 +14846,7 @@ begin
   end;
 end;
 
-function TNPUnit.ParseDeprecated(Scope: TScope; out Deprecated: TIDExpression): TTokenID;
+function TNPUnit.ParseDeprecated(Scope: TScope; out &Deprecated: TIDExpression): TTokenID;
 begin
   Result := parser_NextToken(Scope);
   if Result = token_identifier then
@@ -14822,8 +14854,28 @@ begin
     Result := ParseConstExpression(Scope, Deprecated, Result, TExpessionPosition.ExprRValue);
     CheckStringExpression(Deprecated);
   end else
-    Deprecated  := TIDExpression.Create(SYSUnit._DeprecatedDefaultStr, parser_Position);
+    &Deprecated  := TIDExpression.Create(SYSUnit._DeprecatedDefaultStr, parser_Position);
 end;
+
+{ TIDOpExplicitTProcFromAny }
+
+function TIDOpExplicitTProcFromAny.Match(const SContext: PSContext; const Src: TIDExpression;
+                                         const Dst: TIDType): TIDExpression;
+begin
+  if (Src.DataTypeID = dtPointer) and (Dst as TIDProcType).IsStatic then
+    Result := Src
+  else
+    Result := nil;
+end;
+
+function TIDOpExplicitTProcFromAny.Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+begin
+  if (Src.DataTypeID = dtPointer) and (Dst as TIDProcType).IsStatic then
+    Result := Dst
+  else
+    Result := nil;
+end;
+
 
 function TNPUnit.ParsePlatform(Scope: TScope): TTokenID;
 begin

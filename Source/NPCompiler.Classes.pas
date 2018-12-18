@@ -56,6 +56,7 @@ type
   TIDUserDefinedMacro = class;
   TIDMacroArgument = class;
   TIDStringConstant = class;
+  TIDProcType = class;
 
   TScope = class;
   TStructScope = class;
@@ -1108,6 +1109,14 @@ type
     constructor Create(Declaration: TIDDeclaration; CastDataType: TIDType; const TextPosition: TTextPosition); reintroduce;
   end;
 
+  TIDCastedCallExpression = class(TIDCallExpression)
+  private
+    FDataType: TIDType;
+  public
+    function GetDataType: TIDType; override;
+    property DataType: TIDType read GetDataType write FDataType;
+  end;
+
   TIDDrefExpression = class(TIDExpression)
   private
     FSrc: TIDExpression;
@@ -1624,8 +1633,11 @@ begin
      Decl.IncRefCount(RCPath);
      if Expression.IsAnyLocalVar then
        TIDVariable(Decl).LastRInstruction := Instruction;
-   end
-   else begin
+
+     if Expression is TIDCastedCallExpression then
+       Expression.DataType.IncRefCount(RCPath);
+
+   end else begin
      Items := TIDMultiExpression(Expression).Items;
      for i := 0 to Length(Items) - 1 do
      begin
@@ -3087,7 +3099,7 @@ end;
 procedure TIDType.OverloadExplicitTo(const Destination, Proc: TIDDeclaration);
 begin
   if Assigned(FExplicitsTo.InsertNode(Destination, Proc)) then
-    ERROR_OPERATOR_ALREADY_OVERLOADED(opExplicit, Self, Proc.DataType, TextPosition);
+    ERROR_OPERATOR_ALREADY_OVERLOADED(opExplicit, Self, Proc, TextPosition);
 end;
 
 procedure TIDType.OverloadExplicitFrom(const Source: TIDDeclaration);
@@ -3105,13 +3117,13 @@ begin
     FExplicitsFrom := TIDPairList.Create;
 
   if Assigned(FExplicitsFrom.InsertNode(Source, Proc)) then
-    ERROR_OPERATOR_ALREADY_OVERLOADED(opExplicit, Source, Proc.DataType, TextPosition);
+    ERROR_OPERATOR_ALREADY_OVERLOADED(opExplicit, Source, Proc, TextPosition);
 end;
 
 procedure TIDType.OverloadExplicitFromEny(const Op: TIDOperator);
 begin
   if Assigned(FExplicitFromEny) then
-    AbortWorkInternal('aaa');
+    ERROR_OPERATOR_ALREADY_OVERLOADED(opExplicit, Self, Op, TextPosition);
 
   FExplicitFromEny := Op;
 end;
@@ -3119,7 +3131,7 @@ end;
 procedure TIDType.OverloadExplicitToEny(const Op: TIDOperator);
 begin
   if Assigned(FExplicitToEny) then
-    AbortWorkInternal('aaa');
+    ERROR_OPERATOR_ALREADY_OVERLOADED(opExplicit, Self, Op, TextPosition);
 
   FExplicitToEny := Op;
 end;
@@ -5454,12 +5466,14 @@ end;
 constructor TIDProcType.Create(Scope: TScope; const Identifier: TIdentifier);
 begin
   inherited Create(Scope, Identifier);
+  FExplicitFromEny := SYSUnit._ExplicitTProcFromAny;
   FDataTypeID := dtProcType;
 end;
 
 constructor TIDProcType.CreateAsAnonymous(Scope: TScope);
 begin
   inherited CreateAsAnonymous(Scope);
+  FExplicitFromEny := SYSUnit._ExplicitTProcFromAny;
   FDataTypeID := dtProcType;
 end;
 
@@ -6232,6 +6246,13 @@ end;
 constructor TIDString.CreateAsSystem(Scope: TScope; const Name: string);
 begin
   inherited CreateAsSystem(Scope, Name);
+end;
+
+{ TIDCastedCallExpression }
+
+function TIDCastedCallExpression.GetDataType: TIDType;
+begin
+  Result := FDataType;
 end;
 
 initialization

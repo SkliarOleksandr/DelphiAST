@@ -81,6 +81,7 @@ type
     icProcCall,       // инструкция вызова процедур/функций
     icVirtCall,       // инструкция вызова виртуального метода
     icNearCall,       // инструкция ближнего вызова (внутри процедуры)
+    icUSafeCall,      // инструкция небезопасного вызова по указателю
 
     icDNewObj,        // создание инстанса класса в динамической памяти без вызова конструктора (или его нет или он был заинлайнен)
     icSNewObj,        // создание инстанса класса в статической памяти
@@ -316,6 +317,7 @@ const
     {icProcCall}          'pcall',
     {icVirtCall}          'vcall',
     {icNearCall}          'ncall',
+    {icUSafeCall}         'uscall',
 
     {icDNewObj}           'dnewobj',
     {icSNewObj}           'snewobj',
