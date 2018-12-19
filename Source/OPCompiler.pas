@@ -742,6 +742,7 @@ type
 
   TSysFunctionContext = record
     UN: TNPUnit;
+    Scope: TScope;
     ParamsStr: string;
     EContext: PEContext;
     SContext: PSContext;
@@ -5395,7 +5396,7 @@ begin
     end;
 
     {call} // todo: make this code as main (remove previous same code)
-    if Result = token_openround then
+    if (Result = token_openround) and (Expression.DataTypeID = dtProcType) then
     begin
       if Expression.DataTypeID <> dtProcType then
         ERROR_PROC_OR_PROCVAR_REQUIRED(PMContext.ID);
@@ -8070,6 +8071,7 @@ begin
     ERROR_NOT_ENOUGH_ACTUAL_PARAMS(CallExpr);
 
   Ctx.UN := Self;
+  Ctx.Scope := Scope;
   Ctx.ParamsStr := ParamsText;
   Ctx.EContext := @EContext;
   Ctx.SContext := SContext;
@@ -14895,7 +14897,7 @@ begin
     Result := ParseConstExpression(Scope, Expr, Result, ExprRValue);
     Expressions[i] := Expr;
     Inc(i);
-    if Result = token_coma then
+    if Result = token_semicolon then
       Continue;
     Break;
   end;

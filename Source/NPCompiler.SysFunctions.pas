@@ -30,6 +30,12 @@ type
     function Process(const Ctx: TSysFunctionContext): TIDExpression; override;
   end;
 
+  {function: Declared}
+  TSCTF_Declared = class(TIDSysCompileFunction)
+  protected
+    function Process(const Ctx: TSysFunctionContext): TIDExpression; override;
+  end;
+
   {function: AtomicExchange}
   TSF_AtomicExchange = class(TIDSysRuntimeFunction)
   protected
@@ -124,6 +130,24 @@ begin
   Left := EContext.RPNPopExpression();
   // todo:
   Result := Left;
+end;
+
+{ TSCTF_Declared }
+
+function TSCTF_Declared.Process(const Ctx: TSysFunctionContext): TIDExpression;
+var
+  Expr: TIDExpression;
+begin
+  Expr := Ctx.EContext.RPNPopExpression();
+
+  if Expr.DataTypeID <> dtString then
+    AbortWork('DEFINE String expected', Expr.TextPosition);
+
+  if Ctx.Scope.FindIDRecurcive(Expr.AsStrConst.Value) <> nil then
+    Result := SYSUnit._TrueExpression
+  else
+    Result := SYSUnit._FalseExpression;
+
 end;
 
 end.

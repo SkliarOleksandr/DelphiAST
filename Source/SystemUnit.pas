@@ -668,6 +668,10 @@ begin
   // Defined
   Fn := AddSysCTFunction(TSCTF_Defined, 'Defined', _Boolean);
   Fn.AddParam('Expression', _Boolean, [VarConst]);
+
+  // Declared
+  Fn := AddSysCTFunction(TSCTF_Declared, 'Declared', _Boolean);
+  Fn.AddParam('Expression', _Boolean, [VarConst]);
 end;
 
 procedure TSYSTEMUnit.RegisterSystemRTBuiltinFunctions;
