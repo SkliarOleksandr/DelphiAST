@@ -18,6 +18,12 @@ type
     function Process(var EContext: TEContext): TIDExpression; override;
   end;
 
+  {function: RunError}
+  TSF_RunError = class(TIDSysRuntimeFunction)
+  protected
+    function Process(var EContext: TEContext): TIDExpression; override;
+  end;
+
   {function: StaticAssert}
   TSF_StaticAssert = class(TIDSysCompileFunction)
   protected
@@ -148,6 +154,17 @@ begin
   else
     Result := SYSUnit._FalseExpression;
 
+end;
+
+{ TSF_RunError }
+
+function TSF_RunError.Process(var EContext: TEContext): TIDExpression;
+var
+  ErrCode: TIDExpression;
+begin
+  ErrCode := EContext.RPNPopExpression();
+  // todo:
+  Result := nil;
 end;
 
 end.

@@ -689,6 +689,10 @@ begin
   Decl := AddSysRTFunction(TSF_AtomicExchange, 'AtomicExchange', _NativeInt);
   Decl.AddParam('Left', _Void, [VarInOut]);
   Decl.AddParam('Right', _Void, [VarInOut]);
+
+  // RunError
+  Decl := AddSysRTFunction(TSF_RunError, 'RunError', nil);
+  Decl.AddParam('ErrorCode', _Int32, []);
 end;
 
 function TSYSTEMUnit.RegisterBuiltin(const Name: string; MacroID: TBuiltInFunctionID; ResultDataType: TIDType; Flags: TProcFlags = [pfPure]): TIDBuiltInFunction;
