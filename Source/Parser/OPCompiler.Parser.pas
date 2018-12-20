@@ -64,6 +64,7 @@ type
     token_library,                  // keyword: library
 
     token_export,                   // keyword: export
+    token_exports,                  // keyword: exports
     token_external,                 // keyword: extern
     token_name,                     // keyword: name
     token_exit,                     // keyword: exit
@@ -296,6 +297,7 @@ begin
   RegisterToken('exit', token_exit, True);
   RegisterToken('except', token_except);
   RegisterToken('export', token_export);
+  RegisterToken('exports', token_exports);
   RegisterToken('external', token_external);
   RegisterToken('function', token_Function);
   RegisterToken('for', token_for);

@@ -13,7 +13,7 @@ uses SysUtils, Classes, StrUtils, Types, OPCompiler.Parser, NPCompiler.Classes, 
      NPCompiler.Intf,
      NPCompiler.Contexts,
      NPCompiler.ExpressionContext,
-     NPCompiler.Options;  // system, dateutils
+     NPCompiler.Options;  // system, dateutils, sysinit
 
 type
 
@@ -444,6 +444,7 @@ type
     function parser_TokenLexem(const TokenID: TTokenID): string; inline;
     function parser_Line: Integer; inline;
     function parser_SkipBlock(StopToken: TTokenID): TTokenID;
+    function parser_SkipTo(Scope: TScope; StopToken: TTokenID): TTokenID;
     //=======================================================================================================================
     /// функции для работы с булевыми выражениями
     procedure Bool_AddExprNode(var Context: TEContext; Instruction: TILInstruction; Condition: TILCondition); overload;
@@ -2642,8 +2643,24 @@ begin
     Exit;
   end;
 
+  {if Assigned(SDataType.SysImplicitToAny) then
+  begin
+    Result := TIDInternalOpImplicit(SDataType.SysImplicitToAny).Match(SContext, Source, Dest);
+    if Assigned(Result) then
+      Exit;
+    Decl := nil;
+  end;}
+
   if not Assigned(Decl) then
+  begin
+    if Assigned(Dest.SysExplicitFromAny) then
+    begin
+      Result := TIDInternalOpImplicit(Dest.SysExplicitFromAny).Match(SContext, Source, Dest);
+      if Assigned(Result) then
+        Exit;
+    end;
     Exit(nil);
+  end;
 
   if Decl.ItemType = itType then
     Exit(Source);
@@ -2704,7 +2721,7 @@ begin
   if Assigned(Result) then
     Exit;
 
-  ExplicitIntOp := DstDataType.ExplicitFromEny;
+  ExplicitIntOp := DstDataType.SysExplicitFromAny;
   if ExplicitIntOp is TIDInternalOpImplicit then
   begin
     if TIDInternalOpImplicit(ExplicitIntOp).Check(Source, Destination) <> nil then
@@ -4279,6 +4296,11 @@ begin
           CheckIntfSectionMissing(Scope);
           parser_NextToken(Scope);
           Token := ParseVarSection(Scope, vLocal, nil, False);
+        end;
+        token_exports: begin
+          // todo:
+          Token := parser_SkipTo(Scope, token_semicolon);
+          Token := parser_NextToken(Scope);
         end;
 //        token_ref: begin
 //          CheckIntfSectionMissing(Scope);
@@ -7133,7 +7155,10 @@ begin
       {VAR}
       token_var: Result := ParseImmVarStatement(Scope, SContext);
 
-      //token_cond_emit: Result := ParseCondEmit(Scope, SContext);
+      token_address: begin
+        Result := parser_NextToken(Scope);
+        Continue;
+      end;
 
       {IDENTIFIER}
       token_identifier: begin
@@ -8755,8 +8780,8 @@ begin
   if pfExport in Flags then
     ERROR_DUPLICATE_SPECIFICATION(PS_EXPORT);
   Include(Flags, pfExport);
-  if Scope.ScopeClass <> scInterface then
-    ERROR_EXPORT_ALLOWS_ONLY_IN_INTF_SECTION;
+  {if Scope.ScopeClass <> scInterface then
+    ERROR_EXPORT_ALLOWS_ONLY_IN_INTF_SECTION;}
   Result := parser_NextToken(Scope);
   if Result = token_identifier then begin
     parser_ReadCurrIdentifier(ExportID);
@@ -14958,6 +14983,15 @@ end;
 function TNPUnit.GetDefinesAsString: string;
 begin
   Result := FDefines.Text;
+end;
+
+function TNPUnit.parser_SkipTo(Scope: TScope; StopToken: TTokenID): TTokenID;
+begin
+  while true do begin
+    Result := parser_NextToken(Scope);
+    if (Result = StopToken) or (Result = token_eof) then
+      Exit;
+  end;
 end;
 
 initialization

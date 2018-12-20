@@ -338,11 +338,13 @@ type
     FImplicitsTo: TIDPairList;      // self -> dest
     FImplicitsIDTo: TIDPairList;    // self -> dest
     FImplicitsFrom: TIDPairList;    // src -> self
+    FSysImplicitToAny: TIDOperator;    // self -> any
+    FSysImplicitFromAny: TIDOperator;  // any -> self
     // lists of explicits operators
     FExplicitsTo: TIDPairList;
     FExplicitsFrom: TIDPairList;
-    FExplicitToEny: TIDOperator;     // явное вриведенеие типа к любому
-    FExplicitFromEny: TIDOperator;   // явное вриведенеие типа к любому
+    fSysExplicitToAny: TIDOperator;     // явное вриведенеие типа к любому
+    fSysExplicitFromAny: TIDOperator;   // явное вриведенеие типа к любому
 
     FUnarOperators: TUnarOperators;
     FBinarOperators: TBinarOperators;
@@ -415,13 +417,16 @@ type
     procedure OverloadImplicitFrom(const Source: TIDDeclaration); overload;
     procedure OverloadImplicitFrom(const Source, Proc: TIDDeclaration); overload;
 
+    procedure OverloadImplicitToAny(const Op: TIDOperator);
+    procedure OverloadImplicitFromAny(const Op: TIDOperator);
+
     procedure OverloadExplicitTo(const Destination: TIDDeclaration); overload;
     procedure OverloadExplicitTo(const Destination, Proc: TIDDeclaration); overload;
     procedure OverloadExplicitFrom(const Source: TIDDeclaration); overload;
     procedure OverloadExplicitFrom(const Source, Proc: TIDDeclaration); overload;
 
-    procedure OverloadExplicitToEny(const Op: TIDOperator);
-    procedure OverloadExplicitFromEny(const Op: TIDOperator);
+    procedure OverloadExplicitToAny(const Op: TIDOperator);
+    procedure OverloadExplicitFromAny(const Op: TIDOperator);
 
     procedure OverloadUnarOperator(Op: TOperatorID; Destination: TIDDeclaration); overload;
     procedure OverloadUnarOperator(Op: TOperatorID; Declaration: TIDOperator); overload; inline;
@@ -435,8 +440,10 @@ type
     property CopyProc: TIDProcedure read FCopyProc write FCopyProc;
     property FinalProc: TIDProcedure read FFinalProc write FFinalProc;
 
-    property ExplicitToEny: TIDOperator read FExplicitToEny;
-    property ExplicitFromEny: TIDOperator read FExplicitFromEny;
+    property SysExplicitToAny: TIDOperator read fSysExplicitToAny;
+    property SysExplicitFromAny: TIDOperator read fSysExplicitFromAny;
+    property SysImplicitToAny: TIDOperator read FSysImplicitToAny;
+    property SysImplicitFromAny: TIDOperator read fSysImplicitFromAny;
 
     procedure SaveDeclToStream(Stream: TStream; const Package: INPPackage); virtual;
   end;
@@ -2907,6 +2914,7 @@ begin
     if Assigned(Node) then
       Exit(TIDDeclaration(Node.Data));
   end;
+
   Result := nil;
 end;
 
@@ -2917,6 +2925,7 @@ begin
   Node := FImplicitsFrom.Find(Source);
   if Assigned(Node) then
     Exit(TIDDeclaration(Node.Data));
+
   Result := nil;
 end;
 
@@ -3120,20 +3129,20 @@ begin
     ERROR_OPERATOR_ALREADY_OVERLOADED(opExplicit, Source, Proc, TextPosition);
 end;
 
-procedure TIDType.OverloadExplicitFromEny(const Op: TIDOperator);
+procedure TIDType.OverloadExplicitFromAny(const Op: TIDOperator);
 begin
-  if Assigned(FExplicitFromEny) then
+  if Assigned(fSysExplicitFromAny) then
     ERROR_OPERATOR_ALREADY_OVERLOADED(opExplicit, Self, Op, TextPosition);
 
-  FExplicitFromEny := Op;
+  fSysExplicitFromAny := Op;
 end;
 
-procedure TIDType.OverloadExplicitToEny(const Op: TIDOperator);
+procedure TIDType.OverloadExplicitToAny(const Op: TIDOperator);
 begin
-  if Assigned(FExplicitToEny) then
+  if Assigned(fSysExplicitToAny) then
     ERROR_OPERATOR_ALREADY_OVERLOADED(opExplicit, Self, Op, TextPosition);
 
-  FExplicitToEny := Op;
+  fSysExplicitToAny := Op;
 end;
 
 procedure TIDType.OverloadImplicitTo(const Destination: TIDDeclaration);
@@ -3173,6 +3182,22 @@ begin
   Node := FImplicitsIDTo.InsertNode(TIDDeclaration(DestinationID), IntOp);
   if Assigned(Node) then
     AbortWorkInternal(msgOperatorForTypesAlreadyOverloadedFmt, [OperatorFullName(opImplicit), DisplayName, GetDataTypeName(DestinationID)]);
+end;
+
+procedure TIDType.OverloadImplicitToAny(const Op: TIDOperator);
+begin
+  if Assigned(FSysImplicitToAny) then
+    ERROR_OPERATOR_ALREADY_OVERLOADED(opImplicit, Self, Op, TextPosition);
+
+  FSysImplicitToAny := Op;
+end;
+
+procedure TIDType.OverloadImplicitFromAny(const Op: TIDOperator);
+begin
+  if Assigned(FSysImplicitFromAny) then
+    ERROR_OPERATOR_ALREADY_OVERLOADED(opImplicit, Self, Op, TextPosition);
+
+  FSysImplicitFromAny := Op;
 end;
 
 procedure TIDType.SaveDeclToStream(Stream: TStream; const Package: INPPackage);
@@ -4736,7 +4761,7 @@ begin
   OverloadBinarOperator2(opLessOrEqual, Self, SYSUnit._Boolean);
   OverloadBinarOperator2(opGreater, Self, SYSUnit._Boolean);
   OverloadBinarOperator2(opGreaterOrEqual, Self, SYSUnit._Boolean);
-  OverloadExplicitFromEny(SYSUnit._ExplicitEnumFromAny);
+  OverloadExplicitFromAny(SYSUnit._ExplicitEnumFromAny);
 end;
 
 { TIDRecordType }
@@ -5466,14 +5491,18 @@ end;
 constructor TIDProcType.Create(Scope: TScope; const Identifier: TIdentifier);
 begin
   inherited Create(Scope, Identifier);
-  FExplicitFromEny := SYSUnit._ExplicitTProcFromAny;
+  fSysExplicitFromAny := SYSUnit._ExplicitTProcFromAny;
+  FSysImplicitFromAny := SYSUnit._ExplicitTProcFromAny;
+
   FDataTypeID := dtProcType;
 end;
 
 constructor TIDProcType.CreateAsAnonymous(Scope: TScope);
 begin
   inherited CreateAsAnonymous(Scope);
-  FExplicitFromEny := SYSUnit._ExplicitTProcFromAny;
+  fSysExplicitFromAny := SYSUnit._ExplicitTProcFromAny;
+  FSysImplicitFromAny := SYSUnit._ExplicitTProcFromAny;
+
   FDataTypeID := dtProcType;
 end;
 
