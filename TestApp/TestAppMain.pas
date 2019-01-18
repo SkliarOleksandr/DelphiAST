@@ -104,8 +104,8 @@ begin
   FreeAndNil(SYSUnit);
 
   fPKG := TNPPackage.Create('test');
-  //fPKG.AddUnitSearchPath(Edit1.Text);
-  fPKG.AddUnitSearchPath(ExtractFilePath(Application.ExeName));
+  fPKG.AddUnitSearchPath(Edit1.Text);
+  //fPKG.AddUnitSearchPath(ExtractFilePath(Application.ExeName));
   fPKG.InitUnits;
   fPKG.Target := 'WIN-X86';
   fPKG.Defines.Add('CPUX86');

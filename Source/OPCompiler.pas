@@ -145,7 +145,6 @@ type
 
     FConsts: TConstSpace;              // список нетривиальных констант (массивы, структуры)
     FCompiled: Boolean;
-    FRCPathCount: UInt32;              // кол-во проходов increfcount/decrefcount для деклараций
     FInitProc: TIDProcedure;
     FInitProcExplicit: Boolean;        // определена ли явно секция init
     FFinalProc: TIDProcedure;
@@ -269,7 +268,8 @@ type
     procedure HINT_RESULT_EXPR_IS_NOT_USED(const Expr: TIDExpression);
     procedure HINT_TYPE_DELETE_UNUSED(Decl: TIDDeclaration);
     procedure HINT_PROC_DELETE_UNUSED(Decl: TIDDeclaration);
-  private
+  protected
+    FRCPathCount: UInt32;              // кол-во проходов increfcount/decrefcount для деклараций
     //========================================================================================================
     function ProcSpec_Inline(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
     function ProcSpec_Export(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
@@ -697,6 +697,7 @@ type
     function GetTMPVarExpr(SContext: PSContext; DataType: TIDType; VarFlags: TVariableFlags): TIDExpression; overload; inline;
     function GetTMPVarExpr(SContext: PSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline;
     function GetTMPVarExpr(var EContext: TEContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline;
+    property Parser: TDelphiParser read FParser;
   public
     ////////////////////////////////////////////////////////////////////////////
     constructor Create(const Package: INPPackage; const Source: string); virtual;
@@ -712,6 +713,7 @@ type
     procedure GetINFDeclarations(Items: TIDDeclarationList);
 
     function Compile(RunPostCompile: Boolean = True): TCompilerResult; virtual;
+
     function CompileIntfOnly: TCompilerResult; virtual;
 
     procedure Optimize;
@@ -6480,11 +6482,6 @@ procedure TNPUnit.CheckLeftOperand(const Status: TEContext.TRPNStatus);
 begin
   if Status <> rpOperand then
     ERROR_EXPRESSION_EXPECTED;
-end;
-
-function NeedRValue(Op: TOperatorID): Boolean; inline;
-begin
-  Result := (Op >= opPeriod) and (Op <> opPostInc) and (Op <> opPostDec);
 end;
 
 function TNPUnit.ParseExpression(Scope: TScope; var EContext: TEContext; SrartToken: TTokenID): TTokenID;

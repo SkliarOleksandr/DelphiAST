@@ -193,6 +193,7 @@ const
   {opLogicalXor}           opBinary
   );
 
+function NeedRValue(Op: TOperatorID): Boolean; inline;
 
 var
   _operators: TStringList = nil;
@@ -283,6 +284,12 @@ const
   {opLogicalOr}       'or',
   {opLogicalXor}      'xor'
   );
+
+
+function NeedRValue(Op: TOperatorID): Boolean; inline;
+begin
+  Result := (Op >= opPeriod) and (Op <> opPostInc) and (Op <> opPostDec);
+end;
 
 
 function OperatorFullName(&Operator: TOperatorID): string;

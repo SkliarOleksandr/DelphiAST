@@ -27,7 +27,9 @@ uses
   OPCompiler in '..\Source\OPCompiler.pas',
   SystemUnit in '..\Source\SystemUnit.pas',
   iDStringParser in '..\Source\Parser\iDStringParser.pas',
-  OPCompiler.Parser in '..\Source\Parser\OPCompiler.Parser.pas';
+  OPCompiler.Parser in '..\Source\Parser\OPCompiler.Parser.pas',
+  AST.Classes in '..\Source\AST.Classes.pas',
+  AST.Delphi.Parser in '..\Source\AST.Delphi.Parser.pas';
 
 {$R *.res}
 

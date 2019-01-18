@@ -34,8 +34,6 @@ type
     constructor Create();
   end;
 
-
-  TIDItem = class;
   TIDList = class;
   TIDPairList = class;
   TIDDeclaration = class;
@@ -151,14 +149,6 @@ type
     property Defines: TDefines read GetDefines;
     property PointerSize: Integer read GetPointerSize;
     property NativeIntSize: Integer read GetNativeIntSize;
-  end;
-
-
-  TIDItem = class(TObject)
-  private
-    FItemType: TIDItemType;
-  public
-    property ItemType: TIDItemType read FItemType write FItemType;
   end;
 
   TVisibility = (vLocal, vPublic, vProtected, vStrictProtected, vPrivate, vStrictPrivate);

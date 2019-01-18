@@ -880,8 +880,8 @@ begin
   RegisterOrdinal('UInt64', dtUInt64, 0, MaxUInt64);
   RegisterOrdinal('NativeInt', dtNativeInt, MinInt64, MaxInt64);
   RegisterOrdinal('NativeUInt', dtNativeUInt, 0, MaxUInt64);
-  RegisterType('Float32', TIDType, dtFloat32);
-  RegisterType('Float64', TIDType, dtFloat64);
+  RegisterType('Single', TIDType, dtFloat32);
+  RegisterType('Double', TIDType, dtFloat64);
 
   //===============================================================
   RegisterOrdinal('Boolean', dtBoolean, 0, 1);
@@ -952,8 +952,8 @@ begin
 
   // Delphi system aliases
   RegisterTypeAlias('Extended', _Float64);
-  RegisterTypeAlias('Double', _Float64);
-  RegisterTypeAlias('Single', _Float32);
+  //RegisterTypeAlias('Double', _Float64);
+  //RegisterTypeAlias('Single', _Float32);
   RegisterTypeAlias('Currency', _Float64); // Let it be for now
 
   RegisterTypeAlias('LongInt', _Int32);
