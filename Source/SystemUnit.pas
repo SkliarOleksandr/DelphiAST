@@ -5,7 +5,9 @@ interface
 {$i compilers.inc}
 
 uses Classes, SysUtils, OPCompiler, NPCompiler.Classes, NPCompiler.DataTypes, IL.Types,
-     NPCompiler.Operators, NPCompiler.Utils, NPCompiler.Intf;
+     NPCompiler.Operators, NPCompiler.Utils, NPCompiler.Intf,
+     AST.Classes,
+     AST.Project;
      // System
 
 type
@@ -103,7 +105,7 @@ type
     function AddSysCTFunction(const SysFuncClass: TIDSysCompileFunctionClass; const Name: string; ResultType: TIDType): TIDSysCompileFunction;
   public
     ////////////////////////////////////////////////////////////////////////////////////////////////////
-    constructor Create(const Package: INPPackage; const Source: string); override;
+    constructor Create(const Project: IASTProject; const Source: string); override;
     function Compile(RunPostCompile: Boolean = True): TCompilerResult; override;
     function CompileIntfOnly: TCompilerResult; override;
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -850,9 +852,9 @@ begin
   end;
 end;
 
-constructor TSYSTEMUnit.Create(const Package: INPPackage; const Source: string);
+constructor TSYSTEMUnit.Create(const Project: IASTProject; const Source: string);
 begin
-  inherited Create(Package, Source);
+  inherited Create(Project, Source);
   //_ID := 'system';
 
   // nil constant

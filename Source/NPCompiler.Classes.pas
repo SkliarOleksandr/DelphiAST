@@ -5,8 +5,9 @@ interface
 {$I compilers.inc}
 
 uses SysUtils, Classes, StrUtils, NPCompiler.DataTypes, Math, NPCompiler.Messages, iDStringParser, Generics.Collections,
-     Variants, NPCompiler.Operators, AVL, NPCompiler.Utils, IL.Types, NPCompiler.Errors, NPCompiler.Intf, NPCompiler.Options;
-
+     Variants, NPCompiler.Operators, AVL, NPCompiler.Utils, IL.Types, NPCompiler.Errors, NPCompiler.Intf,
+     NPCompiler.Options,
+     AST.Project;
 type
 
   ECompilerAbort = class(EAbort)
@@ -108,7 +109,7 @@ type
     CompileSkip
   );
 
-  INPPackage = interface
+  INPPackage = interface(IASTProject)
     ['{32BDB0E9-59FD-4116-9B7F-6B2DEAB26F59}']
     function GetStringConstant(const Value: string): Integer; overload;
     function GetStringConstant(const Value: TIDStringConstant): Integer; overload;

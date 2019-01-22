@@ -13,7 +13,8 @@ uses SysUtils, Classes, StrUtils, Types, OPCompiler.Parser, NPCompiler.Classes, 
      NPCompiler.Intf,
      NPCompiler.Contexts,
      NPCompiler.ExpressionContext,
-     NPCompiler.Options;  // system, dateutils, sysinit
+     AST.Classes,
+     NPCompiler.Options, AST.Project;  // system, dateutils, sysinit
 
 type
 
@@ -110,7 +111,7 @@ type
   end;
 
 
-  TNPUnit = class(TObject)
+  TNPUnit = class(TASTModule)
   type
     TVarModifyPlace = (vmpAssignment, vmpPassArgument);
     TBENodesPool = TPool<TBoolExprNode>;
@@ -700,7 +701,7 @@ type
     property Parser: TDelphiParser read FParser;
   public
     ////////////////////////////////////////////////////////////////////////////
-    constructor Create(const Package: INPPackage; const Source: string); virtual;
+    constructor Create(const Project: IASTProject; const Source: string = ''); override;
     destructor Destroy; override;
     ////////////////////////////////////////////////////////////////////////////
     procedure SaveConstsToStream(Stream: TStream); // сохраняет сложные константы модуля
@@ -4480,12 +4481,12 @@ begin
   end;
 end;
 
-constructor TNPUnit.Create(const Package: INPPackage; const Source: string);
+constructor TNPUnit.Create(const Project: IASTProject; const Source: string);
 var
   Scope: TScope;
 begin
   FDefines := TDefines.Create();
-  FPackage := Package;
+  FPackage := Project as INPPackage;
   FParser := TDelphiParser.Create(Source);
   FMessages := TCompilerMessages.Create;
   //FVisibility := vPublic;

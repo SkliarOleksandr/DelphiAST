@@ -40,15 +40,15 @@ object frmTestAppMain: TfrmTestAppMain
     TabOrder = 0
     Text = 'C:\Program Files (x86)\Embarcadero\Studio\20.0\source\'
   end
-  object Button1: TButton
+  object btnASTParse: TButton
     Left = 416
     Top = 20
     Width = 115
     Height = 25
     Anchors = [akTop, akRight]
-    Caption = 'Index Sources'
+    Caption = 'AST Parse'
     TabOrder = 1
-    OnClick = Button1Click
+    OnClick = btnASTParseClick
   end
   object Memo1: TMemo
     Left = 8

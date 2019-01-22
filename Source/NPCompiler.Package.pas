@@ -4,13 +4,15 @@ interface
 
 uses System.SysUtils, System.Classes, System.Types, Generics.Collections, System.IOUtils,
      AVL, NPCompiler.DataTypes, NPCompiler.Classes, NPCompiler.Options, NPLCompiler.Targets,
-     NPCompiler.Intf, NPCompiler.Utils, OPCompiler, SystemUnit, NPCompiler.Evaluater;
+     NPCompiler.Intf, NPCompiler.Utils, OPCompiler, SystemUnit,
+     AST.Classes,
+     NPCompiler.Evaluater;
 
 type
   TUnits = TList<TObject>;
   TTypes = TList<TIDType>;
 
-  TNPPackage = class(TInterfacedObject, INPPackage)
+  TNPPackage = class(TASTProject, INPPackage)
   type
     TStrConstKey = record
       StrTypeID: TDataTypeID;
@@ -35,7 +37,7 @@ type
     FOptions: TPackageOptions;
     FEvaluater: INPCEvaluater;
     function GetIncludeDebugInfo: Boolean;
-    function OpenUnit(const UnitName: string): TNPUnit;
+    function OpenUnit(const UnitName: string): TASTModule;
     function RefCount: Integer;
     function GetRTTICharset: TRTTICharset;
     function GetUnitsCount: Integer;
@@ -52,6 +54,8 @@ type
     procedure SetTarget(const Value: string);
     procedure InitUnits;
     class function StrListCompare(const Left, Right: TStrConstKey): NativeInt; static;
+  protected
+    function GetUnitClass: TASTUnitClass; override;
   public
     constructor Create(const Name: string; RTTICharset: TRTTICharset = RTTICharsetASCII);
     destructor Destroy; override;
@@ -181,6 +185,11 @@ begin
       Exit;
   end;
   Result := nil;
+end;
+
+function TNPPackage.GetUnitClass: TASTUnitClass;
+begin
+  Result := TNPUnit;
 end;
 
 function TNPPackage.GetUnitsCount: Integer;
@@ -356,14 +365,16 @@ begin
   inherited;
 end;
 
-function TNPPackage.OpenUnit(const UnitName: string): TNPUnit;
+function TNPPackage.OpenUnit(const UnitName: string): TASTModule;
 var
   Stream: TStringStream;
+  UnitClass: TASTUnitClass;
 begin
   Stream := TStringStream.Create('');
   try
     StringStreamLoadFromFile(UnitName, Stream);
-    Result := TNPUnit.Create(Self, Stream.DataString);
+    UnitClass := GetUnitClass();
+    Result := UnitClass.Create(Self, Stream.DataString);
   finally
     Stream.Free;
   end;

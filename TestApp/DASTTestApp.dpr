@@ -29,7 +29,9 @@ uses
   iDStringParser in '..\Source\Parser\iDStringParser.pas',
   OPCompiler.Parser in '..\Source\Parser\OPCompiler.Parser.pas',
   AST.Classes in '..\Source\AST.Classes.pas',
-  AST.Delphi.Parser in '..\Source\AST.Delphi.Parser.pas';
+  AST.Delphi.Parser in '..\Source\AST.Delphi.Parser.pas',
+  AST.Project in '..\Source\AST.Project.pas',
+  AST.Delphi.Project in '..\Source\AST.Delphi.Project.pas';
 
 {$R *.res}
 

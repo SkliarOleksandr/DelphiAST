@@ -139,6 +139,8 @@
         <DCCReference Include="..\Source\Parser\OPCompiler.Parser.pas"/>
         <DCCReference Include="..\Source\AST.Classes.pas"/>
         <DCCReference Include="..\Source\AST.Delphi.Parser.pas"/>
+        <DCCReference Include="..\Source\AST.Project.pas"/>
+        <DCCReference Include="..\Source\AST.Delphi.Project.pas"/>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
             <CfgParent>Base</CfgParent>

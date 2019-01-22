@@ -20,7 +20,7 @@ type
     function AddExpr: TASTExpression;
   end;
 
-  TDelphiASTUnit = class(TNPUnit)
+  TASTDelphiUnit = class(TNPUnit)
   private
     function parser_NextToken(var ACtx: TASTContext): TTokenID; overload;
 
@@ -36,14 +36,14 @@ uses NPCompiler.Operators;
 
 { TDelphiASTUnit }
 
-function TDelphiASTUnit.parser_NextToken(var ACtx: TASTContext): TTokenID;
+function TASTDelphiUnit.parser_NextToken(var ACtx: TASTContext): TTokenID;
 begin
   Result := TTokenID(Parser.NextTokenID);
   if Result >= token_cond_define then
     Result := ParseCondStatements(ACtx.Scope, Result);
 end;
 
-function TDelphiASTUnit.Compile(RunPostCompile: Boolean): TCompilerResult;
+function TASTDelphiUnit.Compile(RunPostCompile: Boolean): TCompilerResult;
 var
   Token: TTokenID;
   Scope: TScope;
@@ -168,7 +168,7 @@ begin
 
 end;
 
-function TDelphiASTUnit.ParseExitStatementAST(var ACtx: TASTContext): TTokenID;
+function TASTDelphiUnit.ParseExitStatementAST(var ACtx: TASTContext): TTokenID;
 var
   ExitExpr: TASTExpression;
   ASTResult: TASTKWExit;
@@ -188,7 +188,7 @@ begin
   end;
 end;
 
-function TDelphiASTUnit.ParseExpressionAST(var ACtx: TASTContext; var EContext: TEContext): TTokenID;
+function TASTDelphiUnit.ParseExpressionAST(var ACtx: TASTContext; var EContext: TEContext): TTokenID;
 var
   ID: TIdentifier;
   Status: TEContext.TRPNStatus;
@@ -206,11 +206,12 @@ begin
       token_openround: begin
         Inc(RoundCount);
         EContext.RPNPushOpenRaund;
-        ASTE.AddSubItem(TASTExprOpenRound);
+        ASTE.AddSubItem(TASTEIOpenRound);
         Status := rprOk;
       end;
       token_closeround: begin
         Dec(RoundCount);
+        ASTE.AddSubItem(TASTEICloseRound);
         if RoundCount < 0 then
         begin
           if EContext.EPosition <> ExprLValue then
