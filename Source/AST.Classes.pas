@@ -2,7 +2,7 @@ unit AST.Classes;
 
 interface
 
-uses AST.Project;
+uses iDStringParser, AST.Project;
 
 type
   TASTItemTypeID = Integer;
@@ -32,6 +32,8 @@ type
   private
     fFirstChild: TASTItem;
     fLastChild: TASTItem;
+  public
+    procedure AddChild(Item: TASTItem);
   end;
 
   TASTModule = class
@@ -41,13 +43,13 @@ type
     constructor Create(const Project: IASTProject; const Source: string = ''); virtual;
   end;
 
-  TASTNamedItem = class(TASTItem)
+  TASTDeclaration = class(TASTItem)
   private
-    fName: string;
+    fID: TIdentifier;
   public
-    property Name: string read fName write fName;
+    property ID: TIdentifier read fID write fID;
+    property Name: string read fID.Name;
   end;
-
 
   TASTExpressionItem = class(TASTItem)
   end;
@@ -85,7 +87,7 @@ type
     //fFunc: TASt
   end;
 
-  TASTVariable = class(TASTNamedItem)
+  TASTVariable = class(TASTDeclaration)
 
   end;
 
@@ -96,18 +98,33 @@ type
     property Expression: TASTExpression read fExpression write fExpression;
   end;
 
-  TASTFunc = class(TASTNamedItem)
+  TASTBody = class(TASTParentItem)
 
   end;
 
-  TASTType = class(TASTNamedItem)
+  TASTFunc = class(TASTDeclaration)
+  private
+    fBody: TASTBody;
+  protected
+    property Body: TASTBody read fBody;
+  end;
+
+  TASTType = class(TASTDeclaration)
 
   end;
 
 
 implementation
 
-uses iDStringParser;
+procedure TASTParentItem.AddChild(Item: TASTItem);
+begin
+  if Assigned(fLastChild) then
+    fLastChild.Next := Item
+  else begin
+    fFirstChild := Item;
+    fLastChild := Item;
+  end;
+end;
 
 { TASTExpression }
 
@@ -116,13 +133,7 @@ var
   Item: TASTExpressionItem;
 begin
   Item := ItemClass.Create();
-  if Assigned(fLastChild) then
-    fLastChild.Next := Item
-  else begin
-    fFirstChild := Item;
-    fLastChild := Item;
-  end;
-
+  AddChild(Item);
 end;
 
 { TASTUnit }

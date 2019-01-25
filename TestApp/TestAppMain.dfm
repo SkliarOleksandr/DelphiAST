@@ -102,16 +102,13 @@ object frmTestAppMain: TfrmTestAppMain
       ''
       'interface'
       ''
-      ''
-      'type'
-      '{ Typed-file and untyped-file record }'
-      ''
-      
-        '{$IF (defined(CPUX86) or defined(CPUX64)) and not defined(ARITH_' +
-        'USE_LIBM)}    '
-      '{$ENDIF}'
-      ''
       'implementation'
+      ''
+      'function TTT(a, b: int32);'
+      'begin'
+      '  Return a + b;  '
+      '//if a > b then  '
+      'end;'
       ''
       'end.'
       '')

@@ -70,8 +70,8 @@ begin
   FreeAndNil(SYSUnit);
 
   Prj := TASTDelphiProject.Create('test');
-  Prj.AddUnitSearchPath(Edit1.Text);
-  //fPKG.AddUnitSearchPath(ExtractFilePath(Application.ExeName));
+  //Prj.AddUnitSearchPath(Edit1.Text);
+  Prj.AddUnitSearchPath(ExtractFilePath(Application.ExeName));
   Prj.InitUnits;
   Prj.Target := 'WIN-X86';
   Prj.Defines.Add('CPUX86');

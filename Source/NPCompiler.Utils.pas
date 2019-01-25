@@ -95,7 +95,6 @@ type
     property OnPopError: TProc read fOnPopError write fOnPopError;
   end;
 
-
   TPooledObject = class
   private
     FPrevObect: TPooledObject;

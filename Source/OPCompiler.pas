@@ -271,6 +271,7 @@ type
     procedure HINT_PROC_DELETE_UNUSED(Decl: TIDDeclaration);
   protected
     FRCPathCount: UInt32;              // кол-во проходов increfcount/decrefcount для деклараций
+    property BENodesPool: TBENodesPool read FBENodesPool;
     //========================================================================================================
     function ProcSpec_Inline(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
     function ProcSpec_Export(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
@@ -507,7 +508,7 @@ type
     function ParseGenericTypeSpec(Scope: TScope; const ID: TIdentifier; out DataType: TIDType): TTokenID;
     // функция парсинга название процедуры/метода
     function ParseProcName(var Scope: TScope; out Name: TIdentifier; var Struct: TIDStructure; out ProcScope: TProcScope; out GenericParams: TIDTypeList): TTokenID;
-    function ParseProcBody(Proc: TIDProcedure; Platform: TIDPlatform): TTokenID;
+    function ParseProcBody(Proc: TIDProcedure; Platform: TIDPlatform): TTokenID; virtual;
     function ParseProperty(Struct: TIDStructure): TTokenID;
     function ParseConstSection(Scope: TScope): TTokenID;
     function ParseParameters(Scope: TScope; InMacro: Boolean = False): TTokenID;
@@ -542,7 +543,7 @@ type
     class procedure AddSelfParameter(Params: TScope; Struct: TIDStructure; ClassMethod: Boolean); static; inline;
     class function AddResultParameter(Params: TScope): TIDVariable; static; inline;
     // statemets
-    function ParseStatements(Scope: TScope; SContext: PSContext; IsBlock: Boolean): TTokenID;
+    function ParseStatements(Scope: TScope; SContext: PSContext; IsBlock: Boolean): TTokenID; virtual;
     function ParseExitStatement(Scope: TScope; SContext: PSContext): TTokenID;
     function ParseEntryCall(Scope: TScope; CallExpr: TIDCallExpression; var EContext: TEContext): TTokenID; overload;
     function ParseEntryCall(Scope: TScope; SContext: PSContext; out Args: TIDExpressions): TTokenID; overload;
@@ -588,7 +589,7 @@ type
     function ParseGenericsHeader(Params: TScope; out Args: TIDTypeList): TTokenID;
     function ParseGenericsArgs(Scope: TScope; SContext: PSContext; out Args: TIDExpressions): TTokenID;
     function ParseGenericProcRepeatedly(Scope: TScope; GenericProc, Proc: TIDProcedure; Struct: TIDStructure): TTokenID;
-    function ParseProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure = nil; Platform: TIDPlatform = nil): TTokenID;
+    function ParseProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure = nil; Platform: TIDPlatform = nil): TTokenID; virtual;
     function ParseOperator(Scope: TScope; Struct: TIDStructure): TTokenID;
     function ParseAnonymousProc(Scope: TScope; var EContext: TEContext; SContext: PSContext; ProcType: TTokenID): TTokenID;
     function GetWeakRefType(Scope: TScope; SourceDataType: TIDType): TIDWeekRef;
@@ -876,6 +877,7 @@ type
 
   function GetUnit(const SContext: PSContext): TNPUnit; overload;
   function GetUnit(const EContext: TEContext): TNPUnit; overload;
+  function ScopeToVarList(Scope: TScope; SkipFirstCount: Integer): TVariableList;
 
 implementation
 
@@ -892,9 +894,6 @@ function GetUnit(const EContext: TEContext): TNPUnit;
 begin
   Result := TNPUnit(EContext.SContext.Proc.DeclUnit);
 end;
-
-
-function ScopeToVarList(Scope: TScope; SkipFirstCount: Integer): TVariableList; forward;
 
 procedure StopCompile(CompileSuccess: Boolean);
 begin
@@ -6750,7 +6749,7 @@ begin
     Result := ParseConstExpression(Scope, Expr, parser_NextToken(Scope), ExprNested);
     CheckExpression(Expr);
     if Result = token_period then begin
-      Bound := TIDRangeType.CreateAsAnonymous(Scope);
+     Bound := TIDRangeType.CreateAsAnonymous(Scope);
       ParseRangeType(Scope, Expr, TIDRangeType(Bound));
       AddType(Bound);
     end else begin
@@ -8386,10 +8385,6 @@ begin
         parser_NextToken(Scope);
         Result := ParseVarSection(Scope, vLocal, nil, False);
       end;
-//      token_ref: begin
-//        parser_NextToken(Scope);
-//        Result := ParseVarSection(Scope, vLocal, nil, False, True);
-//      end;
       token_weak: begin
         parser_NextToken(Scope);
         Result := ParseVarSection(Scope, vLocal, nil, True);
