@@ -5,7 +5,8 @@ interface
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, System.Generics.Collections, NPCompiler.Package,
-  NPCompiler.Intf, OPCompiler, NPCompiler.Classes, SynEdit, SynEditHighlighter, SynEditCodeFolding, SynHighlighterPas, AST.Delphi.Project;
+  NPCompiler.Intf, OPCompiler, NPCompiler.Classes, SynEdit, SynEditHighlighter, SynEditCodeFolding, SynHighlighterPas, AST.Delphi.Project,
+  Vcl.ComCtrls;
 
 type
   TSourceFileInfo = record
@@ -21,10 +22,13 @@ type
     Label1: TLabel;
     btnASTParse: TButton;
     Memo1: TMemo;
-    Label2: TLabel;
     Button2: TButton;
-    edUnit: TSynEdit;
     SynPasSyn1: TSynPasSyn;
+    PageControl1: TPageControl;
+    tsSource: TTabSheet;
+    edUnit: TSynEdit;
+    tsAST: TTabSheet;
+    tvAST: TTreeView;
     procedure btnASTParseClick(Sender: TObject);
     procedure Button2Click(Sender: TObject);
   private
@@ -41,9 +45,17 @@ var
 implementation
 
 uses
-  System.IOUtils, IdCTypes, System.Types, SystemUnit, AST.Delphi.Parser;
+  System.IOUtils, IdCTypes, System.Types, SystemUnit, AST.Delphi.Parser, AST.Classes;
 
 {$R *.dfm}
+
+
+procedure ASTToTreeView(ASTUnit: TASTDelphiUnit; TreeView: TTreeView);
+var
+  Node: TTreeNode;
+begin
+  Node := TreeView.Items.AddChild(nil, 'unit ' + ASTUnit.Name);
+end;
 
 procedure CompilerMessagesToStrings(const Messages: ICompilerMessages; Strings: TStrings);
 var
@@ -57,10 +69,9 @@ begin
   end;
 end;
 
-
 procedure TfrmTestAppMain.btnASTParseClick(Sender: TObject);
 var
-  UN: TNPUnit;
+  UN: TASTDelphiUnit;
   Msg: TStrings;
   Prj: INPPackage;
   CResult: TCompilerResult;
@@ -90,6 +101,8 @@ begin
       Msg.Add('compile success')
     else
       Msg.Add('compile fail');
+
+    ASTToTreeView(UN, tvAST);
 
     CompilerMessagesToStrings(Prj.Messages, Msg);
 
@@ -137,8 +150,8 @@ begin
   FreeAndNil(SYSUnit);
 
   fPKG := TNPPackage.Create('test');
-  fPKG.AddUnitSearchPath(Edit1.Text);
-  //fPKG.AddUnitSearchPath(ExtractFilePath(Application.ExeName));
+  //fPKG.AddUnitSearchPath(Edit1.Text);
+  fPKG.AddUnitSearchPath(ExtractFilePath(Application.ExeName));
   fPKG.InitUnits;
   fPKG.Target := 'WIN-X86';
   fPKG.Defines.Add('CPUX86');
@@ -152,7 +165,7 @@ begin
   Msg := TStringList.Create;
   try
     Msg.Add('===================================================================');
-    CResult := fPKG.CompileInterfacesOnly;
+    CResult := fPKG.Compile;
     if CResult = CompileSuccess then
       Msg.Add('compile success')
     else

@@ -36,6 +36,8 @@ type
     function ParseStatements(Scope: TScope; var SContext: TASTSContext; IsBlock: Boolean): TTokenID; overload;
   public
     function Compile(RunPostCompile: Boolean = True): TCompilerResult; override;
+    function CompileIntfOnly: TCompilerResult; override;
+    procedure CheckIncompletedProcs(ProcSpace: PProcSpace); override;
   end;
 
 implementation
@@ -168,6 +170,12 @@ begin
   end;
 end;
 
+procedure TASTDelphiUnit.CheckIncompletedProcs(ProcSpace: PProcSpace);
+begin
+//  inherited;
+
+end;
+
 function TASTDelphiUnit.Compile(RunPostCompile: Boolean): TCompilerResult;
 var
   Token: TTokenID;
@@ -292,6 +300,11 @@ begin
 
 end;
 
+function TASTDelphiUnit.CompileIntfOnly: TCompilerResult;
+begin
+  Result := Compile;
+end;
+
 function TASTDelphiUnit.ParseExitStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
 var
   ExitExpr: TASTExpression;
@@ -305,6 +318,7 @@ begin
     if not Assigned(SContext.Proc.ResultType) then
       AbortWork(sReturnValueNotAllowedForProc, parser_Position);
 
+    parser_NextToken(Scope);
     InitEContext(EContext, nil, ExprNested);
     Result := ParseExpression(Scope, SContext, EContext, ExitExpr);
     ASTItem.Expression := ExitExpr;
@@ -500,7 +514,7 @@ begin
           Break;
         if parser_IdentifireType = itIdentifier then
         begin
-          //Result := ParseMember(Scope, Expr, EContext);
+          Result := ParseMember(Scope, Expr, EContext);
           // если результат = nil значит это был вызов функции и все
           // необходимые параметры погружены в стек, поэтому идем дальше
           if not Assigned(Expr) then
@@ -587,7 +601,7 @@ begin
       end;
       token_begin: begin
         Proc.FirstBodyLine := parser_Line;
-        //Proc.IL := TIL.Create(Proc);
+        TASTDelphiProc(Proc).fBody := TASTBody.Create;
         //SContext.Initialize;
         //SContext.IL := TIL(Proc.IL);
         SContext.Proc := TASTDelphiProc(Proc);

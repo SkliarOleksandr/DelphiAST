@@ -69,13 +69,14 @@ type
     procedure Clear;
     property IncludeDebugInfo: Boolean read GetIncludeDebugInfo write SetIncludeDebugInfo;
     property RTTICharset: TRTTICharset read GetRTTICharset write SetRTTICharset;
+    property Units: TUnits read FUnits;
     function GetStringConstant(const Value: string): Integer; overload;
     function GetStringConstant(const StrConst: TIDStringConstant): Integer; overload;
     function FindUnitFile(const UnitName: string): string;
     function UsesUnit(const UnitName: string; AfterUnit: TObject): TObject;
     function GetMessages: ICompilerMessages;
-    function Compile: TCompilerResult;
-    function CompileInterfacesOnly: TCompilerResult;
+    function Compile: TCompilerResult; virtual;
+    function CompileInterfacesOnly: TCompilerResult; virtual;
     property Evaluater: INPCEvaluater read FEvaluater write FEvaluater;
   end;
 

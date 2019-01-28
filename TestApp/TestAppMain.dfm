@@ -24,13 +24,6 @@ object frmTestAppMain: TfrmTestAppMain
     Height = 13
     Caption = 'Delphi Source Path'
   end
-  object Label2: TLabel
-    Left = 8
-    Top = 207
-    Width = 19
-    Height = 13
-    Caption = 'Unit'
-  end
   object Edit1: TEdit
     Left = 8
     Top = 24
@@ -54,7 +47,7 @@ object frmTestAppMain: TfrmTestAppMain
     Left = 8
     Top = 51
     Width = 619
-    Height = 150
+    Height = 118
     Anchors = [akLeft, akTop, akRight]
     Lines.Strings = (
       'Memo1')
@@ -70,49 +63,74 @@ object frmTestAppMain: TfrmTestAppMain
     TabOrder = 3
     OnClick = Button2Click
   end
-  object edUnit: TSynEdit
-    Left = 8
-    Top = 223
-    Width = 617
-    Height = 386
-    Anchors = [akLeft, akTop, akRight, akBottom]
-    Font.Charset = DEFAULT_CHARSET
-    Font.Color = clWindowText
-    Font.Height = -13
-    Font.Name = 'Courier New'
-    Font.Style = []
+  object PageControl1: TPageControl
+    AlignWithMargins = True
+    Left = 3
+    Top = 172
+    Width = 629
+    Height = 441
+    ActivePage = tsSource
+    Align = alBottom
     TabOrder = 4
-    CodeFolding.GutterShapeSize = 11
-    CodeFolding.CollapsedLineColor = clGrayText
-    CodeFolding.FolderBarLinesColor = clGrayText
-    CodeFolding.IndentGuidesColor = clGray
-    CodeFolding.IndentGuides = True
-    CodeFolding.ShowCollapsedLine = False
-    CodeFolding.ShowHintMark = True
-    UseCodeFolding = False
-    Gutter.Font.Charset = DEFAULT_CHARSET
-    Gutter.Font.Color = clWindowText
-    Gutter.Font.Height = -11
-    Gutter.Font.Name = 'Courier New'
-    Gutter.Font.Style = []
-    Gutter.ShowLineNumbers = True
-    Highlighter = SynPasSyn1
-    Lines.Strings = (
-      'unit TestUnit1;'
-      ''
-      'interface'
-      ''
-      'implementation'
-      ''
-      'function TTT(a, b: int32);'
-      'begin'
-      '  Return a + b;  '
-      '//if a > b then  '
-      'end;'
-      ''
-      'end.'
-      '')
-    FontSmoothing = fsmNone
+    object tsSource: TTabSheet
+      Caption = 'Source'
+      object edUnit: TSynEdit
+        Left = 0
+        Top = 0
+        Width = 621
+        Height = 413
+        Align = alClient
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -13
+        Font.Name = 'Courier New'
+        Font.Style = []
+        TabOrder = 0
+        CodeFolding.GutterShapeSize = 11
+        CodeFolding.CollapsedLineColor = clGrayText
+        CodeFolding.FolderBarLinesColor = clGrayText
+        CodeFolding.IndentGuidesColor = clGray
+        CodeFolding.IndentGuides = True
+        CodeFolding.ShowCollapsedLine = False
+        CodeFolding.ShowHintMark = True
+        UseCodeFolding = False
+        Gutter.Font.Charset = DEFAULT_CHARSET
+        Gutter.Font.Color = clWindowText
+        Gutter.Font.Height = -11
+        Gutter.Font.Name = 'Courier New'
+        Gutter.Font.Style = []
+        Gutter.ShowLineNumbers = True
+        Highlighter = SynPasSyn1
+        Lines.Strings = (
+          'unit TestUnit1;'
+          ''
+          'interface'
+          ''
+          'implementation'
+          ''
+          'function TTT(a, b: Integer): Integer;'
+          'begin'
+          '  Exit(a + b);   '
+          'end;'
+          ''
+          'end.'
+          '')
+        FontSmoothing = fsmNone
+      end
+    end
+    object tsAST: TTabSheet
+      Caption = 'AST'
+      ImageIndex = 1
+      object tvAST: TTreeView
+        Left = 0
+        Top = 0
+        Width = 621
+        Height = 413
+        Align = alClient
+        Indent = 19
+        TabOrder = 0
+      end
+    end
   end
   object SynPasSyn1: TSynPasSyn
     Options.AutoDetectEnabled = False

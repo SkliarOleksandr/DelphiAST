@@ -383,7 +383,7 @@ type
     procedure CheckLeftOperand(const Status: TEContext.TRPNStatus); inline;
     procedure CheckEmptyExpression(Expression: TIDExpression); inline;
     procedure CheckArrayExpression(Expression: TIDExpression); inline;
-    procedure CheckIncompletedProcs(ProcSpace: PProcSpace);
+    procedure CheckIncompletedProcs(ProcSpace: PProcSpace); virtual;
     procedure CheckIncompletedIntfProcs(ClassType: TIDClass);
     procedure StaticCheckBounds(ConstValue: TIDConstant; Decl: TIDDeclaration; DimNumber: Integer);
     procedure CheckIncompleteFwdTypes;
