@@ -741,6 +741,9 @@ type
     function CompileProcDecl(Section: TUnitSection; const Source: string; out Proc: TIDProcedure): ICompilerMessages;
     function CompileMethodDecl(Struct: TIDStructure; const Source: string; out Proc: TIDProcedure): ICompilerMessages;
     property Source: string read GetSource;
+    property TypeSpace: TTypeSpace read FTypeSpace;
+    property VarSpace: TVarSpace read FVarSpace;
+    property ProcSpace: TProcSpace read FProcSpace;
   end;
 
   TIDSysRuntimeFunction = class(TIDBuiltInFunction)

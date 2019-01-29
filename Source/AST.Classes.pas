@@ -18,9 +18,12 @@ type
   private
     fNext: TASTItem;
     function GetItemTypeID: TASTItemTypeID; virtual; abstract;
+  protected
+    function GetDisplayName: string; virtual;
   public
     property TypeID: TASTItemTypeID read GetItemTypeID;
     property Next: TASTItem read fNext write fNext;
+    property DisplayName: string read GetDisplayName;
   end;
 
   TASTProject = class(TInterfacedObject, IASTProject)
@@ -32,8 +35,12 @@ type
   private
     fFirstChild: TASTItem;
     fLastChild: TASTItem;
+  protected
+    function GetDisplayName: string; override;
   public
     procedure AddChild(Item: TASTItem);
+    property FirstChild: TASTItem read fFirstChild;
+    property LastChild: TASTItem read fLastChild;
   end;
 
   TASTModule = class
@@ -56,19 +63,52 @@ type
 
   TASTExpressionItemClass = class of TASTExpressionItem;
 
-  TASTEIOpenRound = class(TASTExpressionItem) end;
-  TASTEICloseRound = class(TASTExpressionItem) end;
-  TASTEIPlus = class(TASTExpressionItem) end;
-  TASTEIMinus = class(TASTExpressionItem) end;
-  TASTEIMul = class(TASTExpressionItem) end;
-  TASTEIDiv = class(TASTExpressionItem) end;
-  TASTEIIntDiv = class(TASTExpressionItem) end;
-  TASTEIMod = class(TASTExpressionItem) end;
+  TASTEIOpenRound = class(TASTExpressionItem)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTEICloseRound = class(TASTExpressionItem)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTEIPlus = class(TASTExpressionItem)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTEIMinus = class(TASTExpressionItem)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTEIMul = class(TASTExpressionItem)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTEIDiv = class(TASTExpressionItem)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTEIIntDiv = class(TASTExpressionItem)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTEIMod = class(TASTExpressionItem)
+  protected
+    function GetDisplayName: string; override;
+  end;
 
 
   TASTExprItemes = array of TASTExpressionItemClass;
 
   TASTExpression = class(TASTParentItem)
+  protected
+    function GetDisplayName: string; override;
   public
     procedure AddSubItem(ItemClass: TASTExpressionItemClass);
   end;
@@ -94,6 +134,8 @@ type
   TASTKWExit = class(TASTKeyword)
   private
     fExpression: TASTExpression;
+  protected
+    function GetDisplayName: string; override;
   public
     property Expression: TASTExpression read fExpression write fExpression;
   end;
@@ -115,6 +157,8 @@ type
 
 
 implementation
+
+uses NPCompiler.Utils;
 
 procedure TASTParentItem.AddChild(Item: TASTItem);
 begin
@@ -141,6 +185,97 @@ end;
 constructor TASTModule.Create(const Project: IASTProject; const Source: string);
 begin
 
+end;
+
+function TASTExpression.GetDisplayName: string;
+var
+  Item: TASTItem;
+begin
+  Result := '';
+  Item := FirstChild;
+  while Assigned(Item) do
+  begin
+    Result := AddStringSegment(Result, Item.DisplayName, ' ');
+    Item := Item.Next;
+  end;
+end;
+
+{ TASTItem }
+
+function TASTItem.GetDisplayName: string;
+begin
+  Result := '';
+end;
+
+{ TASTKWExit }
+
+function TASTKWExit.GetDisplayName: string;
+var
+  ExprStr: string;
+begin
+  if Assigned(fExpression) then
+    ExprStr := fExpression.DisplayName;
+  Result := 'return ' + ExprStr;
+end;
+
+function TASTParentItem.GetDisplayName: string;
+begin
+end;
+
+{ TASTEIOpenRound }
+
+function TASTEIOpenRound.GetDisplayName: string;
+begin
+  Result := '(';
+end;
+
+{ TASTEICloseRound }
+
+function TASTEICloseRound.GetDisplayName: string;
+begin
+  Result := ')';
+end;
+
+{ TASTEIPlus }
+
+function TASTEIPlus.GetDisplayName: string;
+begin
+  Result := '+';
+end;
+
+{ TASTEIMinus }
+
+function TASTEIMinus.GetDisplayName: string;
+begin
+  Result := '-';
+end;
+
+{ TASTEIMul }
+
+function TASTEIMul.GetDisplayName: string;
+begin
+  Result := '*';
+end;
+
+{ TASTEIDiv }
+
+function TASTEIDiv.GetDisplayName: string;
+begin
+  Result := '/';
+end;
+
+{ TASTEIIntDiv }
+
+function TASTEIIntDiv.GetDisplayName: string;
+begin
+  Result := 'div';
+end;
+
+{ TASTEIMod }
+
+function TASTEIMod.GetDisplayName: string;
+begin
+  Result := 'mod';
 end;
 
 end.

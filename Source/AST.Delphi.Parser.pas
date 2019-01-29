@@ -17,6 +17,8 @@ type
   TASTDelphiProc = class(TIDProcedure)
   private
     fBody: TASTBody;
+  public
+    property Body: TASTBody read fBody;
   end;
 
 

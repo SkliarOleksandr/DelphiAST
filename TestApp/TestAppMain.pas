@@ -49,12 +49,70 @@ uses
 
 {$R *.dfm}
 
+procedure ASTTypesToTreeView(ASTUnit: TASTDelphiUnit; TreeView: TTreeView; RNode: TTreeNode);
+var
+  CNode: TTreeNode;
+  Decl: TIDType;
+begin
+RNode := TreeView.Items.AddChild(RNode, 'types');
+  Decl := ASTUnit.TypeSpace.First;
+  while Assigned(Decl) do
+  begin
+    CNode := TreeView.Items.AddChild(RNode, Decl.DisplayName);
+    Decl := TIDType(Decl.NextItem);
+  end;
+end;
+
+procedure ASTVarsToTreeView(ASTUnit: TASTDelphiUnit; TreeView: TTreeView; RNode: TTreeNode);
+var
+  CNode: TTreeNode;
+  Decl: TIDVariable;
+begin
+  RNode := TreeView.Items.AddChild(RNode, 'vars');
+  Decl := ASTUnit.VarSpace.First;
+  while Assigned(Decl) do
+  begin
+    CNode := TreeView.Items.AddChild(RNode, Decl.DisplayName);
+    Decl := TIDVariable(Decl.NextItem);
+  end;
+end;
+
+procedure ASTBodyToTreeView(Proc: TASTDelphiProc; TreeView: TTreeView; RNode: TTreeNode);
+var
+  Item: TASTItem;
+  CNode: TTreeNode;
+begin
+  Item := Proc.Body.FirstChild;
+  while Assigned(Item) do
+  begin
+    CNode := TreeView.Items.AddChild(RNode, Item.DisplayName);
+    Item := Item.Next;
+  end;
+end;
+
+procedure ASTProcsToTreeView(ASTUnit: TASTDelphiUnit; TreeView: TTreeView; RNode: TTreeNode);
+var
+  CNode: TTreeNode;
+  Decl: TIDProcedure;
+begin
+  RNode := TreeView.Items.AddChild(RNode, 'funcs');
+  Decl := ASTUnit.ProcSpace.First;
+  while Assigned(Decl) do
+  begin
+    CNode := TreeView.Items.AddChild(RNode, Decl.DisplayName);
+    ASTBodyToTreeView(TASTDelphiProc(Decl), TreeView, CNode);
+    Decl := TIDProcedure(Decl.NextItem);
+  end;
+end;
 
 procedure ASTToTreeView(ASTUnit: TASTDelphiUnit; TreeView: TTreeView);
 var
-  Node: TTreeNode;
+  RNode, CNode: TTreeNode;
 begin
-  Node := TreeView.Items.AddChild(nil, 'unit ' + ASTUnit.Name);
+  RNode := TreeView.Items.AddChild(nil, 'unit ' + ASTUnit.Name);
+  ASTTypesToTreeView(ASTUnit, TreeView, RNode);
+  ASTVarsToTreeView(ASTUnit, TreeView, RNode);
+  ASTProcsToTreeView(ASTUnit, TreeView, RNode);
 end;
 
 procedure CompilerMessagesToStrings(const Messages: ICompilerMessages; Strings: TStrings);
