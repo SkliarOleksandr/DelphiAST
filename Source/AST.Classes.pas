@@ -2,7 +2,7 @@ unit AST.Classes;
 
 interface
 
-uses iDStringParser, AST.Project;
+uses iDStringParser, AST.Project, NPCompiler.Utils;
 
 type
   TASTItemTypeID = Integer;
@@ -14,7 +14,7 @@ type
 
   TASTUnitClass = class of TASTModule;
 
-  TASTItem = class
+  TASTItem = class(TPooledObject)
   private
     fNext: TASTItem;
     function GetItemTypeID: TASTItemTypeID; virtual; abstract;
@@ -51,11 +51,14 @@ type
   end;
 
   TASTDeclaration = class(TASTItem)
-  private
+  protected
     fID: TIdentifier;
+    function GetDisplayName: string; override;
   public
     property ID: TIdentifier read fID write fID;
-    property Name: string read fID.Name;
+    property Name: string read fID.Name write FID.Name;
+    property TextPosition: TTextPosition read FID.TextPosition write FID.TextPosition;
+    property SourcePosition: TTextPosition read FID.TextPosition;
   end;
 
   TASTExpressionItem = class(TASTItem)
@@ -83,6 +86,36 @@ type
     function GetDisplayName: string; override;
   end;
 
+  TASTEIEqual = class(TASTExpressionItem)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTEINotEqual = class(TASTExpressionItem)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTEIGrater = class(TASTExpressionItem)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTEIGraterEqual = class(TASTExpressionItem)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTEILess = class(TASTExpressionItem)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTEILessEqual = class(TASTExpressionItem)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
   TASTEIMul = class(TASTExpressionItem)
   protected
     function GetDisplayName: string; override;
@@ -103,6 +136,15 @@ type
     function GetDisplayName: string; override;
   end;
 
+  TASTEIDecl = class(TASTExpressionItem)
+  private
+    fDecl: TASTDeclaration;
+    fSPos: TTextPosition;
+  protected
+    function GetDisplayName: string; override;
+  public
+    constructor Create(Decl: TASTDeclaration; const SrcPos: TTextPosition);
+  end;
 
   TASTExprItemes = array of TASTExpressionItemClass;
 
@@ -111,6 +153,7 @@ type
     function GetDisplayName: string; override;
   public
     procedure AddSubItem(ItemClass: TASTExpressionItemClass);
+    procedure AddDeclItem(Decl: TASTDeclaration; const SrcPos: TTextPosition);
   end;
 
   TASTKeyword = class(TASTItem)
@@ -119,8 +162,12 @@ type
 
   TASTKWAssign = class(TASTKeyword)
   private
-    fDest: TASTExpression;
-    fSource: TASTExpression;
+    fDst: TASTExpression;
+    fSrc: TASTExpression;
+  protected
+    function GetDisplayName: string; override;
+  public
+    constructor Create(Dst, Src: TASTExpression);
   end;
 
   TASTCall = class(TASTExpression)
@@ -158,19 +205,25 @@ type
 
 implementation
 
-uses NPCompiler.Utils;
-
 procedure TASTParentItem.AddChild(Item: TASTItem);
 begin
   if Assigned(fLastChild) then
     fLastChild.Next := Item
-  else begin
+  else
     fFirstChild := Item;
-    fLastChild := Item;
-  end;
+
+  fLastChild := Item;
 end;
 
 { TASTExpression }
+
+procedure TASTExpression.AddDeclItem(Decl: TASTDeclaration; const SrcPos: TTextPosition);
+var
+  Item: TASTEIDecl;
+begin
+  Item := TASTEIDecl.Create(Decl, SrcPos);
+  AddChild(Item);
+end;
 
 procedure TASTExpression.AddSubItem(ItemClass: TASTExpressionItemClass);
 var
@@ -276,6 +329,81 @@ end;
 function TASTEIMod.GetDisplayName: string;
 begin
   Result := 'mod';
+end;
+
+{ TASTEIEqual }
+
+function TASTEIEqual.GetDisplayName: string;
+begin
+  Result := '=';
+end;
+
+{ TASTEINotEqual }
+
+function TASTEINotEqual.GetDisplayName: string;
+begin
+  Result := '<>';
+end;
+
+{ TASTEIGrater }
+
+function TASTEIGrater.GetDisplayName: string;
+begin
+  Result := '>';
+end;
+
+{ TASTEIGraterEqual }
+
+function TASTEIGraterEqual.GetDisplayName: string;
+begin
+  Result := '>=';
+end;
+
+{ TASTEILess }
+
+function TASTEILess.GetDisplayName: string;
+begin
+  Result := '<';
+end;
+
+{ TASTEILessEqual }
+
+function TASTEILessEqual.GetDisplayName: string;
+begin
+  Result := '<=';
+end;
+
+{ TASTEIVariable }
+
+constructor TASTEIDecl.Create(Decl: TASTDeclaration; const SrcPos: TTextPosition);
+begin
+  fDecl := Decl;
+  fSPos := SrcPos;
+end;
+
+function TASTEIDecl.GetDisplayName: string;
+begin
+  Result := fDecl.DisplayName;
+end;
+
+{ TASTDeclaration }
+
+function TASTDeclaration.GetDisplayName: string;
+begin
+  Result := fID.Name;
+end;
+
+{ TASTKWAssign }
+
+constructor TASTKWAssign.Create(Dst, Src: TASTExpression);
+begin
+  fDst := Dst;
+  fSrc := Src;
+end;
+
+function TASTKWAssign.GetDisplayName: string;
+begin
+  Result := fDst.DisplayName + ' := ' + fSrc.DisplayName;
 end;
 
 end.

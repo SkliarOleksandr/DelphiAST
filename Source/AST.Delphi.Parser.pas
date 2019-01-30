@@ -30,13 +30,14 @@ type
 
 
   TASTDelphiUnit = class(TNPUnit)
-  protected
+  public
     function ParseExitStatement(Scope: TScope; var SContext: TASTSContext): TTokenID; overload;
     function ParseExpression(Scope: TScope; var SContext: TASTSContext; var EContext: TEContext; out ASTE: TASTExpression): TTokenID; overload;
     function ParseProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure = nil; Platform: TIDPlatform = nil): TTokenID; override;
     function ParseProcBody(Proc: TIDProcedure; Platform: TIDPlatform): TTokenID; override;
     function ParseStatements(Scope: TScope; var SContext: TASTSContext; IsBlock: Boolean): TTokenID; overload;
-  public
+    procedure InitEContext(var EContext: TEContext; EPosition: TExpessionPosition); inline;
+    procedure Process_operator_Assign(var EContext: TEContext); override;
     function Compile(RunPostCompile: Boolean = True): TCompilerResult; override;
     function CompileIntfOnly: TCompilerResult; override;
     procedure CheckIncompletedProcs(ProcSpace: PProcSpace); override;
@@ -52,7 +53,9 @@ function TASTDelphiUnit.ParseStatements(Scope: TScope; var SContext: TASTSContex
 var
   EContext, REContext: TEContext;
   NewScope: TScope;
+  AST: TASTItem;
 begin
+  //     ASTE.AddDeclItem(Expr.Declaration, Expr.TextPosition);
   Result := parser_CurTokenID;
   while True do begin
     case Result of
@@ -124,24 +127,29 @@ begin
       token_address: begin
         Result := parser_NextToken(Scope);
         Continue;
-      end;
+      end;     *)
 
       {IDENTIFIER}
       token_identifier: begin
-        InitEContext(EContext, SContext, ExprLValue);
+        InitEContext(EContext, ExprLValue);
+        var ASTEDst, ASTESrc: TASTExpression;
         while True do
         begin
-          Result := ParseExpression(Scope, EContext, parser_CurTokenID);
+          Result := ParseExpression(Scope, SContext, EContext, ASTEDst);
           if Result = token_assign then begin
-            InitEContext(REContext, SContext, ExprRValue);
+            InitEContext(REContext, ExprRValue);
             Result := parser_NextToken(Scope);
-            Result := ParseExpression(Scope, REContext, Result);
+            Result := ParseExpression(Scope, SContext, REContext, ASTESrc);
             if Assigned(REContext.LastBoolNode) then
               Bool_CompleteImmediateExpression(REContext, REContext.Result);
 
-            RPNPushExpression(EContext, REContext.Result);
-            RPNPushOperator(EContext, opAssignment);
+            EContext.RPNPushExpression(REContext.Result);
+            EContext.RPNPushOperator(opAssignment);
             EContext.RPNFinish();
+
+            AST := TASTKWAssign.Create(ASTEDst, ASTESrc);
+            SContext.AddASTItem(AST);
+
           end else
           if Result = token_coma then begin
             parser_NextToken(Scope);
@@ -151,7 +159,7 @@ begin
           CheckUnusedExprResult(EContext);
           Break;
         end;
-      end;              *)
+      end;
       token_initialization,
       token_finalization: Break;
       token_eof: Exit;
@@ -170,6 +178,11 @@ begin
     end else
       Exit;
   end;
+end;
+
+procedure TASTDelphiUnit.Process_operator_Assign(var EContext: TEContext);
+begin
+
 end;
 
 procedure TASTDelphiUnit.CheckIncompletedProcs(ProcSpace: PProcSpace);
@@ -307,6 +320,13 @@ begin
   Result := Compile;
 end;
 
+procedure TASTDelphiUnit.InitEContext(var EContext: TEContext; EPosition: TExpessionPosition);
+begin
+  EContext.Initialize(Process_operators);
+  EContext.SContext := nil;
+  EContext.EPosition := EPosition;
+end;
+
 function TASTDelphiUnit.ParseExitStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
 var
   ExitExpr: TASTExpression;
@@ -321,7 +341,7 @@ begin
       AbortWork(sReturnValueNotAllowedForProc, parser_Position);
 
     parser_NextToken(Scope);
-    InitEContext(EContext, nil, ExprNested);
+    InitEContext(EContext, ExprNested);
     Result := ParseExpression(Scope, SContext, EContext, ExitExpr);
     ASTItem.Expression := ExitExpr;
     parser_MatchToken(Result, token_closeround);
@@ -352,7 +372,6 @@ begin
       end;
       token_closeround: begin
         Dec(RoundCount);
-        ASTE.AddSubItem(TASTEICloseRound);
         if RoundCount < 0 then
         begin
           if EContext.EPosition <> ExprLValue then
@@ -360,6 +379,7 @@ begin
 
           ERROR_UNNECESSARY_CLOSED_ROUND;
         end;
+        ASTE.AddSubItem(TASTEICloseRound);
         EContext.RPNPushCloseRaund();
         Status := rpOperand;
       end;
@@ -378,16 +398,19 @@ begin
           Status := EContext.RPNPushOperator(opAdd)
         else
           Status := EContext.RPNPushOperator(opPositive);
+        ASTE.AddSubItem(TASTEIPlus);
       end;
       token_minus: begin
         if Status = rpOperand then
           Status := EContext.RPNPushOperator(opSubtract)
         else
           Status := EContext.RPNPushOperator(opNegative);
+        ASTE.AddSubItem(TASTEIMinus);
       end;
       token_equal: begin
         CheckLeftOperand(Status);
         Status := EContext.RPNPushOperator(opEqual);
+        ASTE.AddSubItem(TASTEIEqual);
       end;
       token_var: begin
         //Result := ParseInplaceVarDecl(Scope, Expr);
@@ -396,41 +419,37 @@ begin
         Status := rpOperand;
         continue;
       end;
-      token_lambda: begin
-        //Result := ParseLambdaExpression(Scope, EContext);
-        Status := rpOperand;
-        continue;
-      end;
-//      token_bindf: begin
-//        Result := ParseBindFunctionExpression(Scope, EContext);
-//        Status := rpOperand;
-//        continue;
-//      end;
       token_notequal: begin
         CheckLeftOperand(Status);
         Status := EContext.RPNPushOperator(opNotEqual);
+        ASTE.AddSubItem(TASTEINotEqual);
       end;
       token_less: begin
         CheckLeftOperand(Status);
         Status := EContext.RPNPushOperator(opLess);
+        ASTE.AddSubItem(TASTEILess);
       end;
       token_lessorequal: begin
         CheckLeftOperand(Status);
         Status := EContext.RPNPushOperator(opLessOrEqual);
+        ASTE.AddSubItem(TASTEILessEqual);
       end;
       token_above: begin
         if EContext.EPosition = ExprNestedGeneric then
           Break;
         CheckLeftOperand(Status);
         Status := EContext.RPNPushOperator(opGreater);
+        ASTE.AddSubItem(TASTEIGrater);
       end;
       token_aboveorequal: begin
         CheckLeftOperand(Status);
         Status := EContext.RPNPushOperator(opGreaterOrEqual);
+        ASTE.AddSubItem(TASTEIGraterEqual);
       end;
       token_asterisk: begin
         CheckLeftOperand(Status);
         Status := EContext.RPNPushOperator(opMultiply);
+        ASTE.AddSubItem(TASTEIMul);
       end;
       token_in: begin
         CheckLeftOperand(Status);
@@ -439,14 +458,17 @@ begin
       token_slash: begin
         CheckLeftOperand(Status);
         Status := EContext.RPNPushOperator(opDivide);
+        ASTE.AddSubItem(TASTEIDiv);
       end;
       token_div: begin
         CheckLeftOperand(Status);
         Status := EContext.RPNPushOperator(opIntDiv);
+        ASTE.AddSubItem(TASTEIIntDiv);
       end;
       token_mod: begin
         CheckLeftOperand(Status);
         Status := EContext.RPNPushOperator(opModDiv);
+        ASTE.AddSubItem(TASTEIMod);
       end;
       token_period: begin
         CheckLeftOperand(Status);
@@ -455,14 +477,6 @@ begin
       end;
       token_address: begin
         Status := EContext.RPNPushOperator(opAddr);
-      end;
-      token_plusplus: begin
-        EContext.RPNPushOperator(opPostInc);
-        Status := rpOperand;
-      end;
-      token_minusminus: begin
-        EContext.RPNPushOperator(opPostDec);
-        Status := rpOperand;
       end;
       token_caret: begin
         EContext.RPNPushOperator(opDereference);
@@ -526,6 +540,7 @@ begin
           end;
 
           //CheckPureExpression(SContext, Expr);
+          ASTE.AddDeclItem(Expr.Declaration, Expr.TextPosition);
 
           case Expr.ItemType of
             {именованная константа}
@@ -557,6 +572,7 @@ begin
           Expr := CreateAnonymousConstant(Scope, EContext, ID, parser_IdentifireType);
           Result := parser_NextToken(Scope);
           Status := rpOperand;
+          ASTE.AddDeclItem(Expr.Declaration, Expr.TextPosition);
         end;
         EContext.RPNPushExpression(Expr);
         Continue;

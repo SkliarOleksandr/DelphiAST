@@ -7,6 +7,7 @@ interface
 uses SysUtils, Classes, StrUtils, NPCompiler.DataTypes, Math, NPCompiler.Messages, iDStringParser, Generics.Collections,
      Variants, NPCompiler.Operators, AVL, NPCompiler.Utils, IL.Types, NPCompiler.Errors, NPCompiler.Intf,
      NPCompiler.Options,
+     AST.Classes,
      AST.Project;
 type
 
@@ -157,10 +158,10 @@ type
   TIDDeclarationClass = class of TIDDeclaration;
 
   {декларация - базовый класс}
-  TIDDeclaration = class(TPooledObject)
+  TIDDeclaration = class(TASTDeclaration)
   private
     FItemType: TIDItemType;
-    FID: TIdentifier;                // Идентификатор
+    //FID: TIdentifier;                // Идентификатор
     FScope: TScope;                  // Обл. видимости где объявлена декларация
     FDataType: TIDType;              // Тип декларации (равен nil для процедур)
     FVisibility: TVisibility;        // Уровень видимости декларации
@@ -180,7 +181,6 @@ type
     procedure SetIndex(const Value: Integer);
     function GetPackage: INPPackage;
   protected
-    function GetDisplayName: string; virtual;
     function GetOriginalDecl: TIDDeclaration; virtual;
     function GetIndex: Integer; virtual;
     function GetCValue: TIDConstant; virtual;
@@ -192,13 +192,13 @@ type
     destructor Destroy; override;
     ////////////////////////////////////////////////////////////////////////////
     property ItemType: TIDItemType read FItemType write FItemType;
-    property ID: TIdentifier read FID write FID;
-    property Name: string read FID.Name write FID.Name;
-    property TextPosition: TTextPosition read FID.TextPosition write FID.TextPosition;
+    //property ID: TIdentifier read FID write FID;
+    //property Name: string read FID.Name write FID.Name;
+    //property TextPosition: TTextPosition read FID.TextPosition write FID.TextPosition;
     property DisplayName: string read GetDisplayName;
     property Scope: TScope read FScope;
     property DataType: TIDType read FDataType write FDataType;
-    property SourcePosition: TTextPosition read FID.TextPosition;
+    //property SourcePosition: TTextPosition read FID.TextPosition;
     property Visibility: TVisibility read FVisibility write FVisibility;
     property Index: Integer read FIndex write SetIndex;
     property Export: Integer read FExportNameIndex write FExportNameIndex;
@@ -2122,11 +2122,6 @@ begin
     Result := Scope.DeclUnit
   else
     Result := nil;
-end;
-
-function TIDDeclaration.GetDisplayName: string;
-begin
-  Result := FID.Name;
 end;
 
 function TIDDeclaration.GetIndex: Integer;

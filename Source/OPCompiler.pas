@@ -326,7 +326,7 @@ type
     { оброботка присвоения для цепочек (a.x := b.y )}
     function Process_operator_assign_complex(Src: TIDExpression; Dst: TIDMultiExpression; var EContext: TEContext): Boolean;
     { оброботка одиночного присвоения (a := b )}
-    procedure Process_operator_Assign(var EContext: TEContext);
+    procedure Process_operator_Assign(var EContext: TEContext); virtual;
     { оброботка множественного присвоения (a, b, c := d )}
     procedure Process_operator_AssignMulti(var EContext: TEContext);
     procedure Process_operator_logical_AND_OR(var EContext: TEContext; Op: TOperatorID; Left, Right, Result: TIDExpression);

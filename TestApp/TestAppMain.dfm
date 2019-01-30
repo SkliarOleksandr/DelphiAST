@@ -115,6 +115,8 @@ object frmTestAppMain: TfrmTestAppMain
           ''
           'function TTT(a, b: Integer): Integer;'
           'begin'
+          '  a := a + 1;'
+          '  b := b - 1; '
           '  Exit((a + b)*G);   '
           'end;'
           ''
@@ -126,10 +128,6 @@ object frmTestAppMain: TfrmTestAppMain
     object tsAST: TTabSheet
       Caption = 'AST'
       ImageIndex = 1
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object tvAST: TTreeView
         Left = 0
         Top = 0
