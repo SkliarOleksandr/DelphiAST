@@ -36,6 +36,7 @@ type
     function ParseProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure = nil; Platform: TIDPlatform = nil): TTokenID; override;
     function ParseProcBody(Proc: TIDProcedure; Platform: TIDPlatform): TTokenID; override;
     function ParseStatements(Scope: TScope; var SContext: TASTSContext; IsBlock: Boolean): TTokenID; overload;
+    function ParseIfThenStatement(Scope: TScope; SContext: TASTSContext): TTokenID;
     procedure InitEContext(var EContext: TEContext; EPosition: TExpessionPosition); inline;
     procedure Process_operator_Assign(var EContext: TEContext); override;
     function Compile(RunPostCompile: Boolean = True): TCompilerResult; override;
@@ -79,9 +80,9 @@ begin
       {EXIT}
       token_exit: Result := ParseExitStatement(Scope, SContext);
       {IF}
-(*      token_if: Result := ParseIfThenStatement(Scope, SContext);
+      token_if: Result := ParseIfThenStatement(Scope, SContext);
       {WHILE}
-      token_while: Result := ParseWhileStatement(Scope, SContext);
+      (*token_while: Result := ParseWhileStatement(Scope, SContext);
       {REPEAT}
       token_repeat: Result := ParseRepeatStatement(Scope, SContext);
       {WITH}
@@ -587,6 +588,108 @@ begin
     ERROR_EXPRESSION_EXPECTED;
 
   EContext.RPNFinish();
+end;
+
+function TASTDelphiUnit.ParseIfThenStatement(Scope: TScope; SContext: TASTSContext): TTokenID;
+var
+  Expression: TIDExpression;
+  ToElseJump,
+  EContext: TEContext;
+  ThenSContext: TASTSContext;
+  ElseSContext: TASTSContext;
+  NewScope: TScope;
+  IFCondition: (condConstNone, condConstTrue, condConstFalse);
+  ASTIF: TASTKWIF;
+  CondExpr: TASTExpression;
+begin
+  ASTIF := TASTKWIF.Create();
+  InitEContext(EContext, ExprRValue);
+//  CFBBegin(SContext, CFB_IF);
+  parser_NextToken(Scope);
+  Result := ParseExpression(Scope, SContext, EContext, CondExpr);
+  ASTIF.Expression := CondExpr;
+  Expression := EContext.Result;
+  CheckEmptyExpression(Expression);
+  CheckBooleanExpression(Expression);
+//  ToElseJump := nil;
+//  ThenSContext.Assign(SContext);
+//  ElseSContext.Assign(SContext);
+  case Expression.ItemType of
+    itVar: if not (Expression is TIDBoolResultExpression) then begin // Если if условие соотоит из одной boolean переменной
+      {ILWrite(SContext, TIL.IL_Test(Expression, Expression));
+      ToElseJump := TIL.IL_JmpNext(Expression.Line, cZero, nil);
+      ILWrite(SContext, ToElseJump);}
+      IFCondition := condConstNone;
+    end else
+      IFCondition := condConstNone;
+    itConst: begin // Если if условие соотоит из константы
+      if TIDBooleanConstant(Expression.Declaration).Value then
+      begin
+        //ElseSContext.WriteIL := False;
+        IFCondition := condConstTrue;
+      end else begin
+        //ThenSContext.WriteIL := False;
+        IFCondition := condConstFalse;
+      end;
+    end;
+  else
+    IFCondition := condConstNone;
+  end;
+
+  {then section}
+  parser_MatchToken(Result, token_then);
+  Result := parser_NextToken(Scope);
+  if Result <> token_semicolon then
+  begin
+//    if IFCondition = condConstNone then
+//      CFBBegin(SContext, CFB_IF_THEN);
+
+    {оптимизация, не создаем лишний scope, если внутри он создастся всеравно}
+    if Result <> token_begin then
+      NewScope := TScope.Create(stLocal, Scope)
+    else
+      NewScope := Scope;
+
+    Result := ParseStatements(NewScope, @ThenSContext, False);
+
+//    if IFCondition = condConstNone then
+//      CFBEnd(SContext, CFB_IF_THEN);
+  end else begin
+    {выходим если if ... then пустой (типа: if x > y then;)}
+    //Bool_CompleteExpression(EContext.LastBoolNode, SContext.ILLast);
+    Exit;
+  end;
+  { else section}
+  if Result = token_else then begin
+//    if IFCondition = condConstNone then
+//      CFBBegin(SContext, CFB_IF_ELSE);
+//    ToEndJump := TIL.IL_JmpNext(parser_Line - 1, cNone, nil); // безусловный прыжок на END секцию
+    // если есть then и else секции
+//    ThenSContext.WriteIL := ThenSContext.WriteIL and ElseSContext.WriteIL;
+//    ILWrite(@ThenSContext, ToEndJump);
+//    if Assigned(ToElseJump) then
+//      ToElseJump.Destination := SContext.ILLast
+//    else
+//      Bool_CompleteExpression(EContext.LastBoolNode, SContext.ILLast);
+    parser_NextToken(Scope);
+
+    {оптимизация, не создаем лишний scope, если внутри он создастся всеравно}
+    if Result <> token_begin then
+      NewScope := TScope.Create(stLocal, Scope)
+    else
+      NewScope := Scope;
+
+    Result := ParseStatements(NewScope, @ElseSContext, False);
+//    ToEndJump.Destination := SContext.ILLast;
+//    if IFCondition = condConstNone then
+//      CFBEnd(SContext, CFB_IF_ELSE);
+  end else
+//    if Assigned(ToElseJump) then
+//      ToElseJump.Destination := SContext.ILLast
+//    else
+//      Bool_CompleteExpression(EContext.LastBoolNode, SContext.ILLast);
+//  CFBEnd(SContext, CFB_IF);
+  SContext.AddASTItem(ASTIF);
 end;
 
 function TASTDelphiUnit.ParseProcBody(Proc: TIDProcedure; Platform: TIDPlatform): TTokenID;

@@ -43,6 +43,11 @@ type
     property LastChild: TASTItem read fLastChild;
   end;
 
+  TASTBody = class(TASTParentItem)
+
+  end;
+
+
   TASTModule = class
   private
 
@@ -146,8 +151,6 @@ type
     constructor Create(Decl: TASTDeclaration; const SrcPos: TTextPosition);
   end;
 
-  TASTExprItemes = array of TASTExpressionItemClass;
-
   TASTExpression = class(TASTParentItem)
   protected
     function GetDisplayName: string; override;
@@ -187,9 +190,54 @@ type
     property Expression: TASTExpression read fExpression write fExpression;
   end;
 
-  TASTBody = class(TASTParentItem)
-
+  TASTKWIF = class(TASTKeyword)
+  private
+    fExpression: TASTExpression;
+    fThenBody: TASTBody;
+    fElseBody: TASTBody;
+  protected
+    function GetDisplayName: string; override;
+  public
+    property Expression: TASTExpression read fExpression write fExpression;
+    property ThenBody: TASTBody read fThenBody;
+    property ElseBody: TASTBody read fElseBody;
   end;
+
+  TASTKWhile = class(TASTKeyword)
+  private
+    fExpression: TASTExpression;
+    fBody: TASTBody;
+  protected
+    function GetDisplayName: string; override;
+  public
+    property Expression: TASTExpression read fExpression write fExpression;
+    property Body: TASTBody read fBody;
+  end;
+
+  TASTKWRepeat = class(TASTKeyword)
+  private
+    fExpression: TASTExpression;
+    fBody: TASTBody;
+  protected
+    function GetDisplayName: string; override;
+  public
+    property Expression: TASTExpression read fExpression write fExpression;
+    property Body: TASTBody read fBody;
+  end;
+
+  TASTExpressionArray = array of TASTExpression;
+
+  TASTKWWith = class(TASTKeyword)
+  private
+    fExpressions: TASTExpressionArray;
+    fBody: TASTBody;
+  protected
+    function GetDisplayName: string; override;
+  public
+    //property Expression: TASTExpression read fExpression write fExpression;
+    property Body: TASTBody read fBody;
+  end;
+
 
   TASTFunc = class(TASTDeclaration)
   private
@@ -404,6 +452,34 @@ end;
 function TASTKWAssign.GetDisplayName: string;
 begin
   Result := fDst.DisplayName + ' := ' + fSrc.DisplayName;
+end;
+
+{ TASTKWIF }
+
+function TASTKWIF.GetDisplayName: string;
+begin
+  Result := 'IF ' + fExpression.DisplayName;
+end;
+
+{ TASTKWhile }
+
+function TASTKWhile.GetDisplayName: string;
+begin
+  Result := 'while ' + fExpression.DisplayName;
+end;
+
+{ TASTRepeat }
+
+function TASTKWRepeat.GetDisplayName: string;
+begin
+  Result := 'repeat ' + fExpression.DisplayName;
+end;
+
+{ TASTKWWith }
+
+function TASTKWWith.GetDisplayName: string;
+begin
+  Result := 'with ';
 end;
 
 end.
