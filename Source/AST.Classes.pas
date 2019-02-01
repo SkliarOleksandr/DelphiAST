@@ -51,7 +51,13 @@ type
   TASTModule = class
   private
 
+  protected
+    function GetModuleName: string; virtual; abstract;
   public
+    property Name: string read GetModuleName;
+
+
+
     constructor Create(const Project: IASTProject; const Source: string = ''); virtual;
   end;
 

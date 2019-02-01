@@ -30,6 +30,8 @@ type
 
 
   TASTDelphiUnit = class(TNPUnit)
+  protected
+    function GetModuleName: string; override;
   public
     function ParseExitStatement(Scope: TScope; var SContext: TASTSContext): TTokenID; overload;
     function ParseExpression(Scope: TScope; var SContext: TASTSContext; var EContext: TEContext; out ASTE: TASTExpression): TTokenID; overload;
@@ -319,6 +321,11 @@ end;
 function TASTDelphiUnit.CompileIntfOnly: TCompilerResult;
 begin
   Result := Compile;
+end;
+
+function TASTDelphiUnit.GetModuleName: string;
+begin
+  Result := _ID.Name;
 end;
 
 procedure TASTDelphiUnit.InitEContext(var EContext: TEContext; EPosition: TExpessionPosition);

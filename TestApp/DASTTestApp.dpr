@@ -31,7 +31,8 @@ uses
   AST.Classes in '..\Source\AST.Classes.pas',
   AST.Delphi.Parser in '..\Source\AST.Delphi.Parser.pas',
   AST.Project in '..\Source\AST.Project.pas',
-  AST.Delphi.Project in '..\Source\AST.Delphi.Project.pas';
+  AST.Delphi.Project in '..\Source\AST.Delphi.Project.pas',
+  AST.Writer in '..\Source\AST.Writer.pas';
 
 {$R *.res}
 

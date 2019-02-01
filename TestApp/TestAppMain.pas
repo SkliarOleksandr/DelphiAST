@@ -45,9 +45,11 @@ var
 implementation
 
 uses
-  System.IOUtils, IdCTypes, System.Types, SystemUnit, AST.Delphi.Parser, AST.Classes;
+  System.IOUtils, IdCTypes, System.Types, SystemUnit, AST.Delphi.Parser, AST.Classes, AST.Writer;
 
 {$R *.dfm}
+
+
 
 procedure ASTTypesToTreeView(ASTUnit: TASTDelphiUnit; TreeView: TTreeView; RNode: TTreeNode);
 var
@@ -77,6 +79,12 @@ begin
   end;
 end;
 
+procedure ASTIFToTreeView(ASTIF: TASTKWIF; TreeView: TTreeView; RNode: TTreeNode);
+begin
+
+end;
+
+
 procedure ASTBodyToTreeView(Proc: TASTDelphiProc; TreeView: TTreeView; RNode: TTreeNode);
 var
   Item: TASTItem;
@@ -86,6 +94,8 @@ begin
   while Assigned(Item) do
   begin
     CNode := TreeView.Items.AddChild(RNode, Item.DisplayName);
+    if Item is TASTKWIF then
+       ASTIFToTreeView(TASTKWIF(Item), TreeView, CNode);
     Item := Item.Next;
   end;
 end;
@@ -127,6 +137,22 @@ begin
   end;
 end;
 
+procedure ASTToTreeView2(ASTUnit: TASTDelphiUnit; TreeView: TTreeView);
+var
+  WR: TASTWriter<TTreeView, TTreeNode>;
+begin
+  TreeView.Items.Clear;
+  WR.Write(TreeView, nil, ASTUnit,
+    function (const Container: TTreeView; const RootNode: TTreeNode; const NodeText: string): TTreeNode
+    begin
+      Result := Container.Items.AddChild(RootNode, NodeText);
+    end,
+    procedure (const Node: TTreeNode; const ASTItem: TASTItem)
+    begin
+      Node.Text := ASTItem.DisplayName;
+    end);
+end;
+
 procedure TfrmTestAppMain.btnASTParseClick(Sender: TObject);
 var
   UN: TASTDelphiUnit;
@@ -160,7 +186,8 @@ begin
     else
       Msg.Add('compile fail');
 
-    ASTToTreeView(UN, tvAST);
+//    ASTToTreeView(UN, tvAST);
+    ASTToTreeView2(UN, tvAST);
 
     CompilerMessagesToStrings(Prj.Messages, Msg);
 
