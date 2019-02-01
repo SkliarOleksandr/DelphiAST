@@ -2,7 +2,7 @@ object frmTestAppMain: TfrmTestAppMain
   Left = 0
   Top = 0
   Caption = 'Delphi AST Test App'
-  ClientHeight = 616
+  ClientHeight = 643
   ClientWidth = 635
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -14,7 +14,7 @@ object frmTestAppMain: TfrmTestAppMain
   Position = poScreenCenter
   DesignSize = (
     635
-    616)
+    643)
   PixelsPerInch = 96
   TextHeight = 13
   object Label1: TLabel
@@ -66,19 +66,20 @@ object frmTestAppMain: TfrmTestAppMain
   object PageControl1: TPageControl
     AlignWithMargins = True
     Left = 3
-    Top = 172
+    Top = 175
     Width = 629
-    Height = 441
+    Height = 465
     ActivePage = tsSource
     Align = alBottom
     TabOrder = 4
     object tsSource: TTabSheet
       Caption = 'Source'
+      ExplicitHeight = 413
       object edUnit: TSynEdit
         Left = 0
         Top = 0
         Width = 621
-        Height = 413
+        Height = 437
         Align = alClient
         Font.Charset = DEFAULT_CHARSET
         Font.Color = clWindowText
@@ -115,27 +116,36 @@ object frmTestAppMain: TfrmTestAppMain
           ''
           'function TTT(a, b: Integer): Integer;'
           'begin'
-          '  a := a + 1;'
-          '  b := b - 1; '
+          '  if a > b then '
+          '  begin'
+          '    a := a + 1;'
+          '    b := b - 1; '
+          '  end else begin'
+          '    a := a * 2;'
+          '    b := b div 2; '
+          '  end;'
           '  Exit((a + b)*G);   '
           'end;'
           ''
           'end.'
           '')
         FontSmoothing = fsmNone
+        ExplicitHeight = 413
       end
     end
     object tsAST: TTabSheet
       Caption = 'AST'
       ImageIndex = 1
+      ExplicitHeight = 413
       object tvAST: TTreeView
         Left = 0
         Top = 0
         Width = 621
-        Height = 413
+        Height = 437
         Align = alClient
         Indent = 19
         TabOrder = 0
+        ExplicitHeight = 413
       end
     end
   end

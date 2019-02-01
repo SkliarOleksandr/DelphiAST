@@ -49,7 +49,7 @@ uses
 
 {$R *.dfm}
 
-
+procedure ASTBodyToTreeView(FirstItem: TASTItem; TreeView: TTreeView; RNode: TTreeNode); forward;
 
 procedure ASTTypesToTreeView(ASTUnit: TASTDelphiUnit; TreeView: TTreeView; RNode: TTreeNode);
 var
@@ -80,17 +80,24 @@ begin
 end;
 
 procedure ASTIFToTreeView(ASTIF: TASTKWIF; TreeView: TTreeView; RNode: TTreeNode);
+var
+  CNode: TTreeNode;
 begin
-
+  CNode := TreeView.Items.AddChild(RNode, 'then');
+  ASTBodyToTreeView(ASTIF.ThenBody.FirstChild, TreeView, CNode);
+  if Assigned(ASTIF.ElseBody) then
+  begin
+    CNode := TreeView.Items.AddChild(RNode, 'else');
+    ASTBodyToTreeView(ASTIF.ElseBody.FirstChild, TreeView, CNode);
+  end;
 end;
 
-
-procedure ASTBodyToTreeView(Proc: TASTDelphiProc; TreeView: TTreeView; RNode: TTreeNode);
+procedure ASTBodyToTreeView(FirstItem: TASTItem; TreeView: TTreeView; RNode: TTreeNode);
 var
   Item: TASTItem;
   CNode: TTreeNode;
 begin
-  Item := Proc.Body.FirstChild;
+  Item := FirstItem;
   while Assigned(Item) do
   begin
     CNode := TreeView.Items.AddChild(RNode, Item.DisplayName);
@@ -110,7 +117,7 @@ begin
   while Assigned(Decl) do
   begin
     CNode := TreeView.Items.AddChild(RNode, Decl.DisplayName);
-    ASTBodyToTreeView(TASTDelphiProc(Decl), TreeView, CNode);
+    ASTBodyToTreeView(TASTDelphiProc(Decl).Body.FirstChild, TreeView, CNode);
     Decl := TIDProcedure(Decl.NextItem);
   end;
 end;
@@ -186,8 +193,8 @@ begin
     else
       Msg.Add('compile fail');
 
-//    ASTToTreeView(UN, tvAST);
-    ASTToTreeView2(UN, tvAST);
+    ASTToTreeView(UN, tvAST);
+//    ASTToTreeView2(UN, tvAST);
 
     CompilerMessagesToStrings(Prj.Messages, Msg);
 

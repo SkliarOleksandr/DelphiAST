@@ -205,8 +205,8 @@ type
     function GetDisplayName: string; override;
   public
     property Expression: TASTExpression read fExpression write fExpression;
-    property ThenBody: TASTBody read fThenBody;
-    property ElseBody: TASTBody read fElseBody;
+    property ThenBody: TASTBody read fThenBody write fThenBody;
+    property ElseBody: TASTBody read fElseBody write fElseBody;
   end;
 
   TASTKWhile = class(TASTKeyword)

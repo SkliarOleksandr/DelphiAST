@@ -13127,16 +13127,16 @@ begin
       begin
         case OpID of
           opAdd: begin
-            ILWrite(SContext, TIL.IL_Add(Result, Left, Right));
+            //ILWrite(SContext, TIL.IL_Add(Result, Left, Right));
             // если результат строка или дин. массив - помечаем переменную
             if Result.DataTypeID in [dtDynArray, dtString, dtAnsiString] then
               Result.AsVariable.IncludeFlags([VarTmpResOwner]);
           end;
-          opSubtract: ILWrite(SContext, TIL.IL_Sub(Result, Left, Right));
-          opMultiply: ILWrite(SContext, TIL.IL_Mul(Result, Left, Right));
-          opDivide: ILWrite(SContext, TIL.IL_Div(Result, Left, Right));
-          opIntDiv: ILWrite(SContext, TIL.IL_IntDiv(Result, Left, Right));
-          opModDiv: ILWrite(SContext, TIL.IL_ModDiv(Result, Left, Right));
+          opSubtract: ;//ILWrite(SContext, TIL.IL_Sub(Result, Left, Right));
+          opMultiply: ;//ILWrite(SContext, TIL.IL_Mul(Result, Left, Right));
+          opDivide: ;//ILWrite(SContext, TIL.IL_Div(Result, Left, Right));
+          opIntDiv: ;//ILWrite(SContext, TIL.IL_IntDiv(Result, Left, Right));
+          opModDiv: ;//ILWrite(SContext, TIL.IL_ModDiv(Result, Left, Right));
           opEqual,
           opNotEqual,
           opLess,
@@ -13144,12 +13144,12 @@ begin
           opGreater,
           opGreaterOrEqual: begin
             Result := GetBoolResultExpr(Result);
-            ILWrite(SContext, TIL.IL_Cmp(Left, Right));
+            //ILWrite(SContext, TIL.IL_Cmp(Left, Right));
             {освобожадем временные переменные}
             ReleaseExpression(SContext, Left);
             ReleaseExpression(SContext, Right);
-            ILWrite(SContext, TIL.IL_JmpNext(Left.Line, cNone, nil));
-            Bool_AddExprNode(EContext, SContext.ILLast, TILCondition(Ord(OpID) - Ord(opEqual) + 1));
+            //ILWrite(SContext, TIL.IL_JmpNext(Left.Line, cNone, nil));
+            //Bool_AddExprNode(EContext, SContext.ILLast, TILCondition(Ord(OpID) - Ord(opEqual) + 1));
             Exit;
           end;
           opIn: Result := Process_operator_In(EContext, Left, Right);
