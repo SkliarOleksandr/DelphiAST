@@ -11,6 +11,7 @@ type
   TASTItem = class;
   TASTProject = class;
   TASTModule = class;
+  TASTDeclaration = class;
 
   TASTUnitClass = class of TASTModule;
 
@@ -25,6 +26,8 @@ type
     property Next: TASTItem read fNext write fNext;
     property DisplayName: string read GetDisplayName;
   end;
+
+  TASTItemClass = class of TASTItem;
 
   TASTProject = class(TInterfacedObject, IASTProject)
   protected
@@ -56,7 +59,10 @@ type
   public
     property Name: string read GetModuleName;
 
-
+    function GetFirstFunc: TASTDeclaration; virtual; abstract;
+    function GetFirstVar: TASTDeclaration; virtual; abstract;
+    function GetFirstType: TASTDeclaration; virtual; abstract;
+    function GetFirstConst: TASTDeclaration; virtual; abstract;
 
     constructor Create(const Project: IASTProject; const Source: string = ''); virtual;
   end;
@@ -209,27 +215,31 @@ type
     property ElseBody: TASTBody read fElseBody write fElseBody;
   end;
 
-  TASTKWhile = class(TASTKeyword)
+
+  TASTKWLoop = class(TASTKeyword)
   private
     fExpression: TASTExpression;
     fBody: TASTBody;
-  protected
-    function GetDisplayName: string; override;
   public
     property Expression: TASTExpression read fExpression write fExpression;
-    property Body: TASTBody read fBody;
+    property Body: TASTBody read fBody write fBody;
   end;
 
-  TASTKWRepeat = class(TASTKeyword)
-  private
-    fExpression: TASTExpression;
-    fBody: TASTBody;
+  TASTKWWhile = class(TASTKWLoop)
   protected
     function GetDisplayName: string; override;
-  public
-    property Expression: TASTExpression read fExpression write fExpression;
-    property Body: TASTBody read fBody;
   end;
+
+  TASTKWRepeat = class(TASTKWLoop)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTKWFor = class(TASTKWLoop)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
 
   TASTExpressionArray = array of TASTExpression;
 
@@ -469,7 +479,7 @@ end;
 
 { TASTKWhile }
 
-function TASTKWhile.GetDisplayName: string;
+function TASTKWWhile.GetDisplayName: string;
 begin
   Result := 'while ' + fExpression.DisplayName;
 end;
@@ -486,6 +496,13 @@ end;
 function TASTKWWith.GetDisplayName: string;
 begin
   Result := 'with ';
+end;
+
+{ TASTKWFor }
+
+function TASTKWFor.GetDisplayName: string;
+begin
+  Result := 'for';
 end;
 
 end.

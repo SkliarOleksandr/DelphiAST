@@ -27,13 +27,20 @@ type
     Body: TASTBody;
     constructor Create(Proc: TASTDelphiProc); overload;
     constructor Create(Proc: TASTDelphiProc; Body: TASTBody); overload;
-    procedure AddASTItem(Item: TASTItem);
+    procedure AddASTItem(Item: TASTItem); overload;
+    function AddASTItem(ItemClass: TASTItemClass): TASTItem; overload;
   end;
 
 
   TASTDelphiUnit = class(TNPUnit)
   protected
     function GetModuleName: string; override;
+
+    function GetFirstFunc: TASTDeclaration; override;
+    function GetFirstVar: TASTDeclaration; override;
+    function GetFirstType: TASTDeclaration; override;
+    function GetFirstConst: TASTDeclaration; override;
+
   public
     function ParseExitStatement(Scope: TScope; var SContext: TASTSContext): TTokenID; overload;
     function ParseExpression(Scope: TScope; var SContext: TASTSContext; var EContext: TEContext; out ASTE: TASTExpression): TTokenID; overload;
@@ -41,11 +48,15 @@ type
     function ParseProcBody(Proc: TIDProcedure; Platform: TIDPlatform): TTokenID; override;
     function ParseStatements(Scope: TScope; var SContext: TASTSContext; IsBlock: Boolean): TTokenID; overload;
     function ParseIfThenStatement(Scope: TScope; SContext: TASTSContext): TTokenID;
+    function ParseWhileStatement(Scope: TScope; SContext: TASTSContext): TTokenID;
+    function ParseRepeatStatement(Scope: TScope; SContext: TASTSContext): TTokenID;
+
     procedure InitEContext(var EContext: TEContext; EPosition: TExpessionPosition); inline;
     procedure Process_operator_Assign(var EContext: TEContext); override;
     function Compile(RunPostCompile: Boolean = True): TCompilerResult; override;
     function CompileIntfOnly: TCompilerResult; override;
     procedure CheckIncompletedProcs(ProcSpace: PProcSpace); override;
+
   end;
 
 implementation
@@ -86,11 +97,11 @@ begin
       {IF}
       token_if: Result := ParseIfThenStatement(Scope, SContext);
       {WHILE}
-      (*token_while: Result := ParseWhileStatement(Scope, SContext);
+      token_while: Result := ParseWhileStatement(Scope, SContext);
       {REPEAT}
       token_repeat: Result := ParseRepeatStatement(Scope, SContext);
       {WITH}
-      token_with: Result := ParseWithStatement(Scope, SContext);
+      (*token_with: Result := ParseWithStatement(Scope, SContext);
       {USING}
       token_using: Result := ParseUsingStatement(Scope, SContext);
       {CASE}
@@ -183,6 +194,35 @@ begin
     end else
       Exit;
   end;
+end;
+
+function TASTDelphiUnit.ParseWhileStatement(Scope: TScope; SContext: TASTSContext): TTokenID;
+var
+  Expression: TIDExpression;
+  EContext: TEContext;
+  BodySContext: TASTSContext;
+  ASTExpr: TASTExpression;
+  KW: TASTKWWhile;
+begin
+  KW := SContext.AddASTItem(TASTKWWhile) as TASTKWWhile;
+  KW.Body := TASTBody.Create;
+
+  // loop expression
+  InitEContext(EContext, ExprRValue);
+  parser_NextToken(Scope);
+  Result := ParseExpression(Scope, SContext, EContext, ASTExpr);
+  KW.Expression := ASTExpr;
+  Expression := EContext.Result;
+  CheckEmptyExpression(Expression);
+  CheckBooleanExpression(Expression);
+
+  BodySContext := TASTSContext.Create(SContext.Proc, KW.Body);
+
+  // loop body
+  parser_MatchToken(Result, token_do);
+  Result := Parser_NextToken(Scope);
+  if Result <> token_semicolon then
+    Result := ParseStatements(Scope, BodySContext, False);
 end;
 
 procedure TASTDelphiUnit.Process_operator_Assign(var EContext: TEContext);
@@ -323,6 +363,26 @@ end;
 function TASTDelphiUnit.CompileIntfOnly: TCompilerResult;
 begin
   Result := Compile;
+end;
+
+function TASTDelphiUnit.GetFirstConst: TASTDeclaration;
+begin
+  Result := nil;
+end;
+
+function TASTDelphiUnit.GetFirstFunc: TASTDeclaration;
+begin
+  Result := ProcSpace.First;
+end;
+
+function TASTDelphiUnit.GetFirstType: TASTDeclaration;
+begin
+  Result := TypeSpace.First;
+end;
+
+function TASTDelphiUnit.GetFirstVar: TASTDeclaration;
+begin
+  Result := VarSpace.First;
 end;
 
 function TASTDelphiUnit.GetModuleName: string;
@@ -944,6 +1004,33 @@ begin
     CheckDestructorSignature(Proc);
 end;
 
+function TASTDelphiUnit.ParseRepeatStatement(Scope: TScope; SContext: TASTSContext): TTokenID;
+var
+  Expression: TIDExpression;
+  EContext: TEContext;
+  BodySContext: TASTSContext;
+  KW: TASTKWRepeat;
+  ASTExpr: TASTExpression;
+begin
+  KW := SContext.AddASTItem(TASTKWRepeat) as TASTKWRepeat;
+  KW.Body := TASTBody.Create;
+  BodySContext := TASTSContext.Create(SContext.Proc, KW.Body);
+
+  parser_NextToken(Scope);
+  // тело цикла
+  Result := ParseStatements(Scope, BodySContext, True);
+  parser_MatchToken(Result, token_until);
+
+  // выражение цикла
+  InitEContext(EContext, ExprRValue);
+  parser_NextToken(Scope);
+  Result := ParseExpression(Scope, SContext, EContext, ASTExpr);
+  KW.Expression := ASTExpr;
+  Expression := EContext.Result;
+  CheckEmptyExpression(Expression);
+  CheckBooleanExpression(Expression);
+end;
+
 { TASTContext }
 
 procedure TASTSContext.AddASTItem(Item: TASTItem);
@@ -958,6 +1045,12 @@ constructor TASTSContext.Create(Proc: TASTDelphiProc);
 begin
   Self.Proc := Proc;
   Self.Body := Proc.Body;
+end;
+
+function TASTSContext.AddASTItem(ItemClass: TASTItemClass): TASTItem;
+begin
+  Result := ItemClass.Create;
+  AddASTItem(Result);
 end;
 
 constructor TASTSContext.Create(Proc: TASTDelphiProc; Body: TASTBody);

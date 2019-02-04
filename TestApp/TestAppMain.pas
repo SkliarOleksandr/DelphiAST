@@ -20,7 +20,6 @@ type
   TfrmTestAppMain = class(TForm)
     Edit1: TEdit;
     Label1: TLabel;
-    btnASTParse: TButton;
     Memo1: TMemo;
     Button2: TButton;
     SynPasSyn1: TSynPasSyn;
@@ -29,8 +28,9 @@ type
     edUnit: TSynEdit;
     tsAST: TTabSheet;
     tvAST: TTreeView;
-    procedure btnASTParseClick(Sender: TObject);
+    Button1: TButton;
     procedure Button2Click(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
   private
     { Private declarations }
     fPKG: INPPackage;
@@ -49,89 +49,6 @@ uses
 
 {$R *.dfm}
 
-procedure ASTBodyToTreeView(FirstItem: TASTItem; TreeView: TTreeView; RNode: TTreeNode); forward;
-
-procedure ASTTypesToTreeView(ASTUnit: TASTDelphiUnit; TreeView: TTreeView; RNode: TTreeNode);
-var
-  CNode: TTreeNode;
-  Decl: TIDType;
-begin
-RNode := TreeView.Items.AddChild(RNode, 'types');
-  Decl := ASTUnit.TypeSpace.First;
-  while Assigned(Decl) do
-  begin
-    CNode := TreeView.Items.AddChild(RNode, Decl.DisplayName);
-    Decl := TIDType(Decl.NextItem);
-  end;
-end;
-
-procedure ASTVarsToTreeView(ASTUnit: TASTDelphiUnit; TreeView: TTreeView; RNode: TTreeNode);
-var
-  CNode: TTreeNode;
-  Decl: TIDVariable;
-begin
-  RNode := TreeView.Items.AddChild(RNode, 'vars');
-  Decl := ASTUnit.VarSpace.First;
-  while Assigned(Decl) do
-  begin
-    CNode := TreeView.Items.AddChild(RNode, Decl.DisplayName);
-    Decl := TIDVariable(Decl.NextItem);
-  end;
-end;
-
-procedure ASTIFToTreeView(ASTIF: TASTKWIF; TreeView: TTreeView; RNode: TTreeNode);
-var
-  CNode: TTreeNode;
-begin
-  CNode := TreeView.Items.AddChild(RNode, 'then');
-  ASTBodyToTreeView(ASTIF.ThenBody.FirstChild, TreeView, CNode);
-  if Assigned(ASTIF.ElseBody) then
-  begin
-    CNode := TreeView.Items.AddChild(RNode, 'else');
-    ASTBodyToTreeView(ASTIF.ElseBody.FirstChild, TreeView, CNode);
-  end;
-end;
-
-procedure ASTBodyToTreeView(FirstItem: TASTItem; TreeView: TTreeView; RNode: TTreeNode);
-var
-  Item: TASTItem;
-  CNode: TTreeNode;
-begin
-  Item := FirstItem;
-  while Assigned(Item) do
-  begin
-    CNode := TreeView.Items.AddChild(RNode, Item.DisplayName);
-    if Item is TASTKWIF then
-       ASTIFToTreeView(TASTKWIF(Item), TreeView, CNode);
-    Item := Item.Next;
-  end;
-end;
-
-procedure ASTProcsToTreeView(ASTUnit: TASTDelphiUnit; TreeView: TTreeView; RNode: TTreeNode);
-var
-  CNode: TTreeNode;
-  Decl: TIDProcedure;
-begin
-  RNode := TreeView.Items.AddChild(RNode, 'funcs');
-  Decl := ASTUnit.ProcSpace.First;
-  while Assigned(Decl) do
-  begin
-    CNode := TreeView.Items.AddChild(RNode, Decl.DisplayName);
-    ASTBodyToTreeView(TASTDelphiProc(Decl).Body.FirstChild, TreeView, CNode);
-    Decl := TIDProcedure(Decl.NextItem);
-  end;
-end;
-
-procedure ASTToTreeView(ASTUnit: TASTDelphiUnit; TreeView: TTreeView);
-var
-  RNode, CNode: TTreeNode;
-begin
-  RNode := TreeView.Items.AddChild(nil, 'unit ' + ASTUnit.Name);
-  ASTTypesToTreeView(ASTUnit, TreeView, RNode);
-  ASTVarsToTreeView(ASTUnit, TreeView, RNode);
-  ASTProcsToTreeView(ASTUnit, TreeView, RNode);
-end;
-
 procedure CompilerMessagesToStrings(const Messages: ICompilerMessages; Strings: TStrings);
 var
   I: Integer;
@@ -149,7 +66,7 @@ var
   WR: TASTWriter<TTreeView, TTreeNode>;
 begin
   TreeView.Items.Clear;
-  WR.Write(TreeView, nil, ASTUnit,
+  WR := TASTWriter<TTreeView, TTreeNode>.Create(TreeView, ASTUnit,
     function (const Container: TTreeView; const RootNode: TTreeNode; const NodeText: string): TTreeNode
     begin
       Result := Container.Items.AddChild(RootNode, NodeText);
@@ -158,9 +75,42 @@ begin
     begin
       Node.Text := ASTItem.DisplayName;
     end);
+  try
+    WR.Write(nil);
+  finally
+    WR.Free;
+  end;
+  TreeView.FullExpand;
 end;
 
-procedure TfrmTestAppMain.btnASTParseClick(Sender: TObject);
+const ExcludePath = 'C:\Program Files (x86)\Embarcadero\Studio\19.0\source\DUnit\examples\';
+
+procedure TfrmTestAppMain.IndexSources(const RootPath: string; Dict: TSourcesDict);
+var
+  Files: TStringDynArray;
+  i: Integer;
+  FileName: string;
+  FilePath: string;
+  FileInfo: TSourceFileInfo;
+begin
+  Files := TDirectory.GetFiles(RootPath, '*.inc', TSearchOption.soAllDirectories);
+  for i := 0 to Length(Files) -1 do
+  begin
+    FilePath := ExtractFilePath(Files[i]);
+    if Pos(ExcludePath, FilePath) >= Low(string) then
+      Continue;
+    FileInfo.FullPath := Files[i];
+    FileName := ExtractFileName(FileInfo.FullPath);
+    try
+      Dict.Add(FileName, FileInfo);
+    except
+      Memo1.Lines.Add(FileInfo.FullPath);
+      Memo1.Lines.Add(Dict.Items[FileName].FullPath);
+    end;
+  end;
+end;
+
+procedure TfrmTestAppMain.Button1Click(Sender: TObject);
 var
   UN: TASTDelphiUnit;
   Msg: TStrings;
@@ -193,41 +143,13 @@ begin
     else
       Msg.Add('compile fail');
 
-    ASTToTreeView(UN, tvAST);
-//    ASTToTreeView2(UN, tvAST);
+    ASTToTreeView2(UN, tvAST);
 
     CompilerMessagesToStrings(Prj.Messages, Msg);
 
     Memo1.Lines := Msg;
   finally
     Msg.Free;
-  end;
-end;
-
-const ExcludePath = 'C:\Program Files (x86)\Embarcadero\Studio\19.0\source\DUnit\examples\';
-
-procedure TfrmTestAppMain.IndexSources(const RootPath: string; Dict: TSourcesDict);
-var
-  Files: TStringDynArray;
-  i: Integer;
-  FileName: string;
-  FilePath: string;
-  FileInfo: TSourceFileInfo;
-begin
-  Files := TDirectory.GetFiles(RootPath, '*.inc', TSearchOption.soAllDirectories);
-  for i := 0 to Length(Files) -1 do
-  begin
-    FilePath := ExtractFilePath(Files[i]);
-    if Pos(ExcludePath, FilePath) >= Low(string) then
-      Continue;
-    FileInfo.FullPath := Files[i];
-    FileName := ExtractFileName(FileInfo.FullPath);
-    try
-      Dict.Add(FileName, FileInfo);
-    except
-      Memo1.Lines.Add(FileInfo.FullPath);
-      Memo1.Lines.Add(Dict.Items[FileName].FullPath);
-    end;
   end;
 end;
 

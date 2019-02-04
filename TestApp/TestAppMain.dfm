@@ -33,16 +33,6 @@ object frmTestAppMain: TfrmTestAppMain
     TabOrder = 0
     Text = 'C:\Program Files (x86)\Embarcadero\Studio\20.0\source\'
   end
-  object btnASTParse: TButton
-    Left = 416
-    Top = 20
-    Width = 115
-    Height = 25
-    Anchors = [akTop, akRight]
-    Caption = 'AST Parse'
-    TabOrder = 1
-    OnClick = btnASTParseClick
-  end
   object Memo1: TMemo
     Left = 8
     Top = 51
@@ -51,16 +41,16 @@ object frmTestAppMain: TfrmTestAppMain
     Anchors = [akLeft, akTop, akRight]
     Lines.Strings = (
       'Memo1')
-    TabOrder = 2
+    TabOrder = 1
   end
   object Button2: TButton
-    Left = 552
+    Left = 576
     Top = 20
-    Width = 75
+    Width = 51
     Height = 25
     Anchors = [akTop, akRight]
     Caption = 'Analize'
-    TabOrder = 3
+    TabOrder = 2
     OnClick = Button2Click
   end
   object PageControl1: TPageControl
@@ -71,10 +61,9 @@ object frmTestAppMain: TfrmTestAppMain
     Height = 465
     ActivePage = tsSource
     Align = alBottom
-    TabOrder = 4
+    TabOrder = 3
     object tsSource: TTabSheet
       Caption = 'Source'
-      ExplicitHeight = 413
       object edUnit: TSynEdit
         Left = 0
         Top = 0
@@ -124,19 +113,27 @@ object frmTestAppMain: TfrmTestAppMain
           '    a := a * 2;'
           '    b := b div 2; '
           '  end;'
+          '  while a > b do '
+          '    a := a + 1;'
           '  Exit((a + b)*G);   '
+          'end;'
+          ''
+          'procedure Test_Repeat(a, b: Integer);'
+          'begin'
+          '  repeat '
+          '    a := a + 1;'
+          '    b := b - 1;'
+          '  until a = b;'
           'end;'
           ''
           'end.'
           '')
         FontSmoothing = fsmNone
-        ExplicitHeight = 413
       end
     end
     object tsAST: TTabSheet
       Caption = 'AST'
       ImageIndex = 1
-      ExplicitHeight = 413
       object tvAST: TTreeView
         Left = 0
         Top = 0
@@ -145,9 +142,18 @@ object frmTestAppMain: TfrmTestAppMain
         Align = alClient
         Indent = 19
         TabOrder = 0
-        ExplicitHeight = 413
       end
     end
+  end
+  object Button1: TButton
+    Left = 407
+    Top = 20
+    Width = 163
+    Height = 25
+    Anchors = [akTop, akRight]
+    Caption = 'AST Parse'
+    TabOrder = 4
+    OnClick = Button1Click
   end
   object SynPasSyn1: TSynPasSyn
     Options.AutoDetectEnabled = False
