@@ -172,7 +172,6 @@ type
   end;
 
   TASTKeyword = class(TASTItem)
-
   end;
 
   TASTKWAssign = class(TASTKeyword)
@@ -210,6 +209,7 @@ type
   protected
     function GetDisplayName: string; override;
   public
+    constructor Create;
     property Expression: TASTExpression read fExpression write fExpression;
     property ThenBody: TASTBody read fThenBody write fThenBody;
     property ElseBody: TASTBody read fElseBody write fElseBody;
@@ -250,8 +250,9 @@ type
   protected
     function GetDisplayName: string; override;
   public
-    //property Expression: TASTExpression read fExpression write fExpression;
+    property Expressions: TASTExpressionArray read fExpressions;
     property Body: TASTBody read fBody;
+    procedure AddExpression(const Expr: TASTExpression);
   end;
 
 
@@ -472,6 +473,11 @@ end;
 
 { TASTKWIF }
 
+constructor TASTKWIF.Create;
+begin
+  fThenBody := TASTBody.Create();
+end;
+
 function TASTKWIF.GetDisplayName: string;
 begin
   Result := 'IF ' + fExpression.DisplayName;
@@ -493,6 +499,11 @@ end;
 
 { TASTKWWith }
 
+procedure TASTKWWith.AddExpression(const Expr: TASTExpression);
+begin
+  fExpressions := fExpressions + [Expr];
+end;
+
 function TASTKWWith.GetDisplayName: string;
 begin
   Result := 'with ';
@@ -504,5 +515,6 @@ function TASTKWFor.GetDisplayName: string;
 begin
   Result := 'for';
 end;
+
 
 end.

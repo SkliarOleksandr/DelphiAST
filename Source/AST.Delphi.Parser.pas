@@ -50,6 +50,7 @@ type
     function ParseIfThenStatement(Scope: TScope; SContext: TASTSContext): TTokenID;
     function ParseWhileStatement(Scope: TScope; SContext: TASTSContext): TTokenID;
     function ParseRepeatStatement(Scope: TScope; SContext: TASTSContext): TTokenID;
+    function ParseWithStatement(Scope: TScope; SContext: TASTSContext): TTokenID;
 
     procedure InitEContext(var EContext: TEContext; EPosition: TExpessionPosition); inline;
     procedure Process_operator_Assign(var EContext: TEContext); override;
@@ -101,9 +102,9 @@ begin
       {REPEAT}
       token_repeat: Result := ParseRepeatStatement(Scope, SContext);
       {WITH}
-      (*token_with: Result := ParseWithStatement(Scope, SContext);
+      token_with: Result := ParseWithStatement(Scope, SContext);
       {USING}
-      token_using: Result := ParseUsingStatement(Scope, SContext);
+      (*token_using: Result := ParseUsingStatement(Scope, SContext);
       {CASE}
       token_case: Result := ParseCaseStatement(Scope, SContext);
       {ASM}
@@ -223,6 +224,70 @@ begin
   Result := Parser_NextToken(Scope);
   if Result <> token_semicolon then
     Result := ParseStatements(Scope, BodySContext, False);
+end;
+
+function TASTDelphiUnit.ParseWithStatement(Scope: TScope; SContext: TASTSContext): TTokenID;
+var
+  ID: TIdentifier;
+  Decl: TIDDeclaration;
+  EContext: TEContext;
+  Expression, Expr: TIDExpression;
+  WNextScope: TWithScope;
+  WPrevScope: TScope;
+  BodySContext: TASTSContext;
+  TmpVar: TIDDeclaration;
+  ASTExpr: TASTExpression;
+  KW: TASTKWWith;
+begin
+  WPrevScope := Scope;
+  WNextScope := nil;
+  KW := SContext.AddASTItem(TASTKWWith) as TASTKWWith;
+  BodySContext := TASTSContext.Create(SContext.Proc, KW.Body);
+  while True do begin
+    Result := parser_NextToken(Scope);
+    InitEContext(EContext, ExprRValue);
+    parser_MatchToken(Result, token_identifier);
+    Result := ParseExpression(Scope, SContext, EContext, ASTExpr);
+    KW.AddExpression(ASTExpr);
+    Expression := EContext.Result;
+
+    // Проверка что тип сложный
+    if not Expression.DataType.InheritsFrom(TIDStructure) then
+      AbortWork(sStructTypeRequired, parser_PrevPosition);
+
+    Decl := Expression.Declaration;
+    // проверка на повторное выражение/одинаковый тип
+    while Assigned(WNextScope) and (WNextScope.ScopeType = stWithScope) do begin
+      Expr := WNextScope.Expression;
+      if Expr.Declaration = Decl then
+        AbortWork('Duplicate expression', parser_PrevPosition);
+      if Expr.DataType = Decl.DataType then
+        AbortWork('Duplicate expressions types', parser_PrevPosition);
+      WNextScope := TWithScope(WNextScope.OuterScope);
+    end;
+    // создаем специальный "WITH Scope"
+    WNextScope := TWithScope.Create(Scope, Expression);
+    Scope.AddScope(WNextScope);
+    with WNextScope do begin
+      OuterScope := WPrevScope;
+      InnerScope := TIDStructure(Decl.DataType).Members;
+    end;
+
+    case Result of
+      token_coma: begin
+        WPrevScope := WNextScope;
+        Continue;
+      end;
+      token_do: begin
+        parser_NextToken(Scope);
+        Result := ParseStatements(WNextScope, BodySContext, False);
+        Break;
+      end;
+      else begin
+        parser_MatchToken(Result, token_do);
+      end;
+    end;
+  end;
 end;
 
 procedure TASTDelphiUnit.Process_operator_Assign(var EContext: TEContext);
