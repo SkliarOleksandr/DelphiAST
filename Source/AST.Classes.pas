@@ -22,6 +22,7 @@ type
   protected
     function GetDisplayName: string; virtual;
   public
+    constructor Create; virtual;
     property TypeID: TASTItemTypeID read GetItemTypeID;
     property Next: TASTItem read fNext write fNext;
     property DisplayName: string read GetDisplayName;
@@ -209,7 +210,7 @@ type
   protected
     function GetDisplayName: string; override;
   public
-    constructor Create;
+    constructor Create; override;
     property Expression: TASTExpression read fExpression write fExpression;
     property ThenBody: TASTBody read fThenBody write fThenBody;
     property ElseBody: TASTBody read fElseBody write fElseBody;
@@ -221,6 +222,7 @@ type
     fExpression: TASTExpression;
     fBody: TASTBody;
   public
+    constructor Create; override;
     property Expression: TASTExpression read fExpression write fExpression;
     property Body: TASTBody read fBody write fBody;
   end;
@@ -250,6 +252,7 @@ type
   protected
     function GetDisplayName: string; override;
   public
+    constructor Create; override;
     property Expressions: TASTExpressionArray read fExpressions;
     property Body: TASTBody read fBody;
     procedure AddExpression(const Expr: TASTExpression);
@@ -319,6 +322,11 @@ begin
 end;
 
 { TASTItem }
+
+constructor TASTItem.Create;
+begin
+
+end;
 
 function TASTItem.GetDisplayName: string;
 begin
@@ -504,6 +512,11 @@ begin
   fExpressions := fExpressions + [Expr];
 end;
 
+constructor TASTKWWith.Create;
+begin
+  fBody := TASTBody.Create;
+end;
+
 function TASTKWWith.GetDisplayName: string;
 begin
   Result := 'with ';
@@ -516,5 +529,12 @@ begin
   Result := 'for';
 end;
 
+
+{ TASTKWLoop }
+
+constructor TASTKWLoop.Create;
+begin
+  fBody := TASTBody.Create;
+end;
 
 end.
