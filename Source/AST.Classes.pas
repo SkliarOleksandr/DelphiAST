@@ -18,12 +18,12 @@ type
   TASTItem = class(TPooledObject)
   private
     fNext: TASTItem;
-    function GetItemTypeID: TASTItemTypeID; virtual; abstract;
+    //function GetItemTypeID: TASTItemTypeID; virtual; abstract;
   protected
     function GetDisplayName: string; virtual;
   public
     constructor Create; virtual;
-    property TypeID: TASTItemTypeID read GetItemTypeID;
+//    property TypeID: TASTItemTypeID read GetItemTypeID;
     property Next: TASTItem read fNext write fNext;
     property DisplayName: string read GetDisplayName;
   end;
@@ -219,27 +219,43 @@ type
 
   TASTKWLoop = class(TASTKeyword)
   private
-    fExpression: TASTExpression;
     fBody: TASTBody;
   public
     constructor Create; override;
-    property Expression: TASTExpression read fExpression write fExpression;
     property Body: TASTBody read fBody write fBody;
   end;
 
   TASTKWWhile = class(TASTKWLoop)
+  private
+    fExpression: TASTExpression;
   protected
     function GetDisplayName: string; override;
+  public
+    property Expression: TASTExpression read fExpression write fExpression;
   end;
 
   TASTKWRepeat = class(TASTKWLoop)
+  private
+    fExpression: TASTExpression;
   protected
     function GetDisplayName: string; override;
+  public
+    property Expression: TASTExpression read fExpression write fExpression;
   end;
 
+  TDirection = (dForward, dBackward);
+
   TASTKWFor = class(TASTKWLoop)
+  private
+    fExprInit: TASTExpression;
+    fExprTo: TASTExpression;
+    fDirection: TDirection;
   protected
     function GetDisplayName: string; override;
+  public
+    property ExprInit: TASTExpression read fExprInit write fExprInit;
+    property ExprTo: TASTExpression read fExprTo write fExprTo;
+    property Direction: TDirection read fDirection write fDirection;
   end;
 
 
@@ -272,6 +288,8 @@ type
 
 
 implementation
+
+uses System.StrUtils;
 
 procedure TASTParentItem.AddChild(Item: TASTItem);
 begin
@@ -526,7 +544,7 @@ end;
 
 function TASTKWFor.GetDisplayName: string;
 begin
-  Result := 'for';
+  Result := 'for ' + fExprInit.DisplayName + ' ' + ifthen(fDirection = dForward, 'to', 'downto') + ' ' + fExprTo.DisplayName;
 end;
 
 

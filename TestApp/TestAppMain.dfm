@@ -12,63 +12,27 @@ object frmTestAppMain: TfrmTestAppMain
   Font.Style = []
   OldCreateOrder = False
   Position = poScreenCenter
-  DesignSize = (
-    635
-    643)
   PixelsPerInch = 96
   TextHeight = 13
-  object Label1: TLabel
-    Left = 8
-    Top = 8
-    Width = 90
-    Height = 13
-    Caption = 'Delphi Source Path'
-  end
-  object Edit1: TEdit
-    Left = 8
-    Top = 24
-    Width = 393
-    Height = 21
-    Anchors = [akLeft, akTop, akRight]
-    TabOrder = 0
-    Text = 'C:\Program Files (x86)\Embarcadero\Studio\20.0\source\'
-  end
-  object Memo1: TMemo
-    Left = 8
-    Top = 51
-    Width = 619
-    Height = 118
-    Anchors = [akLeft, akTop, akRight]
-    Lines.Strings = (
-      'Memo1')
-    TabOrder = 1
-  end
-  object Button2: TButton
-    Left = 576
-    Top = 20
-    Width = 51
-    Height = 25
-    Anchors = [akTop, akRight]
-    Caption = 'Analize'
-    TabOrder = 2
-    OnClick = Button2Click
-  end
   object PageControl1: TPageControl
     AlignWithMargins = True
     Left = 3
-    Top = 175
+    Top = 172
     Width = 629
-    Height = 465
+    Height = 468
     ActivePage = tsSource
-    Align = alBottom
-    TabOrder = 3
+    Align = alClient
+    TabOrder = 0
+    ExplicitTop = 175
+    ExplicitHeight = 465
     object tsSource: TTabSheet
       Caption = 'Source'
+      ExplicitHeight = 437
       object edUnit: TSynEdit
         Left = 0
         Top = 0
         Width = 621
-        Height = 437
+        Height = 440
         Align = alClient
         Font.Charset = DEFAULT_CHARSET
         Font.Color = clWindowText
@@ -103,6 +67,17 @@ object frmTestAppMain: TfrmTestAppMain
           'end;'
           ''
           'var G: Integer;'
+          ''
+          'procedure Test_for(a, b, c: Integer);'
+          'var'
+          '  i: Integer;'
+          'begin'
+          '  for i := 0 to c - 1 do'
+          '  begin'
+          '    a := a + 1;'
+          '    b := b - 1;'
+          '  end;'
+          'end;'
           ''
           'function Test_Assign(a, b: Integer): Integer;'
           'begin'
@@ -151,31 +126,83 @@ object frmTestAppMain: TfrmTestAppMain
           'end.'
           '')
         FontSmoothing = fsmNone
+        ExplicitHeight = 437
       end
     end
     object tsAST: TTabSheet
       Caption = 'AST'
       ImageIndex = 1
+      ExplicitHeight = 437
       object tvAST: TTreeView
         Left = 0
         Top = 0
         Width = 621
-        Height = 437
+        Height = 440
         Align = alClient
         Indent = 19
         TabOrder = 0
+        ExplicitHeight = 437
       end
     end
   end
-  object Button1: TButton
-    Left = 407
-    Top = 20
-    Width = 163
-    Height = 25
-    Anchors = [akTop, akRight]
-    Caption = 'AST Parse'
-    TabOrder = 4
-    OnClick = Button1Click
+  object Panel1: TPanel
+    Left = 0
+    Top = 0
+    Width = 635
+    Height = 169
+    Align = alTop
+    BevelOuter = bvNone
+    TabOrder = 1
+    DesignSize = (
+      635
+      169)
+    object Label1: TLabel
+      Left = 8
+      Top = 8
+      Width = 90
+      Height = 13
+      Caption = 'Delphi Source Path'
+    end
+    object Edit1: TEdit
+      Left = 8
+      Top = 24
+      Width = 393
+      Height = 21
+      Anchors = [akLeft, akTop, akRight]
+      TabOrder = 0
+      Text = 'C:\Program Files (x86)\Embarcadero\Studio\20.0\source\'
+    end
+    object Button1: TButton
+      Left = 407
+      Top = 20
+      Width = 163
+      Height = 25
+      Anchors = [akTop, akRight]
+      Caption = 'AST Parse'
+      TabOrder = 1
+      OnClick = Button1Click
+    end
+    object Button2: TButton
+      Left = 576
+      Top = 20
+      Width = 51
+      Height = 25
+      Anchors = [akTop, akRight]
+      Caption = 'Analize'
+      TabOrder = 2
+      OnClick = Button2Click
+    end
+    object Memo1: TMemo
+      Left = 8
+      Top = 51
+      Width = 619
+      Height = 118
+      Anchors = [akLeft, akTop, akRight]
+      Lines.Strings = (
+        'Memo1')
+      ScrollBars = ssVertical
+      TabOrder = 3
+    end
   end
   object SynPasSyn1: TSynPasSyn
     Options.AutoDetectEnabled = False

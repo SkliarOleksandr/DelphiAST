@@ -48,11 +48,14 @@ type
     function ParseProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure = nil; Platform: TIDPlatform = nil): TTokenID; override;
     function ParseProcBody(Proc: TIDProcedure; Platform: TIDPlatform): TTokenID; override;
     function ParseStatements(Scope: TScope; var SContext: TASTSContext; IsBlock: Boolean): TTokenID; overload;
-    function ParseIfThenStatement(Scope: TScope; SContext: TASTSContext): TTokenID;
-    function ParseWhileStatement(Scope: TScope; SContext: TASTSContext): TTokenID;
-    function ParseRepeatStatement(Scope: TScope; SContext: TASTSContext): TTokenID;
-    function ParseWithStatement(Scope: TScope; SContext: TASTSContext): TTokenID;
+    function ParseIfThenStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
+    function ParseWhileStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
+    function ParseRepeatStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
+    function ParseWithStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
     function ParseMember(Scope: TScope; out Expression: TIDExpression; var EContext: TEContext; var SContext: TASTSContext): TTokenID;
+    function ParseForStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
+    function ParseForInStatement(Scope: TScope; var SContext: TASTSContext; LoopVar: TIDExpression): TTokenID;
+
 
 
     procedure InitEContext(var EContext: TEContext; EPosition: TExpessionPosition); inline;
@@ -106,10 +109,10 @@ begin
       token_repeat: Result := ParseRepeatStatement(Scope, SContext);
       {WITH}
       token_with: Result := ParseWithStatement(Scope, SContext);
-      {USING}
-      (*token_using: Result := ParseUsingStatement(Scope, SContext);
+      {FOR}
+      token_for: Result := ParseForStatement(Scope, SContext);
       {CASE}
-      token_case: Result := ParseCaseStatement(Scope, SContext);
+      (*token_case: Result := ParseCaseStatement(Scope, SContext);
       {ASM}
       token_asm: begin
         ParseAsmSpecifier(Platform);
@@ -121,8 +124,6 @@ begin
         InitEContext(EContext, SContext, ExprLValue);
         Result := ParseInheritedStatement(Scope, EContext);
       end;
-      {FOR}
-      token_for: Result := ParseForStatement(Scope, SContext);
       {TRY}
       token_try: begin
         Result := ParseTrySection(Scope, SContext);
@@ -158,7 +159,7 @@ begin
           Result := ParseExpression(Scope, SContext, EContext, ASTEDst);
           if Result = token_assign then begin
             InitEContext(REContext, ExprRValue);
-            Result := parser_NextToken(Scope);
+            parser_NextToken(Scope);
             Result := ParseExpression(Scope, SContext, REContext, ASTESrc);
             if Assigned(REContext.LastBoolNode) then
               Bool_CompleteImmediateExpression(REContext, REContext.Result);
@@ -200,7 +201,7 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.ParseWhileStatement(Scope: TScope; SContext: TASTSContext): TTokenID;
+function TASTDelphiUnit.ParseWhileStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
 var
   Expression: TIDExpression;
   EContext: TEContext;
@@ -229,16 +230,14 @@ begin
     Result := ParseStatements(Scope, BodySContext, False);
 end;
 
-function TASTDelphiUnit.ParseWithStatement(Scope: TScope; SContext: TASTSContext): TTokenID;
+function TASTDelphiUnit.ParseWithStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
 var
-  ID: TIdentifier;
   Decl: TIDDeclaration;
   EContext: TEContext;
   Expression, Expr: TIDExpression;
   WNextScope: TWithScope;
   WPrevScope: TScope;
   BodySContext: TASTSContext;
-  TmpVar: TIDDeclaration;
   ASTExpr: TASTExpression;
   KW: TASTKWWith;
 begin
@@ -728,7 +727,124 @@ begin
   EContext.RPNFinish();
 end;
 
-function TASTDelphiUnit.ParseIfThenStatement(Scope: TScope; SContext: TASTSContext): TTokenID;
+function TASTDelphiUnit.ParseForInStatement(Scope: TScope; var SContext: TASTSContext; LoopVar: TIDExpression): TTokenID;
+begin
+
+end;
+
+
+type
+  TILCondition = (cNone, cEqual, cNotEqual, cGreater, cGreaterOrEqual, cLess, cLessOrEqual, cZero, cNonZero);
+
+function TASTDelphiUnit.ParseForStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
+var
+  EContext: TEContext;
+  BodySContext: TASTSContext;
+  ID: TIdentifier;
+  LoopVar: TIDDeclaration;
+  LExpr, StartExpr, StopExpr: TIDExpression;
+  NewScope: TScope;
+  KW: TASTKWFor;
+  JMPCondition: TILCondition;
+  ASTExpr: TASTExpression;
+  WriteIL: Boolean;
+begin
+  KW := SContext.AddASTItem(TASTKWFor) as TASTKWFor;
+  BodySContext := TASTSContext.Create(SContext.Proc, KW.Body);
+
+  // цикловая переменная
+  Result := parser_NextToken(Scope);
+  if Result = token_var then begin
+    parser_ReadNextIdentifier(Scope, ID);
+    NewScope := TScope.Create(stLocal, Scope);
+    LoopVar := TIDVariable.Create(NewScope, ID);
+    NewScope.AddVariable(TIDVariable(LoopVar));
+    Scope := NewScope;
+  end else begin
+    parser_ReadCurrIdentifier(ID);
+    LoopVar := FindID(Scope, ID);
+  end;
+
+  InitEContext(EContext, ExprRValue);
+  // заталкиваем в стек левое выражение
+  LExpr := TIDExpression.Create(LoopVar, ID.TextPosition);
+  EContext.RPNPushExpression(LExpr);
+
+  Result := parser_NextToken(Scope);
+
+  {если это цикл for ... in ...}
+  if Result = token_in then
+  begin
+    Result := ParseForInStatement(Scope, SContext, LExpr);
+    Exit;
+  end;
+
+  parser_MatchToken(Result, token_assign);
+
+  if LoopVar.DataType = nil then
+    LoopVar.DataType := SYSUnit._Int32
+  else
+  if (LoopVar.ItemType <> itVar) or not (LoopVar.DataTypeID in [dtInt32, dtUInt64]) then
+    AbortWork(sForLoopIndexVarsMastBeSimpleIntVar, parser_Position);
+
+  // начальное значение
+  parser_NextToken(Scope);
+  Result := ParseExpression(Scope, SContext, EContext, ASTExpr);
+  KW.ExprInit := ASTExpr;
+  StartExpr := EContext.Result;
+  CheckEmptyExpression(StartExpr);
+
+  // пишем инструкцию присваениея начального значения
+  EContext.RPNPushOperator(opAssignment);
+  EContext.RPNFinish();
+
+  // устанавливаем флаг цикловой переменной
+  with TIDVariable(LoopVar) do Flags := Flags + [VarLoopIndex];
+
+   // to/downto keyword
+  case Result of
+    token_to: JMPCondition := cGreater;
+    token_downto: JMPCondition := cLess;
+    else begin
+      AbortWork(sKeywordToOrDowntoExpected, parser_PrevPosition);
+      JMPCondition := cNone;
+    end;
+  end;
+
+  // конечное значение
+  InitEContext(EContext, ExprRValue);
+  parser_NextToken(Scope);
+  Result := ParseExpression(Scope, SContext, EContext, ASTExpr);
+  KW.ExprTo := ASTExpr;
+  StopExpr := EContext.Result;
+  CheckEmptyExpression(StopExpr);
+
+  // если для вычисления конечного выражения использовалась временная переменная
+  // помечаем ее как постоянно используемую в блоке FOR цикла
+  if StopExpr.IsTMPVar then
+    StopExpr.AsVariable.IncludeFlags([VarLoopIndex]);
+
+  // проверка на константы
+  if (StartExpr.ItemType = itConst) and
+     (StopExpr.ItemType = itConst) then
+  begin
+    WriteIL := ((JMPCondition = cGreater) and (StartExpr.AsIntConst.Value <= StopExpr.AsIntConst.Value)) or
+               ((JMPCondition = cLess) and (StartExpr.AsIntConst.Value >= StopExpr.AsIntConst.Value));
+    if not WriteIL then
+      Warning(msgForOrWhileLoopExecutesZeroTimes, [], LoopVar.SourcePosition);
+  end;
+
+  // тело цикла
+  parser_MatchToken(Result, token_do);
+  Result := parser_NextToken(Scope);
+  if Result <> token_semicolon then
+    Result := ParseStatements(Scope, BodySContext, False);
+
+  // сбрасываем флаг цикловой переменной
+  with TIDVariable(LoopVar) do Flags := Flags - [VarLoopIndex];
+end;
+
+function TASTDelphiUnit.ParseIfThenStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
 var
   Expression: TIDExpression;
   EContext: TEContext;
@@ -1073,7 +1189,7 @@ begin
     CheckDestructorSignature(Proc);
 end;
 
-function TASTDelphiUnit.ParseRepeatStatement(Scope: TScope; SContext: TASTSContext): TTokenID;
+function TASTDelphiUnit.ParseRepeatStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
 var
   Expression: TIDExpression;
   EContext: TEContext;

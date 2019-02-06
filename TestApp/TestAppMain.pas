@@ -6,7 +6,7 @@ uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, System.Generics.Collections, NPCompiler.Package,
   NPCompiler.Intf, OPCompiler, NPCompiler.Classes, SynEdit, SynEditHighlighter, SynEditCodeFolding, SynHighlighterPas, AST.Delphi.Project,
-  Vcl.ComCtrls;
+  Vcl.ComCtrls, Vcl.ExtCtrls;
 
 type
   TSourceFileInfo = record
@@ -18,17 +18,18 @@ type
 
 
   TfrmTestAppMain = class(TForm)
-    Edit1: TEdit;
-    Label1: TLabel;
-    Memo1: TMemo;
-    Button2: TButton;
     SynPasSyn1: TSynPasSyn;
     PageControl1: TPageControl;
     tsSource: TTabSheet;
     edUnit: TSynEdit;
     tsAST: TTabSheet;
     tvAST: TTreeView;
+    Panel1: TPanel;
+    Label1: TLabel;
+    Edit1: TEdit;
     Button1: TButton;
+    Button2: TButton;
+    Memo1: TMemo;
     procedure Button2Click(Sender: TObject);
     procedure Button1Click(Sender: TObject);
   private
