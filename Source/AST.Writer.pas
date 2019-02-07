@@ -29,7 +29,7 @@ type
     procedure WriteKW_If(RootNode: TNode; KW: TASTKWIF);
     procedure WriteKW_Loop(RootNode: TNode; KW: TASTKWLoop);
     procedure WriteKW_With(RootNode: TNode; KW: TASTKWWith);
-
+    procedure WriteKW_Case(RootNode: TNode; KW: TASTKWCase);
   public
     constructor Create(const Doc: TDoc;
                        const Module: TASTModule;
@@ -89,19 +89,22 @@ begin
     CNode := fGetNodeProc(fDoc, RootNode, Item.DisplayName);
 
     if Item is TASTKWIF then
-       WriteKW_If(CNode, TASTKWIF(Item));
-
+       WriteKW_If(CNode, TASTKWIF(Item))
+    else
     if Item is TASTKWWhile then
-       WriteKW_Loop(CNode, TASTKWLoop(Item));
-
+       WriteKW_Loop(CNode, TASTKWLoop(Item))
+    else
     if Item is TASTKWRepeat then
-       WriteKW_Loop(CNode, TASTKWLoop(Item));
-
+       WriteKW_Loop(CNode, TASTKWLoop(Item))
+    else
     if Item is TASTKWFor then
-       WriteKW_Loop(CNode, TASTKWLoop(Item));
-
+       WriteKW_Loop(CNode, TASTKWLoop(Item))
+    else
     if Item is TASTKWWith then
-       WriteKW_With(CNode, TASTKWWith(Item));
+       WriteKW_With(CNode, TASTKWWith(Item))
+    else
+    if Item is TASTKWCase then
+       WriteKW_Case(CNode, TASTKWCase(Item));
 
     Item := Item.Next;
   end;
@@ -119,6 +122,25 @@ begin
     CNode := fGetNodeProc(fDoc, RootNode, Func.Name);
     WriteBody(CNode, Func.Body);
     Func := Func.NextItem as TASTDelphiProc;
+  end;
+end;
+
+procedure TASTWriter<TDoc, TNode>.WriteKW_Case(RootNode: TNode; KW: TASTKWCase);
+var
+  CNode: TNode;
+  Item: TASTKWCaseItem;
+begin
+  Item := KW.FirstItem;
+  while Assigned(Item) do
+  begin
+    CNode := fGetNodeProc(fDoc, RootNode, Item.Expression.DisplayName + ':');
+    WriteBody(CNode, Item.Body);
+    Item := Item.Next as TASTKWCaseItem;
+  end;
+  if Assigned(KW.ElseBody) then
+  begin
+    CNode := fGetNodeProc(fDoc, RootNode, 'else');
+    WriteBody(CNode, KW.ElseBody);
   end;
 end;
 

@@ -23,11 +23,8 @@ object frmTestAppMain: TfrmTestAppMain
     ActivePage = tsSource
     Align = alClient
     TabOrder = 0
-    ExplicitTop = 175
-    ExplicitHeight = 465
     object tsSource: TTabSheet
       Caption = 'Source'
-      ExplicitHeight = 437
       object edUnit: TSynEdit
         Left = 0
         Top = 0
@@ -67,6 +64,20 @@ object frmTestAppMain: TfrmTestAppMain
           'end;'
           ''
           'var G: Integer;'
+          ''
+          'procedure Test_Case(a, b, c: Integer);'
+          'begin'
+          '  case a of '
+          '      1: a := a + 1;'
+          '      2: a := a - 1;'
+          '      3: begin'
+          '         a := a + 1;'
+          '         b := b - 1;'
+          '      end;'
+          '  else'
+          '     a := a * 2;'
+          '  end;'
+          'end;'
           ''
           'procedure Test_for(a, b, c: Integer);'
           'var'
@@ -126,13 +137,11 @@ object frmTestAppMain: TfrmTestAppMain
           'end.'
           '')
         FontSmoothing = fsmNone
-        ExplicitHeight = 437
       end
     end
     object tsAST: TTabSheet
       Caption = 'AST'
       ImageIndex = 1
-      ExplicitHeight = 437
       object tvAST: TTreeView
         Left = 0
         Top = 0
@@ -141,7 +150,6 @@ object frmTestAppMain: TfrmTestAppMain
         Align = alClient
         Indent = 19
         TabOrder = 0
-        ExplicitHeight = 437
       end
     end
   end

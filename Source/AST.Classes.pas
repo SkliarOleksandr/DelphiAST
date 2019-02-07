@@ -274,6 +274,32 @@ type
     procedure AddExpression(const Expr: TASTExpression);
   end;
 
+  TASTKWCaseItem = class(TASTItem)
+  private
+    fExpression: TASTExpression;
+    fBody: TASTBody;
+  public
+    constructor Create; override;
+    property Expression: TASTExpression read fExpression;
+    property Body: TASTBody read fBody;
+  end;
+
+  TASTKWCase = class(TASTKeyword)
+  private
+    fExpression: TASTExpression;
+    fFirstItem: TASTKWCaseItem;
+    fLastItem: TASTKWCaseItem;
+    fElseBody: TASTBody;
+  protected
+    function GetDisplayName: string; override;
+  public
+    constructor Create; override;
+    function AddItem(Expression: TASTExpression): TASTKWCaseItem;
+    property Expression: TASTExpression read fExpression write fExpression;
+    property FirstItem: TASTKWCaseItem read fFirstItem;
+    property ElseBody: TASTBody read fElseBody;
+  end;
+
 
   TASTFunc = class(TASTDeclaration)
   private
@@ -553,6 +579,40 @@ end;
 constructor TASTKWLoop.Create;
 begin
   fBody := TASTBody.Create;
+end;
+
+{ TASTKWSwitch }
+
+function TASTKWCase.AddItem(Expression: TASTExpression): TASTKWCaseItem;
+begin
+  Result := TASTKWCaseItem.Create;
+  Result.fExpression := Expression;
+
+  if Assigned(fLastItem) then
+    fLastItem.Next := Result
+  else
+    fFirstItem := Result;
+
+  fLastItem := Result;
+end;
+
+constructor TASTKWCase.Create;
+begin
+  inherited;
+  fElseBody := TASTBody.Create;
+end;
+
+function TASTKWCase.GetDisplayName: string;
+begin
+  Result := 'case ' + fExpression.DisplayName;
+end;
+
+{ TASTKWSwitchItem }
+
+constructor TASTKWCaseItem.Create;
+begin
+  inherited;
+  fBody := TASTBody.Create();
 end;
 
 end.

@@ -55,7 +55,7 @@ type
     function ParseMember(Scope: TScope; out Expression: TIDExpression; var EContext: TEContext; var SContext: TASTSContext): TTokenID;
     function ParseForStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
     function ParseForInStatement(Scope: TScope; var SContext: TASTSContext; LoopVar: TIDExpression): TTokenID;
-
+    function ParseCaseStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
 
 
     procedure InitEContext(var EContext: TEContext; EPosition: TExpessionPosition); inline;
@@ -112,9 +112,9 @@ begin
       {FOR}
       token_for: Result := ParseForStatement(Scope, SContext);
       {CASE}
-      (*token_case: Result := ParseCaseStatement(Scope, SContext);
+      token_case: Result := ParseCaseStatement(Scope, SContext);
       {ASM}
-      token_asm: begin
+      (*token_asm: begin
         ParseAsmSpecifier(Platform);
         ParseASMStatement(Scope, Platform, SContext);
         Result := parser_NextToken(Scope);
@@ -462,6 +462,180 @@ begin
   EContext.Initialize(Process_operators);
   EContext.SContext := nil;
   EContext.EPosition := EPosition;
+end;
+
+function TASTDelphiUnit.ParseCaseStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
+type
+  TMatchItem = record
+    Expression: TIDExpression;
+  end;
+  PMatchItem = ^TMatchItem;
+var
+  MatchItems: array of TMatchItem;
+  MatchItem: PMatchItem;
+  procedure CheckUniqueMIExpression(Cur: TIDExpression);
+  var
+    i: Integer;
+    Prev: TIDExpression;
+    IsDuplicate: Boolean;
+  begin
+    IsDuplicate := False;
+    for i := 0 to Length(MatchItems) - 2 do
+    begin
+      Prev := MatchItems[i].Expression;
+      if Prev.IsConstant and Cur.IsConstant then
+      begin
+        if Prev.DataTypeID = dtRange then
+        begin
+          if Cur.DataTypeID <> dtRange then
+            IsDuplicate := IsConstValueInRange(Cur, TIDRangeConstant(Prev.Declaration))
+          else
+            IsDuplicate := IsConstRangesIntersect(TIDRangeConstant(Cur.Declaration), TIDRangeConstant(Prev.Declaration))
+        end else
+        if Cur.DataTypeID = dtRange then
+        begin
+          IsDuplicate := IsConstValueInRange(Prev, TIDRangeConstant(Cur.Declaration));
+        end else
+          IsDuplicate := IsConstEqual(Prev, Cur);
+      end else
+      if (not Prev.IsAnonymous) and (not Cur.IsAnonymous) then
+      begin
+        IsDuplicate := (Prev.Declaration = Cur.Declaration);
+      end;
+      if IsDuplicate then
+        AbortWork(sDuplicateMatchExpression, Cur.TextPosition);
+    end;
+  end;
+var
+  EContext: TEContext;
+  SExpression,
+  DExpression: TIDExpression;
+  TotalMICount, ItemsCount: Integer;
+  ElsePresent: Boolean;
+  SEConst: Boolean;
+  MISContext: TASTSContext;
+  NeedWriteIL,
+  NeedCMPCode: Boolean;
+  Implicit: TIDDeclaration;
+  ASTExpr: TASTExpression;
+  KW: TASTKWCase;
+  CaseItem: TASTKWCaseItem;
+begin
+  KW := SContext.AddASTItem(TASTKWCase) as TASTKWCase;
+
+  // NeedCMPCode := False;
+  // CASE выражение
+  InitEContext(EContext, ExprRValue);
+  parser_NextToken(Scope);
+  Result := ParseExpression(Scope, SContext, EContext, ASTExpr);
+  KW.Expression := ASTExpr;
+  SExpression := EContext.RPNPopExpression();
+  CheckEmptyExpression(SExpression);
+  if Assigned(EContext.LastBoolNode) then
+    Bool_CompleteImmediateExpression(EContext, SExpression);
+  SEConst := SExpression.IsConstant;
+  parser_MatchToken(Result, token_of);
+  ItemsCount := 0;
+  TotalMICount := 0;
+  NeedWriteIL := True;
+  ElsePresent := False;
+  Result := parser_NextToken(Scope);
+
+  while Result <> token_end do
+  begin
+    InitEContext(EContext, ExprRValue);
+    if Result <> token_else then
+    begin
+      while True do begin
+        //CFBBegin(SContext, CFB_CASE_ENTRY);
+        Result := ParseExpression(Scope, SContext, EContext, ASTExpr);
+
+        CaseItem := KW.AddItem(ASTExpr);
+        MISContext := TASTSContext.Create(SContext.Proc, CaseItem.Body);
+
+        DExpression := EContext.RPNPopExpression();
+        CheckEmptyExpression(DExpression);
+        // проверка на совпадение типа
+        if DExpression.DataTypeID = dtRange then
+          Implicit := CheckImplicit(SExpression, TIDRangeType(DExpression.DataType).ElementType)
+        else
+          Implicit := CheckImplicit(SExpression, DExpression.DataType);
+        if not Assigned(Implicit) then
+          AbortWork(sMatchExprTypeMustBeIdenticalToCaseExprFmt, [DExpression.DataTypeName, SExpression.DataTypeName], DExpression.TextPosition);
+
+        // проверяем на константу
+        if DExpression.IsConstant and SEConst then
+        begin
+          // если данное выражение истенно, то для остальных генерировать IL код не нужно
+          if ((DExpression.DataTypeID = dtRange) and IsConstValueInRange(SExpression, TIDRangeConstant(DExpression.Declaration)))
+              or IsConstEqual(SExpression, DExpression) then
+          begin
+            NeedWriteIL := False;
+          end else
+            NeedWriteIL := True;
+          NeedCMPCode := False;
+        end else begin
+          //MISContext.WriteIL := NeedWriteIL;
+          NeedCMPCode := NeedWriteIL;
+          if NeedCMPCode then
+          begin
+            SetLength(MatchItems, ItemsCount + 1);
+            MatchItem := @MatchItems[ItemsCount];
+            MatchItem.Expression := DExpression;
+
+            // код проверки условия
+            if DExpression.DataTypeID <> dtRange then
+            begin
+              
+            end else
+              Process_operator_In(EContext, SExpression, DExpression);
+            Inc(ItemsCount);
+          end;
+        end;
+        CheckUniqueMIExpression(DExpression);
+
+        if Assigned(EContext.LastBoolNode) and Assigned(EContext.LastBoolNode.PrevNode) then
+          Bool_AddExprNode(EContext, ntOr);
+
+        // если была запятая, парсим следующее выражение
+        if Result <> token_coma then
+          break;
+
+        parser_NextToken(Scope);
+      end;
+      // двоеточие
+      parser_MatchToken(Result, token_colon);
+      parser_NextToken(Scope);
+      // корректируем переходы
+      //Bool_CompleteExpression(EContext.LastBoolNode, JMPToEnd);
+      // парсим код секции
+      Result := ParseStatements(Scope, MISContext, False);
+
+      parser_MatchToken(Result, token_semicolon);
+      Result := parser_NextToken(Scope);
+      Inc(TotalMICount);
+
+    end else begin
+      // ELSE секция
+      MISContext := TASTSContext.Create(SContext.Proc, KW.ElseBody);
+      parser_NextToken(Scope);
+      Result := ParseStatements(Scope, MISContext, True);
+      parser_MatchToken(Result, token_end);
+      Result := parser_NextToken(Scope);
+      ElsePresent := True;
+      Inc(TotalMICount);
+      Break;
+    end;
+  end;
+  // проверяем есть ли хоть одна секция(включая ELSE) в кейсе
+  if TotalMICount = 0 then
+    AbortWork(sCaseStmtRequireAtLeastOneMatchExpr, parser_PrevPosition);
+
+  // если небыло ELSE секции, парсим END;
+  if not ElsePresent then begin
+    parser_MatchToken(Result, token_end);
+    Result := parser_NextToken(Scope);
+  end;
 end;
 
 function TASTDelphiUnit.ParseExitStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
