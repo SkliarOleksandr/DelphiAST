@@ -14,6 +14,23 @@ uses System.SysUtils,
      NPCompiler.Classes;
 
 type
+
+  {PTryContext = ^TTryContext;
+  TTryContext = record
+  type
+    TExitType = (etCallFinally, etJumpToFinally);
+    TExitListItem = record
+      ExitType: TExitType;
+    end;
+    PExitListItem = ^TExitListItem;
+    TExitList = array of TExitListItem;
+    TTrySection = (SectionTry, SectionFinally, SectionExcept);
+  var
+    Parent: PTryContext;
+    ExitList: TExitList;
+    Section: TTrySection;
+  end;}
+
   TASTDelphiProc = class(TIDProcedure)
   private
     fBody: TASTBody;
@@ -23,17 +40,19 @@ type
 
 
   TASTSContext = record
+  private
+   function GetIsLoopBody: Boolean;
+  public
     Proc: TASTDelphiProc;
     Body: TASTBody;
     constructor Create(Proc: TASTDelphiProc); overload;
     constructor Create(Proc: TASTDelphiProc; Body: TASTBody); overload;
-    procedure AddASTItem(Item: TASTItem); overload;
     function AddASTItem(ItemClass: TASTItemClass): TASTItem; overload;
+    property IsLoopBody: Boolean read GetIsLoopBody;
   end;
 
 
   TASTDelphiUnit = class(TNPUnit)
-  private
   protected
     function GetModuleName: string; override;
 
@@ -56,6 +75,11 @@ type
     function ParseForStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
     function ParseForInStatement(Scope: TScope; var SContext: TASTSContext; LoopVar: TIDExpression): TTokenID;
     function ParseCaseStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
+    function ParseBreakStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
+    function ParseContinueStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
+    function ParseImmVarStatement(Scope: TScope;  var SContext: TASTSContext): TTokenID;
+
+
 
 
     procedure InitEContext(var EContext: TEContext; EPosition: TExpessionPosition); inline;
@@ -136,16 +160,17 @@ begin
         Exit;
       end;
       {RAISE}
-      token_raise: Result := ParseRaiseStatement(Scope, SContext);
+      token_raise: Result := ParseRaiseStatement(Scope, SContext);*)
       {BREAK, CONTINUE}
-      token_break, token_continue: Result := ParseBCStatements(Scope, Result, SContext);
+      token_break: Result := ParseBreakStatement(Scope, SContext);
+      token_continue: Result := ParseContinueStatement(Scope, SContext);
       token_semicolon:;
-      token_unsafe: Result := ParseUnsafeStatement(Scope, SContext);
+
 
       {VAR}
       token_var: Result := ParseImmVarStatement(Scope, SContext);
 
-      token_address: begin
+      (*  token_address: begin
         Result := parser_NextToken(Scope);
         Continue;
       end;     *)
@@ -168,8 +193,9 @@ begin
             EContext.RPNPushOperator(opAssignment);
             EContext.RPNFinish();
 
-            AST := TASTKWAssign.Create(ASTEDst, ASTESrc);
-            SContext.AddASTItem(AST);
+            var KW := SContext.AddASTItem(TASTKWAssign) as TASTKWAssign;
+            KW.Dst := ASTEDst;
+            KW.Src := ASTESrc;
 
           end else
           if Result = token_coma then begin
@@ -210,7 +236,6 @@ var
   KW: TASTKWWhile;
 begin
   KW := SContext.AddASTItem(TASTKWWhile) as TASTKWWhile;
-  KW.Body := TASTBody.Create;
 
   // loop expression
   InitEContext(EContext, ExprRValue);
@@ -464,6 +489,55 @@ begin
   EContext.EPosition := EPosition;
 end;
 
+function TASTDelphiUnit.ParseBreakStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
+var
+  //TryBlock: PTryContext;
+  KW: TASTKWBreak;
+begin
+  if not SContext.IsLoopBody then
+    AbortWork(sBreakOrContinueAreAllowedOnlyInALoops, parser_Position);
+
+  SContext.AddASTItem(TASTKWBreak);
+
+  Result := parser_NextToken(Scope);
+  {проверка на выход из try... секции}
+  {TryBlock := SContext.TryBlock;
+  while Assigned(TryBlock) do begin
+    if TryBlock.Section = SectionFinally then
+      AbortWork(sBreakContinueExitAreNotAllowedInFinallyClause, parser_PrevPosition);
+    // если добрались до внешней (к циклу) try... секци, выходим
+    if TryBlock = LContext.TryContext then
+      break;
+    TryBlock.AddExit(etCallFinally, Instruction);
+    TryBlock := TryBlock.Parent;
+  end;}
+end;
+
+function TASTDelphiUnit.ParseContinueStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
+var
+//  TryBlock: PTryContext;
+  KW: TASTKWBreak;
+begin
+  if not SContext.IsLoopBody then
+    AbortWork(sBreakOrContinueAreAllowedOnlyInALoops, parser_Position);
+
+  SContext.AddASTItem(TASTKWContinue);
+
+  Result := parser_NextToken(Scope);
+  {проверка на выход из try... секции}
+  {TryBlock := SContext.TryBlock;
+  while Assigned(TryBlock) do begin
+    if TryBlock.Section = SectionFinally then
+      AbortWork(sBreakContinueExitAreNotAllowedInFinallyClause, parser_PrevPosition);
+    // если добрались до внешней (к циклу) try... секци, выходим
+    if TryBlock = LContext.TryContext then
+      break;
+    TryBlock.AddExit(etCallFinally, Instruction);
+    TryBlock := TryBlock.Parent;
+  end;}
+end;
+
+
 function TASTDelphiUnit.ParseCaseStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
 type
   TMatchItem = record
@@ -642,9 +716,10 @@ function TASTDelphiUnit.ParseExitStatement(Scope: TScope; var SContext: TASTSCon
 var
   ExitExpr: TASTExpression;
   EContext: TEContext;
-  ASTItem: TASTKWExit;
+  KW: TASTKWExit;
 begin
-  ASTItem := TASTKWExit.Create;
+  KW := SContext.AddASTItem(TASTKWExit) as TASTKWExit;
+
   Result := parser_NextToken(Scope);
   if Result = token_openround then
   begin
@@ -654,11 +729,11 @@ begin
     parser_NextToken(Scope);
     InitEContext(EContext, ExprNested);
     Result := ParseExpression(Scope, SContext, EContext, ExitExpr);
-    ASTItem.Expression := ExitExpr;
+    KW.Expression := ExitExpr;
     parser_MatchToken(Result, token_closeround);
     Result := parser_NextToken(Scope);
   end;
-  SContext.AddASTItem(ASTItem);
+
 end;
 
 function TASTDelphiUnit.ParseExpression(Scope: TScope; var SContext: TASTSContext; var EContext: TEContext; out ASTE: TASTExpression): TTokenID;
@@ -671,7 +746,7 @@ begin
   Status := rprOk;
   RoundCount := 0;
   Result := parser_CurTokenID;
-  ASTE := TASTExpression.Create;
+  ASTE := TASTExpression.Create(nil);
   while True do begin
     case Result of
       token_eof: Break;// ERROR_END_OF_FILE;
@@ -1025,14 +1100,14 @@ var
   ThenSContext: TASTSContext;
   ElseSContext: TASTSContext;
   NewScope: TScope;
-  ASTIF: TASTKWIF;
+  KW: TASTKWIF;
   CondExpr: TASTExpression;
 begin
-  ASTIF := TASTKWIF.Create();
+  KW := SContext.AddASTItem(TASTKWIF) as TASTKWIF;
   InitEContext(EContext, ExprRValue);
   parser_NextToken(Scope);
   Result := ParseExpression(Scope, SContext, EContext, CondExpr);
-  ASTIF.Expression := CondExpr;
+  KW.Expression := CondExpr;
   Expression := EContext.Result;
   CheckEmptyExpression(Expression);
   CheckBooleanExpression(Expression);
@@ -1048,8 +1123,7 @@ begin
     else
       NewScope := Scope;
 
-    ASTIF.ThenBody := TASTBody.Create;
-    ThenSContext := TASTSContext.Create(SContext.Proc, ASTIF.ThenBody);
+    ThenSContext := TASTSContext.Create(SContext.Proc, KW.ThenBody);
 
     Result := ParseStatements(NewScope, ThenSContext, False);
   end;
@@ -1063,11 +1137,81 @@ begin
     else
       NewScope := Scope;
 
-    ASTIF.ElseBody := TASTBody.Create;
-    ElseSContext := TASTSContext.Create(SContext.Proc, ASTIF.ElseBody);
+    KW.ElseBody := TASTBody.Create(KW);
+    ElseSContext := TASTSContext.Create(SContext.Proc, KW.ElseBody);
     Result := ParseStatements(NewScope, ElseSContext, False);
   end;
-  SContext.AddASTItem(ASTIF);
+end;
+
+function TASTDelphiUnit.ParseImmVarStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
+var
+  i, c: Integer;
+  DataType: TIDType;
+  Expr: TIDExpression;
+  Variable: TIDVariable;
+  Names: TIdentifiersPool;
+  EContext: TEContext;
+  Vars: array of TIDVariable;
+  KW: TASTKWInlineVarDecl;
+begin
+  c := 0;
+  Names := TIdentifiersPool.Create(1);
+  Result := parser_NextToken(Scope);
+
+  KW := SContext.AddASTItem(TASTKWInlineVarDecl) as TASTKWInlineVarDecl;
+
+  while True do begin
+    parser_MatchIdentifier(Result);
+    Names.Add;
+    parser_ReadCurrIdentifier(Names.Items[c]);
+    Result := parser_NextToken(Scope);
+    if Result = token_Coma then begin
+      Inc(c);
+      Result := parser_NextToken(Scope);
+      Continue;
+    end;
+
+    // парсим тип, если определен
+    if Result = token_colon then
+      Result := ParseTypeSpec(Scope, DataType)
+    else
+      DataType := nil;
+
+    parser_MatchToken(Result, token_assign);
+
+    InitEContext(EContext, ExprRValue);
+
+    SetLength(Vars, c + 1);
+    for i := 0 to c do
+    begin
+      Variable := TIDVariable.Create(Scope, Names.Items[i]);
+      Variable.DataType := DataType;
+      Variable.Visibility := vLocal;
+      Variable.DefaultValue := nil;
+      Variable.Absolute := nil;
+      Scope.AddVariable(Variable);
+      Vars[i] := Variable;
+      Expr := TIDExpression.Create(Variable, Variable.TextPosition);
+      EContext.RPNPushExpression(Expr);
+      KW.AddDecl(Variable);
+    end;
+
+    Result := parser_NextToken(Scope);
+    Result := ParseExpression(Scope, EContext, Result);
+
+    if not Assigned(DataType) then
+    begin
+      DataType := EContext.Result.DataType;
+      for i := 0 to c do
+        Vars[i].DataType := DataType
+    end;
+
+    EContext.RPNPushOperator(opAssignment);
+    EContext.RPNFinish;
+
+    parser_MatchSemicolon(Result);
+    break;
+  end;
 end;
 
 function TASTDelphiUnit.ParseProcBody(Proc: TIDProcedure; Platform: TIDPlatform): TTokenID;
@@ -1100,7 +1244,7 @@ begin
       end;
       token_begin: begin
         Proc.FirstBodyLine := parser_Line;
-        TASTDelphiProc(Proc).fBody := TASTBody.Create;
+        TASTDelphiProc(Proc).fBody := TASTBody.Create(Proc);
         //SContext.Initialize;
         //SContext.IL := TIL(Proc.IL);
         SContext := TASTSContext.Create(TASTDelphiProc(Proc));
@@ -1372,7 +1516,7 @@ var
   ASTExpr: TASTExpression;
 begin
   KW := SContext.AddASTItem(TASTKWRepeat) as TASTKWRepeat;
-  KW.Body := TASTBody.Create;
+
   BodySContext := TASTSContext.Create(SContext.Proc, KW.Body);
 
   parser_NextToken(Scope);
@@ -1651,14 +1795,6 @@ end;
 
 { TASTContext }
 
-procedure TASTSContext.AddASTItem(Item: TASTItem);
-begin
-  if not Assigned(Body) then
-    Proc.fBody.AddChild(Item)
-  else
-    Body.AddChild(Item);
-end;
-
 constructor TASTSContext.Create(Proc: TASTDelphiProc);
 begin
   Self.Proc := Proc;
@@ -1667,8 +1803,8 @@ end;
 
 function TASTSContext.AddASTItem(ItemClass: TASTItemClass): TASTItem;
 begin
-  Result := ItemClass.Create;
-  AddASTItem(Result);
+  Result := ItemClass.Create(Body);
+  Body.AddChild(Result);
 end;
 
 constructor TASTSContext.Create(Proc: TASTDelphiProc; Body: TASTBody);
@@ -1678,5 +1814,10 @@ begin
 end;
 
 
+
+function TASTSContext.GetIsLoopBody: Boolean;
+begin
+  Result := Assigned(Body) and Body.IsLoopBody;
+end;
 
 end.

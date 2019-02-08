@@ -17,15 +17,17 @@ type
 
   TASTItem = class(TPooledObject)
   private
+    fParent: TASTItem;
     fNext: TASTItem;
     //function GetItemTypeID: TASTItemTypeID; virtual; abstract;
   protected
     function GetDisplayName: string; virtual;
   public
-    constructor Create; virtual;
+    constructor Create(Parent: TASTItem); virtual;
 //    property TypeID: TASTItemTypeID read GetItemTypeID;
     property Next: TASTItem read fNext write fNext;
     property DisplayName: string read GetDisplayName;
+    property Parent: TASTItem read fParent;
   end;
 
   TASTItemClass = class of TASTItem;
@@ -48,7 +50,10 @@ type
   end;
 
   TASTBody = class(TASTParentItem)
-
+  private
+    function GetIsLoopBody: Boolean;
+  public
+    property IsLoopBody: Boolean read GetIsLoopBody;
   end;
 
 
@@ -78,6 +83,8 @@ type
     property TextPosition: TTextPosition read FID.TextPosition write FID.TextPosition;
     property SourcePosition: TTextPosition read FID.TextPosition;
   end;
+
+  TASTDeclarations = array of TASTDeclaration;
 
   TASTExpressionItem = class(TASTItem)
   end;
@@ -182,11 +189,11 @@ type
   protected
     function GetDisplayName: string; override;
   public
-    constructor Create(Dst, Src: TASTExpression);
+    property Dst: TASTExpression read fDst write fDst;
+    property Src: TASTExpression read fSrc write fSrc;
   end;
 
   TASTCall = class(TASTExpression)
-    //fFunc: TASt
   end;
 
   TASTVariable = class(TASTDeclaration)
@@ -210,7 +217,7 @@ type
   protected
     function GetDisplayName: string; override;
   public
-    constructor Create; override;
+    constructor Create(Parent: TASTItem = nil); override;
     property Expression: TASTExpression read fExpression write fExpression;
     property ThenBody: TASTBody read fThenBody write fThenBody;
     property ElseBody: TASTBody read fElseBody write fElseBody;
@@ -221,8 +228,8 @@ type
   private
     fBody: TASTBody;
   public
-    constructor Create; override;
-    property Body: TASTBody read fBody write fBody;
+    constructor Create(Parent: TASTItem = nil); override;
+    property Body: TASTBody read fBody;
   end;
 
   TASTKWWhile = class(TASTKWLoop)
@@ -258,6 +265,33 @@ type
     property Direction: TDirection read fDirection write fDirection;
   end;
 
+  TASTKWBreak = class(TASTKeyword)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTKWContinue = class(TASTKeyword)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTKWRaise = class(TASTKeyword)
+  private
+    fExpr: TASTExpression;
+  protected
+    function GetDisplayName: string; override;
+  public
+    property Expression: TASTExpression read fExpr write fExpr;
+  end;
+
+  TASTKWInherited = class(TASTKeyword)
+  private
+    fExpr: TASTExpression;
+  protected
+    function GetDisplayName: string; override;
+  public
+    property Expression: TASTExpression read fExpr write fExpr;
+  end;
 
   TASTExpressionArray = array of TASTExpression;
 
@@ -268,7 +302,7 @@ type
   protected
     function GetDisplayName: string; override;
   public
-    constructor Create; override;
+    constructor Create(Parent: TASTItem); override;
     property Expressions: TASTExpressionArray read fExpressions;
     property Body: TASTBody read fBody;
     procedure AddExpression(const Expr: TASTExpression);
@@ -279,7 +313,7 @@ type
     fExpression: TASTExpression;
     fBody: TASTBody;
   public
-    constructor Create; override;
+    constructor Create(Parent: TASTItem); override;
     property Expression: TASTExpression read fExpression;
     property Body: TASTBody read fBody;
   end;
@@ -293,11 +327,49 @@ type
   protected
     function GetDisplayName: string; override;
   public
-    constructor Create; override;
+    constructor Create(Parent: TASTItem); override;
     function AddItem(Expression: TASTExpression): TASTKWCaseItem;
     property Expression: TASTExpression read fExpression write fExpression;
     property FirstItem: TASTKWCaseItem read fFirstItem;
     property ElseBody: TASTBody read fElseBody;
+  end;
+
+  TASTKWTryFinally = class(TASTKeyword)
+  private
+    fBody: TASTBody;
+    fFinallyBody: TASTBody;
+  protected
+    function GetDisplayName: string; override;
+  public
+    constructor Create(Parent: TASTItem); override;
+  end;
+
+  TASTKWTryExcept = class(TASTKeyword)
+  private
+    fBody: TASTBody;
+    //fExceptBody: TASTBody;
+  protected
+    function GetDisplayName: string; override;
+  public
+    constructor Create(Parent: TASTItem); override;
+  end;
+
+  TASTKWDeclSection = class(TASTKeyword)
+  private
+    fDecls: TASTDeclarations;
+  public
+    procedure AddDecl(const Decl: TASTDeclaration);
+    property Decls: TASTDeclarations read fDecls;
+  end;
+
+  TASTKWInlineVarDecl = class(TASTKWDeclSection)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTKWInlineConstDecl = class(TASTKeyword)
+  protected
+    function GetDisplayName: string; override;
   end;
 
 
@@ -341,7 +413,7 @@ procedure TASTExpression.AddSubItem(ItemClass: TASTExpressionItemClass);
 var
   Item: TASTExpressionItem;
 begin
-  Item := ItemClass.Create();
+  Item := ItemClass.Create(Self);
   AddChild(Item);
 end;
 
@@ -367,9 +439,9 @@ end;
 
 { TASTItem }
 
-constructor TASTItem.Create;
+constructor TASTItem.Create(Parent: TASTItem);
 begin
-
+  fParent := Parent;
 end;
 
 function TASTItem.GetDisplayName: string;
@@ -512,12 +584,6 @@ end;
 
 { TASTKWAssign }
 
-constructor TASTKWAssign.Create(Dst, Src: TASTExpression);
-begin
-  fDst := Dst;
-  fSrc := Src;
-end;
-
 function TASTKWAssign.GetDisplayName: string;
 begin
   Result := fDst.DisplayName + ' := ' + fSrc.DisplayName;
@@ -525,9 +591,9 @@ end;
 
 { TASTKWIF }
 
-constructor TASTKWIF.Create;
+constructor TASTKWIF.Create(Parent: TASTItem);
 begin
-  fThenBody := TASTBody.Create();
+  fThenBody := TASTBody.Create(Self);
 end;
 
 function TASTKWIF.GetDisplayName: string;
@@ -556,9 +622,10 @@ begin
   fExpressions := fExpressions + [Expr];
 end;
 
-constructor TASTKWWith.Create;
+constructor TASTKWWith.Create(Parent: TASTItem);
 begin
-  fBody := TASTBody.Create;
+  inherited;
+  fBody := TASTBody.Create(Self);
 end;
 
 function TASTKWWith.GetDisplayName: string;
@@ -576,16 +643,17 @@ end;
 
 { TASTKWLoop }
 
-constructor TASTKWLoop.Create;
+constructor TASTKWLoop.Create(Parent: TASTItem = nil);
 begin
-  fBody := TASTBody.Create;
+  inherited;
+  fBody := TASTBody.Create(Self);
 end;
 
 { TASTKWSwitch }
 
 function TASTKWCase.AddItem(Expression: TASTExpression): TASTKWCaseItem;
 begin
-  Result := TASTKWCaseItem.Create;
+  Result := TASTKWCaseItem.Create(Self);
   Result.fExpression := Expression;
 
   if Assigned(fLastItem) then
@@ -596,10 +664,10 @@ begin
   fLastItem := Result;
 end;
 
-constructor TASTKWCase.Create;
+constructor TASTKWCase.Create(Parent: TASTItem);
 begin
   inherited;
-  fElseBody := TASTBody.Create;
+  fElseBody := TASTBody.Create(Self);
 end;
 
 function TASTKWCase.GetDisplayName: string;
@@ -609,10 +677,94 @@ end;
 
 { TASTKWSwitchItem }
 
-constructor TASTKWCaseItem.Create;
+constructor TASTKWCaseItem.Create(Parent: TASTItem);
 begin
   inherited;
-  fBody := TASTBody.Create();
+  fBody := TASTBody.Create(Self);
+end;
+
+{ TASTBody }
+
+function TASTBody.GetIsLoopBody: Boolean;
+begin
+  Result := fParent is TASTKWLoop;
+end;
+
+{ TASTKWBreak }
+
+function TASTKWBreak.GetDisplayName: string;
+begin
+  Result := 'break';
+end;
+
+{ TASTKContinue }
+
+function TASTKWContinue.GetDisplayName: string;
+begin
+  Result := 'continue';
+end;
+
+{ TASTTryFinally }
+
+constructor TASTKWTryFinally.Create(Parent: TASTItem);
+begin
+  inherited;
+  fBody := TASTBody.Create(Self);
+  fFinallyBody := TASTBody.Create(Self);
+end;
+
+function TASTKWTryFinally.GetDisplayName: string;
+begin
+  Result := 'try_finnaly';
+end;
+
+{ TASTTryExcept }
+
+constructor TASTKWTryExcept.Create(Parent: TASTItem);
+begin
+  inherited;
+  fBody := TASTBody.Create(Self);
+end;
+
+function TASTKWTryExcept.GetDisplayName: string;
+begin
+  Result := 'try_except';
+end;
+
+{ TASTKWInherited }
+
+function TASTKWInherited.GetDisplayName: string;
+begin
+
+end;
+
+{ TASTKWRaise }
+
+function TASTKWRaise.GetDisplayName: string;
+begin
+
+end;
+
+{ TASTKWImmVarDecl }
+
+function TASTKWInlineVarDecl.GetDisplayName: string;
+begin
+  Result := 'var';
+end;
+
+{ TASTKWImmConstDecl }
+
+function TASTKWInlineConstDecl.GetDisplayName: string;
+begin
+  Result := 'const';
+end;
+
+
+{ TASTKWDeclSection }
+
+procedure TASTKWDeclSection.AddDecl(const Decl: TASTDeclaration);
+begin
+  fDecls := fDecls + [Decl];
 end;
 
 end.

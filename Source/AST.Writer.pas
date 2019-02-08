@@ -30,6 +30,7 @@ type
     procedure WriteKW_Loop(RootNode: TNode; KW: TASTKWLoop);
     procedure WriteKW_With(RootNode: TNode; KW: TASTKWWith);
     procedure WriteKW_Case(RootNode: TNode; KW: TASTKWCase);
+    procedure WriteKW_DeclSections(RootNode: TNode; KW: TASTKWDeclSection);
   public
     constructor Create(const Doc: TDoc;
                        const Module: TASTModule;
@@ -104,7 +105,10 @@ begin
        WriteKW_With(CNode, TASTKWWith(Item))
     else
     if Item is TASTKWCase then
-       WriteKW_Case(CNode, TASTKWCase(Item));
+       WriteKW_Case(CNode, TASTKWCase(Item))
+    else
+    if Item is TASTKWDeclSection then
+       WriteKW_DeclSections(CNode, TASTKWDeclSection(Item));
 
     Item := Item.Next;
   end;
@@ -142,6 +146,12 @@ begin
     CNode := fGetNodeProc(fDoc, RootNode, 'else');
     WriteBody(CNode, KW.ElseBody);
   end;
+end;
+
+procedure TASTWriter<TDoc, TNode>.WriteKW_DeclSections(RootNode: TNode; KW: TASTKWDeclSection);
+begin
+  for var Decl in KW.Decls do
+    fGetNodeProc(fDoc, RootNode, Decl.DisplayName);
 end;
 
 procedure TASTWriter<TDoc, TNode>.WriteKW_If(RootNode: TNode; KW: TASTKWIF);
