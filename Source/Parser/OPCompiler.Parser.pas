@@ -134,6 +134,7 @@ type
     token_with,                     // keyword: until
     token_case,                     // keyword: case
     token_of,                       // keyword: of
+    token_on,                       // keyword: on
     token_object,                   // keyword: object
     token_operator,                 // keyword: operator
     token_try,                      // keyword: try
@@ -322,6 +323,7 @@ begin
   RegisterToken('name', token_name, true);
   RegisterToken('object', token_object, True);
   RegisterToken('of', token_of);
+  RegisterToken('on', token_on);
   RegisterToken('or', token_or);
   RegisterToken('out', token_Out);
   RegisterToken('override', token_Override);

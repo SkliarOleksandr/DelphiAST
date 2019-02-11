@@ -49,11 +49,13 @@ type
     property LastChild: TASTItem read fLastChild;
   end;
 
-  TASTBody = class(TASTParentItem)
+  TASTBlock = class(TASTParentItem)
   private
     function GetIsLoopBody: Boolean;
+    function GetIsTryBlock: Boolean;
   public
     property IsLoopBody: Boolean read GetIsLoopBody;
+    property IsTryBlock: Boolean read GetIsTryBlock;
   end;
 
 
@@ -212,24 +214,23 @@ type
   TASTKWIF = class(TASTKeyword)
   private
     fExpression: TASTExpression;
-    fThenBody: TASTBody;
-    fElseBody: TASTBody;
+    fThenBody: TASTBlock;
+    fElseBody: TASTBlock;
   protected
     function GetDisplayName: string; override;
   public
     constructor Create(Parent: TASTItem = nil); override;
     property Expression: TASTExpression read fExpression write fExpression;
-    property ThenBody: TASTBody read fThenBody write fThenBody;
-    property ElseBody: TASTBody read fElseBody write fElseBody;
+    property ThenBody: TASTBlock read fThenBody write fThenBody;
+    property ElseBody: TASTBlock read fElseBody write fElseBody;
   end;
-
 
   TASTKWLoop = class(TASTKeyword)
   private
-    fBody: TASTBody;
+    fBody: TASTBlock;
   public
     constructor Create(Parent: TASTItem = nil); override;
-    property Body: TASTBody read fBody;
+    property Body: TASTBlock read fBody;
   end;
 
   TASTKWWhile = class(TASTKWLoop)
@@ -298,60 +299,57 @@ type
   TASTKWWith = class(TASTKeyword)
   private
     fExpressions: TASTExpressionArray;
-    fBody: TASTBody;
+    fBody: TASTBlock;
   protected
     function GetDisplayName: string; override;
   public
     constructor Create(Parent: TASTItem); override;
     property Expressions: TASTExpressionArray read fExpressions;
-    property Body: TASTBody read fBody;
+    property Body: TASTBlock read fBody;
     procedure AddExpression(const Expr: TASTExpression);
   end;
 
-  TASTKWCaseItem = class(TASTItem)
+  TASTExpBlockItem = class(TASTItem)
   private
     fExpression: TASTExpression;
-    fBody: TASTBody;
+    fBody: TASTBlock;
   public
     constructor Create(Parent: TASTItem); override;
     property Expression: TASTExpression read fExpression;
-    property Body: TASTBody read fBody;
+    property Body: TASTBlock read fBody;
   end;
 
   TASTKWCase = class(TASTKeyword)
   private
     fExpression: TASTExpression;
-    fFirstItem: TASTKWCaseItem;
-    fLastItem: TASTKWCaseItem;
-    fElseBody: TASTBody;
+    fFirstItem: TASTExpBlockItem;
+    fLastItem: TASTExpBlockItem;
+    fElseBody: TASTBlock;
   protected
     function GetDisplayName: string; override;
   public
     constructor Create(Parent: TASTItem); override;
-    function AddItem(Expression: TASTExpression): TASTKWCaseItem;
+    function AddItem(Expression: TASTExpression): TASTExpBlockItem;
     property Expression: TASTExpression read fExpression write fExpression;
-    property FirstItem: TASTKWCaseItem read fFirstItem;
-    property ElseBody: TASTBody read fElseBody;
+    property FirstItem: TASTExpBlockItem read fFirstItem;
+    property ElseBody: TASTBlock read fElseBody;
   end;
 
-  TASTKWTryFinally = class(TASTKeyword)
+  TASTKWTryBlock = class(TASTKeyword)
   private
-    fBody: TASTBody;
-    fFinallyBody: TASTBody;
+    fBody: TASTBlock;
+    fFinallyBody: TASTBlock;
+    fFirstExceptBlock: TASTExpBlockItem;
+    fLastExceptBlock: TASTExpBlockItem;
   protected
     function GetDisplayName: string; override;
   public
     constructor Create(Parent: TASTItem); override;
-  end;
-
-  TASTKWTryExcept = class(TASTKeyword)
-  private
-    fBody: TASTBody;
-    //fExceptBody: TASTBody;
-  protected
-    function GetDisplayName: string; override;
-  public
-    constructor Create(Parent: TASTItem); override;
+    property Body: TASTBlock read fBody;
+    property FinallyBody: TASTBlock read fFinallyBody write fFinallyBody;
+    property FirstExceptBlock: TASTExpBlockItem read fFirstExceptBlock;
+    property LastExceptBlock: TASTExpBlockItem read fLastExceptBlock;
+    function AddExceptBlock(Expression: TASTExpression): TASTExpBlockItem;
   end;
 
   TASTKWDeclSection = class(TASTKeyword)
@@ -375,9 +373,9 @@ type
 
   TASTFunc = class(TASTDeclaration)
   private
-    fBody: TASTBody;
+    fBody: TASTBlock;
   protected
-    property Body: TASTBody read fBody;
+    property Body: TASTBlock read fBody;
   end;
 
   TASTType = class(TASTDeclaration)
@@ -593,7 +591,7 @@ end;
 
 constructor TASTKWIF.Create(Parent: TASTItem);
 begin
-  fThenBody := TASTBody.Create(Self);
+  fThenBody := TASTBlock.Create(Self);
 end;
 
 function TASTKWIF.GetDisplayName: string;
@@ -625,7 +623,7 @@ end;
 constructor TASTKWWith.Create(Parent: TASTItem);
 begin
   inherited;
-  fBody := TASTBody.Create(Self);
+  fBody := TASTBlock.Create(Self);
 end;
 
 function TASTKWWith.GetDisplayName: string;
@@ -646,14 +644,14 @@ end;
 constructor TASTKWLoop.Create(Parent: TASTItem = nil);
 begin
   inherited;
-  fBody := TASTBody.Create(Self);
+  fBody := TASTBlock.Create(Self);
 end;
 
 { TASTKWSwitch }
 
-function TASTKWCase.AddItem(Expression: TASTExpression): TASTKWCaseItem;
+function TASTKWCase.AddItem(Expression: TASTExpression): TASTExpBlockItem;
 begin
-  Result := TASTKWCaseItem.Create(Self);
+  Result := TASTExpBlockItem.Create(Self);
   Result.fExpression := Expression;
 
   if Assigned(fLastItem) then
@@ -667,7 +665,7 @@ end;
 constructor TASTKWCase.Create(Parent: TASTItem);
 begin
   inherited;
-  fElseBody := TASTBody.Create(Self);
+  fElseBody := TASTBlock.Create(Self);
 end;
 
 function TASTKWCase.GetDisplayName: string;
@@ -677,17 +675,22 @@ end;
 
 { TASTKWSwitchItem }
 
-constructor TASTKWCaseItem.Create(Parent: TASTItem);
+constructor TASTExpBlockItem.Create(Parent: TASTItem);
 begin
   inherited;
-  fBody := TASTBody.Create(Self);
+  fBody := TASTBlock.Create(Self);
 end;
 
 { TASTBody }
 
-function TASTBody.GetIsLoopBody: Boolean;
+function TASTBlock.GetIsLoopBody: Boolean;
 begin
   Result := fParent is TASTKWLoop;
+end;
+
+function TASTBlock.GetIsTryBlock: Boolean;
+begin
+  Result := fParent.ClassType = TASTKWTryBlock;
 end;
 
 { TASTKWBreak }
@@ -704,31 +707,30 @@ begin
   Result := 'continue';
 end;
 
-{ TASTTryFinally }
+{ TASTKWTryBlock }
 
-constructor TASTKWTryFinally.Create(Parent: TASTItem);
+function TASTKWTryBlock.AddExceptBlock(Expression: TASTExpression): TASTExpBlockItem;
+begin
+  Result := TASTExpBlockItem.Create(Self);
+  Result.fExpression := Expression;
+
+  if Assigned(fLastExceptBlock) then
+    fLastExceptBlock.Next := Result
+  else
+    fFirstExceptBlock := Result;
+
+  fLastExceptBlock := Result;
+end;
+
+constructor TASTKWTryBlock.Create(Parent: TASTItem);
 begin
   inherited;
-  fBody := TASTBody.Create(Self);
-  fFinallyBody := TASTBody.Create(Self);
+  fBody := TASTBlock.Create(Self);
 end;
 
-function TASTKWTryFinally.GetDisplayName: string;
+function TASTKWTryBlock.GetDisplayName: string;
 begin
-  Result := 'try_finnaly';
-end;
-
-{ TASTTryExcept }
-
-constructor TASTKWTryExcept.Create(Parent: TASTItem);
-begin
-  inherited;
-  fBody := TASTBody.Create(Self);
-end;
-
-function TASTKWTryExcept.GetDisplayName: string;
-begin
-  Result := 'try_except';
+  Result := 'try';
 end;
 
 { TASTKWInherited }

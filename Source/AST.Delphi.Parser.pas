@@ -33,40 +33,40 @@ type
 
   TASTDelphiProc = class(TIDProcedure)
   private
-    fBody: TASTBody;
+    fBody: TASTBlock;
   public
-    property Body: TASTBody read fBody;
+    property Body: TASTBlock read fBody;
   end;
 
 
   TASTSContext = record
   private
    function GetIsLoopBody: Boolean;
+    function GetIsTryBlock: Boolean;
   public
     Proc: TASTDelphiProc;
-    Body: TASTBody;
+    Body: TASTBlock;
     constructor Create(Proc: TASTDelphiProc); overload;
-    constructor Create(Proc: TASTDelphiProc; Body: TASTBody); overload;
+    constructor Create(Proc: TASTDelphiProc; Block: TASTBlock); overload;
     function AddASTItem(ItemClass: TASTItemClass): TASTItem; overload;
     property IsLoopBody: Boolean read GetIsLoopBody;
+    property IsTryBlock: Boolean read GetIsTryBlock;
   end;
 
 
   TASTDelphiUnit = class(TNPUnit)
   protected
     function GetModuleName: string; override;
-
     function GetFirstFunc: TASTDeclaration; override;
     function GetFirstVar: TASTDeclaration; override;
     function GetFirstType: TASTDeclaration; override;
     function GetFirstConst: TASTDeclaration; override;
-
   public
+    function ParseStatements(Scope: TScope; var SContext: TASTSContext; IsBlock: Boolean): TTokenID; overload;
     function ParseExitStatement(Scope: TScope; var SContext: TASTSContext): TTokenID; overload;
     function ParseExpression(Scope: TScope; var SContext: TASTSContext; var EContext: TEContext; out ASTE: TASTExpression): TTokenID; overload;
     function ParseProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure = nil; Platform: TIDPlatform = nil): TTokenID; override;
     function ParseProcBody(Proc: TIDProcedure; Platform: TIDPlatform): TTokenID; override;
-    function ParseStatements(Scope: TScope; var SContext: TASTSContext; IsBlock: Boolean): TTokenID; overload;
     function ParseIfThenStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
     function ParseWhileStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
     function ParseRepeatStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
@@ -77,17 +77,15 @@ type
     function ParseCaseStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
     function ParseBreakStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
     function ParseContinueStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
-    function ParseImmVarStatement(Scope: TScope;  var SContext: TASTSContext): TTokenID;
-
-
-
+    function ParseImmVarStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
+    function ParseTrySection(Scope: TScope; var SContext: TASTSContext): TTokenID;
+    function ParseRaiseStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
 
     procedure InitEContext(var EContext: TEContext; EPosition: TExpessionPosition); inline;
     procedure Process_operator_Assign(var EContext: TEContext); override;
     function Compile(RunPostCompile: Boolean = True): TCompilerResult; override;
     function CompileIntfOnly: TCompilerResult; override;
     procedure CheckIncompletedProcs(ProcSpace: PProcSpace); override;
-
   end;
 
 implementation
@@ -147,20 +145,17 @@ begin
       token_inherited: begin
         InitEContext(EContext, SContext, ExprLValue);
         Result := ParseInheritedStatement(Scope, EContext);
-      end;
+      end;*)
       {TRY}
-      token_try: begin
-        Result := ParseTrySection(Scope, SContext);
-        if Result <> token_unknown then;
-      end;
+      token_try: Result := ParseTrySection(Scope, SContext);
       {EXCEPT/FINALLY}
       token_except, token_finally: begin
-        if not Assigned(SContext.TryBlock) then
+        if not SContext.IsTryBlock then
           ERROR_TRY_KEYWORD_MISSED;
         Exit;
       end;
       {RAISE}
-      token_raise: Result := ParseRaiseStatement(Scope, SContext);*)
+      token_raise: Result := ParseRaiseStatement(Scope, SContext);
       {BREAK, CONTINUE}
       token_break: Result := ParseBreakStatement(Scope, SContext);
       token_continue: Result := ParseContinueStatement(Scope, SContext);
@@ -224,6 +219,44 @@ begin
       Result := parser_NextToken(Scope);
     end else
       Exit;
+  end;
+end;
+
+function TASTDelphiUnit.ParseTrySection(Scope: TScope; var SContext: TASTSContext): TTokenID;
+var
+  KW: TASTKWTryBlock;
+  NewContext: TASTSContext;
+  ExceptItem: TASTExpBlockItem;
+begin
+  KW := SContext.AddASTItem(TASTKWTryBlock) as TASTKWTryBlock;
+  NewContext := TASTSContext.Create(SContext.Proc, KW.Body);
+  // запоминаем предыдущий TryBlock
+  parser_NextToken(Scope);
+  Result := ParseStatements(Scope, NewContext, True);
+  case Result of
+    {parse EXCEPT section}
+    token_except: begin
+      Result := parser_NextToken(Scope);
+      if Result <> token_on then
+      begin
+        ExceptItem := KW.AddExceptBlock(nil);
+        NewContext := TASTSContext.Create(SContext.Proc, ExceptItem.Body);
+      end;
+      Result := ParseStatements(Scope, NewContext, True);
+      parser_MatchToken(Result, token_end);
+      Result := parser_NextToken(Scope);
+    end;
+    {parse FINALLY section}
+    token_finally: begin
+      parser_NextToken(Scope);
+      KW.FinallyBody := TASTBlock.Create(KW);
+      NewContext := TASTSContext.Create(SContext.Proc, KW.FinallyBody);
+      Result := ParseStatements(Scope, NewContext, True);
+      parser_MatchToken(Result, token_end);
+      Result := parser_NextToken(Scope);
+    end;
+  else
+    AbortWork(sExceptOrFinallySectionWasMissed, parser_Position);
   end;
 end;
 
@@ -593,7 +626,7 @@ var
   Implicit: TIDDeclaration;
   ASTExpr: TASTExpression;
   KW: TASTKWCase;
-  CaseItem: TASTKWCaseItem;
+  CaseItem: TASTExpBlockItem;
 begin
   KW := SContext.AddASTItem(TASTKWCase) as TASTKWCase;
 
@@ -1137,7 +1170,7 @@ begin
     else
       NewScope := Scope;
 
-    KW.ElseBody := TASTBody.Create(KW);
+    KW.ElseBody := TASTBlock.Create(KW);
     ElseSContext := TASTSContext.Create(SContext.Proc, KW.ElseBody);
     Result := ParseStatements(NewScope, ElseSContext, False);
   end;
@@ -1244,7 +1277,7 @@ begin
       end;
       token_begin: begin
         Proc.FirstBodyLine := parser_Line;
-        TASTDelphiProc(Proc).fBody := TASTBody.Create(Proc);
+        TASTDelphiProc(Proc).fBody := TASTBlock.Create(Proc);
         //SContext.Initialize;
         //SContext.IL := TIL(Proc.IL);
         SContext := TASTSContext.Create(TASTDelphiProc(Proc));
@@ -1505,6 +1538,18 @@ begin
 
   if (ProcType = ptDestructor) and (Struct.DataTypeID = dtClass) then
     CheckDestructorSignature(Proc);
+end;
+
+function TASTDelphiUnit.ParseRaiseStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
+var
+  EExcept: TIDExpression;
+  EContext: TEContext;
+begin
+  Result := ParseExpression(Scope, EContext, parser_NextToken(Scope));
+  EExcept := EContext.Result;
+  CheckEmptyExpression(EExcept);
+  CheckClassExpression(EExcept);
+  ILWrite(SContext, TIL.IL_EThrow(cNone, EExcept));
 end;
 
 function TASTDelphiUnit.ParseRepeatStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
@@ -1807,17 +1852,20 @@ begin
   Body.AddChild(Result);
 end;
 
-constructor TASTSContext.Create(Proc: TASTDelphiProc; Body: TASTBody);
+constructor TASTSContext.Create(Proc: TASTDelphiProc; Block: TASTBlock);
 begin
   Self.Proc := Proc;
-  Self.Body := Body;
+  Self.Body := Block;
 end;
-
-
 
 function TASTSContext.GetIsLoopBody: Boolean;
 begin
   Result := Assigned(Body) and Body.IsLoopBody;
+end;
+
+function TASTSContext.GetIsTryBlock: Boolean;
+begin
+  Result := Assigned(Body) and Body.IsTryBlock;
 end;
 
 end.

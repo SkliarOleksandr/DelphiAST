@@ -25,12 +25,13 @@ type
     procedure WriteConsts(RootNode: TNode);
     procedure WriteTypes(RootNode: TNode);
     procedure WriteFuncs(RootNode: TNode);
-    procedure WriteBody(RootNode: TNode; Body: TASTBody);
+    procedure WriteBody(RootNode: TNode; Body: TASTBlock);
     procedure WriteKW_If(RootNode: TNode; KW: TASTKWIF);
     procedure WriteKW_Loop(RootNode: TNode; KW: TASTKWLoop);
     procedure WriteKW_With(RootNode: TNode; KW: TASTKWWith);
     procedure WriteKW_Case(RootNode: TNode; KW: TASTKWCase);
     procedure WriteKW_DeclSections(RootNode: TNode; KW: TASTKWDeclSection);
+    procedure WriteKW_TryBlock(RootNode: TNode; KW: TASTKWTryBlock);
   public
     constructor Create(const Doc: TDoc;
                        const Module: TASTModule;
@@ -77,7 +78,7 @@ begin
   RootNode := fGetNodeProc(fDoc, RootNode, fConstsSectionName);
 end;
 
-procedure TASTWriter<TDoc, TNode>.WriteBody(RootNode: TNode; Body: TASTBody);
+procedure TASTWriter<TDoc, TNode>.WriteBody(RootNode: TNode; Body: TASTBlock);
 var
   Item: TASTItem;
   CNode: TNode;
@@ -109,6 +110,8 @@ begin
     else
     if Item is TASTKWDeclSection then
        WriteKW_DeclSections(CNode, TASTKWDeclSection(Item));
+    if Item is TASTKWTryBlock then
+       WriteKW_TryBlock(CNode, TASTKWTryBlock(Item));
 
     Item := Item.Next;
   end;
@@ -132,14 +135,14 @@ end;
 procedure TASTWriter<TDoc, TNode>.WriteKW_Case(RootNode: TNode; KW: TASTKWCase);
 var
   CNode: TNode;
-  Item: TASTKWCaseItem;
+  Item: TASTExpBlockItem;
 begin
   Item := KW.FirstItem;
   while Assigned(Item) do
   begin
     CNode := fGetNodeProc(fDoc, RootNode, Item.Expression.DisplayName + ':');
     WriteBody(CNode, Item.Body);
-    Item := Item.Next as TASTKWCaseItem;
+    Item := Item.Next as TASTExpBlockItem;
   end;
   if Assigned(KW.ElseBody) then
   begin
@@ -170,6 +173,34 @@ end;
 procedure TASTWriter<TDoc, TNode>.WriteKW_Loop(RootNode: TNode; KW: TASTKWLoop);
 begin
   WriteBody(RootNode, KW.Body);
+end;
+
+procedure TASTWriter<TDoc, TNode>.WriteKW_TryBlock(RootNode: TNode; KW: TASTKWTryBlock);
+var
+  CNode: TNode;
+  Item: TASTExpBlockItem;
+begin
+  WriteBody(RootNode, KW.Body);
+  Item := KW.FirstExceptBlock;
+  if Assigned(Item) then
+  begin
+    CNode := fGetNodeProc(fDoc, RootNode, 'except');
+    while Assigned(Item) do
+    begin
+      var OnNode: TNode := default(TNode);
+      if Assigned(Item.Expression) then
+        OnNode := fGetNodeProc(fDoc, CNode, 'on ' + Item.Expression.DisplayName)
+      else
+        OnNode := fGetNodeProc(fDoc, CNode, 'on all');
+      WriteBody(OnNode, Item.Body);
+      Item := Item.Next as TASTExpBlockItem;
+    end;
+  end;
+  if Assigned(KW.FinallyBody) then
+  begin
+    CNode := fGetNodeProc(fDoc, RootNode, 'finally');
+    WriteBody(CNode, KW.FinallyBody);
+  end;
 end;
 
 procedure TASTWriter<TDoc, TNode>.WriteKW_With(RootNode: TNode; KW: TASTKWWith);
