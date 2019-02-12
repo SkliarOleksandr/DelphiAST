@@ -166,6 +166,11 @@ object frmTestAppMain: TfrmTestAppMain
           '  end;  '
           'end;'
           ''
+          'procedure Test_Raise(a, b: Integer);'
+          'begin'
+          '  raise a + b; // tmp '
+          'end;'
+          ''
           'end.'
           '')
         FontSmoothing = fsmNone

@@ -737,14 +737,18 @@ end;
 
 function TASTKWInherited.GetDisplayName: string;
 begin
-
+  Result := 'inherited call';
+  if Assigned(Expression) then
+    Result := Result + ' ' + Expression.DisplayName;
 end;
 
 { TASTKWRaise }
 
 function TASTKWRaise.GetDisplayName: string;
 begin
-
+  Result := 'raise';
+  if Assigned(Expression) then
+    Result := Result + ' ' + Expression.DisplayName;
 end;
 
 { TASTKWImmVarDecl }

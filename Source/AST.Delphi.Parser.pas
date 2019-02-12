@@ -1544,12 +1544,17 @@ function TASTDelphiUnit.ParseRaiseStatement(Scope: TScope; var SContext: TASTSCo
 var
   EExcept: TIDExpression;
   EContext: TEContext;
+  ASTExpr: TASTExpression;
+  KW: TASTKWRaise;
 begin
-  Result := ParseExpression(Scope, EContext, parser_NextToken(Scope));
+  parser_NextToken(Scope);
+  InitEContext(EContext, ExprRValue);
+  Result := ParseExpression(Scope, SContext, EContext, ASTExpr);
   EExcept := EContext.Result;
-  CheckEmptyExpression(EExcept);
-  CheckClassExpression(EExcept);
-  ILWrite(SContext, TIL.IL_EThrow(cNone, EExcept));
+  if Assigned(EExcept) then
+    CheckClassExpression(EExcept);
+  KW := SContext.AddASTItem(TASTKWRaise) as TASTKWRaise;
+  KW.Expression := ASTExpr;
 end;
 
 function TASTDelphiUnit.ParseRepeatStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
