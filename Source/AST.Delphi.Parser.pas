@@ -38,6 +38,10 @@ type
     property Body: TASTBlock read fBody;
   end;
 
+  TASTDelphiLabel = class(TIDDeclaration)
+    constructor Create(Scope: TScope; const Identifier: TIdentifier); overload; override;
+  end;
+
 
   TASTSContext = record
   private
@@ -80,6 +84,8 @@ type
     function ParseImmVarStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
     function ParseTrySection(Scope: TScope; var SContext: TASTSContext): TTokenID;
     function ParseRaiseStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
+    function ParseLabelSection(Scope: TScope): TTokenID;
+    function ParseGoToStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
 
     procedure InitEContext(var EContext: TEContext; EPosition: TExpessionPosition); inline;
     procedure Process_operator_Assign(var EContext: TEContext); override;
@@ -135,6 +141,8 @@ begin
       token_for: Result := ParseForStatement(Scope, SContext);
       {CASE}
       token_case: Result := ParseCaseStatement(Scope, SContext);
+      {GOTO}
+      token_goto: Result := ParseGoTOStatement(Scope, SContext);
       {ASM}
       (*token_asm: begin
         ParseAsmSpecifier(Platform);
@@ -174,7 +182,6 @@ begin
       token_identifier: begin
         InitEContext(EContext, ExprLValue);
         var ASTEDst, ASTESrc: TASTExpression;
-        while True do
         begin
           Result := ParseExpression(Scope, SContext, EContext, ASTEDst);
           if Result = token_assign then begin
@@ -193,13 +200,14 @@ begin
             KW.Src := ASTESrc;
 
           end else
-          if Result = token_coma then begin
-            parser_NextToken(Scope);
+          if Result = token_colon then
+          begin
+            // todo label check
+            Result := parser_NextToken(Scope);
             Continue;
           end;
           CheckAndCallFuncImplicit(EContext);
           CheckUnusedExprResult(EContext);
-          Break;
         end;
       end;
       token_initialization,
@@ -1126,6 +1134,19 @@ begin
   with TIDVariable(LoopVar) do Flags := Flags - [VarLoopIndex];
 end;
 
+function TASTDelphiUnit.ParseGoToStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
+var
+  ID: TIdentifier;
+  LDecl: TIDDeclaration;
+begin
+  parser_ReadNextIdentifier(Scope, ID);
+  LDecl := FindID(Scope, ID);
+  if LDecl.ItemType <> itLabel then
+    AbortWork('LABEL required', parser_Position);
+
+  Result := parser_NextToken(Scope);
+end;
+
 function TASTDelphiUnit.ParseIfThenStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
 var
   Expression: TIDExpression;
@@ -1247,6 +1268,26 @@ begin
   end;
 end;
 
+function TASTDelphiUnit.ParseLabelSection(Scope: TScope): TTokenID;
+var
+  ID: TIdentifier;
+  Decl: TASTDelphiLabel;
+begin
+  while True do
+  begin
+    parser_ReadNextIdentifier(Scope, ID);
+    Decl := TASTDelphiLabel.Create(Scope, ID);
+    InsertToScope(Scope, Decl);
+    Result := parser_NextToken(Scope);
+    if Result = token_coma then
+      continue;
+
+    break;
+  end;
+  parser_MatchSemicolon(Result);
+  Result := parser_NextToken(Scope);
+end;
+
 function TASTDelphiUnit.ParseProcBody(Proc: TIDProcedure; Platform: TIDPlatform): TTokenID;
 var
   Scope: TScope;
@@ -1264,6 +1305,7 @@ begin
         parser_NextToken(Scope);
         Result := ParseVarSection(Scope, vLocal, nil, True);
       end;
+      token_label: Result := ParseLabelSection(Scope);
       token_const: Result := ParseConstSection(Scope);
       token_type: Result := ParseNamedTypeDecl(Scope);
       token_procedure: Result := ParseProcedure(Scope, ptProc);
@@ -1755,6 +1797,9 @@ begin
 
         PMContext.DataType := Decl.DataType;
       end;
+      itLabel: begin
+        Expression := nil;
+      end
     else
       ERROR_FEATURE_NOT_SUPPORTED;
     end;
@@ -1871,6 +1916,14 @@ end;
 function TASTSContext.GetIsTryBlock: Boolean;
 begin
   Result := Assigned(Body) and Body.IsTryBlock;
+end;
+
+{ TASTDelphiLabel }
+
+constructor TASTDelphiLabel.Create(Scope: TScope; const Identifier: TIdentifier);
+begin
+  inherited;
+  ItemType := itLabel;
 end;
 
 end.

@@ -25,7 +25,6 @@ type
     token_lessorequal,              // <=
     token_notequal,                 // <>
     token_period,                   // ..
-    token_lambda,                   // ~
     token_plusplus,                 // ++
     token_minusminus,               // --
 
@@ -159,6 +158,9 @@ type
     token_destructor,               // keyword: destructor
     token_default,                  // keyword: default
     token_varargs,                  // keyword: varargs
+    token_label,                    // keyword: label
+    token_goto,                     // keyword: goto
+
 
     token_cond_define,              // {$DEFINE...
     token_cond_else,                // {$ELSE...
@@ -264,7 +266,6 @@ begin
   RegisterToken('++', token_plusplus, 'plusplus');
   RegisterToken('-', token_minus, 'minus');
   RegisterToken('--', token_minusminus, 'minusminus');
-  RegisterToken('~', token_lambda, 'lambda');
   RegisterToken('!', token_exclamation, 'exclamation');
   RegisterToken('?', token_question, 'question');
   RegisterToken('*', token_asterisk, 'asterisk');
@@ -306,6 +307,7 @@ begin
   RegisterToken('finally', token_finally);
   RegisterToken('finalization', token_finalization);
   RegisterToken('fastcall', token_fastcall);
+  RegisterToken('goto', token_goto);
   RegisterToken('if', token_if);
   RegisterToken('iif', token_iif);
   RegisterToken('is', token_is);
@@ -318,6 +320,7 @@ begin
   RegisterToken('implementation', token_Implementation);
   RegisterToken('implement', token_implement);
   RegisterToken('library', token_library);
+  RegisterToken('label', token_label);
   RegisterToken('mod', token_mod);
   RegisterToken('not', token_not);
   RegisterToken('name', token_name, true);

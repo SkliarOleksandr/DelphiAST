@@ -6556,11 +6556,11 @@ begin
         Status := rpOperand;
         continue;
       end;
-      token_lambda: begin
-        Result := ParseLambdaExpression(Scope, EContext);
-        Status := rpOperand;
-        continue;
-      end;
+//      token_lambda: begin
+//        Result := ParseLambdaExpression(Scope, EContext);
+//        Status := rpOperand;
+//        continue;
+//      end;
 //      token_bindf: begin
 //        Result := ParseBindFunctionExpression(Scope, EContext);
 //        Status := rpOperand;

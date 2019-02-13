@@ -92,7 +92,8 @@ type
     itAlias,           // алиас
     itType,            // тип
     itNameSpace,       // неймспейс
-    itUnit             // модуль
+    itUnit,            // модуль
+    itLabel            // label
   );
 
   TScopeType = (
