@@ -336,6 +336,12 @@ type
     property Body: TASTBlock read fBody;
   end;
 
+  TASTKWTryExceptItem = class(TASTExpBlockItem)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+
   TASTKWCase = class(TASTKeyword)
   private
     fExpression: TASTExpression;
@@ -356,17 +362,17 @@ type
   private
     fBody: TASTBlock;
     fFinallyBody: TASTBlock;
-    fFirstExceptBlock: TASTExpBlockItem;
-    fLastExceptBlock: TASTExpBlockItem;
+    fFirstExceptBlock: TASTKWTryExceptItem;
+    fLastExceptBlock: TASTKWTryExceptItem;
   protected
     function GetDisplayName: string; override;
   public
     constructor Create(Parent: TASTItem); override;
     property Body: TASTBlock read fBody;
     property FinallyBody: TASTBlock read fFinallyBody write fFinallyBody;
-    property FirstExceptBlock: TASTExpBlockItem read fFirstExceptBlock;
-    property LastExceptBlock: TASTExpBlockItem read fLastExceptBlock;
-    function AddExceptBlock(Expression: TASTExpression): TASTExpBlockItem;
+    property FirstExceptBlock: TASTKWTryExceptItem read fFirstExceptBlock;
+    property LastExceptBlock: TASTKWTryExceptItem read fLastExceptBlock;
+    function AddExceptBlock(Expression: TASTExpression): TASTKWTryExceptItem;
   end;
 
   TASTKWDeclSection = class(TASTKeyword)
@@ -725,9 +731,9 @@ end;
 
 { TASTKWTryBlock }
 
-function TASTKWTryBlock.AddExceptBlock(Expression: TASTExpression): TASTExpBlockItem;
+function TASTKWTryBlock.AddExceptBlock(Expression: TASTExpression): TASTKWTryExceptItem;
 begin
-  Result := TASTExpBlockItem.Create(Self);
+  Result := TASTKWTryExceptItem.Create(Self);
   Result.fExpression := Expression;
 
   if Assigned(fLastExceptBlock) then
@@ -800,6 +806,16 @@ end;
 function TASTKWLabel.GetDisplayName: string;
 begin
   Result := 'label ' + fLabel.DisplayName + ':';
+end;
+
+{ TASTKWTryExceptItem }
+
+function TASTKWTryExceptItem.GetDisplayName: string;
+begin
+  if Assigned(fExpression) then
+    Result := fExpression.DisplayName + ': '
+  else
+    Result := '';
 end;
 
 end.

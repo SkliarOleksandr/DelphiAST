@@ -85,6 +85,7 @@ type
     function ParseContinueStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
     function ParseImmVarStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
     function ParseTrySection(Scope: TScope; var SContext: TASTSContext): TTokenID;
+    function ParseExceptOnSection(Scope: TScope; KW: TASTKWTryBlock; var SContext: TASTSContext): TTokenID;
     function ParseRaiseStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
     function ParseLabelSection(Scope: TScope): TTokenID;
     function ParseGoToStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
@@ -239,7 +240,7 @@ function TASTDelphiUnit.ParseTrySection(Scope: TScope; var SContext: TASTSContex
 var
   KW: TASTKWTryBlock;
   NewContext: TASTSContext;
-  ExceptItem: TASTExpBlockItem;
+  ExceptItem: TASTKWTryExceptItem;
 begin
   KW := SContext.AddASTItem(TASTKWTryBlock) as TASTKWTryBlock;
   NewContext := TASTSContext.Create(SContext.Proc, KW.Body);
@@ -254,8 +255,12 @@ begin
       begin
         ExceptItem := KW.AddExceptBlock(nil);
         NewContext := TASTSContext.Create(SContext.Proc, ExceptItem.Body);
+        Result := ParseStatements(Scope, NewContext, True);
+      end else begin
+        while Result = token_on do
+          Result := ParseExceptOnSection(Scope, KW, SContext);
       end;
-      Result := ParseStatements(Scope, NewContext, True);
+
       parser_MatchToken(Result, token_end);
       Result := parser_NextToken(Scope);
     end;
@@ -271,6 +276,51 @@ begin
   else
     AbortWork(sExceptOrFinallySectionWasMissed, parser_Position);
   end;
+end;
+
+function TASTDelphiUnit.ParseExceptOnSection(Scope: TScope; KW: TASTKWTryBlock; var SContext: TASTSContext): TTokenID;
+var
+  VarID, TypeID: TIdentifier;
+  VarDecl, TypeDecl: TIDDeclaration;
+  VarExpr: TASTExpression;
+  NewScope: TScope;
+  Item: TASTExpBlockItem;
+  NewSContext: TASTSContext;
+begin
+  parser_ReadNextIdentifier(Scope, VarID);
+  Result := parser_NextToken(Scope);
+  if Result = token_colon then
+  begin
+    NewScope := TScope.Create(stLocal, Scope);
+    VarDecl := TIDVariable.Create(NewScope, VarID);
+    VarExpr := TASTExpression.Create(nil);
+    VarExpr.AddDeclItem(VarDecl, parser_Position);
+    InsertToScope(NewScope, VarDecl);
+    parser_ReadNextIdentifier(Scope, TypeID);
+    Result := parser_NextToken(Scope);
+  end else begin
+    TypeID := VarID;
+    NewScope := Scope;
+    VarDecl := TIDVariable.CreateAsTemporary(NewScope, nil);
+    VarExpr := TASTExpression.Create(nil);
+    VarExpr.AddDeclItem(VarDecl, parser_Position);
+  end;
+
+  TypeDecl := FindID(Scope, TypeID);
+  // check type
+  if Assigned(VarDecl) then
+    VarDecl.DataType := TypeDecl as TIDType;
+
+  parser_MatchToken(Result, token_do);
+
+  Item := KW.AddExceptBlock(VarExpr);
+
+  NewSContext := TASTSContext.Create(SContext.Proc, Item.Body);
+
+  parser_NextToken(Scope);
+  Result := ParseStatements(NewScope, NewSContext, False);
+  parser_MatchSemicolon(Result);
+  Result := parser_NextToken(Scope);
 end;
 
 function TASTDelphiUnit.ParseWhileStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;

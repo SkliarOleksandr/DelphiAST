@@ -187,11 +187,7 @@ begin
     CNode := fGetNodeProc(fDoc, RootNode, 'except');
     while Assigned(Item) do
     begin
-      var OnNode: TNode := default(TNode);
-      if Assigned(Item.Expression) then
-        OnNode := fGetNodeProc(fDoc, CNode, 'on ' + Item.Expression.DisplayName)
-      else
-        OnNode := fGetNodeProc(fDoc, CNode, 'on all');
+      var OnNode: TNode := fGetNodeProc(fDoc, CNode, 'on ' + Item.DisplayName);
       WriteBody(OnNode, Item.Body);
       Item := Item.Next as TASTExpBlockItem;
     end;
