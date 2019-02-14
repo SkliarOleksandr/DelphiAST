@@ -65,6 +65,8 @@ type
     function GetFirstVar: TASTDeclaration; override;
     function GetFirstType: TASTDeclaration; override;
     function GetFirstConst: TASTDeclaration; override;
+    procedure CheckLabelExpression(const Expr: TIDExpression); overload;
+    procedure CheckLabelExpression(const Decl: TIDDeclaration); overload;
   public
     function ParseStatements(Scope: TScope; var SContext: TASTSContext; IsBlock: Boolean): TTokenID; overload;
     function ParseExitStatement(Scope: TScope; var SContext: TASTSContext): TTokenID; overload;
@@ -102,7 +104,7 @@ uses NPCompiler.Operators, NPCompiler.DataTypes, SystemUnit;
 
 function TASTDelphiUnit.ParseStatements(Scope: TScope; var SContext: TASTSContext; IsBlock: Boolean): TTokenID;
 var
-  EContext, REContext: TEContext;
+  LEContext, REContext: TEContext;
   NewScope: TScope;
   AST: TASTItem;
 begin
@@ -180,10 +182,10 @@ begin
 
       {IDENTIFIER}
       token_identifier: begin
-        InitEContext(EContext, ExprLValue);
-        var ASTEDst, ASTESrc: TASTExpression;
+        InitEContext(LEContext, ExprLValue);
         begin
-          Result := ParseExpression(Scope, SContext, EContext, ASTEDst);
+          var ASTEDst, ASTESrc: TASTExpression;
+          Result := ParseExpression(Scope, SContext, LEContext, ASTEDst);
           if Result = token_assign then begin
             InitEContext(REContext, ExprRValue);
             parser_NextToken(Scope);
@@ -191,9 +193,9 @@ begin
             if Assigned(REContext.LastBoolNode) then
               Bool_CompleteImmediateExpression(REContext, REContext.Result);
 
-            EContext.RPNPushExpression(REContext.Result);
-            EContext.RPNPushOperator(opAssignment);
-            EContext.RPNFinish();
+            LEContext.RPNPushExpression(REContext.Result);
+            LEContext.RPNPushOperator(opAssignment);
+            LEContext.RPNFinish();
 
             var KW := SContext.AddASTItem(TASTKWAssign) as TASTKWAssign;
             KW.Dst := ASTEDst;
@@ -202,12 +204,15 @@ begin
           end else
           if Result = token_colon then
           begin
-            // todo label check
+            var LExpr := LEContext.Result;
+            CheckLabelExpression(LExpr);
+            var KW := SContext.AddASTItem(TASTKWLabel) as TASTKWLabel;
+            KW.&Label := LExpr.Declaration;
             Result := parser_NextToken(Scope);
             Continue;
           end;
-          CheckAndCallFuncImplicit(EContext);
-          CheckUnusedExprResult(EContext);
+          CheckAndCallFuncImplicit(LEContext);
+          CheckUnusedExprResult(LEContext);
         end;
       end;
       token_initialization,
@@ -367,6 +372,18 @@ procedure TASTDelphiUnit.CheckIncompletedProcs(ProcSpace: PProcSpace);
 begin
 //  inherited;
 
+end;
+
+procedure TASTDelphiUnit.CheckLabelExpression(const Expr: TIDExpression);
+begin
+  if Expr.ItemType <> itLabel then
+    AbortWork('LABEL required', Expr.TextPosition);
+end;
+
+procedure TASTDelphiUnit.CheckLabelExpression(const Decl: TIDDeclaration);
+begin
+  if Decl.ItemType <> itLabel then
+    AbortWork('LABEL required', parser_Position);
 end;
 
 function TASTDelphiUnit.Compile(RunPostCompile: Boolean): TCompilerResult;
@@ -1138,12 +1155,13 @@ function TASTDelphiUnit.ParseGoToStatement(Scope: TScope; var SContext: TASTSCon
 var
   ID: TIdentifier;
   LDecl: TIDDeclaration;
+  KW: TASTKWGoTo;
 begin
   parser_ReadNextIdentifier(Scope, ID);
   LDecl := FindID(Scope, ID);
-  if LDecl.ItemType <> itLabel then
-    AbortWork('LABEL required', parser_Position);
-
+  CheckLabelExpression(LDecl);
+  KW := SContext.AddASTItem(TASTKWGoTo) as TASTKWGoTo;
+  KW.&Label := LDecl;
   Result := parser_NextToken(Scope);
 end;
 
@@ -1770,7 +1788,7 @@ begin
         end;
         PMContext.DataType := Decl.DataType;
       end;
-      itConst, itUnit, itNameSpace: begin
+      itConst, itUnit, itLabel: begin
         Expression := TIDExpression.Create(Decl, PMContext.ID.TextPosition);
         PMContext.DataType := Decl.DataType;
       end;
@@ -1797,9 +1815,6 @@ begin
 
         PMContext.DataType := Decl.DataType;
       end;
-      itLabel: begin
-        Expression := nil;
-      end
     else
       ERROR_FEATURE_NOT_SUPPORTED;
     end;

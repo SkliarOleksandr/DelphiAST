@@ -58,7 +58,6 @@ type
     property IsTryBlock: Boolean read GetIsTryBlock;
   end;
 
-
   TASTModule = class
   private
 
@@ -193,6 +192,24 @@ type
   public
     property Dst: TASTExpression read fDst write fDst;
     property Src: TASTExpression read fSrc write fSrc;
+  end;
+
+  TASTKWGoTo = class(TASTKeyword)
+  private
+    fLabel: TASTDeclaration;
+  protected
+    function GetDisplayName: string; override;
+  public
+    property &Label: TASTDeclaration read fLabel write fLabel;
+  end;
+
+  TASTKWLabel = class(TASTKeyword)
+  private
+    fLabel: TASTDeclaration;
+  protected
+    function GetDisplayName: string; override;
+  public
+    property &Label: TASTDeclaration read fLabel write fLabel;
   end;
 
   TASTCall = class(TASTExpression)
@@ -369,7 +386,6 @@ type
   protected
     function GetDisplayName: string; override;
   end;
-
 
   TASTFunc = class(TASTDeclaration)
   private
@@ -765,12 +781,25 @@ begin
   Result := 'const';
 end;
 
-
 { TASTKWDeclSection }
 
 procedure TASTKWDeclSection.AddDecl(const Decl: TASTDeclaration);
 begin
   fDecls := fDecls + [Decl];
+end;
+
+{ TASTKWGoTo }
+
+function TASTKWGoTo.GetDisplayName: string;
+begin
+  Result := 'goto ' + fLabel.DisplayName;
+end;
+
+{ TASTKWLabel }
+
+function TASTKWLabel.GetDisplayName: string;
+begin
+  Result := 'label ' + fLabel.DisplayName + ':';
 end;
 
 end.
