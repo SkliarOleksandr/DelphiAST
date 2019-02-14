@@ -222,9 +222,19 @@ object frmTestAppMain: TfrmTestAppMain
           '  goto L1;'
           'end;'
           ''
+          'procedure Test_Asm(a, b: Integer);'
+          'begin'
+          '  a := 1;'
+          '  b := 2;'
+          '  asm'
+          '     mov eax, eax;'
+          '  end;'
+          'end;'
+          ''
           'end.'
           '')
         FontSmoothing = fsmNone
+        ExplicitTop = 40
       end
     end
     object tsAST: TTabSheet

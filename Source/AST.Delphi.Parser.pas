@@ -71,8 +71,8 @@ type
     function ParseStatements(Scope: TScope; var SContext: TASTSContext; IsBlock: Boolean): TTokenID; overload;
     function ParseExitStatement(Scope: TScope; var SContext: TASTSContext): TTokenID; overload;
     function ParseExpression(Scope: TScope; var SContext: TASTSContext; var EContext: TEContext; out ASTE: TASTExpression): TTokenID; overload;
-    function ParseProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure = nil; Platform: TIDPlatform = nil): TTokenID; override;
-    function ParseProcBody(Proc: TIDProcedure; Platform: TIDPlatform): TTokenID; override;
+    function ParseProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure = nil): TTokenID;
+    function ParseProcBody(Proc: TIDProcedure): TTokenID;
     function ParseIfThenStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
     function ParseWhileStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
     function ParseRepeatStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
@@ -89,6 +89,7 @@ type
     function ParseRaiseStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
     function ParseLabelSection(Scope: TScope): TTokenID;
     function ParseGoToStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
+    function ParseASMStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
 
     procedure InitEContext(var EContext: TEContext; EPosition: TExpessionPosition); inline;
     procedure Process_operator_Assign(var EContext: TEContext); override;
@@ -147,13 +148,9 @@ begin
       {GOTO}
       token_goto: Result := ParseGoTOStatement(Scope, SContext);
       {ASM}
-      (*token_asm: begin
-        ParseAsmSpecifier(Platform);
-        ParseASMStatement(Scope, Platform, SContext);
-        Result := parser_NextToken(Scope);
-      end;
+      token_asm: Result := ParseASMStatement(Scope, SContext);
       {INHERITED}
-      token_inherited: begin
+      (*token_inherited: begin
         InitEContext(EContext, SContext, ExprLValue);
         Result := ParseInheritedStatement(Scope, EContext);
       end;*)
@@ -475,7 +472,6 @@ begin
           CheckIntfSectionMissing(Scope);
           Token := ParseProcedure(Scope, ptProc);
         end;
-        //token_namespace: Token := ParseNameSpace(Scope);
         token_constructor: begin
           CheckIntfSectionMissing(Scope);
           Token := ParseProcedure(Scope, ptConstructor);
@@ -595,6 +591,19 @@ begin
   EContext.Initialize(Process_operators);
   EContext.SContext := nil;
   EContext.EPosition := EPosition;
+end;
+
+function TASTDelphiUnit.ParseASMStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
+var
+  KW: TASTKWAsm;
+begin
+  KW := SContext.AddASTItem(TASTKWAsm) as TASTKWAsm;
+  while (Result <> token_end) do
+  begin
+    // skip all to end
+    Result := parser_NextToken(Scope);
+  end;
+  Result := parser_NextToken(Scope);
 end;
 
 function TASTDelphiUnit.ParseBreakStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
@@ -1356,7 +1365,7 @@ begin
   Result := parser_NextToken(Scope);
 end;
 
-function TASTDelphiUnit.ParseProcBody(Proc: TIDProcedure; Platform: TIDPlatform): TTokenID;
+function TASTDelphiUnit.ParseProcBody(Proc: TIDProcedure): TTokenID;
 var
   Scope: TScope;
   SContext: TASTSContext;
@@ -1392,16 +1401,11 @@ begin
         //SContext.IL := TIL(Proc.IL);
         SContext := TASTSContext.Create(TASTDelphiProc(Proc));
         //CheckInitVariables(@SContext, nil, @Proc.VarSpace);
-        if not Assigned(Platform) then
-        begin
-          parser_NextToken(Scope);
-          Result := ParseStatements(Scope, SContext, True);
-          parser_MatchToken(Result, token_end);
-          Result := parser_NextToken(Scope);
-        end else
-          ParseASMStatement(Scope, Platform, @SContext);
+        parser_NextToken(Scope);
+        Result := ParseStatements(Scope, SContext, True);
+        parser_MatchToken(Result, token_end);
+        Result := parser_NextToken(Scope);
         Proc.LastBodyLine := parser_Line;
-
         // геренация кода процедуры завершено
         Proc.Flags := Proc.Flags + [pfCompleted];
         BENodesPool.Clear;
@@ -1413,7 +1417,7 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.ParseProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure; Platform: TIDPlatform): TTokenID;
+function TASTDelphiUnit.ParseProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure): TTokenID;
 type
   TFwdDeclState = (dsNew, dsDifferent, dsSame);
 var
@@ -1637,7 +1641,7 @@ begin
         else
           ERROR_DECL_DIFF_WITH_PREV_DECL(ID);
       end;
-      Result := ParseProcBody(Proc, Platform);
+      Result := ParseProcBody(Proc);
       if Result <> token_semicolon then
         ERROR_SEMICOLON_EXPECTED;
 

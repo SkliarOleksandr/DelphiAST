@@ -393,6 +393,12 @@ type
     function GetDisplayName: string; override;
   end;
 
+  TASTKWAsm = class(TASTKeyword)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+
   TASTFunc = class(TASTDeclaration)
   private
     fBody: TASTBlock;
@@ -816,6 +822,13 @@ begin
     Result := fExpression.DisplayName + ': '
   else
     Result := '';
+end;
+
+{ TASTKWAsm }
+
+function TASTKWAsm.GetDisplayName: string;
+begin
+  Result := 'asm';
 end;
 
 end.
