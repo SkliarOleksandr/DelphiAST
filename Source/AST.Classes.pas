@@ -13,6 +13,10 @@ type
   TASTModule = class;
   TASTDeclaration = class;
 
+  TASTExpression = class;
+
+  TASTExpressionArray = array of TASTExpression;
+
   TASTUnitClass = class of TASTModule;
 
   TASTItem = class(TPooledObject)
@@ -87,82 +91,93 @@ type
 
   TASTDeclarations = array of TASTDeclaration;
 
-  TASTExpressionItem = class(TASTItem)
+  TASTOperation = class(TASTItem)
   end;
 
-  TASTExpressionItemClass = class of TASTExpressionItem;
+  TASTOperationClass = class of TASTOperation;
 
-  TASTEIOpenRound = class(TASTExpressionItem)
+  TASTOpOpenRound = class(TASTOperation)
   protected
     function GetDisplayName: string; override;
   end;
 
-  TASTEICloseRound = class(TASTExpressionItem)
+  TASTOpCloseRound = class(TASTOperation)
   protected
     function GetDisplayName: string; override;
   end;
 
-  TASTEIPlus = class(TASTExpressionItem)
+  TASTOpPlus = class(TASTOperation)
   protected
     function GetDisplayName: string; override;
   end;
 
-  TASTEIMinus = class(TASTExpressionItem)
+  TASTOpMinus = class(TASTOperation)
   protected
     function GetDisplayName: string; override;
   end;
 
-  TASTEIEqual = class(TASTExpressionItem)
+  TASTOpEqual = class(TASTOperation)
   protected
     function GetDisplayName: string; override;
   end;
 
-  TASTEINotEqual = class(TASTExpressionItem)
+  TASTOpNotEqual = class(TASTOperation)
   protected
     function GetDisplayName: string; override;
   end;
 
-  TASTEIGrater = class(TASTExpressionItem)
+  TASTOpGrater = class(TASTOperation)
   protected
     function GetDisplayName: string; override;
   end;
 
-  TASTEIGraterEqual = class(TASTExpressionItem)
+  TASTOpGraterEqual = class(TASTOperation)
   protected
     function GetDisplayName: string; override;
   end;
 
-  TASTEILess = class(TASTExpressionItem)
+  TASTOpLess = class(TASTOperation)
   protected
     function GetDisplayName: string; override;
   end;
 
-  TASTEILessEqual = class(TASTExpressionItem)
+  TASTOpLessEqual = class(TASTOperation)
   protected
     function GetDisplayName: string; override;
   end;
 
-  TASTEIMul = class(TASTExpressionItem)
+  TASTOpMul = class(TASTOperation)
   protected
     function GetDisplayName: string; override;
   end;
 
-  TASTEIDiv = class(TASTExpressionItem)
+  TASTOpDiv = class(TASTOperation)
   protected
     function GetDisplayName: string; override;
   end;
 
-  TASTEIIntDiv = class(TASTExpressionItem)
+  TASTOpIntDiv = class(TASTOperation)
   protected
     function GetDisplayName: string; override;
   end;
 
-  TASTEIMod = class(TASTExpressionItem)
+  TASTOpMod = class(TASTOperation)
   protected
     function GetDisplayName: string; override;
   end;
 
-  TASTEIDecl = class(TASTExpressionItem)
+  TASTOpCallProc = class(TASTOperation)
+  private
+    fProc: TASTDeclaration;
+    fArgs: TASTExpressionArray;
+  protected
+    function GetDisplayName: string; override;
+  public
+    property Proc: TASTDeclaration read fProc write fProc;
+    procedure AddArg(const Expr: TASTExpression);
+  end;
+
+  TASTEIDecl = class(TASTOperation)
   private
     fDecl: TASTDeclaration;
     fSPos: TTextPosition;
@@ -176,14 +191,16 @@ type
   protected
     function GetDisplayName: string; override;
   public
-    procedure AddSubItem(ItemClass: TASTExpressionItemClass);
+    procedure AddSubItem(ItemClass: TASTOperationClass);
     procedure AddDeclItem(Decl: TASTDeclaration; const SrcPos: TTextPosition);
+    function AddOperation(OpClass: TASTOperationClass): TASTOperation;
   end;
 
   TASTKeyword = class(TASTItem)
+
   end;
 
-  TASTKWAssign = class(TASTKeyword)
+  TASTOpAssign = class(TASTKeyword)
   private
     fDst: TASTExpression;
     fSrc: TASTExpression;
@@ -283,6 +300,17 @@ type
     property Direction: TDirection read fDirection write fDirection;
   end;
 
+  TASTKWForIn = class(TASTKWLoop)
+  private
+    fVar: TASTExpression;
+    fList: TASTExpression;
+  protected
+    function GetDisplayName: string; override;
+  public
+    property VarExpr: TASTExpression read fVar write fVar;
+    property ListExpr: TASTExpression read fList write fList;
+  end;
+
   TASTKWBreak = class(TASTKeyword)
   protected
     function GetDisplayName: string; override;
@@ -311,8 +339,6 @@ type
     property Expression: TASTExpression read fExpr write fExpr;
   end;
 
-  TASTExpressionArray = array of TASTExpression;
-
   TASTKWWith = class(TASTKeyword)
   private
     fExpressions: TASTExpressionArray;
@@ -337,6 +363,13 @@ type
   end;
 
   TASTKWTryExceptItem = class(TASTExpBlockItem)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTKWInheritedCall = class(TASTKeyword)
+  private
+    fProc: TASTExpression;
   protected
     function GetDisplayName: string; override;
   end;
@@ -435,9 +468,15 @@ begin
   AddChild(Item);
 end;
 
-procedure TASTExpression.AddSubItem(ItemClass: TASTExpressionItemClass);
+function TASTExpression.AddOperation(OpClass: TASTOperationClass): TASTOperation;
+begin
+  Result := OpClass.Create(Self);
+  AddChild(Result);
+end;
+
+procedure TASTExpression.AddSubItem(ItemClass: TASTOperationClass);
 var
-  Item: TASTExpressionItem;
+  Item: TASTOperation;
 begin
   Item := ItemClass.Create(Self);
   AddChild(Item);
@@ -492,98 +531,98 @@ end;
 
 { TASTEIOpenRound }
 
-function TASTEIOpenRound.GetDisplayName: string;
+function TASTOpOpenRound.GetDisplayName: string;
 begin
   Result := '(';
 end;
 
 { TASTEICloseRound }
 
-function TASTEICloseRound.GetDisplayName: string;
+function TASTOpCloseRound.GetDisplayName: string;
 begin
   Result := ')';
 end;
 
 { TASTEIPlus }
 
-function TASTEIPlus.GetDisplayName: string;
+function TASTOpPlus.GetDisplayName: string;
 begin
   Result := '+';
 end;
 
 { TASTEIMinus }
 
-function TASTEIMinus.GetDisplayName: string;
+function TASTOpMinus.GetDisplayName: string;
 begin
   Result := '-';
 end;
 
 { TASTEIMul }
 
-function TASTEIMul.GetDisplayName: string;
+function TASTOpMul.GetDisplayName: string;
 begin
   Result := '*';
 end;
 
 { TASTEIDiv }
 
-function TASTEIDiv.GetDisplayName: string;
+function TASTOpDiv.GetDisplayName: string;
 begin
   Result := '/';
 end;
 
 { TASTEIIntDiv }
 
-function TASTEIIntDiv.GetDisplayName: string;
+function TASTOpIntDiv.GetDisplayName: string;
 begin
   Result := 'div';
 end;
 
 { TASTEIMod }
 
-function TASTEIMod.GetDisplayName: string;
+function TASTOpMod.GetDisplayName: string;
 begin
   Result := 'mod';
 end;
 
 { TASTEIEqual }
 
-function TASTEIEqual.GetDisplayName: string;
+function TASTOpEqual.GetDisplayName: string;
 begin
   Result := '=';
 end;
 
 { TASTEINotEqual }
 
-function TASTEINotEqual.GetDisplayName: string;
+function TASTOpNotEqual.GetDisplayName: string;
 begin
   Result := '<>';
 end;
 
 { TASTEIGrater }
 
-function TASTEIGrater.GetDisplayName: string;
+function TASTOpGrater.GetDisplayName: string;
 begin
   Result := '>';
 end;
 
 { TASTEIGraterEqual }
 
-function TASTEIGraterEqual.GetDisplayName: string;
+function TASTOpGraterEqual.GetDisplayName: string;
 begin
   Result := '>=';
 end;
 
 { TASTEILess }
 
-function TASTEILess.GetDisplayName: string;
+function TASTOpLess.GetDisplayName: string;
 begin
   Result := '<';
 end;
 
 { TASTEILessEqual }
 
-function TASTEILessEqual.GetDisplayName: string;
+function TASTOpLessEqual.GetDisplayName: string;
 begin
   Result := '<=';
 end;
@@ -610,7 +649,7 @@ end;
 
 { TASTKWAssign }
 
-function TASTKWAssign.GetDisplayName: string;
+function TASTOpAssign.GetDisplayName: string;
 begin
   Result := fDst.DisplayName + ' := ' + fSrc.DisplayName;
 end;
@@ -829,6 +868,36 @@ end;
 function TASTKWAsm.GetDisplayName: string;
 begin
   Result := 'asm';
+end;
+
+{ TASTKWInheritedCall }
+
+function TASTKWInheritedCall.GetDisplayName: string;
+begin
+  Result := 'inherited ' + fProc.DisplayName;
+end;
+
+{ TASTEICallProc }
+
+procedure TASTOpCallProc.AddArg(const Expr: TASTExpression);
+begin
+  fArgs := fArgs + [Expr];
+end;
+
+function TASTOpCallProc.GetDisplayName: string;
+var
+  SArgs: string;
+begin
+  for var Arg in fArgs do
+    SArgs := AddStringSegment(SArgs, Arg.DisplayName, ', ');
+  Result := 'call ' + fProc.DisplayName + '(' + SArgs + ')';
+end;
+
+{ TASTKWForIn }
+
+function TASTKWForIn.GetDisplayName: string;
+begin
+  Result := 'for ' + fVar.DisplayName + ' in ' + fList.DisplayName;
 end;
 
 end.

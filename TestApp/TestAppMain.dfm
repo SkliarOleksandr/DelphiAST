@@ -67,7 +67,7 @@ object frmTestAppMain: TfrmTestAppMain
           ''
           'procedure Test_Case(a, b, c: Integer);'
           'begin'
-          '  case a of '
+          '  case a of'
           '      1: a := a + 1;'
           '      2: a := a - 1;'
           '      3: begin'
@@ -87,6 +87,16 @@ object frmTestAppMain: TfrmTestAppMain
           '  begin'
           '    a := a + 1;'
           '    b := b - 1;'
+          '  end;'
+          'end;'
+          ''
+          'procedure Test_forin(arr: array of integer);'
+          'var'
+          '  i, a: Integer;'
+          'begin'
+          '  for i in arr do'
+          '  begin'
+          '    a := a + 1;'
           '  end;'
           'end;'
           ''
@@ -231,10 +241,15 @@ object frmTestAppMain: TfrmTestAppMain
           '  end;'
           'end;'
           ''
+          'procedure Test_Call;'
+          'begin'
+          '  Test_Asm(1, 2);'
+          'end;'
+          ''
           'end.'
+          ''
           '')
         FontSmoothing = fsmNone
-        ExplicitTop = 40
       end
     end
     object tsAST: TTabSheet

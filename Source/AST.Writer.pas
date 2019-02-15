@@ -93,13 +93,7 @@ begin
     if Item is TASTKWIF then
        WriteKW_If(CNode, TASTKWIF(Item))
     else
-    if Item is TASTKWWhile then
-       WriteKW_Loop(CNode, TASTKWLoop(Item))
-    else
-    if Item is TASTKWRepeat then
-       WriteKW_Loop(CNode, TASTKWLoop(Item))
-    else
-    if Item is TASTKWFor then
+    if Item is TASTKWLoop then
        WriteKW_Loop(CNode, TASTKWLoop(Item))
     else
     if Item is TASTKWWith then

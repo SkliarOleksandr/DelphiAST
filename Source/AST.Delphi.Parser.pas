@@ -52,9 +52,10 @@ type
     Body: TASTBlock;
     constructor Create(Proc: TASTDelphiProc); overload;
     constructor Create(Proc: TASTDelphiProc; Block: TASTBlock); overload;
-    function AddASTItem(ItemClass: TASTItemClass): TASTItem; overload;
+    procedure AddASTItem(Item: TASTItem); overload;
     property IsLoopBody: Boolean read GetIsLoopBody;
     property IsTryBlock: Boolean read GetIsTryBlock;
+    function Add<T: TASTItem>: T;
   end;
 
 
@@ -69,15 +70,18 @@ type
     procedure CheckLabelExpression(const Decl: TIDDeclaration); overload;
   public
     function ParseStatements(Scope: TScope; var SContext: TASTSContext; IsBlock: Boolean): TTokenID; overload;
-    function ParseExitStatement(Scope: TScope; var SContext: TASTSContext): TTokenID; overload;
     function ParseExpression(Scope: TScope; var SContext: TASTSContext; var EContext: TEContext; out ASTE: TASTExpression): TTokenID; overload;
+    function ParseMember(Scope: TScope; out Expression: TIDExpression; var EContext: TEContext;
+                         var SContext: TASTSContext; const ASTE: TASTExpression): TTokenID;
+    function ParseEntryCall(Scope: TScope; CallExpr: TIDCallExpression; var EContext: TEContext;
+                            var SContext: TASTSContext; const ASTE: TASTExpression): TTokenID;
+    function ParseExitStatement(Scope: TScope; var SContext: TASTSContext): TTokenID; overload;
     function ParseProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure = nil): TTokenID;
     function ParseProcBody(Proc: TIDProcedure): TTokenID;
     function ParseIfThenStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
     function ParseWhileStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
     function ParseRepeatStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
     function ParseWithStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
-    function ParseMember(Scope: TScope; out Expression: TIDExpression; var EContext: TEContext; var SContext: TASTSContext): TTokenID;
     function ParseForStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
     function ParseForInStatement(Scope: TScope; var SContext: TASTSContext; LoopVar: TIDExpression): TTokenID;
     function ParseCaseStatement(Scope: TScope; var SContext: TASTSContext): TTokenID;
@@ -93,16 +97,16 @@ type
 
     procedure InitEContext(var EContext: TEContext; EPosition: TExpessionPosition); inline;
     procedure Process_operator_Assign(var EContext: TEContext); override;
+    procedure CheckIncompletedProcs(ProcSpace: PProcSpace); override;
     function Compile(RunPostCompile: Boolean = True): TCompilerResult; override;
     function CompileIntfOnly: TCompilerResult; override;
-    procedure CheckIncompletedProcs(ProcSpace: PProcSpace); override;
   end;
 
 implementation
 
 uses NPCompiler.Operators, NPCompiler.DataTypes, SystemUnit;
 
-{ TDelphiASTUnit }
+{ TASTDelphiUnit }
 
 function TASTDelphiUnit.ParseStatements(Scope: TScope; var SContext: TASTSContext; IsBlock: Boolean): TTokenID;
 var
@@ -164,20 +168,19 @@ begin
       end;
       {RAISE}
       token_raise: Result := ParseRaiseStatement(Scope, SContext);
-      {BREAK, CONTINUE}
+      {BREAK}
       token_break: Result := ParseBreakStatement(Scope, SContext);
+      {CONTINUE}
       token_continue: Result := ParseContinueStatement(Scope, SContext);
+      {;}
       token_semicolon:;
-
-
       {VAR}
       token_var: Result := ParseImmVarStatement(Scope, SContext);
-
-      (*  token_address: begin
+      {@}
+      token_address: begin
         Result := parser_NextToken(Scope);
         Continue;
-      end;     *)
-
+      end;
       {IDENTIFIER}
       token_identifier: begin
         InitEContext(LEContext, ExprLValue);
@@ -195,20 +198,21 @@ begin
             LEContext.RPNPushOperator(opAssignment);
             LEContext.RPNFinish();
 
-            var KW := SContext.AddASTItem(TASTKWAssign) as TASTKWAssign;
-            KW.Dst := ASTEDst;
-            KW.Src := ASTESrc;
+            var Op := SContext.Add<TASTOpAssign>;
+            Op.Dst := ASTEDst;
+            Op.Src := ASTESrc;
 
           end else
           if Result = token_colon then
           begin
             var LExpr := LEContext.Result;
             CheckLabelExpression(LExpr);
-            var KW := SContext.AddASTItem(TASTKWLabel) as TASTKWLabel;
+            var KW := SContext.Add<TASTKWLabel>;
             KW.&Label := LExpr.Declaration;
             Result := parser_NextToken(Scope);
             Continue;
-          end;
+          end else
+            SContext.AddASTItem(ASTEDst);
           CheckAndCallFuncImplicit(LEContext);
           CheckUnusedExprResult(LEContext);
         end;
@@ -226,7 +230,7 @@ begin
 
     if IsBlock then
     begin
-      parser_MatchToken(Result, token_semicolon);
+      parser_MatchSemicolon(Result);
       Result := parser_NextToken(Scope);
     end else
       Exit;
@@ -239,7 +243,7 @@ var
   NewContext: TASTSContext;
   ExceptItem: TASTKWTryExceptItem;
 begin
-  KW := SContext.AddASTItem(TASTKWTryBlock) as TASTKWTryBlock;
+  KW := SContext.Add<TASTKWTryBlock>;
   NewContext := TASTSContext.Create(SContext.Proc, KW.Body);
   // запоминаем предыдущий TryBlock
   parser_NextToken(Scope);
@@ -273,6 +277,64 @@ begin
   else
     AbortWork(sExceptOrFinallySectionWasMissed, parser_Position);
   end;
+end;
+
+function TASTDelphiUnit.ParseEntryCall(Scope: TScope; CallExpr: TIDCallExpression; var EContext: TEContext;
+                                       var SContext: TASTSContext; const ASTE: TASTExpression): TTokenID;
+var
+  ArgumentsCount: Integer;
+  Expr: TIDExpression;
+  InnerEContext: TEContext;
+  ASTExpr: TASTExpression;
+  ASTCall: TASTOpCallProc;
+begin
+  ASTCall := ASTE.AddOperation(TASTOpCallProc) as TASTOpCallProc;
+  ASTCall.Proc := CallExpr.Declaration;
+  ArgumentsCount := 0;
+  InitEContext(InnerEContext, ExprNested);
+  {цикл парсинга аргументов}
+  while true do begin
+    Result := parser_NextToken(Scope);
+    if Result = token_closeround then
+    begin
+      Result := parser_NextToken(Scope);
+      Break;
+    end;
+    Result := ParseExpression(Scope, SContext, InnerEContext, ASTExpr);
+    ASTCall.AddArg(ASTExpr);
+    Expr := InnerEContext.Result;
+    if Assigned(Expr) then begin
+      if Expr.DataType = SYSUnit._Boolean then
+      begin
+        if (Expr.ItemType = itVar) and Expr.IsAnonymous then
+          Bool_CompleteImmediateExpression(InnerEContext, Expr);
+      end;
+      EContext.RPNPushExpression(Expr);
+    end else begin
+      // Добавляем пустой Expression для значения по умолчанию
+      EContext.RPNPushExpression(nil);
+    end;
+    Inc(ArgumentsCount);
+    case Result of
+      token_coma: begin
+        InnerEContext.Reset;
+        continue;
+      end;
+      token_closeround: begin
+        Result := parser_NextToken(Scope);
+        Break;
+      end;
+    else
+      ERROR_INCOMPLETE_STATEMENT;
+    end;
+  end;
+
+  if pfDestructor in CallExpr.AsProcedure.Flags then
+    ERROR_DESTRUCTOR_CANNOT_BE_CALL_DIRECTLY;
+
+  TIDCallExpression(CallExpr).ArgumentsCount := ArgumentsCount;
+  EContext.RPNPushExpression(CallExpr);
+  EContext.RPNPushOperator(opCall);
 end;
 
 function TASTDelphiUnit.ParseExceptOnSection(Scope: TScope; KW: TASTKWTryBlock; var SContext: TASTSContext): TTokenID;
@@ -328,7 +390,7 @@ var
   ASTExpr: TASTExpression;
   KW: TASTKWWhile;
 begin
-  KW := SContext.AddASTItem(TASTKWWhile) as TASTKWWhile;
+  KW := SContext.Add<TASTKWWhile>;
 
   // loop expression
   InitEContext(EContext, ExprRValue);
@@ -361,7 +423,7 @@ var
 begin
   WPrevScope := Scope;
   WNextScope := nil;
-  KW := SContext.AddASTItem(TASTKWWith) as TASTKWWith;
+  KW := SContext.Add<TASTKWWith>;
   BodySContext := TASTSContext.Create(SContext.Proc, KW.Body);
   while True do begin
     Result := parser_NextToken(Scope);
@@ -597,7 +659,7 @@ function TASTDelphiUnit.ParseASMStatement(Scope: TScope; var SContext: TASTSCont
 var
   KW: TASTKWAsm;
 begin
-  KW := SContext.AddASTItem(TASTKWAsm) as TASTKWAsm;
+  KW := SContext.Add<TASTKWAsm>;
   while (Result <> token_end) do
   begin
     // skip all to end
@@ -614,7 +676,7 @@ begin
   if not SContext.IsLoopBody then
     AbortWork(sBreakOrContinueAreAllowedOnlyInALoops, parser_Position);
 
-  SContext.AddASTItem(TASTKWBreak);
+  SContext.Add<TASTKWBreak>;
 
   Result := parser_NextToken(Scope);
   {проверка на выход из try... секции}
@@ -638,7 +700,7 @@ begin
   if not SContext.IsLoopBody then
     AbortWork(sBreakOrContinueAreAllowedOnlyInALoops, parser_Position);
 
-  SContext.AddASTItem(TASTKWContinue);
+  SContext.Add<TASTKWContinue>;
 
   Result := parser_NextToken(Scope);
   {проверка на выход из try... секции}
@@ -712,7 +774,7 @@ var
   KW: TASTKWCase;
   CaseItem: TASTExpBlockItem;
 begin
-  KW := SContext.AddASTItem(TASTKWCase) as TASTKWCase;
+  KW := SContext.Add<TASTKWCase>;
 
   // NeedCMPCode := False;
   // CASE выражение
@@ -835,7 +897,7 @@ var
   EContext: TEContext;
   KW: TASTKWExit;
 begin
-  KW := SContext.AddASTItem(TASTKWExit) as TASTKWExit;
+  KW := SContext.Add<TASTKWExit>;
 
   Result := parser_NextToken(Scope);
   if Result = token_openround then
@@ -853,7 +915,8 @@ begin
 
 end;
 
-function TASTDelphiUnit.ParseExpression(Scope: TScope; var SContext: TASTSContext; var EContext: TEContext; out ASTE: TASTExpression): TTokenID;
+function TASTDelphiUnit.ParseExpression(Scope: TScope; var SContext: TASTSContext; var EContext: TEContext;
+                                        out ASTE: TASTExpression): TTokenID;
 var
   ID: TIdentifier;
   Status: TEContext.TRPNStatus;
@@ -870,7 +933,7 @@ begin
       token_openround: begin
         Inc(RoundCount);
         EContext.RPNPushOpenRaund;
-        ASTE.AddSubItem(TASTEIOpenRound);
+        ASTE.AddSubItem(TASTOpOpenRound);
         Status := rprOk;
       end;
       token_closeround: begin
@@ -882,7 +945,7 @@ begin
 
           ERROR_UNNECESSARY_CLOSED_ROUND;
         end;
-        ASTE.AddSubItem(TASTEICloseRound);
+        ASTE.AddSubItem(TASTOpCloseRound);
         EContext.RPNPushCloseRaund();
         Status := rpOperand;
       end;
@@ -901,19 +964,19 @@ begin
           Status := EContext.RPNPushOperator(opAdd)
         else
           Status := EContext.RPNPushOperator(opPositive);
-        ASTE.AddSubItem(TASTEIPlus);
+        ASTE.AddSubItem(TASTOpPlus);
       end;
       token_minus: begin
         if Status = rpOperand then
           Status := EContext.RPNPushOperator(opSubtract)
         else
           Status := EContext.RPNPushOperator(opNegative);
-        ASTE.AddSubItem(TASTEIMinus);
+        ASTE.AddSubItem(TASTOpMinus);
       end;
       token_equal: begin
         CheckLeftOperand(Status);
         Status := EContext.RPNPushOperator(opEqual);
-        ASTE.AddSubItem(TASTEIEqual);
+        ASTE.AddSubItem(TASTOpEqual);
       end;
       token_var: begin
         //Result := ParseInplaceVarDecl(Scope, Expr);
@@ -925,34 +988,34 @@ begin
       token_notequal: begin
         CheckLeftOperand(Status);
         Status := EContext.RPNPushOperator(opNotEqual);
-        ASTE.AddSubItem(TASTEINotEqual);
+        ASTE.AddSubItem(TASTOpNotEqual);
       end;
       token_less: begin
         CheckLeftOperand(Status);
         Status := EContext.RPNPushOperator(opLess);
-        ASTE.AddSubItem(TASTEILess);
+        ASTE.AddSubItem(TASTOpLess);
       end;
       token_lessorequal: begin
         CheckLeftOperand(Status);
         Status := EContext.RPNPushOperator(opLessOrEqual);
-        ASTE.AddSubItem(TASTEILessEqual);
+        ASTE.AddSubItem(TASTOpLessEqual);
       end;
       token_above: begin
         if EContext.EPosition = ExprNestedGeneric then
           Break;
         CheckLeftOperand(Status);
         Status := EContext.RPNPushOperator(opGreater);
-        ASTE.AddSubItem(TASTEIGrater);
+        ASTE.AddSubItem(TASTOpGrater);
       end;
       token_aboveorequal: begin
         CheckLeftOperand(Status);
         Status := EContext.RPNPushOperator(opGreaterOrEqual);
-        ASTE.AddSubItem(TASTEIGraterEqual);
+        ASTE.AddSubItem(TASTOpGraterEqual);
       end;
       token_asterisk: begin
         CheckLeftOperand(Status);
         Status := EContext.RPNPushOperator(opMultiply);
-        ASTE.AddSubItem(TASTEIMul);
+        ASTE.AddSubItem(TASTOpMul);
       end;
       token_in: begin
         CheckLeftOperand(Status);
@@ -961,17 +1024,17 @@ begin
       token_slash: begin
         CheckLeftOperand(Status);
         Status := EContext.RPNPushOperator(opDivide);
-        ASTE.AddSubItem(TASTEIDiv);
+        ASTE.AddSubItem(TASTOpDiv);
       end;
       token_div: begin
         CheckLeftOperand(Status);
         Status := EContext.RPNPushOperator(opIntDiv);
-        ASTE.AddSubItem(TASTEIIntDiv);
+        ASTE.AddSubItem(TASTOpIntDiv);
       end;
       token_mod: begin
         CheckLeftOperand(Status);
         Status := EContext.RPNPushOperator(opModDiv);
-        ASTE.AddSubItem(TASTEIMod);
+        ASTE.AddSubItem(TASTOpMod);
       end;
       token_period: begin
         CheckLeftOperand(Status);
@@ -1034,7 +1097,7 @@ begin
         if parser_IdentifireType = itIdentifier then
         begin
           Expr := nil;
-          Result := ParseMember(Scope, Expr, EContext, SContext);
+          Result := ParseMember(Scope, Expr, EContext, SContext, ASTE);
           // если результат = nil значит это был вызов функции и все
           // необходимые параметры погружены в стек, поэтому идем дальше
           if not Assigned(Expr) then
@@ -1094,10 +1157,42 @@ begin
 end;
 
 function TASTDelphiUnit.ParseForInStatement(Scope: TScope; var SContext: TASTSContext; LoopVar: TIDExpression): TTokenID;
+var
+  EContext: TEContext;
+  AExpr: TIDExpression;
+  LoopArrayDT: TIDType;
+  ASTExpr: TASTExpression;
+  KW: TASTKWForIn;
+  BodySContext: TASTSContext;
 begin
+  ASTExpr := TASTExpression.Create(nil);
+  ASTExpr.AddDeclItem(LoopVar.Declaration, LoopVar.TextPosition);
+  KW := SContext.Add<TASTKWForIn>;
+  KW.VarExpr := ASTExpr;
+  // парсим выражение-коллекцию
+  InitEContext(EContext, ExprRValue);
+  parser_NextToken(Scope);
+  Result := ParseExpression(Scope, SContext, EContext, ASTExpr);
+  KW.ListExpr := ASTExpr;
+  AExpr := EContext.Result;
+  CheckArrayExpression(AExpr);
+  LoopArrayDT := (AExpr.DataType as TIDArray).ElementDataType;
 
+  if Assigned(LoopVar.DataType) then
+  begin
+    // если переменная цикла определена зарание
+    if MatchImplicit(LoopArrayDT, LoopVar.DataType) = nil then
+      ERROR_INCOMPATIBLE_TYPES(LoopVar, LoopArrayDT);
+  end else begin
+    LoopVar.Declaration.DataType := LoopArrayDT;
+  end;
+
+  parser_MatchToken(Result, token_do);
+  parser_NextToken(Scope);
+
+  BodySContext := TASTSContext.Create(SContext.Proc, KW.Body);
+  Result := ParseStatements(Scope, BodySContext, False);
 end;
-
 
 type
   TILCondition = (cNone, cEqual, cNotEqual, cGreater, cGreaterOrEqual, cLess, cLessOrEqual, cZero, cNonZero);
@@ -1115,9 +1210,6 @@ var
   ASTExpr: TASTExpression;
   WriteIL: Boolean;
 begin
-  KW := SContext.AddASTItem(TASTKWFor) as TASTKWFor;
-  BodySContext := TASTSContext.Create(SContext.Proc, KW.Body);
-
   // цикловая переменная
   Result := parser_NextToken(Scope);
   if Result = token_var then begin
@@ -1144,6 +1236,9 @@ begin
     Result := ParseForInStatement(Scope, SContext, LExpr);
     Exit;
   end;
+
+  KW := SContext.Add<TASTKWFor>;
+  BodySContext := TASTSContext.Create(SContext.Proc, KW.Body);
 
   parser_MatchToken(Result, token_assign);
 
@@ -1219,7 +1314,7 @@ begin
   parser_ReadNextIdentifier(Scope, ID);
   LDecl := FindID(Scope, ID);
   CheckLabelExpression(LDecl);
-  KW := SContext.AddASTItem(TASTKWGoTo) as TASTKWGoTo;
+  KW := SContext.Add<TASTKWGoTo>;
   KW.&Label := LDecl;
   Result := parser_NextToken(Scope);
 end;
@@ -1234,7 +1329,7 @@ var
   KW: TASTKWIF;
   CondExpr: TASTExpression;
 begin
-  KW := SContext.AddASTItem(TASTKWIF) as TASTKWIF;
+  KW := SContext.Add<TASTKWIF>;
   InitEContext(EContext, ExprRValue);
   parser_NextToken(Scope);
   Result := ParseExpression(Scope, SContext, EContext, CondExpr);
@@ -1289,7 +1384,7 @@ begin
   Names := TIdentifiersPool.Create(1);
   Result := parser_NextToken(Scope);
 
-  KW := SContext.AddASTItem(TASTKWInlineVarDecl) as TASTKWInlineVarDecl;
+  KW := SContext.Add<TASTKWInlineVarDecl>;
 
   while True do begin
     parser_MatchIdentifier(Result);
@@ -1390,7 +1485,7 @@ begin
       token_identifier: ERROR_KEYWORD_EXPECTED;
       token_asm: begin
         // skip the asm...end block
-        Result := parser_SkipBlock(token_end);
+        parser_SkipBlock(token_end);
         Result := parser_NextToken(Scope);
         Exit;
       end;
@@ -1667,7 +1762,7 @@ begin
   EExcept := EContext.Result;
   if Assigned(EExcept) then
     CheckClassExpression(EExcept);
-  KW := SContext.AddASTItem(TASTKWRaise) as TASTKWRaise;
+  KW := SContext.Add<TASTKWRaise>;
   KW.Expression := ASTExpr;
 end;
 
@@ -1679,7 +1774,7 @@ var
   KW: TASTKWRepeat;
   ASTExpr: TASTExpression;
 begin
-  KW := SContext.AddASTItem(TASTKWRepeat) as TASTKWRepeat;
+  KW := SContext.Add<TASTKWRepeat>;
 
   BodySContext := TASTSContext.Create(SContext.Proc, KW.Body);
 
@@ -1698,7 +1793,8 @@ begin
   CheckBooleanExpression(Expression);
 end;
 
-function TASTDelphiUnit.ParseMember(Scope: TScope; out Expression: TIDExpression; var EContext: TEContext; var SContext: TASTSContext): TTokenID;
+function TASTDelphiUnit.ParseMember(Scope: TScope; out Expression: TIDExpression; var EContext: TEContext;
+                                    var SContext: TASTSContext; const ASTE: TASTExpression): TTokenID;
 var
   Decl: TIDDeclaration;
   DataType: TIDType;
@@ -1774,7 +1870,7 @@ begin
         // если есть открытая скобка, - значит вызов
         if Result = token_openround then
         begin
-          Result := ParseEntryCall(Scope, TIDCallExpression(Expression), EContext);
+          Result := ParseEntryCall(Scope, TIDCallExpression(Expression), EContext, SContext, ASTE);
           // если это метод, подставляем self из пула
           if PMContext.Count > 0 then
           begin
@@ -1834,7 +1930,7 @@ begin
               ERROR_PROC_OR_PROCVAR_REQUIRED(PMContext.ID);
 
             Expression := TIDCallExpression.Create(Decl, PMContext.ID.TextPosition);
-            Result := ParseEntryCall(Scope, TIDCallExpression(Expression), EContext);
+            Result := ParseEntryCall(Scope, TIDCallExpression(Expression), EContext, SContext, ASTE);
             Expression := nil;
             Break;
           end;
@@ -1898,7 +1994,7 @@ begin
         TIDCastedCallExpression(CallExpr).DataType := Expression.DataType;
       end;
 
-      Result := ParseEntryCall(Scope, CallExpr, EContext);
+      Result := ParseEntryCall(Scope, CallExpr, EContext, SContext, ASTE);
       Expression := nil;
       Break;
     end;
@@ -1965,10 +2061,15 @@ begin
   Self.Body := Proc.Body;
 end;
 
-function TASTSContext.AddASTItem(ItemClass: TASTItemClass): TASTItem;
+function TASTSContext.Add<T>: T;
 begin
-  Result := ItemClass.Create(Body);
+  Result := T.Create(Body);
   Body.AddChild(Result);
+end;
+
+procedure TASTSContext.AddASTItem(Item: TASTItem);
+begin
+  Body.AddChild(Item);
 end;
 
 constructor TASTSContext.Create(Proc: TASTDelphiProc; Block: TASTBlock);
