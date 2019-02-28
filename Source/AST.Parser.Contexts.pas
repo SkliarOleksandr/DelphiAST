@@ -44,10 +44,9 @@ type
     fRPNPrevPriority: Integer;
     fProcessProc: TRPNPocessProc;
     fPosition: TExpessionPosition;      // позиция выражения (Nested, LValue, RValue...);
-    fSContext: ^TASTSContext<TProc>;
+    fSContext: TASTSContext<TProc>;
     procedure RPNCheckInputSize;
     function GetExpression: TIDExpression;
-    function GetSContext: Pointer; inline;
     function GetProc: TProc;
   public
     procedure Initialize(const SContext: TASTSContext<TProc>; const ProcessProc: TRPNPocessProc);
@@ -67,7 +66,7 @@ type
     property RPNLastOp: TOperatorID read fRPNLastOp;
     property Result: TIDExpression read GetExpression;
     property EPosition: TExpessionPosition read fPosition write fPosition;
-    property SContext: Pointer read GetSContext;
+    property SContext: TASTSContext<TProc> read fSContext;
     property Proc: TProc read GetProc;
   end;
 
@@ -236,11 +235,6 @@ begin
   Result := fSContext.fProc;
 end;
 
-function TASTEContext<TProc>.GetSContext: Pointer;
-begin
-  Result := fSContext;
-end;
-
 procedure TASTEContext<TProc>.Initialize(const SContext: TASTSContext<TProc>; const ProcessProc: TRPNPocessProc);
 begin
   SetLength(fRPNOArray, 4);
@@ -252,7 +246,7 @@ begin
   fRPNLastOp := opNone;
   fRPNPrevPriority := 0;
   fProcessProc := ProcessProc;
-  fSContext := @SContext;
+  fSContext := SContext;
 end;
 
 procedure TASTEContext<TProc>.RPNEraiseTopOperator;

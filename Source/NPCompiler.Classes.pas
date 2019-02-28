@@ -4,8 +4,17 @@ interface
 
 {$I compilers.inc}
 
-uses SysUtils, Classes, StrUtils, NPCompiler.DataTypes, Math, NPCompiler.Messages, iDStringParser, Generics.Collections,
-     Variants, NPCompiler.Operators, AVL, NPCompiler.Utils, IL.Types, NPCompiler.Errors, NPCompiler.Intf,
+uses System.SysUtils, System.Classes, System.StrUtils, System.Math, System.Generics.Collections,
+     NPCompiler.DataTypes,
+     NPCompiler.Messages,
+     iDStringParser,
+     System.Variants,
+     NPCompiler.Operators,
+     AVL,
+     NPCompiler.Utils,
+     IL.Types,
+     NPCompiler.Errors,
+     NPCompiler.Intf,
      NPCompiler.Options,
      AST.Classes,
      AST.Project;

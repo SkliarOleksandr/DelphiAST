@@ -34,6 +34,9 @@ type
   TSContext = TASTSContext<TASTDelphiProc>;
   TEContext = TASTEcontext<TASTDelphiProc>;
 
+  PSContext = ^TSContext;
+
+
   //TEContext = TExpContext<TASTSContext>;
 
   TASTDelphiUnit = class(TNPUnit)
@@ -41,9 +44,7 @@ type
     procedure CheckLeftOperand(const Status: TRPNStatus);
     function CreateAnonymousConstant(Scope: TScope; var EContext: TEContext;
       const ID: TIdentifier; IdentifierType: TIdentifierType): TIDExpression;
-    function ParsePropertyMember(var PMContext: TPMContext; Scope: TScope;
-      Prop: TIDProperty; out Expression: TIDExpression;
-      var EContext: TEContext): TTokenID;
+    procedure InitEContext(var EContext: TEContext; const SContext: TSContext; EPosition: TExpessionPosition); inline;
   protected
     function GetModuleName: string; override;
     function GetFirstFunc: TASTDeclaration; override;
@@ -54,14 +55,31 @@ type
     procedure CheckLabelExpression(const Decl: TIDDeclaration); overload;
     function Process_operators2(var EContext: TEContext; OpID: TOperatorID): TIDExpression;
     function Process_CALL(var EContext: TEContext): TIDExpression;
-    function Process_CALL_direct(SContext: TSContext; PExpr: TIDCallExpression; CallArguments: TIDExpressions): TIDExpression;
+    function Process_CALL_direct(const SContext: TSContext; PExpr: TIDCallExpression; CallArguments: TIDExpressions): TIDExpression;
     procedure Process_operator_Assign(var EContext: TEContext);
     function Process_operator_neg(var EContext: TEContext): TIDExpression;
     function Process_operator_not(var EContext: TEContext): TIDExpression;
+    function Process_operator_Addr(var EContext: TEContext): TIDExpression;
+    function Process_operator_Deref(var EContext: TEContext): TIDExpression;
+    function Process_operator_In(var EContext: TEContext; const Left, Right: TIDExpression): TIDExpression;
+    function Process_operator_Is(var EContext: TEContext): TIDExpression;
+    function Process_operator_As(var EContext: TEContext): TIDExpression;
+    function Process_operator_Period(var EContext: TEContext): TIDExpression;
+
+
     function GetTMPVar(const SContext: TSContext; DataType: TIDType): TIDVariable; overload;
     function GetTMPVar(const EContext: TEContext; DataType: TIDType): TIDVariable; overload;
+    function GetTMPRef(const SContext: TSContext; DataType: TIDType): TIDVariable;
     function GetTMPVarExpr(const SContext: TSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline;
     function GetTMPVarExpr(const EContext: TEContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline;
+    function GetTMPRefExpr(const SContext: TSContext; DataType: TIDType): TIDExpression; overload; inline;
+    function GetTMPRefExpr(const SContext: TSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline;
+
+    function MatchImplicit3(const SContext: TSContext; Source: TIDExpression; Dest: TIDType): TIDExpression;
+    function MatchImplicitOrNil(const SContext: TSContext; Source: TIDExpression; Dest: TIDType): TIDExpression;
+    function MatchArrayImplicit(const SContext: TSContext; Source: TIDExpression; DstArray: TIDArray): TIDExpression;
+    function MatchRecordImplicit(const SContext: TSContext; Source: TIDExpression; DstRecord: TIDRecord): TIDExpression;
+    function MatchBinarOperator(const SContext: TSContext; Op: TOperatorID; var Left, Right: TIDExpression): TIDDeclaration;
   public
     function ParseStatements(Scope: TScope; var SContext: TSContext; IsBlock: Boolean): TTokenID; overload;
     function ParseExpression(Scope: TScope; var SContext: TSContext; var EContext: TEContext; out ASTE: TASTExpression): TTokenID; overload;
@@ -69,6 +87,9 @@ type
                          var SContext: TSContext; const ASTE: TASTExpression): TTokenID;
     function ParseArrayMember(Scope: TScope; var PMContext: TPMContext; Decl: TIDDeclaration; out DataType: TIDType;
                               var EContext: TEContext; var SContext: TSContext; ASTE: TASTExpression): TTokenID;
+    function ParsePropertyMember(var PMContext: TPMContext; Scope: TScope; Prop: TIDProperty; out Expression: TIDExpression;
+                                 var EContext: TEContext): TTokenID;
+    function ParseIndexedPropertyArgs(Scope: TScope; out ArgumentsCount: Integer; var EContext: TEContext): TTokenID;
     function ParseEntryCall(Scope: TScope; CallExpr: TIDCallExpression; var EContext: TEContext;
                             var SContext: TSContext; const ASTE: TASTExpression): TTokenID;
     function ParseExitStatement(Scope: TScope; var SContext: TSContext): TTokenID; overload;
@@ -90,12 +111,22 @@ type
     function ParseLabelSection(Scope: TScope): TTokenID;
     function ParseGoToStatement(Scope: TScope; var SContext: TSContext): TTokenID;
     function ParseASMStatement(Scope: TScope; var SContext: TSContext): TTokenID;
-
-    procedure InitEContext(var EContext: TEContext; const SContext: TSContext; EPosition: TExpessionPosition); inline;
-
     procedure CheckIncompletedProcs(ProcSpace: PProcSpace); override;
     function Compile(RunPostCompile: Boolean = True): TCompilerResult; override;
     function CompileIntfOnly: TCompilerResult; override;
+  end;
+
+  {предок всех внутренних процедур перегрузки операторов компилятора}
+  TIDInternalOperator = class(TIDOperator)
+  public
+    constructor CreateAsIntOp; reintroduce;
+  end;
+
+  TIDInternalOpImplicit = class(TIDInternalOperator)
+  public
+    constructor CreateInternal(ResultType: TIDType); reintroduce;
+    function Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; virtual; abstract;
+    //function Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; virtual; abstract;
   end;
 
 implementation
@@ -478,11 +509,230 @@ begin
 end;
 
 function TASTDelphiUnit.Process_CALL(var EContext: TEContext): TIDExpression;
+var
+  PIndex, AIndex, ArgsCount,
+  ParamsCount: Integer;
+  PExpr: TIDCallExpression;
+  UserArguments,
+  CallArguments: TIDExpressions;
+  ProcParams: TVariableList;
+  Decl: TIDDeclaration;
+  ResVar: TIDVariable;
+  ProcDecl: TIDProcedure;
+  ProcResult: TIDType;
+  Param: TIDVariable;
+  AExpr, NewExpr: TIDExpression;
+  SContext: PSContext;
 begin
+  SContext := @EContext.SContext;
+  // читаем декларацию функции
+  PExpr := TIDCallExpression(EContext.RPNPopExpression());
 
+  {вычитка явно указанных аргументов функции}
+  ArgsCount := PExpr.ArgumentsCount;
+  SetLength(UserArguments, ArgsCount);
+  for AIndex := ArgsCount - 1 downto 0 do
+    UserArguments[AIndex] := EContext.RPNPopExpression();
+
+  ProcDecl := nil;
+  Decl := PExpr.Declaration;
+
+
+  {прямой вызов}
+  if Decl.ItemType = itProcedure then
+  begin
+    ProcDecl := TIDProcedure(Decl);
+    {if Assigned(ProcDecl.Struct) and (PExpr.Instance.Declaration is TIDField) then
+    begin
+
+    end;}
+    if Assigned(ProcDecl.GenericDescriptor) and not Assigned(SContext.Proc.GenericDescriptor) then
+    begin
+      ProcDecl := SpecializeGenericProc(PExpr, UserArguments);
+      ProcParams := ProcDecl.ExplicitParams;
+      PExpr.Declaration := ProcDecl;
+    end;
+
+    {поиск подходящей декларации}
+    if Assigned(ProcDecl.NextOverload) then begin
+      ProcDecl := MatchOverloadProc(PExpr, UserArguments, ArgsCount);
+      ProcParams := ProcDecl.ExplicitParams;
+      PExpr.Declaration := ProcDecl;
+    end else begin
+      ProcParams := ProcDecl.ExplicitParams;
+      MatchProc(PExpr, ProcParams, UserArguments);
+    end;
+
+    ProcResult := ProcDecl.ResultType;
+
+  end else
+  {вызов через переменную процедурного типа}
+  if PExpr.DataTypeID = dtProcType then begin
+
+    Decl := PExpr.DataType;
+
+    ProcParams := TIDProcType(Decl).Params;
+    ProcResult := TIDProcType(Decl).ResultType;
+    MatchProc(PExpr, ProcParams, UserArguments);
+  end else begin
+    AbortWorkInternal(msgProcOrProcVarRequired, parser_Position);
+    ProcResult := nil;
+  end;
+
+  ParamsCount := Length(ProcParams);
+  {если все аргументы явно указаны}
+  if ParamsCount = ArgsCount then
+  begin
+    for AIndex := 0 to ParamsCount - 1 do
+    begin
+      Param := ProcParams[AIndex];
+      AExpr := UserArguments[AIndex];
+
+      {если аргумент константый дин. массив то делаем доп. проверку}
+      //if AExpr.Declaration is TIDDynArrayConstant then
+      //  AExpr := CheckConstDynArray(SContext, Param.DataType, AExpr);
+
+      {проверка диаппазона для константных аргументов}
+      if AExpr.IsConstant then
+        CheckConstValueOverflow(AExpr, Param.DataType);
+
+      {подбираем implicit оператор}
+      AExpr := MatchImplicit3(SContext^, AExpr, Param.DataType);
+      CheckNotNullExpression(Param, AExpr);
+
+      {если параметр - constref и аргумент - константа, то создаем временную переменную}
+      //if (VarConstRef in Param.Flags) and (AExpr.ItemType = itConst) then
+      //  AExpr := GenConstToVar(SContext, AExpr, Param.DataType);
+
+      {если параметр - метод, получаем ссылку на него}
+      if (AExpr.ItemType = itProcedure) and (not TIDProcType(AExpr.DataType).IsStatic) then
+      begin
+        NewExpr := GetTMPVarExpr(SContext^, AExpr.DataType, AExpr.TextPosition);
+        AExpr := NewExpr;
+      end;
+
+      UserArguments[AIndex] := AExpr;
+
+      if Param.VarReference then
+      begin
+        CheckVarExpression(AExpr, vmpPassArgument);
+        {проверка на строгость соответствия типов}
+        if Param.DataType.ActualDataType <> AExpr.DataType.ActualDataType then
+        begin
+          if not ((Param.DataType.DataTypeID = dtPointer) and
+             (AExpr.DataType.DataTypeID = dtPointer) and
+             (TIDPointer(Param.DataType).ReferenceType = TIDPointer(AExpr.DataType).ReferenceType)) then
+          ERROR_REF_PARAM_MUST_BE_IDENTICAL(AExpr);
+        end;
+      end;
+    end;
+    CallArguments := UserArguments;
+  end else
+  {если некоторые аргументы опущены}
+  begin
+    AIndex := 0;
+    PIndex := 0;
+    SetLength(CallArguments, ParamsCount);
+    while (PIndex < ParamsCount) do
+    begin
+      Param := ProcParams[PIndex];
+      if AIndex < ArgsCount then begin
+        AExpr := UserArguments[AIndex];
+        Inc(AIndex);
+      end else
+        AExpr := nil;
+      {подстановка аргуметов по умолчанию}
+      if Assigned(AExpr) then
+        CallArguments[PIndex] := AExpr
+      else begin
+        AExpr := Param.DefaultValue;
+        if not Assigned(AExpr) then
+          ERROR_NOT_ENOUGH_ACTUAL_PARAMS(PExpr);
+        CallArguments[PIndex] := AExpr;
+      end;
+
+      {если аргумент константый дин. массив то делаем доп. проверку}
+      //if AExpr.Declaration is TIDDynArrayConstant then
+      //  AExpr := CheckConstDynArray(SContext, Param.DataType, AExpr);     // нужно ли????
+
+      {проверка диаппазона для константных аргументов}
+      if AExpr.IsConstant then
+        CheckConstValueOverflow(AExpr, Param.DataType);
+
+      {подбираем implicit оператор}
+      AExpr := MatchImplicit3(SContext^, AExpr, Param.DataType);
+
+      {если параметр - constref и аргумент - константа, то создаем временную переменную}
+      //if (VarConstRef in Param.Flags) and (AExpr.ItemType = itConst) then
+      //  AExpr := GenConstToVar(SContext, AExpr, Param.DataType);
+
+      {если параметр - метод, получаем ссылку на него}
+      if (AExpr.ItemType = itProcedure) and (not TIDProcType(AExpr.DataType).IsStatic) then
+      begin
+        NewExpr := GetTMPVarExpr(SContext^, AExpr.DataType, AExpr.TextPosition);
+        AExpr := NewExpr;
+      end;
+
+      CallArguments[PIndex] := AExpr;
+
+      {если параметр открытый массив}
+      if Param.DataTypeID = dtOpenArray then
+      begin
+        {добовляем скрытй аргумент}
+        EContext.RPNPushExpression(AExpr);
+        Inc(PIndex);
+        //CallArguments[PIndex] := ProcessBuiltin_Length(EContext); todo:
+      end;
+
+      Inc(PIndex);
+      {если параметр передается по ссылке, проверяем что аргумент можно менять}
+      if Param.VarReference then
+      begin
+        CheckVarExpression(AExpr, vmpPassArgument);
+        {проверка на строгость соответствия типов}
+        if Param.DataType.ActualDataType <> AExpr.DataType.ActualDataType then
+          ERROR_REF_PARAM_MUST_BE_IDENTICAL(AExpr);
+      end;
+    end;
+  end;
+
+  {конструирование обьекта}
+  if (Assigned(ProcDecl) and (pfConstructor in ProcDecl.Flags)) then
+  begin
+    //Result := process_CALL_constructor(SContext, PExpr, CallArguments);
+    ERROR_FEATURE_NOT_SUPPORTED;
+    Exit;
+  end;
+
+  {результат функции}
+  if Assigned(ProcResult) then begin
+    ResVar := GetTMPVar(SContext^, ProcResult);
+    ResVar.IncludeFlags([VarTmpResOwner]);
+    Result := TIDExpression.Create(ResVar, PExpr.TextPosition);
+  end else
+    Result := nil;
+
+  {если вызов был коссвенным, инлайн невозможен}
+  Decl := PExpr.Declaration;
+  if Decl.ItemType = itVar then
+  begin
+    {если переменная - поле класа, получаем ссылку на поле}
+    //
+    Exit;
+  end;
+
+  {INLINE подстановка (пока только если инлайн процедура готова)}
+  if (pfInline in ProcDecl.Flags) and
+     (ProcDecl.IsCompleted) and
+     (ProcDecl <> SContext.Proc) then
+  begin
+    // todo:
+  end else begin
+    // todo:
+  end;
 end;
 
-function TASTDelphiUnit.Process_CALL_direct(SContext: TSContext; PExpr: TIDCallExpression; CallArguments: TIDExpressions): TIDExpression;
+function TASTDelphiUnit.Process_CALL_direct(const SContext: TSContext; PExpr: TIDCallExpression; CallArguments: TIDExpressions): TIDExpression;
 var
   AIndex, ArgsCount: Integer;
   ProcDecl: TIDProcedure;
@@ -586,28 +836,24 @@ begin
     opNegative: Result := Process_operator_neg(EContext);
     opNot: Result := Process_operator_not(EContext);
     opPositive: Result := EContext.RPNPopExpression;
-    //opDereference: Result := Process_operator_Deref(EContext);
+    opDereference: Result := Process_operator_Deref(EContext);
     opCall: Result := Process_CALL(EContext);
-    //opPeriod: Result := Process_operator_Period(EContext);
-    //opAddr: Result := Process_operator_Addr(EContext);
-    //opIs: Result := Process_operator_Is(EContext);
-    //opAs: Result := Process_operator_As(EContext);
+    opPeriod: Result := Process_operator_Period(EContext);
+    opAddr: Result := Process_operator_Addr(EContext);
+    opIs: Result := Process_operator_Is(EContext);
+    opAs: Result := Process_operator_As(EContext);
   else begin
       // Читаем первый операнд
       Right := EContext.RPNPopExpression();
       // Читаем второй операнд
       Left := EContext.RPNPopExpression();
 
-      // проверяем и если нужно разименовываем аргументы
-      // CheckAndMatchDerefExpression(SContext, Left); !!!!!!!!!!!!!!
-      // CheckAndMatchDerefExpression(SContext, Right); !!!!!!!!!!!!!!
-
-      {if OpID in [opShiftLeft, opShiftRight] then
-        Op := MatchBinarOperator(SContext, OpID, Left, Left)
+      if OpID in [opShiftLeft, opShiftRight] then
+        Op := MatchBinarOperator(EContext.SContext, OpID, Left, Left)
       else
-        Op := MatchBinarOperator(SContext, OpID, Left, Right);
+        Op := MatchBinarOperator(EContext.SContext, OpID, Left, Right);
 
-      if not Assigned(OP) and Left.IsDynArrayConst then
+      {if not Assigned(OP) and Left.IsDynArrayConst then
         Op := MatchBinarOperatorWithTuple(SContext, OpID, Left, Right);
 
       if not Assigned(OP) and Right.IsDynArrayConst then
@@ -632,7 +878,6 @@ begin
       begin
         case OpID of
           opAdd: begin
-            //ILWrite(SContext, TIL.IL_Add(Result, Left, Right));
             // если результат строка или дин. массив - помечаем переменную
             if Result.DataTypeID in [dtDynArray, dtString, dtAnsiString] then
               Result.AsVariable.IncludeFlags([VarTmpResOwner]);
@@ -662,21 +907,8 @@ begin
             if (OpID in [opAnd, opOr]) and (TmpVar.DataType = SYSUnit._Boolean) then
             begin
               // логические операции
-              //ReleaseExpression(Result);
               Result := GetBoolResultExpr(Result);
               //Process_operator_logical_AND_OR(EContext, OpID, Left, Right, Result);
-            end else begin
-              // бинарные операции
-//              case OpID of
-//                opAnd: Instruction := TIL.IL_And(Result, Left, Right);
-//                opOr: Instruction := TIL.IL_Or(Result, Left, Right);
-//                opXor: Instruction := TIL.IL_Xor(Result, Left, Right);
-//                opShiftLeft: Instruction := TIL.IL_Shl(Result, Left, Right);
-//                opShiftRight: Instruction := TIL.IL_Shr(Result, Left, Right);
-//              else
-//                Instruction := nil;
-//              end;
-//              ILWrite(SContext, Instruction);
             end;
           end;
         else
@@ -689,20 +921,86 @@ begin
         Result.TextPosition := Left.TextPosition;
         TIDCallExpression(Result).ArgumentsCount := 2;
         TIDCallExpression(Result).Instance := GetOperatorInstance(OpID, Left, Right);
-        //Result := Process_CALL_direct(EContext.SContext, TIDCallExpression(Result), TIDExpressions.Create(Left, Right));
-      end else
-        ERROR_FEATURE_NOT_SUPPORTED;
-
-      {освобожадем временные переменные}
-//      ReleaseExpression(SContext, Left);
-//      ReleaseExpression(SContext, Right);
+        Result := Process_CALL_direct(EContext.SContext, TIDCallExpression(Result), TIDExpressions.Create(Left, Right));
+      end;
     end;
   end;
 end;
 
+function TASTDelphiUnit.Process_operator_Addr(var EContext: TEContext): TIDExpression;
+var
+  Expr: TIDExpression;
+  TmpDecl: TIDVariable;
+  DataType: TIDType;
+begin
+  Expr := EContext.RPNPopExpression();
+  if (Expr.ItemType <> itVar) and
+     ((Expr.ItemType = itConst) and not (Expr.DataType.DataTypeID in [dtRecord, dtStaticArray, dtGuid])) and
+     (Expr.ItemType <> itProcedure) then
+    ERROR_VAR_OR_PROC_EXPRESSION_REQUIRED(Expr);
+
+  DataType := Expr.DataType.DefaultReference;
+  if DataType = nil then
+  begin
+    DataType := Expr.DataType.GetDefaultReference(ImplSection);
+    AddType(DataType);
+  end;
+
+  if Expr.IsTMPVar and Expr.AsVariable.Reference then
+  begin
+    Result := GetTMPVarExpr(EContext.SContext, DataType, Expr.TextPosition);
+    Result.AsVariable.Absolute := Expr.AsVariable;
+  end else begin
+    TmpDecl := GetTMPVar(EContext.SContext, DataType);
+    TmpDecl.IncludeFlags([VarNotNull]);
+    Result := TIDExpression.Create(TmpDecl, Expr.TextPosition);
+  end;
+end;
+
+function TASTDelphiUnit.Process_operator_As(var EContext: TEContext): TIDExpression;
+var
+  Src, Dst: TIDExpression;
+begin
+  Dst := EContext.RPNPopExpression();
+  Src := EContext.RPNPopExpression();
+  CheckClassOrIntfType(Src.DataType, Src.TextPosition);
+  CheckClassOrIntfType(Dst);
+  Result := GetTMPVarExpr(EContext, Dst.AsType, Dst.TextPosition);
+end;
+
 procedure TASTDelphiUnit.Process_operator_Assign(var EContext: TEContext);
 begin
+  //
+end;
 
+function TASTDelphiUnit.Process_operator_Deref(var EContext: TEContext): TIDExpression;
+var
+  Src: TIDExpression;
+  RefDt: TIDType;
+begin
+  Src := EContext.RPNPopExpression();
+  CheckPointerType(Src);
+  RefDt := TIDPointer(Src.DataType).ReferenceType;
+  if not Assigned(RefDt) then
+    AbortWork('Cannot dereference the untyped pointer', Src.TextPosition);
+
+  Result := TIDDrefExpression.Create(Src);
+end;
+
+function TASTDelphiUnit.Process_operator_In(var EContext: TEContext; const Left, Right: TIDExpression): TIDExpression;
+begin
+  Result := TIDExpression.Create(GetTMPVar(EContext, SYSUnit._Boolean));
+end;
+
+function TASTDelphiUnit.Process_operator_Is(var EContext: TEContext): TIDExpression;
+var
+  Src, Dst: TIDExpression;
+begin
+  Dst := EContext.RPNPopExpression();
+  Src := EContext.RPNPopExpression();
+  CheckClassOrIntfType(Src.DataType, Src.TextPosition);
+  CheckClassOrIntfType(Dst);
+  Result := GetTMPVarExpr(EContext, SYSUnit._Boolean, Dst.TextPosition);
 end;
 
 function TASTDelphiUnit.Process_operator_neg(var EContext: TEContext): TIDExpression;
@@ -727,8 +1025,72 @@ begin
 end;
 
 function TASTDelphiUnit.Process_operator_not(var EContext: TEContext): TIDExpression;
+var
+  Right: TIDExpression;
+  OperatorItem: TIDType;
 begin
+  // Читаем операнд
+  Right := EContext.RPNPopExpression();
 
+  OperatorItem := MatchUnarOperator(opNot, Right.DataType);
+  if not Assigned(OperatorItem) then
+    ERROR_NO_OVERLOAD_OPERATOR_FOR_TYPES(opNot, Right);
+
+  if (Right.ItemType = itConst) and (Right.ClassType <> TIDSizeofConstant) then
+    Result := ProcessConstOperation(Right, Right, opNot)
+  else begin
+    // если это просто выражение (not Bool_Value)
+    if (Right.DataTypeID = dtBoolean) and not (Right is TIDBoolResultExpression) then
+    begin
+       //Bool_AddExprNode(EContext, EContext.SContext.ILLast, cNonZero);
+    end;
+    {if not Assigned(EContext.LastBoolNode) then
+    begin
+      // т.к. это не логичиское отрицание
+      // генерируем код бинарного отрицания
+      Result := GetTMPVarExpr(EContext.SContext, OperatorItem, Right.TextPosition);
+      ILWrite(EContext.SContext, TIL.IL_Not(Result, Right));
+    end else} begin
+      var TmpVar := GetTMPVar(EContext, SYSUnit._Boolean);
+      Result := TIDBoolResultExpression.Create(TmpVar, parser_Position);
+    end;
+  end;
+end;
+
+function TASTDelphiUnit.Process_operator_Period(var EContext: TEContext): TIDExpression;
+var
+  ValueType: TIDDeclaration;
+  RangeType: TIDRangeType;
+  Decl: TIDDeclaration;
+  LB, HB: TIDExpression;
+  RExpression: TIDRangeExpression;
+begin
+  HB := EContext.RPNPopExpression();
+  LB := EContext.RPNPopExpression();
+
+  CheckEmptyExpression(LB);
+  CheckEmptyExpression(HB);
+
+  CheckOrdinalExpression(LB);
+  CheckOrdinalExpression(HB);
+
+  ValueType := MatchImplicit(LB.DataType, HB.DataType);
+  if not Assigned(ValueType) then
+    AbortWork(sTypesMustBeIdentical, HB.TextPosition);
+
+  RangeType := TIDRangeType.CreateAsSystem(nil, 'Range of ' + ValueType.Name);
+  RangeType.ElementType := ValueType as TIDType;
+
+  if LB.IsConstant and HB.IsConstant then
+  begin
+    if TIDConstant(LB.Declaration).CompareTo(TIDConstant(HB.Declaration)) > 0 then
+      AbortWork(sLowerBoundExceedsHigherBound, HB.TextPosition);
+  end;
+
+  RExpression.LBExpression := LB;
+  RExpression.HBExpression := HB;
+  Decl := TIDRangeConstant.CreateAnonymous(nil, RangeType, RExpression);
+  Result := TIDExpression.Create(Decl, HB.TextPosition);
 end;
 
 procedure TASTDelphiUnit.CheckIncompletedProcs(ProcSpace: PProcSpace);
@@ -869,7 +1231,6 @@ begin
     on e: ECompilerAbort do PutMessage(ECompilerAbort(e).CompilerMessage^);
     on e: Exception do PutMessage(cmtInteranlError, e.Message, parser_Position);
   end;
-
 end;
 
 function TASTDelphiUnit.CompileIntfOnly: TCompilerResult;
@@ -922,10 +1283,384 @@ begin
   Result := TIDExpression.Create(GetTMPVar(SContext, DataType), TextPos);
 end;
 
+function TASTDelphiUnit.GetTMPRef(const SContext: TSContext; DataType: TIDType): TIDVariable;
+begin
+  Result := SContext.Proc.GetTMPRef(DataType);
+end;
+
+function TASTDelphiUnit.GetTMPRefExpr(const SContext: TSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression;
+begin
+  Result := TIDExpression.Create(GetTMPRef(SContext, DataType));
+  Result.TextPosition := TextPos;
+end;
+
+function TASTDelphiUnit.GetTMPRefExpr(const SContext: TSContext; DataType: TIDType): TIDExpression;
+begin
+  Result := TIDExpression.Create(GetTMPRef(SContext, DataType));
+end;
+
 procedure TASTDelphiUnit.InitEContext(var EContext: TEContext; const SContext: TSContext; EPosition: TExpessionPosition);
 begin
   EContext.Initialize(SContext, Process_operators2);
   EContext.EPosition := EPosition;
+end;
+
+function TASTDelphiUnit.MatchImplicit3(const SContext: TSContext; Source: TIDExpression; Dest: TIDType): TIDExpression;
+begin
+  Result := MatchImplicitOrNil(SContext, Source, Dest);
+    if not Assigned(Result) then
+      ERROR_INCOMPATIBLE_TYPES(Source, Dest);
+end;
+
+function TASTDelphiUnit.MatchArrayImplicit(const SContext: TSContext; Source: TIDExpression; DstArray: TIDArray): TIDExpression;
+  function CreateAnonymousDynArrayType(ElementDataType: TIDType): TIDArray;
+  begin
+    Result := TIDDynArray.CreateAsAnonymous(ImplSection);
+    Result.ElementDataType := ElementDataType;
+    AddType(Result);
+  end;
+var
+  i, ACnt: Integer;
+  CArray: TIDDynArrayConstant;
+  SExpr: TIDExpression;
+  DstElementDT: TIDType;
+  BoundType: TIDOrdinal;
+  NeedCallImplicits: Boolean;
+  ImplicitCast: TIDDeclaration;
+  TmpArrayType: TIDArray;
+  Expr: TIDExpression;
+  EContext: TEContext;
+  SrcArray: TIDArray;
+begin
+  Result := nil;
+  SrcArray := Source.DataType as TIDArray;
+  if Source.Declaration is TIDDynArrayConstant then
+  begin
+    CArray := Source.AsArrayConst;
+    DstElementDT := DstArray.ElementDataType;
+
+    // проверка каждого элемента
+    NeedCallImplicits := False;
+    ACnt := CArray.ArrayLength;
+    for i := 0 to ACnt - 1 do begin
+      SExpr := CArray.Value[i];
+      ImplicitCast := CheckImplicit(SExpr, DstElementDT);
+      if not Assigned(ImplicitCast) then
+        ERROR_INCOMPATIBLE_TYPES(SExpr, DstElementDT);
+
+      if ImplicitCast.ItemType = itProcedure then
+        NeedCallImplicits := True;
+    end;
+
+    {если тип вектора не совподает с типом приемника, подгоняем тип под нужный}
+    if TIDArray(CArray.DataType).ElementDataType <> DstElementDT then
+      CArray.DataType := CreateAnonymousDynArrayType(DstElementDT);
+
+    // если типы массивов требуют вызовов пользовательских операторов implicit
+    // то создаем временный статический массив, и для каждого элемента вызываем пользовательский implicit
+    if NeedCallImplicits then
+    begin
+      if DstArray.DataTypeID = dtOpenArray then
+      begin
+        // для открытых массивов создаем анонимный тип - статический массив
+        TmpArrayType := TIDArray.CreateAnonymousStatic1Dim(ImplSection, DstElementDT, ACnt, BoundType);
+        AddType(BoundType);
+        AddType(TmpArrayType);
+        Result := GetTMPVarExpr(SContext, TmpArrayType, parser_Position);
+      end else begin
+        // для динамических массивов просто выделяем память
+        Result := GetTMPVarExpr(SContext, DstArray, parser_Position);
+        //ILWrite(SContext, TIL.IL_DAlloc(Result, IntConstExpression(ACnt)));
+      end;
+
+      for i := 0 to ACnt - 1 do begin
+        SExpr := CArray.Value[i];
+        InitEContext(EContext, SContext, ExprNested);
+        Expr := TIDMultiExpression.CreateAnonymous(DstElementDT, [Result, IntConstExpression(i)]);
+        EContext.RPNPushExpression(Expr);
+        EContext.RPNPushExpression(SExpr);
+        Process_operator_Assign(EContext);
+      end;
+    end else
+      Result := Source;
+  end else begin
+    // приведение динамических массивов
+    if (SrcArray.DataTypeID = DstArray.DataTypeID) and (SrcArray.DimensionsCount = DstArray.DimensionsCount) then
+    begin
+      for i := 0 to SrcArray.DimensionsCount - 1 do
+      begin
+        // todo: добавить глубокую проверку типов (range/enum/...)
+        if SrcArray.Dimensions[i].ActualDataType <> DstArray.Dimensions[i].ActualDataType then
+          Exit(nil);
+      end;
+      if SrcArray.ElementDataType.ActualDataType <> DstArray.ElementDataType.ActualDataType then
+        Exit(nil);
+      Result := Source;
+    end;
+  end;
+end;
+
+function TASTDelphiUnit.MatchRecordImplicit(const SContext: TSContext; Source: TIDExpression; DstRecord: TIDRecord): TIDExpression;
+var
+  SrcRecord: TIDRecord;
+  i: Integer;
+  SrcFld, DstFld: TIDVariable;
+begin
+  SrcRecord :=  Source.DataType as TIDRecord;
+  if SrcRecord.FieldsCount <> DstRecord.FieldsCount then
+    Exit(nil);
+
+  SrcFld := SrcRecord.Fields.First;
+  DstFld := DstRecord.Fields.First;
+
+  for i := 0 to SrcRecord.FieldsCount - 1 do
+  begin
+    if SrcFld.DataType.ActualDataType <> DstFld.DataType.ActualDataType then
+      Exit(nil);
+    SrcFld :=  TIDVariable(SrcFld.NextItem);
+    DstFld :=  TIDVariable(DstFld.NextItem);
+  end;
+  Result := Source;
+end;
+
+function TASTDelphiUnit.MatchImplicitOrNil(const SContext: TSContext; Source: TIDExpression; Dest: TIDType): TIDExpression;
+  function CheckAndCallOperator(const SContext: TSContext; OperatorDecl: TIDDeclaration; Src: TIDExpression): TIDExpression;
+  var
+    CallExpr: TIDCallExpression;
+  begin
+    CallExpr := TIDCallExpression.Create(OperatorDecl, Src.TextPosition);
+    CallExpr.ArgumentsCount := 1;
+    Result := Process_CALL_direct(SContext, CallExpr, TIDExpressions.Create(Src));
+  end;
+var
+  SDataType: TIDType;
+  Decl: TIDDeclaration;
+  SrcDTID, DstDTID: TDataTypeID;
+begin
+  {$IFDEF DEBUG}
+  Result := nil;
+  if not Assigned(Source.DataType) then
+    AbortWorkInternal('Source data type is not assigned', parser_Position);
+  {$ENDIF}
+
+  SDataType := Source.DataType.ActualDataType;
+  Dest := Dest.ActualDataType;
+
+  SrcDTID := SDataType.DataTypeID;
+  DstDTID := Dest.DataTypeID;
+
+  // если источник элемент битового набора(dtSet[i])
+  if (SDataType.DataTypeID = dtBoolean) and (Dest.DataTypeID = dtBoolean) and
+     (Source is TIDMultiExpression) and
+     (TIDMultiExpression(Source).Items[0].DataTypeID = dtSet) then
+  begin
+    Decl := GetTMPVar(SContext, SYSUnit._Boolean);
+    Result := TIDExpression.Create(Decl);
+    Exit;
+  end;
+
+  //todo сделать преобразование констант !!! string->ansistring->string
+
+  // ищем явно определенный implicit у источника
+  Decl := SDataType.GetImplicitOperatorTo(Dest);
+  if Decl is TIDInternalOpImplicit then
+  begin
+    Decl := TIDInternalOpImplicit(Decl).Check(Source, Dest);
+    if Assigned(Decl) then
+      Exit(Source);
+    Decl := nil;
+  end;
+
+  if not Assigned(Decl) then
+  begin
+    // ищем явно определенный implicit у приемника
+    Decl := Dest.GetImplicitOperatorFrom(SDataType);
+    if not Assigned(Decl) then
+    begin
+      // если не нашли точных имплиситов, ищем подходящий (у источника)
+      Decl := SDataType.FindImplicitOperatorTo(Dest);
+      if not Assigned(Decl) then
+      begin
+        // если не нашли точных имплиситов, ищем подходящий (у приемника)
+        Decl := Dest.FindImplicitOperatorFrom(SDataType);
+        if not Assigned(Decl) then
+        begin
+          { проверка на nullpointer }
+          if (Source.Declaration = SYSUnit._NullPtrConstant) and
+             (Dest.IsReferenced or (Dest is TIDProcType)) then
+            Exit(Source);
+
+          if (SrcDTID = dtPointer) and (DstDTID = dtPointer) then
+          begin
+            if (TIDPointer(SDataType).ReferenceType = nil) and
+               (TIDPointer(Dest).ReferenceType = nil) then
+              Exit(Source);
+            if TIDPointer(SDataType).ReferenceType.ActualDataType = TIDPointer(Dest).ReferenceType.ActualDataType then
+              Exit(Source);
+          end;
+
+          { если оба - классы, то проверяем InheritsForm }
+          if (SrcDTID = dtClass) and (DstDTID = dtClass) then
+          begin
+            if TIDClass(Source.DataType).IsInheritsForm(TIDClass(Dest)) then
+              Exit(Source);
+          end;
+
+          { если классы и интерфейс }
+          if (SrcDTID = dtClass) and (DstDTID = dtInterface) then
+          begin
+            if TIDClass(Source.DataType).FindInterface(TIDInterface(Dest)) then
+              Exit(Source)
+            else
+              ERROR_CLASS_NOT_IMPLEMENT_INTF(Source, Dest);
+          end;
+
+          { есди приемник - class of }
+          if DstDTID = dtClassOf then
+            Decl := MatchImplicitClassOf(Source, TIDClassOf(Dest));
+
+          {дин. массив как набор}
+          if (DstDTID = dtSet) and (SDataType is TIDDynArray) then
+          begin
+            Result := MatchSetImplicit(Source, TIDSet(Dest));
+            Exit;
+          end else
+          if (SrcDTID = dtProcType) and (DstDTID = dtProcType) then
+            Decl := MatchProcedureTypes(TIDProcType(SDataType), TIDProcType(Dest))
+          else
+          if SDataType is TIDArray then
+          begin
+            if Dest is TIDArray then
+              Result := MatchArrayImplicit(SContext, Source, TIDArray(Dest))
+            else
+            if DstDTID = dtRecord then
+              Result := MatchArrayImplicitToRecord(Source, TIDStructure(Dest))
+            else
+              Result := nil;
+            Exit;
+          end;
+          if (SrcDTID = dtRecord) and (DstDTID = dtRecord) then
+          begin
+            Result := MatchRecordImplicit(SContext, Source, TIDRecord(Dest));
+            Exit;
+          end;
+
+          {если generic}
+          if (SrcDTID = dtGeneric) or (DstDTID = dtGeneric) then
+            Exit(Source); // нужна еще проверка на констрейты
+        end;
+      end;
+    end;
+  end;
+
+  if Source.ClassType = TIDDrefExpression then
+  begin
+    Result := GetTMPVarExpr(SContext, Source.DataType, parser_Position);
+    Exit;
+  end;
+
+  if Assigned(SDataType.SysImplicitToAny) then
+  begin
+    Decl := TIDInternalOpImplicit(SDataType.SysImplicitToAny).Check(Source, Dest);
+    if Assigned(Decl) then
+      Exit(Source);
+    Decl := nil;
+  end;
+
+  if not Assigned(Decl) then
+  begin
+    if Assigned(Dest.SysExplicitFromAny) then
+    begin
+      Decl := TIDInternalOpImplicit(Dest.SysExplicitFromAny).Check(Source, Dest);
+      if Assigned(Decl) then
+        Exit(Source);
+    end;
+    Exit(nil);
+  end;
+
+  if Decl.ItemType = itType then
+    Exit(Source);
+
+  Result := CheckAndCallOperator(SContext, Decl, Source);
+end;
+
+function TASTDelphiUnit.MatchBinarOperator(const SContext: TSContext; Op: TOperatorID; var Left, Right: TIDExpression): TIDDeclaration;
+var
+  LeftDT, RightDT: TIDType;
+  L2RImplicit, R2LImplicit: TIDDeclaration;
+begin
+  LeftDT := Left.DataType.ActualDataType;
+  RightDT := Right.DataType.ActualDataType;
+  // поиск оператора (у левого операнда)
+  Result := LeftDT.BinarOperator(Op, RightDT);
+  if Assigned(Result) then
+    Exit;
+  // поиск оператора (у правого операнда)
+  Result := RightDT.BinarOperatorFor(Op, LeftDT);
+  if Assigned(Result) then
+    Exit;
+
+  if (LeftDT.DataTypeID = dtGeneric) then
+    Exit(LeftDT);
+
+  if RightDT.DataTypeID = dtGeneric then
+    Exit(RightDT);
+
+  if (Op = opIn) and (Right.Declaration.ClassType = TIDRangeConstant) then
+  begin
+    Result := MatchOperatorIn(Left, Right);
+    Exit;
+  end;
+
+  if (LeftDT.DataTypeID = dtClass) and
+     (RightDT.DataTypeID = dtClass) then
+  begin
+    if TIDClass(LeftDT).IsInheritsForm(TIDClass(RightDT)) then
+      Exit(SYSUnit._Boolean);
+    if TIDClass(RightDT).IsInheritsForm(TIDClass(LeftDT)) then
+      Exit(SYSUnit._Boolean);
+  end;
+
+  // если ненайдено напрямую - ищем через неявное привидение
+  L2RImplicit := CheckImplicit(Left, RightDT);
+  R2LImplicit := CheckImplicit(Right, LeftDT);
+  if L2RImplicit is TIDType then
+  begin
+    Result := TIDType(L2RImplicit).BinarOperator(Op, RightDT);
+    if Assigned(Result) then
+    begin
+      Left := MatchImplicit3(SContext, Left, RightDT);
+      Exit;
+    end;
+  end;
+  if R2LImplicit is TIDType then
+  begin
+    Result := TIDType(R2LImplicit).BinarOperator(Op, LeftDT);
+    if Assigned(Result) then
+    begin
+      Right := MatchImplicit3(SContext, Right, LeftDT);
+      Exit;
+    end;
+  end;
+  if Assigned(L2RImplicit) then
+  begin
+    Result := RightDT.BinarOperator(Op, L2RImplicit.DataType);
+    if Assigned(Result) then
+    begin
+      Left := MatchImplicit3(SContext, Left, RightDT);
+      Exit;
+    end;
+  end;
+  if Assigned(R2LImplicit) then
+  begin
+    Result := LeftDT.BinarOperator(Op, R2LImplicit.DataType);
+    if Assigned(Result) then
+    begin
+      Right := MatchImplicit3(SContext, Right, LeftDT);
+      Exit;
+    end;
+  end;
+  Result := nil;
 end;
 
 function TASTDelphiUnit.ParseArrayMember(Scope: TScope; var PMContext: TPMContext; Decl: TIDDeclaration; out DataType: TIDType;
@@ -1016,57 +1751,28 @@ begin
   while (Result <> token_end) do
   begin
     // skip all to end
+    if KW.Next <> nil then;
     Result := parser_NextToken(Scope);
   end;
   Result := parser_NextToken(Scope);
 end;
 
 function TASTDelphiUnit.ParseBreakStatement(Scope: TScope; var SContext: TSContext): TTokenID;
-var
-  //TryBlock: PTryContext;
-  KW: TASTKWBreak;
 begin
   if not SContext.IsLoopBody then
     AbortWork(sBreakOrContinueAreAllowedOnlyInALoops, parser_Position);
 
   SContext.Add<TASTKWBreak>;
-
   Result := parser_NextToken(Scope);
-  {проверка на выход из try... секции}
-  {TryBlock := SContext.TryBlock;
-  while Assigned(TryBlock) do begin
-    if TryBlock.Section = SectionFinally then
-      AbortWork(sBreakContinueExitAreNotAllowedInFinallyClause, parser_PrevPosition);
-    // если добрались до внешней (к циклу) try... секци, выходим
-    if TryBlock = LContext.TryContext then
-      break;
-    TryBlock.AddExit(etCallFinally, Instruction);
-    TryBlock := TryBlock.Parent;
-  end;}
 end;
 
 function TASTDelphiUnit.ParseContinueStatement(Scope: TScope; var SContext: TSContext): TTokenID;
-var
-//  TryBlock: PTryContext;
-  KW: TASTKWBreak;
 begin
   if not SContext.IsLoopBody then
     AbortWork(sBreakOrContinueAreAllowedOnlyInALoops, parser_Position);
 
   SContext.Add<TASTKWContinue>;
-
   Result := parser_NextToken(Scope);
-  {проверка на выход из try... секции}
-  {TryBlock := SContext.TryBlock;
-  while Assigned(TryBlock) do begin
-    if TryBlock.Section = SectionFinally then
-      AbortWork(sBreakContinueExitAreNotAllowedInFinallyClause, parser_PrevPosition);
-    // если добрались до внешней (к циклу) try... секци, выходим
-    if TryBlock = LContext.TryContext then
-      break;
-    TryBlock.AddExit(etCallFinally, Instruction);
-    TryBlock := TryBlock.Parent;
-  end;}
 end;
 
 
@@ -2351,7 +3057,7 @@ begin
 
             if (Expr.Declaration is TIDField) and (PMContext.Count = 1) then
             begin
-              NExpr := GetTMPRefExpr({SContext}nil, Expr.DataType);
+              NExpr := GetTMPRefExpr(SContext, Expr.DataType);
               NExpr.TextPosition := Expr.TextPosition;
               Expr := NExpr;
             end;
@@ -2520,6 +3226,48 @@ begin
   end;
 end;
 
+function TASTDelphiUnit.ParseIndexedPropertyArgs(Scope: TScope; out ArgumentsCount: Integer; var EContext: TEContext): TTokenID;
+var
+  Expr: TIDExpression;
+  InnerEContext: TEContext;
+  SContext: PSContext;
+  ASTExpr: TASTExpression;
+begin
+  ArgumentsCount := 0;
+  SContext := @EContext.SContext;
+  InitEContext(InnerEContext, SContext^, ExprNested);
+  {цикл парсинга аргументов}
+  while true do begin
+    parser_NextToken(Scope);
+    Result := ParseExpression(Scope, SContext^, InnerEContext, ASTExpr);
+    Expr := InnerEContext.Result;
+    if Assigned(Expr) then begin
+      if Expr.DataType = SYSUnit._Boolean then
+      begin
+        {if (Expr.ItemType = itVar) and Expr.IsAnonymous then
+          Bool_CompleteImmediateExpression(InnerEContext, Expr);}
+      end;
+      EContext.RPNPushExpression(Expr);
+    end else begin
+      // Добавляем пустой Expression для значения по умолчанию
+      EContext.RPNPushExpression(nil);
+    end;
+    Inc(ArgumentsCount);
+    case Result of
+      token_coma: begin
+        InnerEContext.Reset;
+        continue;
+      end;
+      token_closeblock: begin
+        Result := parser_NextToken(Scope);
+        Break;
+      end;
+      else
+        AbortWork(sIncompleteStatement, parser_PrevPosition);
+    end;
+  end;
+end;
+
 function TASTDelphiUnit.ParsePropertyMember(var PMContext: TPMContext; Scope: TScope; Prop: TIDProperty; out Expression: TIDExpression; var EContext: TEContext): TTokenID;
 var
   CallExpr: TIDCallExpression;
@@ -2555,20 +3303,19 @@ begin
       case PMContext.Count of
         0: SelfExpr := TIDProcedure(EContext.Proc).SelfParamExpression;
         1: SelfExpr := PMContext.Last;
-      {else
+      else
         SelfExpr := GetTMPRefExpr(EContext.SContext, PMContext.DataType);
         SelfExpr.TextPosition := PMContext.ID.TextPosition;
-        ILWrite(EContext.SContext, TIL.IL_GetPtr(SelfExpr, PMContext.Items));}
       end;
 
       CallExpr := TIDCallExpression.Create(Accessor);
       CallExpr.TextPosition := Expression.TextPosition;
       CallExpr.Instance := SelfExpr;
 
-      {if Prop.ParamsCount > 0 then
+      if Prop.ParamsCount > 0 then
         Result := ParseIndexedPropertyArgs(Scope, ArgumentsCount, EContext)
       else
-        ArgumentsCount := 0;}
+        ArgumentsCount := 0;
 
       CallExpr.ArgumentsCount := ArgumentsCount;
       EContext.RPNPushExpression(CallExpr);
@@ -2600,6 +3347,20 @@ end;
 function TSContextHelper.GetIsTryBlock: Boolean;
 begin
    Result := Block.IsTryBlock;
+end;
+
+{ TIDOperatorInternal }
+
+constructor TIDInternalOperator.CreateAsIntOp;
+begin
+  CreateFromPool;
+end;
+
+constructor TIDInternalOpImplicit.CreateInternal(ResultType: TIDType);
+begin
+  CreateFromPool;
+  ItemType := itProcedure;
+  Self.DataType := ResultType;
 end;
 
 end.

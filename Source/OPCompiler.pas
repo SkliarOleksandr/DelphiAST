@@ -82,7 +82,7 @@ type
 
   TIDDeclarationList = TList<TIDDeclaration>;
 
-  TIDTypeCastProc = reference to function (UN: TNPUnit; SContext: PSContext; Src: TIDExpression; Dst: TIDType): TIDExpression;
+  //TIDTypeCastProc = reference to function (UN: TNPUnit; SContext: PSContext; Src: TIDExpression; Dst: TIDType): TIDExpression;
 
   {предок всех внутренних процедур перегрузки операторов компилятора}
   TIDInternalOperator = class(TIDOperator)
@@ -529,7 +529,6 @@ type
     function ParseCondIf(Scope: TScope; out ExpressionResult: TCondIFValue): TTokenID;
     function ParseDelphiCondIfDef(Scope: TScope): Boolean;
     function Defined(const Name: string): Boolean;
-    function ParseTokenStatement(Scope: TScope): TTokenID;
     function ParseCondOptSet(Scope: TScope): TTokenID;
     function ParseCondOptPush(Scope: TScope): TTokenID;
     function ParseCondOptPop(Scope: TScope): TTokenID;
@@ -689,6 +688,8 @@ type
     function FindIDNoAbort(Scope: TScope; const ID: TIdentifier): TIDDeclaration; overload; inline;
     function FindIDNoAbort(Scope: TScope; const ID: string): TIDDeclaration; overload; inline;
     function FindIDNoAbort(Scope: TScope; const ID: TIdentifier; out Expression: TIDExpression): TIDDeclaration; overload; inline;
+    property Parser: TDelphiParser read FParser;
+  strict private
     function GetTMPVar(SContext: PSContext; DataType: TIDType): TIDVariable; overload;
     function GetTMPVar(var EContext: TEContext; DataType: TIDType): TIDVariable; overload;
     function GetTMPVar(SContext: PSContext; DataType: TIDType; VarFlags: TVariableFlags): TIDVariable; overload;
@@ -699,7 +700,6 @@ type
     function GetTMPVarExpr(SContext: PSContext; DataType: TIDType; VarFlags: TVariableFlags): TIDExpression; overload; inline;
     function GetTMPVarExpr(SContext: PSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline;
     function GetTMPVarExpr(var EContext: TEContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline;
-    property Parser: TDelphiParser read FParser;
   public
     ////////////////////////////////////////////////////////////////////////////
     constructor Create(const Project: IASTProject; const Source: string = ''); override;
@@ -4225,134 +4225,8 @@ begin
 end;
 
 function TNPUnit.Compile(RunPostCompile: Boolean = True): TCompilerResult;
-var
-  Token: TTokenID;
-  Scope: TScope;
-  Platform: TIDPlatform;
 begin
-  Result := CompileFail;
-  FMessages.Clear;
-  FRCPathCount := 1;
-  try
-    FParser.First;
-    Scope := FIntfScope;
-    ParseUnitDecl(Scope);
-    Token := parser_NextToken(Scope);
-    while true do begin
-      case Token of
-        token_type: begin
-          CheckIntfSectionMissing(Scope);
-          Token := ParseNamedTypeDecl(Scope);
-        end;
-        token_asm: begin
-          CheckIntfSectionMissing(Scope);
-          Token := ParseAsmSpecifier(Platform);
-          case Token of
-            token_function: Token := ParseProcedure(Scope, ptFunc);
-            token_procedure: Token := ParseProcedure(Scope, ptProc);
-            else
-              ERROR_FEATURE_NOT_SUPPORTED;
-          end;
-        end;
-        token_uses: Token := ParseUsesSection(Scope);
-        token_function: begin
-          CheckIntfSectionMissing(Scope);
-          Token := ParseProcedure(Scope, ptFunc);
-        end;
-        token_procedure: begin
-          CheckIntfSectionMissing(Scope);
-          Token := ParseProcedure(Scope, ptProc);
-        end;
-        //token_namespace: Token := ParseNameSpace(Scope);
-        token_constructor: begin
-          CheckIntfSectionMissing(Scope);
-          Token := ParseProcedure(Scope, ptConstructor);
-        end;
-        token_destructor: begin
-          CheckIntfSectionMissing(Scope);
-          Token := ParseProcedure(Scope, ptDestructor);
-        end;
-        token_operator: begin
-          CheckIntfSectionMissing(Scope);
-          Token := ParseOperator(Scope, nil);
-        end;
-        token_const: begin
-          CheckIntfSectionMissing(Scope);
-          Token := ParseConstSection(Scope);
-        end;
-        token_class: begin
-          CheckIntfSectionMissing(Scope);
-          Token := parser_NextToken(Scope);
-          case Token of
-            token_function: Token := ParseProcedure(Scope, ptClassFunc);
-            token_procedure: Token := ParseProcedure(Scope, ptClassProc);
-            token_constructor: Token := ParseProcedure(Scope, ptClassConstructor);
-            token_destructor: Token := ParseProcedure(Scope, ptClassDestructor);
-          else
-            ERROR_FEATURE_NOT_SUPPORTED;
-          end;
-        end;
-        token_weak: begin
-          CheckIntfSectionMissing(Scope);
-          parser_NextToken(Scope);
-          Token := ParseVarSection(Scope, vLocal, nil, True);
-        end;
-        token_var: begin
-          CheckIntfSectionMissing(Scope);
-          parser_NextToken(Scope);
-          Token := ParseVarSection(Scope, vLocal, nil, False);
-        end;
-        token_exports: begin
-          // todo:
-          Token := parser_SkipTo(Scope, token_semicolon);
-          Token := parser_NextToken(Scope);
-        end;
-//        token_ref: begin
-//          CheckIntfSectionMissing(Scope);
-//          parser_NextToken(Scope);
-//          Token := ParseVarSection(Scope, vLocal, nil, False, True);
-//        end;
-        token_interface: begin
-          Scope := FIntfScope;
-          Token := parser_NextToken(Scope);
-        end;
-        token_implementation: begin
-          CheckIntfSectionMissing(Scope);
-          Scope := FImplScope;
-          Token := parser_NextToken(Scope);
-        end;
-        token_end: begin
-          parser_MatchToken(parser_NextToken(Scope), token_dot);
-          Token := parser_NextToken(Scope);
-          if Token <> token_eof then
-            HINT_TEXT_AFTER_END;
-          Break;
-        end;
-        //token_cond_macro: Token := ParseCondMacro(Scope);
-        token_initialization: Token := ParseInitSection;
-        token_finalization: Token := ParseFinalSection;
-        token_token: Token := ParseTokenStatement(Scope);
-        //token_cond_target: Token := ParseCondTarget(Scope);
-        token_eof: Break;
-      else
-        if Token >= token_cond_define then
-        begin
-          Token := ParseCondStatements(Scope, Token);
-          continue;
-        end;
-        ERROR_KEYWORD_EXPECTED;
-      end;
-    end;
-    if RunPostCompile then
-      PostCompileProcessUnit;
-    Result := CompileSuccess;
-    FCompiled := True;
-  except
-    on e: ECompilerStop do Exit();
-    on e: ECompilerSkip do Exit(CompileSkip);
-    on e: ECompilerAbort do PutMessage(ECompilerAbort(e).CompilerMessage^);
-    on e: Exception do PutMessage(cmtInteranlError, e.Message, parser_Position);
-  end;
+
 end;
 
 function TNPUnit.CompileMethodDecl(Struct: TIDStructure; const Source: string; out Proc: TIDProcedure): ICompilerMessages;
@@ -4461,8 +4335,6 @@ begin
         //token_cond_macro: Token := ParseCondMacro(Scope);
         token_initialization: Token := ParseInitSection;
         token_finalization: Token := ParseFinalSection;
-        token_token: Token := ParseTokenStatement(Scope);
-        //token_cond_target: Token := ParseCondTarget(Scope);
         token_eof: Break;
       else
         if Token >= token_cond_define then
@@ -6975,23 +6847,6 @@ begin
   end;
   if Level > 0 then
     AbortWork(sLoopLevelGreaterThenPossibleFmt, [MaxLevel], parser_PrevPosition);
-end;
-
-function TNPUnit.ParseTokenStatement(Scope: TScope): TTokenID;
-var
-  TokenID: Integer;
-  TID, LID: TIdentifier;
-begin
-  parser_ReadNextIdentifier(Scope, TID);
-  parser_ReadNextIdentifier(Scope, LID);
-  parser_ReadSemicolon(Scope);
-
-  TokenID := GetEnumValue(TypeInfo(TTokenID), TID.Name);
-  if TokenID = -1 then
-    AbortWork('Unknown token ID: "%s"', [TID.Name], TID.TextPosition);
-
-  FParser.RegisterToken(LID.Name, TTokenID(TokenID));
-  Result := parser_NextToken(Scope);
 end;
 
 function TNPUnit.ParseTrySection(Scope: TScope; SContext: PSContext): TTokenID;
@@ -9639,7 +9494,6 @@ begin
           end;
           token_initialization: Token := ParseInitSection;
           token_finalization: Token := ParseFinalSection;
-          token_token: Token := ParseTokenStatement(Scope);
           token_eof: Break;
         else
           ERROR_KEYWORD_EXPECTED;
