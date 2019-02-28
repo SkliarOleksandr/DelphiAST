@@ -166,6 +166,66 @@ type
     function GetDisplayName: string; override;
   end;
 
+  TASTOpBinAnd = class(TASTOperation)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTOpBinOr = class(TASTOperation)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTOpBinXor = class(TASTOperation)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTOpBinNot = class(TASTOperation)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTOpLogicalAnd = class(TASTOperation)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTOpLogicalOr = class(TASTOperation)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTOpLogicalNot = class(TASTOperation)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTOpShr = class(TASTOperation)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTOpShl = class(TASTOperation)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTOpRawCast = class(TASTOperation)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTOpDynCast = class(TASTOperation)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
+  TASTOpCastCheck = class(TASTOperation)
+  protected
+    function GetDisplayName: string; override;
+  end;
+
   TASTOpCallProc = class(TASTOperation)
   private
     fProc: TASTDeclaration;
@@ -175,6 +235,21 @@ type
   public
     property Proc: TASTDeclaration read fProc write fProc;
     procedure AddArg(const Expr: TASTExpression);
+  end;
+
+  TASTOpArrayAccess = class(TASTOperation)
+  private
+    fIndexes: TASTExpressionArray;
+  protected
+    function GetDisplayName: string; override;
+  public
+    property Indexes: TASTExpressionArray read fIndexes write fIndexes;
+    procedure AddIndex(Expr: TASTExpression);
+  end;
+
+  TASTOpMemberAccess = class(TASTOperation)
+  protected
+    function GetDisplayName: string; override;
   end;
 
   TASTEIDecl = class(TASTOperation)
@@ -193,14 +268,14 @@ type
   public
     procedure AddSubItem(ItemClass: TASTOperationClass);
     procedure AddDeclItem(Decl: TASTDeclaration; const SrcPos: TTextPosition);
-    function AddOperation(OpClass: TASTOperationClass): TASTOperation;
+    function AddOperation<TASTClass: TASTOperation>: TASTClass;
   end;
 
   TASTKeyword = class(TASTItem)
 
   end;
 
-  TASTOpAssign = class(TASTKeyword)
+  TASTOpAssign = class(TASTItem)
   private
     fDst: TASTExpression;
     fSrc: TASTExpression;
@@ -417,8 +492,12 @@ type
   end;
 
   TASTKWInlineVarDecl = class(TASTKWDeclSection)
+  private
+    fExpression: TASTExpression;
   protected
     function GetDisplayName: string; override;
+  public
+    property Expression: TASTExpression read fExpression write fExpression;
   end;
 
   TASTKWInlineConstDecl = class(TASTKeyword)
@@ -430,7 +509,6 @@ type
   protected
     function GetDisplayName: string; override;
   end;
-
 
   TASTFunc = class(TASTDeclaration)
   private
@@ -468,9 +546,9 @@ begin
   AddChild(Item);
 end;
 
-function TASTExpression.AddOperation(OpClass: TASTOperationClass): TASTOperation;
+function TASTExpression.AddOperation<TASTClass>: TASTClass;
 begin
-  Result := OpClass.Create(Self);
+  Result := TASTClass.Create(Self);
   AddChild(Result);
 end;
 
@@ -823,6 +901,8 @@ end;
 function TASTKWInlineVarDecl.GetDisplayName: string;
 begin
   Result := 'var';
+  if Assigned(fExpression) then
+    Result := Result + ' = ' + fExpression.DisplayName;
 end;
 
 { TASTKWImmConstDecl }
@@ -898,6 +978,113 @@ end;
 function TASTKWForIn.GetDisplayName: string;
 begin
   Result := 'for ' + fVar.DisplayName + ' in ' + fList.DisplayName;
+end;
+
+{ TASTOpArrayAccess }
+
+procedure TASTOpArrayAccess.AddIndex(Expr: TASTExpression);
+begin
+  fIndexes := fIndexes + [Expr];
+end;
+
+function TASTOpArrayAccess.GetDisplayName: string;
+var
+  SIndexes: string;
+begin
+  for var Expr in fIndexes do
+    SIndexes := AddStringSegment(SIndexes, Expr.DisplayName, ', ');
+  Result := '[' + SIndexes + ']';
+end;
+
+{ TASTOpMemberAccess }
+
+function TASTOpMemberAccess.GetDisplayName: string;
+begin
+  Result := '.';
+end;
+
+{ TASTOpShr }
+
+function TASTOpShr.GetDisplayName: string;
+begin
+  Result := 'shr';
+end;
+
+{ TASTOpShl }
+
+function TASTOpShl.GetDisplayName: string;
+begin
+  Result := 'shl';
+end;
+
+{ TASTOpRawCast }
+
+function TASTOpRawCast.GetDisplayName: string;
+begin
+  Result := 'rawcast';
+end;
+
+{ TASTOpDynCast }
+
+function TASTOpDynCast.GetDisplayName: string;
+begin
+  Result := 'dyncast';
+end;
+
+{ TASTOpCastCheck }
+
+function TASTOpCastCheck.GetDisplayName: string;
+begin
+  Result := 'castcheck';
+end;
+
+{ TASTOpBinAnd }
+
+function TASTOpBinAnd.GetDisplayName: string;
+begin
+  Result := 'band';
+end;
+
+{ TASTOpBinOr }
+
+function TASTOpBinOr.GetDisplayName: string;
+begin
+  Result := 'bor';
+end;
+
+{ TASTOpBinXor }
+
+function TASTOpBinXor.GetDisplayName: string;
+begin
+  Result := 'bxor';
+end;
+
+{ TASTOpBinNot }
+
+function TASTOpBinNot.GetDisplayName: string;
+begin
+  Result := 'bnot';
+end;
+
+{ TASTOpLogicalAnd }
+
+function TASTOpLogicalAnd.GetDisplayName: string;
+begin
+  Result := 'land';
+end;
+
+{ TASTOpLogicalOr }
+
+function TASTOpLogicalOr.GetDisplayName: string;
+begin
+  Result := 'lor';
+end;
+
+{ TASTOpLogicalNot }
+
+function TASTOpLogicalNot.GetDisplayName: string;
+begin
+  Result := 'lnot';
 end;
 
 end.

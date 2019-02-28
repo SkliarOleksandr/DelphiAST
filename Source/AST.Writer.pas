@@ -104,6 +104,7 @@ begin
     else
     if Item is TASTKWDeclSection then
        WriteKW_DeclSections(CNode, TASTKWDeclSection(Item));
+
     if Item is TASTKWTryBlock then
        WriteKW_TryBlock(CNode, TASTKWTryBlock(Item));
 

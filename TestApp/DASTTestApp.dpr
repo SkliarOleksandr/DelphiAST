@@ -32,7 +32,8 @@ uses
   AST.Delphi.Parser in '..\Source\AST.Delphi.Parser.pas',
   AST.Project in '..\Source\AST.Project.pas',
   AST.Delphi.Project in '..\Source\AST.Delphi.Project.pas',
-  AST.Writer in '..\Source\AST.Writer.pas';
+  AST.Writer in '..\Source\AST.Writer.pas',
+  AST.Parser.Contexts in '..\Source\AST.Parser.Contexts.pas';
 
 {$R *.res}
 
