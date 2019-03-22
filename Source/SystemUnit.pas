@@ -7,12 +7,13 @@ interface
 uses Classes, SysUtils, OPCompiler, NPCompiler.Classes, NPCompiler.DataTypes, IL.Types,
      NPCompiler.Operators, NPCompiler.Utils, NPCompiler.Intf,
      AST.Classes,
-     AST.Project;
+     AST.Project,
+     AST.Delphi.Parser;
      // System
 
 type
 
-  TSYSTEMUnit = class(TNPUnit)
+  TSYSTEMUnit = class(TASTDelphiUnit)
   type
     TDataTypes = array[TDataTypeID] of TIDType;
   const
@@ -663,9 +664,9 @@ var
   Fn: TIDSysCompileFunction;
 begin
   // StaticAssert
-  Fn := AddSysCTFunction(TSF_StaticAssert, 'StaticAssert', _Void);
+{  Fn := AddSysCTFunction(TSF_StaticAssert, 'StaticAssert', _Void);
   Fn.AddParam('Expression', _Boolean, [VarConst]);
-  Fn.AddParam('Text', _String, [VarConst], _EmptyStrExpression);
+  Fn.AddParam('Text', _String, [VarConst], _EmptyStrExpression);}
 
   // Defined
   Fn := AddSysCTFunction(TSCTF_Defined, 'Defined', _Boolean);
@@ -678,7 +679,7 @@ end;
 
 procedure TSYSTEMUnit.RegisterSystemRTBuiltinFunctions;
 var
-  Decl: TIDSysRuntimeFunction;
+  Decl, Decl2: TIDSysRuntimeFunction;
 begin
   // typeid
   Decl := AddSysRTFunction(TSF_typeid, 'typeid', _TypeID);
@@ -689,8 +690,17 @@ begin
 
   // AtomicExchange
   Decl := AddSysRTFunction(TSF_AtomicExchange, 'AtomicExchange', _NativeInt);
-  Decl.AddParam('Left', _Void, [VarInOut]);
-  Decl.AddParam('Right', _Void, [VarInOut]);
+  Decl.AddParam('Left', _Int32, [VarInOut]);
+  Decl.AddParam('Right', _Int32, [VarInOut]);
+
+  // AtomicExchange
+  Decl2 := TSF_AtomicExchange.Create(IntfSection, '', bf_sysrtfunction);
+  Decl2.DataType := _NativeInt;
+
+  Decl2.AddParam('Left', _Pointer, [VarInOut]);
+  Decl2.AddParam('Right', _Pointer, [VarInOut]);
+
+  Decl.NextOverload := Decl2;
 
   // RunError
   Decl := AddSysRTFunction(TSF_RunError, 'RunError', nil);
@@ -855,7 +865,9 @@ end;
 constructor TSYSTEMUnit.Create(const Project: IASTProject; const Source: string);
 begin
   inherited Create(Project, Source);
-  //_ID := 'system';
+  {$IFDEF DEBUG}
+  SetUnitName('system');
+  {$ENDIF}
 
   // nil constant
   FNullPtrType := TIDNullPointerType.CreateAsSystem(IntfSection, 'null ptr');

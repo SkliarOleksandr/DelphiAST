@@ -177,6 +177,7 @@ begin
   Prj.InitUnits;
   Prj.Target := 'WIN-X86';
   Prj.Defines.Add('CPUX86');
+  Prj.Defines.Add('CPU386');
   Prj.Defines.Add('MSWINDOWS');
 
   Prj.AddUnit(SystemUnit.SYSUnit, nil);
@@ -187,7 +188,7 @@ begin
   Msg := TStringList.Create;
   try
     Msg.Add('===================================================================');
-    CResult := Prj.CompileInterfacesOnly;
+    CResult := Prj.Compile;
     if CResult = CompileSuccess then
       Msg.Add('compile success')
     else

@@ -1442,7 +1442,7 @@ type
   protected
     FFunctionID: TBuiltInFunctionID;
   public
-    constructor Create(Scope: TScope; const Name: string; FunctionID: TBuiltInFunctionID); reintroduce;
+    constructor Create(Scope: TScope; const Name: string; FunctionID: TBuiltInFunctionID); reintroduce; virtual;
     /////////////////////////////////////////////////////////////////////////////////////////
     property FunctionID: TBuiltInFunctionID read FFunctionID;
   end;
@@ -1506,6 +1506,7 @@ type
     function FindIDRecurcive(const ID: string; out Expression: TIDExpression): TIDDeclaration; overload; virtual;
     function FindMembers(const ID: string): TIDDeclaration; virtual;
     function GetDeclArray(Recursively: Boolean = False): TIDDeclArray;
+    function GetDeclNamesArray(Recursively: Boolean = False): TStrArray;
     property Parent: TScope read FParent write SetParent;
     property ScopeType: TScopeType read FScopeType;
     property VarSpace: PVarSpace read FVarSpace write FVarSpace;
@@ -2053,10 +2054,19 @@ begin
   while Assigned(Node) do
   begin
     Result[i] := TIDDeclaration(Node.Data);
+    Inc(i);
     Node := Next(Node);
   end;
   if Recursively and Assigned(Parent) then
     Result := Parent.GetDeclArray(Recursively) + Result;
+end;
+
+function TScope.GetDeclNamesArray(Recursively: Boolean): TStrArray;
+begin
+  var Decls := GetDeclArray(Recursively);
+  SetLength(Result, Length(Decls));
+  for var i := 0 to Length(Decls) - 1 do
+    Result[i] := Decls[i].Name;
 end;
 
 { TIDList }

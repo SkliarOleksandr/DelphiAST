@@ -298,6 +298,7 @@ type
     procedure CheckAndCallArrayFinal(const Proc: TIDProcedure; const Variable: TIDVariable; InsetBefore: TILInstruction);
     procedure CondCompPush(Condition: Boolean);
     procedure CondCompPop;
+    procedure SetUnitName(const Name: string);
   public
     function CreateSysProc(const SysName: string): TIDProcedure;
     function CreateArraySysProc(const Arr: TIDArray; const Name: string; out ProcParam: TIDVariable): TIDProcedure;
@@ -749,6 +750,8 @@ type
   TIDSysRuntimeFunction = class(TIDBuiltInFunction)
   protected
     function Process(var EContext: TEContext): TIDExpression; virtual;
+  public
+    constructor Create(Scope: TScope; const Name: string; FunctionID: TBuiltInFunctionID); override;
   end;
 
   TSysFunctionContext = record
@@ -2491,6 +2494,10 @@ begin
        (TIDPointer(Dest).ReferenceType = nil) then
       Exit(Source.DataType);
 
+    // it needs to check !!!
+    if not Assigned(TIDPointer(SDataType).ReferenceType) or not Assigned(TIDPointer(Dest).ReferenceType) then
+      Exit(Source.DataType);
+
     if TIDPointer(SDataType).ReferenceType.ActualDataType = TIDPointer(Dest).ReferenceType.ActualDataType then
       Exit(Source.DataType);
   end;
@@ -2963,6 +2970,11 @@ begin
     AbortWork(sTooManyActualTypeParameters, CallExpr.TextPosition);
 
   CallExpr.GenericArgs := Args;
+end;
+
+procedure TNPUnit.SetUnitName(const Name: string);
+begin
+  FUnitName.Name := Name;
 end;
 
 class procedure TNPUnit.CheckIntExpression(Expression: TIDExpression);
@@ -9073,12 +9085,13 @@ begin
   Result := Scope.FindIDRecurcive(IDName, Expr);
   if Assigned(Result) then
     Exit;
-  with FIntfImportedUnits do
-    for i := Count - 1 downto 0 do begin
-      Result := TNPUnit(Objects[i]).IntfSection.FindID(IDName);
-      if Assigned(Result) then
-        Exit;
-    end;
+  for i := FIntfImportedUnits.Count - 1 downto 0 do
+  begin
+    var un := TNPUnit(FIntfImportedUnits.Objects[i]);
+    Result := un.IntfSection.FindID(IDName);
+    if Assigned(Result) then
+      Exit;
+  end;
 end;
 
 function TNPUnit.ParseProcName(var Scope: TScope; out Name: TIdentifier; var Struct: TIDStructure; out ProcScope: TProcScope; out GenericParams: TIDTypeList): TTokenID;
@@ -14552,6 +14565,12 @@ begin
 end;
 
 { TIDBuiltin }
+
+constructor TIDSysRuntimeFunction.Create(Scope: TScope; const Name: string; FunctionID: TBuiltInFunctionID);
+begin
+  inherited;
+  ItemType := itProcedure;
+end;
 
 function TIDSysRuntimeFunction.Process(var EContext: TEContext): TIDExpression;
 begin

@@ -117,7 +117,7 @@ type
   end;
 
   {предок всех внутренних процедур перегрузки операторов компилятора}
-  TIDInternalOperator = class(TIDOperator)
+(*  TIDInternalOperator = class(TIDOperator)
   public
     constructor CreateAsIntOp; reintroduce;
   end;
@@ -127,7 +127,7 @@ type
     constructor CreateInternal(ResultType: TIDType); reintroduce;
     function Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; virtual; abstract;
     //function Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; virtual; abstract;
-  end;
+  end;       *)
 
 implementation
 
@@ -620,8 +620,8 @@ begin
         if Param.DataType.ActualDataType <> AExpr.DataType.ActualDataType then
         begin
           if not ((Param.DataType.DataTypeID = dtPointer) and
-             (AExpr.DataType.DataTypeID = dtPointer) and
-             (TIDPointer(Param.DataType).ReferenceType = TIDPointer(AExpr.DataType).ReferenceType)) then
+             (AExpr.DataType.DataTypeID = dtPointer) {and
+             (TIDPointer(Param.DataType).ReferenceType = TIDPointer(AExpr.DataType).ReferenceType) !!!!!! }) then
           ERROR_REF_PARAM_MUST_BE_IDENTICAL(AExpr);
         end;
       end;
@@ -1492,9 +1492,11 @@ begin
 
           if (SrcDTID = dtPointer) and (DstDTID = dtPointer) then
           begin
-            if (TIDPointer(SDataType).ReferenceType = nil) and
+            // it needs to check
+            if (TIDPointer(SDataType).ReferenceType = nil) or
                (TIDPointer(Dest).ReferenceType = nil) then
               Exit(Source);
+
             if TIDPointer(SDataType).ReferenceType.ActualDataType = TIDPointer(Dest).ReferenceType.ActualDataType then
               Exit(Source);
           end;
@@ -3176,6 +3178,13 @@ begin
       Break;
     end;
 
+    if Result = token_caret then
+    begin
+      //EContext.RPNPushOperator(opDereference);
+      Result := parser_NextToken(Scope);
+    end;
+
+
     {struct/class/interafce/enum/unit/namespace}
     if (Result = token_dot) then
     begin
@@ -3351,7 +3360,7 @@ end;
 
 { TIDOperatorInternal }
 
-constructor TIDInternalOperator.CreateAsIntOp;
+(*constructor TIDInternalOperator.CreateAsIntOp;
 begin
   CreateFromPool;
 end;
@@ -3361,6 +3370,6 @@ begin
   CreateFromPool;
   ItemType := itProcedure;
   Self.DataType := ResultType;
-end;
+end;*)
 
 end.

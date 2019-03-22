@@ -390,7 +390,10 @@ end;
 
 function DataLossFactor(const Source, Destination: TDataTypeID): Integer;
 begin
-  Result := _DataLossFactors[Source, Destination]
+  if (Source <= dtVariant) and (Destination <= dtVariant) then
+    Result := _DataLossFactors[Source, Destination]
+  else
+    Result := 0;
 end;
 
 function ImplicitFactor2(const Source, Destination: TDataTypeID): Integer; inline;
