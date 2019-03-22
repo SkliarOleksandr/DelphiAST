@@ -154,39 +154,48 @@ begin
   end;
 end;
 
+const cRTLUsesSource =
+'unit RTLParseTest; '#10#13 +
+'interface'#10#13 +
+'uses System;'#10#13 +
+'implementation'#10#13 +
+'end.';
+
 procedure TfrmTestAppMain.Button2Click(Sender: TObject);
 var
-  UN: TNPUnit;
+  UN: TASTDelphiUnit;
   Msg: TStrings;
+  Prj: INPPackage;
   CResult: TCompilerResult;
 begin
   Memo1.Clear;
 
   FreeAndNil(SYSUnit);
 
-  fPKG := TNPPackage.Create('test');
-  //fPKG.AddUnitSearchPath(Edit1.Text);
-  fPKG.AddUnitSearchPath(ExtractFilePath(Application.ExeName));
-  fPKG.InitUnits;
-  fPKG.Target := 'WIN-X86';
-  fPKG.Defines.Add('CPUX86');
-  fPKG.Defines.Add('MSWINDOWS');
+  Prj := TASTDelphiProject.Create('test');
+  Prj.AddUnitSearchPath(Edit1.Text);
+  Prj.InitUnits;
+  Prj.Target := 'WIN-X86';
+  Prj.Defines.Add('CPUX86');
+  Prj.Defines.Add('MSWINDOWS');
 
-  fPKG.AddUnit(SystemUnit.SYSUnit, nil);
+  Prj.AddUnit(SystemUnit.SYSUnit, nil);
 
-  UN := TNPUnit.Create(fPKG, edUnit.Text);
-  fPKG.AddUnit(UN, nil);
+  UN := TASTDelphiUnit.Create(Prj, cRTLUsesSource);
+  Prj.AddUnit(UN, nil);
 
   Msg := TStringList.Create;
   try
     Msg.Add('===================================================================');
-    CResult := fPKG.Compile;
+    CResult := Prj.CompileInterfacesOnly;
     if CResult = CompileSuccess then
       Msg.Add('compile success')
     else
       Msg.Add('compile fail');
 
-    CompilerMessagesToStrings(fPKG.Messages, Msg);
+    ASTToTreeView2(UN, tvAST);
+
+    CompilerMessagesToStrings(Prj.Messages, Msg);
 
     Memo1.Lines := Msg;
   finally

@@ -326,7 +326,7 @@ object frmTestAppMain: TfrmTestAppMain
     object Button1: TButton
       Left = 407
       Top = 20
-      Width = 163
+      Width = 106
       Height = 25
       Anchors = [akTop, akRight]
       Caption = 'AST Parse'
@@ -334,12 +334,12 @@ object frmTestAppMain: TfrmTestAppMain
       OnClick = Button1Click
     end
     object Button2: TButton
-      Left = 576
+      Left = 519
       Top = 20
-      Width = 51
+      Width = 108
       Height = 25
       Anchors = [akTop, akRight]
-      Caption = 'Analize'
+      Caption = 'AST Parse RTL'
       TabOrder = 2
       OnClick = Button2Click
     end
