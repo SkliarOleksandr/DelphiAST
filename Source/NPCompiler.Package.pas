@@ -9,7 +9,7 @@ uses System.SysUtils, System.Classes, System.Types, Generics.Collections, System
      NPCompiler.Evaluater;
 
 type
-  TUnits = TList<TObject>;
+  TUnits = TList<TASTModule>;
   TTypes = TList<TIDType>;
 
   TNPPackage = class(TASTProject, INPPackage)
@@ -63,7 +63,7 @@ type
     procedure SaveToStream(Stream: TStream);
     procedure PrepareStrLiterals;
     procedure SaveStrLiterals(Stream: TStream);
-    procedure AddUnit(aUnit, BeforeUnit: TObject); overload;
+    procedure AddUnit(aUnit, BeforeUnit: TASTModule); overload;
     procedure AddUnit(const Source: string); overload;
     procedure AddUnitSearchPath(const Path: string; IncludeSubDirectories: Boolean);
     procedure Clear;
@@ -73,7 +73,7 @@ type
     function GetStringConstant(const Value: string): Integer; overload;
     function GetStringConstant(const StrConst: TIDStringConstant): Integer; overload;
     function FindUnitFile(const UnitName: string): string;
-    function UsesUnit(const UnitName: string; AfterUnit: TObject): TObject;
+    function UsesUnit(const UnitName: string; AfterUnit: TASTModule): TASTModule;
     function GetMessages: ICompilerMessages;
     function Compile: TCompilerResult; virtual;
     function CompileInterfacesOnly: TCompilerResult; virtual;
@@ -214,17 +214,17 @@ end;
 procedure TNPPackage.InitUnits;
 var
   Stream: TStringStream;
-  s, SysSource: string;
+  SysFileName, SysSource: string;
 begin
   try
     if not Assigned(SYSUnit) then
     begin
-      s := FindUnitFile('system');
-      if FileExists(s) then
+      SysFileName := FindUnitFile('system');
+      if FileExists(SysFileName) then
       begin
         Stream := TStringStream.Create('');
         try
-          StringStreamLoadFromFile(s, Stream);
+          StringStreamLoadFromFile(SysFileName, Stream);
           SysSource := Stream.DataString;
         finally
           Stream.Free;
@@ -232,7 +232,7 @@ begin
       end else
         SysSource := 'unit system; end.';
 
-      SYSUnit := TSYSTEMUnit.Create(Self, SysSource);
+      SYSUnit := TSYSTEMUnit.Create(Self, SysFileName, SysSource);
     end;
   except
     on e: exception do
@@ -240,7 +240,7 @@ begin
   end;
 end;
 
-procedure TNPPackage.AddUnit(aUnit, BeforeUnit: TObject);
+procedure TNPPackage.AddUnit(aUnit, BeforeUnit: TASTModule);
 var
   i: Integer;
 begin
@@ -267,7 +267,7 @@ begin
     Result := AnsiCompareStr(Left.StrValue, Right.StrValue);
 end;
 
-function TNPPackage.UsesUnit(const UnitName: string; AfterUnit: TObject): TObject;
+function TNPPackage.UsesUnit(const UnitName: string; AfterUnit: TASTModule): TASTModule;
 var
   i: Integer;
   SUnitName: string;
@@ -337,7 +337,8 @@ begin
   // компиляция модулей
   for i := 0 to FUnits.Count - 1 do
   begin
-    Result := TNPUnit(FUnits[i]).Compile;
+    var UN := FUnits[i];
+    Result := TNPUnit(UN).Compile;
     if Result = CompileFail then
       Exit;
   end;
@@ -375,7 +376,7 @@ begin
   try
     StringStreamLoadFromFile(UnitName, Stream);
     UnitClass := GetUnitClass();
-    Result := UnitClass.Create(Self, Stream.DataString);
+    Result := UnitClass.Create(Self, UnitName, Stream.DataString);
   finally
     Stream.Free;
   end;

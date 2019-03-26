@@ -12,18 +12,21 @@ type
 
   TASTSContext<TProc> = record
   private
+    fModule: TASTModule;
     fProc: TProc;
     fBlock: TASTBlock;
   public
-    constructor Create(Proc: TProc; Block: TASTBlock);
+    constructor Create(const Module: TASTModule; Proc: TProc; Block: TASTBlock); overload;
+    constructor Create(const Module: TASTModule); overload;
     function MakeChild(Block: TASTBlock): TASTSContext<TProc>; inline;
     function Add<T: TASTItem>: T;
     procedure AddItem(const Item: TASTItem);
+    property Module: TASTModule read fModule;
     property Proc: TProc read fProc;
     property Block: TASTBlock read fBlock;
   end;
 
-  TExpessionPosition = (ExprNested, ExprLValue, ExprRValue, ExprNestedGeneric);
+  TExpessionPosition = NPCompiler.Classes.TExpessionPosition;// (ExprNested, ExprLValue, ExprRValue, ExprNestedGeneric);
 
   TRPNStatus = (rprOk, rpOperand, rpOperation);
 
@@ -280,18 +283,26 @@ end;
 
 procedure TASTSContext<TProc>.AddItem(const Item: TASTItem);
 begin
-  fBlock.AddChild(Item);
+  fBlock.AddChild(Item)
 end;
 
-constructor TASTSContext<TProc>.Create(Proc: TProc; Block: TASTBlock);
+constructor TASTSContext<TProc>.Create(const Module: TASTModule; Proc: TProc; Block: TASTBlock);
 begin
+  fModule := Module;
   fProc := Proc;
   fBlock := Block;
 end;
 
+constructor TASTSContext<TProc>.Create(const Module: TASTModule);
+begin
+  fModule := Module;
+  fProc := default(TProc);
+  fBlock := nil;
+end;
+
 function TASTSContext<TProc>.MakeChild(Block: TASTBlock): TASTSContext<TProc>;
 begin
-  Result := TASTSContext<TProc>.Create(fProc, Block);
+  Result := TASTSContext<TProc>.Create(fModule, fProc, Block);
 end;
 
 end.

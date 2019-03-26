@@ -64,18 +64,19 @@ type
 
   TASTModule = class
   private
-
+    fFileName: string;
   protected
     function GetModuleName: string; virtual; abstract;
   public
     property Name: string read GetModuleName;
+    property FileName: string read fFileName;
 
     function GetFirstFunc: TASTDeclaration; virtual; abstract;
     function GetFirstVar: TASTDeclaration; virtual; abstract;
     function GetFirstType: TASTDeclaration; virtual; abstract;
     function GetFirstConst: TASTDeclaration; virtual; abstract;
 
-    constructor Create(const Project: IASTProject; const Source: string = ''); virtual;
+    constructor Create(const Project: IASTProject; const FileName: string; const Source: string = ''); virtual;
   end;
 
   TASTDeclaration = class(TASTItem)
@@ -562,9 +563,9 @@ end;
 
 { TASTUnit }
 
-constructor TASTModule.Create(const Project: IASTProject; const Source: string);
+constructor TASTModule.Create(const Project: IASTProject; const FileName: string; const Source: string);
 begin
-
+  fFileName := FileName;
 end;
 
 function TASTExpression.GetDisplayName: string;

@@ -182,7 +182,7 @@ begin
 
   Prj.AddUnit(SystemUnit.SYSUnit, nil);
 
-  UN := TASTDelphiUnit.Create(Prj, cRTLUsesSource);
+  UN := TASTDelphiUnit.Create(Prj, 'RTLParseTest', cRTLUsesSource);
   Prj.AddUnit(UN, nil);
 
   Msg := TStringList.Create;

@@ -82,9 +82,8 @@ type
     procedure AddArithmeticOperators;
     procedure RegisterBuiltinFunctions;
     procedure RegisterSystemRTBuiltinFunctions;
-    procedure RegisterSystemCTBuiltinFunctions;
     procedure InsertToScope(Declaration: TIDDeclaration);
-    function RegisterBuiltin(const Name: string; MacroID: TBuiltInFunctionID; ResultDataType: TIDType; Flags: TProcFlags = [pfPure]): TIDBuiltInFunction;
+    function RegisterBuiltin(const Name: string; MacroID: TBuiltInFunctionID; ResultDataType: TIDType; Flags: TProcFlags = [pfPure]): TIDBuiltInFunction; overload;
     function RegisterType(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
     function RegisterTypeCustom(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
     function RegisterRefType(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
@@ -92,6 +91,7 @@ type
     function RegisterTypeAlias(const TypeName: string; OriginalType: TIDType): TIDAliasType;
     function RegisterPointer(const TypeName: string; TargetType: TIDType): TIDPointer;
     function RegisterConstInt(const Name: string; DataType: TIDType; Value: Int64): TIDIntConstant;
+    function RegisterBuiltin(const BuiltinClass: TIDBuiltInFunctionClass): TIDBuiltInFunction; overload;
   private
     procedure CreateCopyArrayOfObjProc;
     procedure CreateCopyArrayOfStrProc;
@@ -106,11 +106,12 @@ type
     function AddSysCTFunction(const SysFuncClass: TIDSysCompileFunctionClass; const Name: string; ResultType: TIDType): TIDSysCompileFunction;
   public
     ////////////////////////////////////////////////////////////////////////////////////////////////////
-    constructor Create(const Project: IASTProject; const Source: string); override;
+    constructor Create(const Project: IASTProject; const FileName: string; const Source: string); override;
     function Compile(RunPostCompile: Boolean = True): TCompilerResult; override;
     function CompileIntfOnly: TCompilerResult; override;
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     procedure CreateSystemRoutins;
+    //procedure RegisterExternalProc
     property DataTypes: TDataTypes read FDataTypes;
     property _Int8: TIDType read FDataTypes[dtInt8] write FDataTypes[dtInt8];
     property _Int16: TIDType read FDataTypes[dtInt16] write FDataTypes[dtInt16];
@@ -162,6 +163,7 @@ type
     property _AssertProc: TIDProcedure read FAsserProc;
     property _TypeID: TIDType read FTypeIDType;
     property _DeprecatedDefaultStr: TIDStringConstant read fDeprecatedDefaultStr;
+    property _OrdinalType: TIDType read FOrdinalType;
   end;
 
 var
@@ -449,14 +451,14 @@ end;
 
 function TSYSTEMUnit.AddSysCTFunction(const SysFuncClass: TIDSysCompileFunctionClass; const Name: string; ResultType: TIDType): TIDSysCompileFunction;
 begin
-  Result := SysFuncClass.Create(IntfSection, Name, bf_sysctfunction);
+  Result := SysFuncClass.Create(IntfSection, Name, ResultType);
   Result.DataType := ResultType;
   InsertToScope(Result);
 end;
 
 function TSYSTEMUnit.AddSysRTFunction(const SysFuncClass: TIDSysRuntimeFunctionClass; const Name: string; ResultType: TIDType): TIDSysRuntimeFunction;
 begin
-  Result := SysFuncClass.Create(IntfSection, Name, bf_sysrtfunction);
+  Result := SysFuncClass.Create(IntfSection, Name, ResultType);
   Result.DataType := ResultType;
   InsertToScope(Result);
 end;
@@ -659,60 +661,32 @@ begin
   FNullPtrType.OverloadImplicitTo(Result);
 end;
 
-procedure TSYSTEMUnit.RegisterSystemCTBuiltinFunctions;
-var
-  Fn: TIDSysCompileFunction;
-begin
-  // StaticAssert
-{  Fn := AddSysCTFunction(TSF_StaticAssert, 'StaticAssert', _Void);
-  Fn.AddParam('Expression', _Boolean, [VarConst]);
-  Fn.AddParam('Text', _String, [VarConst], _EmptyStrExpression);}
-
-  // Defined
-  Fn := AddSysCTFunction(TSCTF_Defined, 'Defined', _Boolean);
-  Fn.AddParam('Expression', _Boolean, [VarConst]);
-
-  // Declared
-  Fn := AddSysCTFunction(TSCTF_Declared, 'Declared', _Boolean);
-  Fn.AddParam('Expression', _Boolean, [VarConst]);
-end;
-
 procedure TSYSTEMUnit.RegisterSystemRTBuiltinFunctions;
-var
-  Decl, Decl2: TIDSysRuntimeFunction;
 begin
-  // typeid
-  Decl := AddSysRTFunction(TSF_typeid, 'typeid', _TypeID);
-  Decl.AddParam('Value or Type', _Void, []);
-
-  // now
-  AddSysRTFunction(TSF_now, 'Now', _DateTime);
-
-  // AtomicExchange
-  Decl := AddSysRTFunction(TSF_AtomicExchange, 'AtomicExchange', _NativeInt);
-  Decl.AddParam('Left', _Int32, [VarInOut]);
-  Decl.AddParam('Right', _Int32, [VarInOut]);
-
-  // AtomicExchange
-  Decl2 := TSF_AtomicExchange.Create(IntfSection, '', bf_sysrtfunction);
-  Decl2.DataType := _NativeInt;
-
-  Decl2.AddParam('Left', _Pointer, [VarInOut]);
-  Decl2.AddParam('Right', _Pointer, [VarInOut]);
-
-  Decl.NextOverload := Decl2;
-
-  // RunError
-  Decl := AddSysRTFunction(TSF_RunError, 'RunError', nil);
-  Decl.AddParam('ErrorCode', _Int32, []);
+  RegisterBuiltin(TSF_now);
+  RegisterBuiltin(TSF_AtomicExchange);
+  RegisterBuiltin(TSF_AtomicCmpExchange);
+  RegisterBuiltin(TSF_RunError);
+  RegisterBuiltin(TSCTF_Defined);
+  RegisterBuiltin(TSCTF_Declared);
+  RegisterBuiltin(TCT_SizeOf);
+  RegisterBuiltin(TCT_LoBound);
+  RegisterBuiltin(TCT_HiBound);
+  RegisterBuiltin(TCT_Inc);
+  RegisterBuiltin(TCT_Dec);
 end;
 
 function TSYSTEMUnit.RegisterBuiltin(const Name: string; MacroID: TBuiltInFunctionID; ResultDataType: TIDType; Flags: TProcFlags = [pfPure]): TIDBuiltInFunction;
 begin
-  Result := TIDBuiltInFunction.Create(Self.IntfSection, Name, MacroID);
+  Result := TIDBuiltInFunction.Create(Self.IntfSection, Name, ResultDataType);
   Result.ResultType := ResultDataType;
   Result.Flags := Flags;
   InsertToScope(Result);
+end;
+
+function TSYSTEMUnit.RegisterBuiltin(const BuiltinClass: TIDBuiltInFunctionClass): TIDBuiltInFunction;
+begin
+  Result := BuiltinClass.Register(Self.IntfSection);
 end;
 
 procedure TSYSTEMUnit.RegisterBuiltinFunctions;
@@ -725,16 +699,6 @@ begin
   // assigned
   Decl := RegisterBuiltin('Assigned', bf_assigned, _Boolean);
   Decl.AddParam('Value', FRefType, [VarConst]);
-
-  // inc
-  Decl := RegisterBuiltin('inc', bf_inc, nil);
-  Decl.AddParam('Value', FOrdinalType, [VarInOut]);
-  Decl.AddParam('Increment', FOrdinalType, [VarConst, VarHasDefault], _OneExpression);
-
-  // dec
-  Decl := RegisterBuiltin('dec', bf_dec, nil);
-  Decl.AddParam('Value', FOrdinalType, [VarInOut]);
-  Decl.AddParam('Decrement', FOrdinalType, [VarConst, VarHasDefault], _OneExpression);
 
   // memset
   Decl := RegisterBuiltin('memset', bf_memset, nil);
@@ -756,51 +720,14 @@ begin
   Decl.AddParam('From', _Int32, [VarIn], _ZeroExpression);
   Decl.AddParam('Count', _Int32, [VarIn], _MinusOneExpression);
 
-  // Move
-{  Decl := RegisterBuiltin('Move', bf_move, nil);
-  Decl.AddParam('SrcArray', FArrayType, [VarInOut]);
-  Decl.AddParam('SrcIndex', _Int32, [VarIn]);
-  Decl.AddParam('DstArray', FArrayType, [VarInOut]);
-  Decl.AddParam('DstIndex', _Int32, [VarIn]);
-  Decl.AddParam('Count', _Int32, [VarIn]);}
-
-  // SizeOf
-  Decl := RegisterBuiltin('SizeOf', bf_sizeof, _UInt32);
-  Decl.AddParam('S', FRefType);
-
   // accert
   Decl := RegisterBuiltin('assert', bf_assert, nil);
   Decl.AddParam('Value', _Boolean);
   Decl.AddParam('ErrorText', _String, [], _EmptyStrExpression);
 
-  // TypeName
-  Decl := RegisterBuiltin('TypeName', bf_typename, _String);
-  Decl.AddParam('S', FRefType);
-
-  // New
-  Decl := RegisterBuiltin('New', bf_new, nil);
-  Decl.AddParam('Ptr', _Pointer, [VarOut]);
-
-  // Free
-  Decl := RegisterBuiltin('Free', bf_free, nil);
-  Decl.AddParam('Ptr', _Pointer, [VarConst]);
-
-  // GetRef
-  Decl := RegisterBuiltin('GetRef', bf_getref, _Boolean);
-  Decl.AddParam('WeakPtr', _Pointer, [VarConst]);
-  Decl.AddParam('StrongPtr', _Pointer, [VarOut]);
-
   // TypeInfo
   Decl := RegisterBuiltin('TypeInfo', bf_typeinfo, _TObject);
   Decl.AddParam('Declaration', _Pointer, [VarConst]);
-
-  // Low(const Ordinal/Array)
-  Decl := RegisterBuiltin('Low', bf_LoBound, _Int64);
-  Decl.AddParam('Value', _Void, [VarConst]);
-
-  // High(const Ordinal/Array)
-  Decl := RegisterBuiltin('High', bf_HiBound, _Int64);
-  Decl.AddParam('Value', _Void, [VarConst]);
 
   // Ord(const Ordinal)
   Decl := RegisterBuiltin('Ord', bf_Ord, _Int64);
@@ -816,24 +743,6 @@ begin
   Decl := RegisterBuiltin('exclude', bf_exclude, nil);
   Decl.AddParam('Set', _Void, [VarInOut]);
   Decl.AddParam('SubSet', _Void, [VarInOut]);
-
-  // GetBit(const Value; BitIndex: Int32): Boolean
-  Decl := RegisterBuiltin('getbit', bf_getbit, _Boolean);
-  Decl.AddParam('Value', _Void, [VarIn, VarConst]);
-  Decl.AddParam('BitIndex', _UInt32, [VarIn]);
-
-  // SetBit(const Value; BitIndex: Int32; BitValue: Boolean);
-  Decl := RegisterBuiltin('setbit', bf_setbit, nil);
-  Decl.AddParam('Value', _Void, [VarIn, VarConst]);
-  Decl.AddParam('BitIndex', _UInt32, [VarIn]);
-  Decl.AddParam('BitValue', _Boolean, [VarIn]);
-
-  RegisterBuiltin('current_unit', bf_current_unit, _String);
-  RegisterBuiltin('current_function', bf_current_function, _String);
-  RegisterBuiltin('current_line', bf_current_line, _UInt32);
-  // refcount(reference)
-  Decl := RegisterBuiltin('RefCount', bf_refcount, _Int32);
-  Decl.AddParam('Reference', _Void, [VarConst]);
 end;
 
 function TSYSTEMUnit.RegisterOrdinal(const TypeName: string; DataType: TDataTypeID; LowBound: Int64; HighBound: UInt64): TIDType;
@@ -862,9 +771,9 @@ begin
   end;
 end;
 
-constructor TSYSTEMUnit.Create(const Project: IASTProject; const Source: string);
+constructor TSYSTEMUnit.Create(const Project: IASTProject; const FileName: string; const Source: string);
 begin
-  inherited Create(Project, Source);
+  inherited Create(Project, FileName, Source);
   {$IFDEF DEBUG}
   SetUnitName('system');
   {$ENDIF}
@@ -1133,7 +1042,9 @@ end;
 
 procedure TSYSTEMUnit.CreateSystemRoutins;
 begin
-  RegisterSystemCTBuiltinFunctions;
+
+
+
   RegisterSystemRTBuiltinFunctions;
   CreateSystemRoutinsTypes;
 {  CreateCopyArrayOfObjProc;

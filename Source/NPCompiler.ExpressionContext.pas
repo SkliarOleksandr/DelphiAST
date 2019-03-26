@@ -30,8 +30,6 @@ type
     PrevNode: PBoolExprNode;         // Предыдущий нод (в стеке)
   end;
 
-  TExpessionPosition = (ExprNested, ExprLValue, ExprRValue, ExprNestedGeneric);
-
   {expression context - use RPN (Reverse Polish Notation) stack}
   TEContext = record
   type

@@ -153,6 +153,7 @@ type
     token_inherited,                // keyword: inherited
     token_virtual,                  // keyword: virtual
     token_dynamic,                  // keyword: dynamic
+    token_delayed,                  // keyword: delayed
     token_static,                   // keyword: static
     token_constructor,              // keyword: constructor
     token_destructor,               // keyword: destructor
@@ -294,6 +295,7 @@ begin
   RegisterToken('deprecated', token_deprecated);
   RegisterToken('default', token_default, True);
   RegisterToken('dynamic', token_dynamic);
+  RegisterToken('delayed', token_delayed, True);
   RegisterToken('end', token_end);
   RegisterToken('else', token_else);
   RegisterToken('exit', token_exit, True);
@@ -390,6 +392,8 @@ begin
   RegisterToken('{$IFEND}', token_cond_end);
   RegisterToken('{$IFOPT', token_cond_ifopt);
   RegisterToken('{$MESSAGE', token_cond_message);
+  RegisterToken('{$INCLUDE', token_cond_include);
+  RegisterToken('{$I', token_cond_include);
 end;
 
 procedure TDelphiParser.MatchNextToken(ExpectedToken: TTokenID);

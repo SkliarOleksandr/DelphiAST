@@ -20,6 +20,8 @@ uses System.SysUtils, System.Classes, System.StrUtils, System.Math, System.Gener
      AST.Project;
 type
 
+  TExpessionPosition = (ExprNested, ExprLValue, ExprRValue, ExprNestedGeneric);
+
   ECompilerAbort = class(EAbort)
   private
     FCompilerMessage: TCompilerMessage;
@@ -62,7 +64,7 @@ type
   TIDExpression = class;
   TIDNameSpace = class;
   TIDGenericType = class;
-  TIDUserDefinedMacro = class;
+//  TIDUserDefinedMacro = class;
   TIDMacroArgument = class;
   TIDStringConstant = class;
   TIDProcType = class;
@@ -133,12 +135,12 @@ type
     function GetDefines: TDefines;
     function FindUnitFile(const UnitName: string): string;
     function GetUnit(const UnitName: string): TObject; overload;
-    function UsesUnit(const UnitName: string; AfterUnit: TObject): TObject;
+    function UsesUnit(const UnitName: string; AfterUnit: TASTModule): TASTModule;
     procedure SetIncludeDebugInfo(const Value: Boolean);
     procedure SetRTTICharset(const Value: TRTTICharset);
     procedure SetTarget(const Value: string);
     procedure SaveToStream(Stream: TStream);
-    procedure AddUnit(aUnit, AfterUnit: TObject); overload;
+    procedure AddUnit(aUnit, AfterUnit: TASTModule); overload;
     procedure AddUnit(const Source: string); overload;
     procedure AddUnitSearchPath(const Path: string; IncludeSubDirectories: Boolean = True);
     procedure Clear;
@@ -1012,7 +1014,7 @@ type
     function GetAsType: TIDType; inline;
     function GetAsVariable: TIDVariable; inline;
     function GetAsArrayConst: TIDDynArrayConstant; inline;
-    function GetAsUserDefinedMacro: TIDUserDefinedMacro; inline;
+    //function GetAsUserDefinedMacro: TIDUserDefinedMacro; inline;
     class function GetExpressionType: TExpressonType; virtual;
     function GetIsLocalVar: Boolean;
     function GetIsVariable: Boolean; inline;
@@ -1069,7 +1071,7 @@ type
     property AsVariable: TIDVariable read GetAsVariable;
     property AsProperty: TIDProperty read GetAsProperty;
     property AsProcedure: TIDProcedure read GetAsProcedure;
-    property AsUserDefinedMacro: TIDUserDefinedMacro read GetAsUserDefinedMacro;
+    //property AsUserDefinedMacro: TIDUserDefinedMacro read GetAsUserDefinedMacro;
     property AsArrayConst: TIDDynArrayConstant read GetAsArrayConst;
     property AsRangeConst: TIDRangeConstant read GetAsRangeConst;
     property AsMacroArgument: TIDMacroArgument read GetAsMacroArgument;
@@ -1396,7 +1398,7 @@ type
 
 
   TBuiltInFunctionID = (
-    bf_userdefined,        // пользовательская макро-функция
+//    bf_userdefined,        // пользовательская макро-функция
     bf_sysrtfunction,      // системная run-time встроенная функция
     bf_sysctfunction,      // системная compile-time встроенная функция
     bf_assigned,
@@ -1438,16 +1440,9 @@ type
 
   TMacroArgs = TList<TIDMacroArgument>;
 
-  TIDBuiltInFunction = class(TIDProcedure)
-  protected
-    FFunctionID: TBuiltInFunctionID;
-  public
-    constructor Create(Scope: TScope; const Name: string; FunctionID: TBuiltInFunctionID); reintroduce; virtual;
-    /////////////////////////////////////////////////////////////////////////////////////////
-    property FunctionID: TBuiltInFunctionID read FFunctionID;
-  end;
 
-  TIDUserDefinedMacro = class(TIDBuiltInFunction)
+
+  {TIDUserDefinedMacro = class(TIDBuiltInFunction)
   private
     //FBody: string;
     FBodyPosition: TParserPosition;
@@ -1456,7 +1451,7 @@ type
     //property Body: string read FBody;
     //procedure Append(const Text: string);
     property BodyPosition: TParserPosition read FBodyPosition write FBodyPosition;
-  end;
+  end;}
 
   TUnitList = TStringList;
 
@@ -1617,7 +1612,7 @@ type
 
 implementation
 
-uses IL.Instructions, SystemUnit, OPCompiler;
+uses IL.Instructions, SystemUnit, OPCompiler, AST.Delphi.Parser;
 
 function IDCompare(const Key1, Key2: TIDDeclaration): NativeInt;
 begin
@@ -3670,10 +3665,10 @@ begin
   Result := TIDType(FDeclaration);
 end;
 
-function TIDExpression.GetAsUserDefinedMacro: TIDUserDefinedMacro;
-begin
-  Result := FDeclaration as TIDUserDefinedMacro;
-end;
+//function TIDExpression.GetAsUserDefinedMacro: TIDUserDefinedMacro;
+//begin
+//  Result := FDeclaration as TIDUserDefinedMacro;
+//end;
 
 function TIDExpression.GetAsVariable: TIDVariable;
 begin
@@ -5390,27 +5385,18 @@ begin
     Result := inherited FindIDRecurcive(ID, Expression);
 end;
 
-{ TIDSysFunction }
 
-constructor TIDBuiltInFunction.Create(Scope: TScope; const Name: string; FunctionID: TBuiltInFunctionID);
-begin
-  CreateFromPool;
-  FID.Name := Name;
-  FScope := Scope;
-  FItemType := itMacroFunction;
-  FFunctionID := FunctionID;
-end;
 
 { TIDUserDefinedMacro }
 
-constructor TIDUserDefinedMacro.Create(Scope: TScope; const ID: TIdentifier);
-begin
-  CreateFromPool;
-  FID := ID;
-  FScope := Scope;
-  FItemType := itMacroFunction;
-  FFunctionID := bf_userdefined;
-end;
+//constructor TIDUserDefinedMacro.Create(Scope: TScope; const ID: TIdentifier);
+//begin
+//  CreateFromPool;
+//  FID := ID;
+//  FScope := Scope;
+//  FItemType := itMacroFunction;
+//  FFunctionID := bf_userdefined;
+//end;
 
 {procedure TIDUserDefinedMacro.Append(const Text: string);
 begin

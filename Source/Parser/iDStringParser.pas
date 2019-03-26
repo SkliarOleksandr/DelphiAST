@@ -198,6 +198,8 @@ procedure TStringParser.First;
 begin
   FSrcPos := 1;
   FRow := 1;
+  FCurrentToken := '';
+  FCurrentTokenID := -1;
   FLastEnterPos := 0;
 end;
 

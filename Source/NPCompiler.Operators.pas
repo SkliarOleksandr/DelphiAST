@@ -99,7 +99,12 @@ function OperatorShortName(&Operator: TOperatorID): string;
 function GetOperatorID(const Name: string): TOperatorID; inline;
 
 
-
+// todo:
+// 1. ( ).
+// 2. not.
+// 3. *, /, div, mod, and, shl, shr, as.
+// 4. +, –, or, xor.
+// 5. =, <>, <, >, <=, >=, in, is.
 
 
 const
@@ -127,12 +132,12 @@ const
   {opLogicalNot}           8,
 
   {opIn}                   1,
-  {opEqual}                5,
-  {opNotEqual}             5,
-  {opGreaterThan}          5,
-  {opGreaterThanOrEqual}   5,
-  {opLessThan}             5,
-  {opLessThanOrEqual}      5,
+  {opEqual}                4,
+  {opNotEqual}             4,
+  {opGreaterThan}          4,
+  {opGreaterThanOrEqual}   4,
+  {opLessThan}             4,
+  {opLessThanOrEqual}      4,
   {opAdd}                  6,
   {opSubtract}             6,
   {opMultiply}             7,
@@ -141,13 +146,10 @@ const
   {opModDiv}               7,
   {opLeftShift}            7,
   {opRightShift}           7,
-  {opLogicalAnd}           3,
-  {opLogicalOr}            2,
-  {opLogicalXor}           2
+  {opLogicalAnd}           7,
+  {opLogicalOr}            5,
+  {opLogicalXor}           5
   );
-
-
-
 
 const
   // Приоритеты операций (-1 - низший приоритет, 10 - высшый приоритет)
