@@ -139,6 +139,7 @@ type
   TIDBuiltInFunction = class(TIDProcedure)
   protected
     class function GetFunctionID: TBuiltInFunctionID; virtual; abstract;
+    class function CreateTMPExpr(const EContext: TEContext; const DataType: TIDType): TIDExpression;
   public
     constructor Create(Scope: TScope; const Name: string; ResultType: TIDType); reintroduce; virtual;
     /////////////////////////////////////////////////////////////////////////////////////////
@@ -4687,6 +4688,14 @@ begin
   Scope := Scope;
   ItemType := itMacroFunction;
   Self.DataType := ResultType;
+end;
+
+class function TIDBuiltInFunction.CreateTMPExpr(const EContext: TEContext; const DataType: TIDType): TIDExpression;
+var
+  Decl: TIDVariable;
+begin
+  Decl := EContext.SContext.Proc.GetTMPVar(DataType);
+  Result := TIDExpression.Create(Decl);
 end;
 
 { TIDSysCompileFunction }

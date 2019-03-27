@@ -145,8 +145,8 @@ var
 begin
   Right := EContext.RPNPopExpression();
   Left := EContext.RPNPopExpression();
+  Result := CreateTMPExpr(EContext, SYSUnit._NativeInt);
   // todo:
-  Result := Left;
 end;
 
 class function TSF_AtomicExchange.Register(Scope: TScope): TIDBuiltInFunction;
@@ -164,6 +164,7 @@ begin
   var Arg1 := EContext.RPNPopExpression();
   var Arg2 := EContext.RPNPopExpression();
   var Arg3 := EContext.RPNPopExpression();
+  Result := CreateTMPExpr(EContext, SYSUnit._NativeInt);
 end;
 
 
@@ -370,8 +371,15 @@ end;
 { TCT_Inc }
 
 function TCT_Inc.Process(var EContext: TEContext): TIDExpression;
+var
+  Increment, Value: TIDExpression;
 begin
+  // читаем второй аргумент (значение инкремента/декримента)
+  Increment := EContext.RPNPopExpression();
+  // читаем первый аргумент (переменная)
+  Value := EContext.RPNPopExpression();
 
+  Result := nil;
 end;
 
 class function TCT_Inc.Register(Scope: TScope): TIDBuiltInFunction;
@@ -385,8 +393,15 @@ end;
 { TCT_Dec }
 
 function TCT_Dec.Process(var EContext: TEContext): TIDExpression;
+var
+  Increment, Value: TIDExpression;
 begin
+  // читаем второй аргумент (значение инкремента/декримента)
+  Increment := EContext.RPNPopExpression();
+  // читаем первый аргумент (переменная)
+  Value := EContext.RPNPopExpression();
 
+  Result := nil;
 end;
 
 class function TCT_Dec.Register(Scope: TScope): TIDBuiltInFunction;
