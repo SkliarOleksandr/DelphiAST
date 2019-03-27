@@ -242,6 +242,13 @@ type
     function Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; override;
   end;
 
+  {внутренний implicit оператор String -> AnsiString}
+  TIDOpImplicitStringToPChar = class(TIDInternalOpImplicit)
+  public
+    function Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
+    function Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; override;
+  end;
+
   {внутренний implicit оператор MetaClass -> TGUID}
   TIDOpImplicitMetaClassToGUID = class(TIDInternalOpImplicit)
   public
@@ -2319,20 +2326,15 @@ begin
     else
       FileName := FileName + '.'; // tmp
   end;
-//  Parser.SaveState(Pos);
   Stream := TStringStream.Create;
   try
-    //Package.FindUnitFile()
     Stream.LoadFromFile(ExtractFilePath(Self.FileName) + FileName);
-    CompileSource(usImplementation, Stream.DataString);
-    //Parser.Source := Stream.DataString;
-    //parser_NextToken(Scope);
-    //SC := TSContext.Create(Self);
-    //ParseStatements(Scope, SC, False);
+    var Messages := CompileSource(usImplementation, Stream.DataString);
+    if Messages.HasErrors then
+      AbortWork('The included file: ' + FileName + ' has errors', parser_Position);
   finally
     Stream.Free;
   end;
-  //Parser.LoadState(Pos);
 end;
 
 function TASTDelphiUnit.ParseConstExpression(Scope: TScope; out Expr: TIDExpression; EPosition: TExpessionPosition): TTokenID;
@@ -4703,6 +4705,18 @@ end;
 class function TIDSysCompileFunction.GetFunctionID: TBuiltInFunctionID;
 begin
   Result := bf_sysctfunction;
+end;
+
+{ TIDOpImplicitStringToPChar }
+
+function TIDOpImplicitStringToPChar.Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+begin
+  Result := Dst;
+end;
+
+function TIDOpImplicitStringToPChar.Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
+begin
+  Result := Src;
 end;
 
 end.

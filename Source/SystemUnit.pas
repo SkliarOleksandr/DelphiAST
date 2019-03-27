@@ -41,6 +41,8 @@ type
     FArrayType: TIDArray; // служебный тип для функций Length/SetLength
     FRefType: TIDType; // служебный тип для функций SizeOf
     FGuidType: TIDStructure;
+    fPAnsiChar: TIDType;
+    fPChar: TIDType;
     FOrdinalType: TIDType;
     FTObject: TIDClass;
     FException: TIDClass;
@@ -164,6 +166,8 @@ type
     property _TypeID: TIDType read FTypeIDType;
     property _DeprecatedDefaultStr: TIDStringConstant read fDeprecatedDefaultStr;
     property _OrdinalType: TIDType read FOrdinalType;
+    property _PAnsiCharType: TIDType read fPAnsiChar;
+    property _PCharType: TIDType read fPChar;
   end;
 
 var
@@ -270,6 +274,14 @@ begin
 
   _String.OverloadImplicitTo(_AnsiString, TIDOpImplicitStringToAnsiString.CreateInternal(_AnsiString));
   _String.OverloadImplicitTo(_TGuid, TIDOpImplicitStringToGUID.CreateInternal(_TGuid));
+
+  _String.OverloadImplicitTo(_PCharType, TIDOpImplicitStringToPChar.CreateInternal(_PCharType));
+  _String.OverloadImplicitTo(_PAnsiCharType, TIDOpImplicitStringToPChar.CreateInternal(_PAnsiCharType));
+
+  _AnsiString.OverloadImplicitTo(_PCharType, TIDOpImplicitStringToPChar.CreateInternal(_PCharType));
+  _AnsiString.OverloadImplicitTo(_PAnsiCharType, TIDOpImplicitStringToPChar.CreateInternal(_PAnsiCharType));
+
+
   _AnsiString.OverloadImplicitTo(_String, TIDOpImplicitAnsiStringToString.CreateInternal(_String));
   _AnsiString.OverloadImplicitTo(_TGuid, TIDOpImplicitStringToGUID.CreateInternal(_TGuid));
 
@@ -897,8 +909,8 @@ begin
   RegisterTypeAlias('OleVariant', _Variant);
 
   // todo: make RegisterPointer method
-  RegisterPointer('PAnsiChar', _AnsiChar);
-  RegisterPointer('PWideChar', _Char);
+  fPAnsiChar := RegisterPointer('PAnsiChar', _AnsiChar);
+  fPChar := RegisterPointer('PWideChar', _Char);
   RegisterTypeAlias('PChar', _Char);
   RegisterTypeAlias('Text', _Pointer);
   //RegisterTypeAlias('FixedInt', _Int32);

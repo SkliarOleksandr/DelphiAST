@@ -130,15 +130,15 @@ begin
   Prj.Defines.Add('CPUX86');
   Prj.Defines.Add('MSWINDOWS');
 
-  Prj.AddUnit(SystemUnit.SYSUnit, nil);
+  //Prj.AddUnit(SystemUnit.SYSUnit, nil);
 
-  UN := TASTDelphiUnit.Create(Prj, edUnit.Text);
+  UN := TASTDelphiUnit.Create(Prj, 'test', edUnit.Text);
   Prj.AddUnit(UN, nil);
 
   Msg := TStringList.Create;
   try
     Msg.Add('===================================================================');
-    CResult := Prj.CompileInterfacesOnly;
+    CResult := Prj.Compile;
     if CResult = CompileSuccess then
       Msg.Add('compile success')
     else

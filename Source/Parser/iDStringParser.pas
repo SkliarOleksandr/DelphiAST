@@ -87,7 +87,7 @@ type
   {$ENDIF}
 
 
-  TStringParser = class
+  TGenericLexer = class
   strict private
     FTokens: TParseTokens;
     FSource: string;                   // Текст
@@ -107,6 +107,7 @@ type
     FErrorState: TParserErrorState;
     FOmitted: string;
     FTokenIDGenerator: Integer;
+    fCutToken: PCharToken;
   private
     function GetPosition: TTextPosition; inline;
     function GetLinePosition: TTextPosition; inline;
@@ -122,7 +123,8 @@ type
     procedure ParseMultiLineRem(TokenID: Integer; var SPos: Integer);
     procedure ParseOneLineRem(var SPos: Integer);
     procedure ParseDidgit(SPos: Integer);
-    procedure ParseCharCode(SPos: Integer);
+    procedure ParseCharCode(SPos: Integer); overload;
+    procedure ParseCharCode(SPos: Integer; out Chars: string); overload;
     procedure ParseQuote(Ch: Char; SPos: Integer);
     function ParseQuoteMulti(Ch: Char; SPos: Integer): Integer;
     procedure ParseUnicodeChars(SPos: Integer);
@@ -135,17 +137,19 @@ type
     property SeparatorChars: string read FSeparators write SetSeparators;
     property OmittedChars: string read FOmitted write SetOmitted;
     property Tokens: TParseTokens read FTokens;
+    property CurToken: PCharToken read fCutToken;
+    property CurrentToken: string read FCurrentToken;            // Для не идентификаторов равен пустой строке
+    function NextTokenID: Integer;
+    function GetNextToken: PCharToken;
   public
     constructor Create(const Source: string); virtual;
     destructor Destroy; override;
     ///////////////////////////////////////////////////
     procedure First;
-    function NextTokenID: Integer;
     property CurrentTokenID: Integer read FCurrentTokenID;
     property ErrorState: TParserErrorState read FErrorState;
     property Source: string read FSource write SetSource;
     property SourcePosition: Integer read FSrcPos;
-    property OriginalToken: string read FCurrentToken;            // Для не идентификаторов равен пустой строке
     property TokenName: string read GetTokenName;                 // Строковое представление токена
     property Position: TTextPosition read GetPosition;            // Позиция текущего токена формата (row,col)
     property LinePosition: TTextPosition read GetLinePosition;
@@ -164,7 +168,15 @@ implementation
 
 { TStringParser }
 
-constructor TStringParser.Create(const Source: string);
+function TGenericLexer.GetNextToken: PCharToken;
+var
+  Ch: Char;
+begin
+  Ch := Char(FUpCase[FSource[FSrcPos]]);
+  Result := addr(Tokens[Ch]);
+end;
+
+constructor TGenericLexer.Create(const Source: string);
 var
   c: Char;
 begin
@@ -188,13 +200,13 @@ begin
     FUpCase[c] := AnsiChar(UpCase(c));
 end;
 
-destructor TStringParser.Destroy;
+destructor TGenericLexer.Destroy;
 begin
   FTokenCaptions.Free;
   inherited;
 end;
 
-procedure TStringParser.First;
+procedure TGenericLexer.First;
 begin
   FSrcPos := 1;
   FRow := 1;
@@ -203,7 +215,7 @@ begin
   FLastEnterPos := 0;
 end;
 
-function TStringParser.NextTokenID: Integer;
+function TGenericLexer.NextTokenID: Integer;
 var
   SPos, SPos2, ReadedChars, i, RemID: Integer;
   Ch: Char;
@@ -257,6 +269,7 @@ begin
     end else
       Token := Addr(Tokens[MaxTokenChar]); // Unicode chars...
 
+    fCutToken := Token;
     case Token.TokenType of
       ttNone: begin // read some identifier:
         Inc(SPos);
@@ -353,7 +366,7 @@ begin
   end;
 end;
 
-procedure TStringParser.ParseBinPrefix(SPos: Integer);
+procedure TGenericLexer.ParseBinPrefix(SPos: Integer);
 var
   ReadedChars: Integer;
 begin
@@ -370,7 +383,7 @@ begin
   FSrcPos := SPos;
 end;
 
-procedure TStringParser.ParseHexPrefix(SPos: Integer);
+procedure TGenericLexer.ParseHexPrefix(SPos: Integer);
 var
   ReadedChars: Integer;
 begin
@@ -387,7 +400,7 @@ begin
   FSrcPos := SPos;
 end;
 
-procedure TStringParser.ParseDidgit(SPos: Integer);
+procedure TGenericLexer.ParseDidgit(SPos: Integer);
 type
   TNumberSymbols = set of (nsExponent, nsPoint, nsSign);
 var
@@ -429,7 +442,7 @@ begin
   FSrcPos := SPos;
 end;
 
-procedure TStringParser.ParseMultiLineRem(TokenID: Integer; var SPos: Integer);
+procedure TGenericLexer.ParseMultiLineRem(TokenID: Integer; var SPos: Integer);
 var
   SPos2, i, RemID: integer;
   Token, ptmp: PCharToken;
@@ -479,7 +492,7 @@ begin
   end;
 end;
 
-procedure TStringParser.ParseOneLineRem(var SPos: Integer);
+procedure TGenericLexer.ParseOneLineRem(var SPos: Integer);
 var
   Ch: Char;
 begin
@@ -497,7 +510,7 @@ begin
   FLastEnterPos := SPos;
 end;
 
-procedure TStringParser.ParseQuote(Ch: Char; SPos: Integer);
+procedure TGenericLexer.ParseQuote(Ch: Char; SPos: Integer);
 var
   QuoteChar: Char;
   SPos2, ReadedChars: Integer;
@@ -537,7 +550,7 @@ begin
 //  Inc(SPos);
 end;
 
-function TStringParser.ParseQuoteMulti(Ch: Char; SPos: Integer): Integer;
+function TGenericLexer.ParseQuoteMulti(Ch: Char; SPos: Integer): Integer;
 var
   QuoteChar: Char;
   SignIdx, SPos2, ReadedChars, SignReadedChars, SignLen: Integer;
@@ -602,7 +615,7 @@ begin
   Result := FIdentifireID;
 end;
 
-procedure TStringParser.ParseUnicodeChars(SPos: Integer);
+procedure TGenericLexer.ParseUnicodeChars(SPos: Integer);
 var
   ReadedChars: Integer;
   Ch: Char;
@@ -623,7 +636,7 @@ begin
   // end read;
 end;
 
-procedure TStringParser.RegisterRemToken(const BeginToken, EndToken: string; BeginTokenID, EndTokenID: Integer);
+procedure TGenericLexer.RegisterRemToken(const BeginToken, EndToken: string; BeginTokenID, EndTokenID: Integer);
 begin
   RegisterToken(BeginToken, EndTokenID, ttStartRem);
   RegisterToken(EndToken, EndTokenID, ttEndRem);
@@ -636,7 +649,7 @@ begin
   Inc(FTokenIDGenerator);
 end;}
 
-procedure TStringParser.RegisterToken(const Token: string; aTokenID: Integer; aTokenType: TTokenType; const TokenCaption: string);
+procedure TGenericLexer.RegisterToken(const Token: string; aTokenID: Integer; aTokenType: TTokenType; const TokenCaption: string);
 var
   i, j, c, c2: Integer;
   pToken, pt: PCharToken;
@@ -683,7 +696,7 @@ begin
   FTokens[AnsiLowerCase(ch)[1]] := FTokens[ch];
 end;
 
-procedure TStringParser.SaveState(out State: TParserPosition);
+procedure TGenericLexer.SaveState(out State: TParserPosition);
 begin
   State.SourcePosition := FSrcPos;
   State.Row := FRow;
@@ -693,7 +706,7 @@ begin
   State.OriginalToken := FCurrentToken;
 end;
 
-procedure TStringParser.LoadState(const State: TParserPosition);
+procedure TGenericLexer.LoadState(const State: TParserPosition);
 begin
   FSrcPos := State.SourcePosition;
   FRow := State.Row;
@@ -702,7 +715,7 @@ begin
   FCurrentToken := State.OriginalToken;
 end;
 
-procedure TStringParser.SetOmitted(const Value: string);
+procedure TGenericLexer.SetOmitted(const Value: string);
 var
   i: Integer;
   c: Char;
@@ -721,7 +734,7 @@ begin
   FOmitted := Value;
 end;
 
-procedure TStringParser.SetSeparators(const Value: string);
+procedure TGenericLexer.SetSeparators(const Value: string);
 var
   i: Integer;
   c: Char;
@@ -737,14 +750,14 @@ begin
   FSeparators := Value;
 end;
 
-procedure TStringParser.SetSource(const Value: string);
+procedure TGenericLexer.SetSource(const Value: string);
 begin
   FLength := Length(Value);
   FSource := Value;
   First;
 end;
 
-function TStringParser.TokenLexem(TokenID: Integer): string;
+function TGenericLexer.TokenLexem(TokenID: Integer): string;
 var
   i: Integer;
 begin
@@ -755,38 +768,38 @@ begin
     Result := '';
 end;
 
-function TStringParser.GetLinePosition: TTextPosition;
+function TGenericLexer.GetLinePosition: TTextPosition;
 begin
   Result.Row := FRow;
   Result.Col := -1;
 end;
 
-procedure TStringParser.GetIdentifier(var ID: TIdentifier);
+procedure TGenericLexer.GetIdentifier(var ID: TIdentifier);
 begin
   ID.Name := FCurrentToken;
   ID.TextPosition.Row := FRow;
   ID.TextPosition.Col := FSrcPos - FLastEnterPos;
 end;
 
-function TStringParser.GetPosition: TTextPosition;
+function TGenericLexer.GetPosition: TTextPosition;
 begin
   Result.Row := FRow;
   Result.Col := FSrcPos - FLastEnterPos;
 end;
 
-function TStringParser.GetSubString(StartPos, EndPos: Integer): string;
+function TGenericLexer.GetSubString(StartPos, EndPos: Integer): string;
 begin
   Result := Copy(FSource, StartPos, EndPos - StartPos);
 end;
 
-procedure TStringParser.GetTokenAsIdentifier(var ID: TIdentifier);
+procedure TGenericLexer.GetTokenAsIdentifier(var ID: TIdentifier);
 begin
   ID.Name := TokenLexem(FCurrentTokenID);
   ID.TextPosition.Row := FRow;
   ID.TextPosition.Col := FSrcPos - FLastEnterPos;
 end;
 
-function TStringParser.GetTokenName: string;
+function TGenericLexer.GetTokenName: string;
 begin
   if FCurrentTokenID = FIdentifireID then
     Result := FCurrentToken
@@ -794,7 +807,7 @@ begin
     Result := TokenLexem(FCurrentTokenID);
 end;
 
-procedure TStringParser.ParseCharCode(SPos: Integer);
+procedure TGenericLexer.ParseCharCode(SPos: Integer);
 type
   TNumberSymbols = set of (nsExponent, nsPoint, nsSign);
 var
@@ -820,6 +833,33 @@ begin
   FCurrentToken := Copy(FSource, SPos - ReadedChars, ReadedChars);
   FIdentifireType := itCharCodes;
   FCurrentTokenID := FIdentifireID;
+  FSrcPos := SPos;
+end;
+
+procedure TGenericLexer.ParseCharCode(SPos: Integer; out Chars: string);
+type
+  TNumberSymbols = set of (nsExponent, nsPoint, nsSign);
+var
+  ReadedChars: integer;
+  Ch: Char;
+  NumberSymbols: TNumberSymbols;
+  CToken: PCharToken;
+begin
+  Chars := '';
+  NumberSymbols := [];
+  ReadedChars := 0;
+  Inc(SPos);
+  while SPos <= FLength do
+  begin
+    Ch := Char(FUpCase[FSource[SPos]]);
+    CToken := addr(Tokens[Ch]);
+    if (CToken.TokenType <> ttCharCode) and
+       (CToken.TokenType <> ttDigit) then Break;
+    Inc(SPos);
+    Inc(ReadedChars);
+  end;
+  // read identifier:
+  Chars := Copy(FSource, SPos - ReadedChars, ReadedChars);
   FSrcPos := SPos;
 end;
 

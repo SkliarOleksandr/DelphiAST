@@ -4,7 +4,7 @@ interface
 
 {$i compilers.inc}
 
-uses iDStringParser, SysUtils, Classes, NPCompiler.Classes, NPCompiler.Errors;
+uses iDStringParser, SysUtils, StrUtils, Types, Classes, NPCompiler.Classes, NPCompiler.Errors;
 
 type
 
@@ -25,8 +25,6 @@ type
     token_lessorequal,              // <=
     token_notequal,                 // <>
     token_period,                   // ..
-    token_plusplus,                 // ++
-    token_minusminus,               // --
 
     token_exclamation,              // !
     token_question,                 // ?
@@ -46,6 +44,7 @@ type
     token_closeblock,               // ]
     token_openfigure,               // {
     token_closefigure,              // }
+    token_quote,                    // '
 
     token_openround_asteriks,
     token_closeround_asteriks,
@@ -91,8 +90,6 @@ type
     token_set,                      // keyword: set
     token_array,                    // keyword: array
     token_if,                       // keyword: if
-    token_iif,                      // keyword: iif
-    token_icase,                    // keyword: icase
     token_in,                       // keyword: in
     //token_index,                    // keyword: index
     token_inline,                   // keyword: inline
@@ -162,7 +159,6 @@ type
     token_label,                    // keyword: label
     token_goto,                     // keyword: goto
 
-
     token_cond_define,              // {$DEFINE...
     token_cond_else,                // {$ELSE...
     token_cond_else_if,             // {$ELSEIF (condition)}
@@ -176,9 +172,13 @@ type
     token_cond_message              // {$MESSAGE...
   );
 
-  TDelphiParser = class(TStringParser)
+  TDelphiParser = class(TGenericLexer)
+  private
+    fOriginalToken: string;
+  protected
+    procedure ParseChainedString(const FirstPart: string);
   public
-    function NextToken: TTokenID; inline;
+    function NextToken: TTokenID;
     function TokenLexem(TokenID: TTokenID): string;
     constructor Create(const Source: string); override;
     procedure RegisterToken(const Token: string; TokenID: TTokenID; const TokenCaption: string; TokenType: TTokenType = ttToken); overload;
@@ -187,6 +187,7 @@ type
     procedure ReadNextIdentifier(var Identifier: TIdentifier); inline;
     procedure MatchToken(ActualToken, ExpectedToken: TTokenID); inline;
     procedure MatchNextToken(ExpectedToken: TTokenID); inline;
+    property OriginalToken: string read fOriginalToken;
   end;
 
   function TokenCanBeID(TokenID: TTokenID): Boolean; inline;
@@ -226,6 +227,82 @@ begin
     AbortWork(sExpected, [UpperCase(TokenLexem(ExpectedToken))], PrevPosition);
 end;
 
+procedure TDelphiParser.MatchNextToken(ExpectedToken: TTokenID);
+begin
+  if TTokenID(NextTokenID) <> ExpectedToken then
+    AbortWork(sExpected, [UpperCase(TokenLexem(ExpectedToken))], PrevPosition);
+end;
+
+function TDelphiParser.NextToken: TTokenID;
+var
+  Token: PCharToken;
+begin
+  Result := TTokenID(NextTokenID);
+  if Result = token_identifier then
+    fOriginalToken := OriginalToken;
+
+  if CurToken.TokenID = ord(token_quote) then
+  begin
+    Token := GetNextToken();
+    if Token.TokenID = Ord(token_numbersign) then
+      ParseChainedString(OriginalToken);
+  end;
+end;
+
+function AAA(const Str: string): string;
+var
+  Chars: TStringDynArray;
+begin
+  Result := '';
+
+  Chars := SplitString(Str, '#');
+  if Chars[0] = '' then
+    Delete(Chars, 0, 1);
+  // this is a string
+  if Length(Chars) > 0 then
+  begin
+    SetLength(Result, Length(Chars));
+    for var i := 0 to Length(Chars) - 1 do
+      Result[Low(string) + i] := Char(StrToInt(Chars[i]));
+  end;
+end;
+
+procedure TDelphiParser.ParseChainedString(const FirstPart: string);
+var
+  Token: PCharToken;
+begin
+  while True do
+  begin
+    if CurToken.TokenID = ord(token_quote) then
+    begin
+      Token := GetNextToken();
+      if Token.TokenID = Ord(token_numbersign) then
+      begin
+        NextToken();
+        fOriginalToken := FirstPart + AAA(CurrentToken);
+      end;
+    end;
+    break;
+  end;
+end;
+
+procedure TDelphiParser.RegisterToken(const Token: string; TokenID: TTokenID; const TokenCaption: string; TokenType: TTokenType);
+begin
+  inherited RegisterToken(Token, Integer(TokenID), TokenType, TokenCaption);
+  FTokensAttr[TokenID] := False;
+end;
+
+procedure TDelphiParser.RegisterToken(const Token: string; TokenID: TTokenID; CanBeID: Boolean);
+begin
+  inherited RegisterToken(Token, Integer(TokenID), ttToken, Token);
+  FTokensAttr[TokenID] := CanBeID;
+end;
+
+function TDelphiParser.TokenLexem(TokenID: TTokenID): string;
+begin
+  Result := inherited TokenLexem(Integer(TokenID));
+end;
+
 constructor TDelphiParser.Create(const Source: string);
 begin
   inherited Create(Source);
@@ -243,7 +320,7 @@ begin
   RegisterToken(#10, token_Unknown, '', ttNewLine);
   RegisterToken(#13#10, token_Unknown, '', ttNewLine);
   RegisterToken(#13, token_Unknown, '', ttOmited);
-  RegisterToken('''', token_unknown, '', ttQuote);
+  RegisterToken('''', token_quote, 'quote', ttQuote);
   RegisterToken('"', token_unknown, '', ttQuoteMulti);
   RegisterToken('//', token_unknown, '', ttOneLineRem);
   RegisterToken(';', token_semicolon, 'semicolon');
@@ -264,9 +341,7 @@ begin
   RegisterToken('{', token_openfigure);
   RegisterToken('}', token_closefigure);
   RegisterToken('+', token_plus, 'plus');
-  RegisterToken('++', token_plusplus, 'plusplus');
   RegisterToken('-', token_minus, 'minus');
-  RegisterToken('--', token_minusminus, 'minusminus');
   RegisterToken('!', token_exclamation, 'exclamation');
   RegisterToken('?', token_question, 'question');
   RegisterToken('*', token_asterisk, 'asterisk');
@@ -311,7 +386,6 @@ begin
   RegisterToken('fastcall', token_fastcall);
   RegisterToken('goto', token_goto);
   RegisterToken('if', token_if);
-  RegisterToken('iif', token_iif);
   RegisterToken('is', token_is);
   RegisterToken('in', token_in);
   //RegisterToken('index', token_index);
@@ -394,34 +468,6 @@ begin
   RegisterToken('{$MESSAGE', token_cond_message);
   RegisterToken('{$INCLUDE', token_cond_include);
   RegisterToken('{$I', token_cond_include);
-end;
-
-procedure TDelphiParser.MatchNextToken(ExpectedToken: TTokenID);
-begin
-  if TTokenID(NextTokenID) <> ExpectedToken then
-    AbortWork(sExpected, [UpperCase(TokenLexem(ExpectedToken))], PrevPosition);
-end;
-
-function TDelphiParser.NextToken: TTokenID;
-begin
-  Result := TTokenID(NextTokenID);
-end;
-
-procedure TDelphiParser.RegisterToken(const Token: string; TokenID: TTokenID; const TokenCaption: string; TokenType: TTokenType);
-begin
-  inherited RegisterToken(Token, Integer(TokenID), TokenType, TokenCaption);
-  FTokensAttr[TokenID] := False;
-end;
-
-procedure TDelphiParser.RegisterToken(const Token: string; TokenID: TTokenID; CanBeID: Boolean);
-begin
-  inherited RegisterToken(Token, Integer(TokenID), ttToken, Token);
-  FTokensAttr[TokenID] := CanBeID;
-end;
-
-function TDelphiParser.TokenLexem(TokenID: TTokenID): string;
-begin
-  Result := inherited TokenLexem(Integer(TokenID));
 end;
 
 end.

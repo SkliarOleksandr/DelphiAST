@@ -723,7 +723,6 @@ type
 
     function CompileIntfOnly: TCompilerResult; virtual;
 
-    procedure Optimize;
     function GetILText: string;
     function CheckUsed: Boolean;
     function UsedUnit(const UnitName: string): Boolean;
@@ -1500,40 +1499,6 @@ begin
     Code := Code.Next;
   end;
   Proc.VarSpace.Reindex;
-end;
-
-procedure TNPUnit.Optimize;
-var
-  T: TIDType;
-  TypesCnt,
-  ProcsCnt,
-  ConstsCnt: Integer;
-begin
-  {провека неиспользуемых глобальных переменных}
-  CheckUnusedVariables(@FVarSpace);
-
-  T := FTypeSpace.First;
-  while Assigned(T) do
-  begin
-    if T is TIDStructure then
-    begin
-      CheckUnusedVariables(TIDStructure(T).Fields);
-      CheckAndDelUnusedProcs(TIDStructure(T).Methods^);
-    end;
-    T := TIDType(T.NextItem);
-  end;
-
-  TypesCnt := 1;
-  ProcsCnt := 1;
-  ConstsCnt := 1;
-  while (ProcsCnt > 0) or
-        (TypesCnt > 0) or
-        (ConstsCnt > 0) do
-  begin
-    ProcsCnt := CheckAndDelUnusedProcs(FProcSpace);
-    TypesCnt := CheckAndDelUnusedTypes(FTypeSpace);
-    ConstsCnt := CheckAndDelUnusedConsts(FConsts);
-  end;
 end;
 
 procedure TNPUnit.Opt_ReduceIncRefDecRef(const Proc: TIDProcedure);
@@ -13235,7 +13200,7 @@ end;
 
 function TNPUnit.parser_NextToken(Scope: TScope): TTokenID;
 begin
-  Result := TTokenID(FParser.NextTokenID);
+  Result := TTokenID(FParser.NextToken);
   if Result >= token_cond_define then
     Result := ParseCondStatements(Scope, Result);
 end;

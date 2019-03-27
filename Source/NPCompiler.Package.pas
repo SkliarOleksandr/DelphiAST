@@ -342,18 +342,6 @@ begin
     if Result = CompileFail then
       Exit;
   end;
-  // оптимизация модулей
-  for i := 0 to FUnits.Count - 1 do
-  begin
-    try
-      TNPUnit(FUnits[i]).Optimize;
-    except
-      on e: exception do
-      begin
-        Result := CompileFail;
-      end;
-    end;
-  end;
 end;
 
 destructor TNPPackage.Destroy;
