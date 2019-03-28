@@ -172,11 +172,11 @@ type
     token_cond_message              // {$MESSAGE...
   );
 
-  TDelphiParser = class(TGenericLexer)
+  TDelphiLexer = class(TGenericLexer)
   private
     fOriginalToken: string;
   protected
-    procedure ParseChainedString(const FirstPart: string);
+    procedure ParseChainedString;
   public
     function NextToken: TTokenID;
     function TokenLexem(TokenID: TTokenID): string;
@@ -206,13 +206,13 @@ begin
   Result := (TokenID = token_identifier) or FTokensAttr[TokenID];
 end;
 
-procedure TDelphiParser.ReadCurrIdentifier(var Identifier: TIdentifier);
+procedure TDelphiLexer.ReadCurrIdentifier(var Identifier: TIdentifier);
 begin
   Identifier.Name := OriginalToken;
   Identifier.TextPosition := Position;
 end;
 
-procedure TDelphiParser.ReadNextIdentifier(var Identifier: TIdentifier);
+procedure TDelphiLexer.ReadNextIdentifier(var Identifier: TIdentifier);
 begin
   if NextToken = token_Identifier then begin
     Identifier.Name := OriginalToken;
@@ -221,35 +221,19 @@ begin
     AbortWork(sIdExpectedButFoundFmt, [TokenLexem(TTokenID(CurrentTokenID))], PrevPosition);
 end;
 
-procedure TDelphiParser.MatchToken(ActualToken, ExpectedToken: TTokenID);
+procedure TDelphiLexer.MatchToken(ActualToken, ExpectedToken: TTokenID);
 begin
   if ActualToken <> ExpectedToken then
     AbortWork(sExpected, [UpperCase(TokenLexem(ExpectedToken))], PrevPosition);
 end;
 
-procedure TDelphiParser.MatchNextToken(ExpectedToken: TTokenID);
+procedure TDelphiLexer.MatchNextToken(ExpectedToken: TTokenID);
 begin
   if TTokenID(NextTokenID) <> ExpectedToken then
     AbortWork(sExpected, [UpperCase(TokenLexem(ExpectedToken))], PrevPosition);
 end;
 
-function TDelphiParser.NextToken: TTokenID;
-var
-  Token: PCharToken;
-begin
-  Result := TTokenID(NextTokenID);
-  if Result = token_identifier then
-    fOriginalToken := OriginalToken;
-
-  if CurToken.TokenID = ord(token_quote) then
-  begin
-    Token := GetNextToken();
-    if Token.TokenID = Ord(token_numbersign) then
-      ParseChainedString(OriginalToken);
-  end;
-end;
-
-function AAA(const Str: string): string;
+function CharsToStr(const Str: string): string;
 var
   Chars: TStringDynArray;
 begin
@@ -267,43 +251,63 @@ begin
   end;
 end;
 
-procedure TDelphiParser.ParseChainedString(const FirstPart: string);
+function TDelphiLexer.NextToken: TTokenID;
+var
+  Token: PCharToken;
+begin
+  Result := TTokenID(NextTokenID);
+  if Result = token_identifier then
+    fOriginalToken := CurrentToken;
+
+  if CurToken.TokenID = ord(token_quote) then
+    ParseChainedString()
+  else
+  if CurToken.TokenID = ord(token_numbersign) then
+  begin
+    fOriginalToken := CharsToStr(fOriginalToken);
+    ParseChainedString();
+  end;
+end;
+
+procedure TDelphiLexer.ParseChainedString;
 var
   Token: PCharToken;
 begin
   while True do
   begin
-    if CurToken.TokenID = ord(token_quote) then
+    Token := GetNextToken();
+    if Token.TokenID = ord(token_numbersign) then
     begin
-      Token := GetNextToken();
-      if Token.TokenID = Ord(token_numbersign) then
-      begin
-        NextToken();
-        fOriginalToken := FirstPart + AAA(CurrentToken);
-      end;
-    end;
-    break;
+      NextTokenID();
+      fOriginalToken := fOriginalToken + CharsToStr(CurrentToken);
+    end else
+    if Token.TokenID = ord(token_quote) then
+    begin
+      NextTokenID();
+      fOriginalToken := fOriginalToken + CurrentToken;
+    end else
+      break;
   end;
 end;
 
-procedure TDelphiParser.RegisterToken(const Token: string; TokenID: TTokenID; const TokenCaption: string; TokenType: TTokenType);
+procedure TDelphiLexer.RegisterToken(const Token: string; TokenID: TTokenID; const TokenCaption: string; TokenType: TTokenType);
 begin
   inherited RegisterToken(Token, Integer(TokenID), TokenType, TokenCaption);
   FTokensAttr[TokenID] := False;
 end;
 
-procedure TDelphiParser.RegisterToken(const Token: string; TokenID: TTokenID; CanBeID: Boolean);
+procedure TDelphiLexer.RegisterToken(const Token: string; TokenID: TTokenID; CanBeID: Boolean);
 begin
   inherited RegisterToken(Token, Integer(TokenID), ttToken, Token);
   FTokensAttr[TokenID] := CanBeID;
 end;
 
-function TDelphiParser.TokenLexem(TokenID: TTokenID): string;
+function TDelphiLexer.TokenLexem(TokenID: TTokenID): string;
 begin
   Result := inherited TokenLexem(Integer(TokenID));
 end;
 
-constructor TDelphiParser.Create(const Source: string);
+constructor TDelphiLexer.Create(const Source: string);
 begin
   inherited Create(Source);
   IdentifireID := integer(token_identifier);

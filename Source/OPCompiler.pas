@@ -130,7 +130,7 @@ type
   private
     FID: Integer;                      // ID модуля в пакете
     FPackage: INPPackage;
-    FParser: TDelphiParser;
+    FParser: TDelphiLexer;
     FUnitName: TIdentifier;
     FIntfScope: TScope;                // interface scope
     FImplScope: TScope;                // implementation scope
@@ -693,7 +693,7 @@ type
     function FindIDNoAbort(Scope: TScope; const ID: TIdentifier): TIDDeclaration; overload; inline;
     function FindIDNoAbort(Scope: TScope; const ID: string): TIDDeclaration; overload; inline;
     function FindIDNoAbort(Scope: TScope; const ID: TIdentifier; out Expression: TIDExpression): TIDDeclaration; overload; inline;
-    property Parser: TDelphiParser read FParser;
+    property Parser: TDelphiLexer read FParser;
   strict private
     function GetTMPVar(SContext: PSContext; DataType: TIDType): TIDVariable; overload;
     function GetTMPVar(var EContext: TEContext; DataType: TIDType): TIDVariable; overload;
@@ -4214,7 +4214,7 @@ begin
   inherited Create(Project, FileName, Source);
   FDefines := TDefines.Create();
   FPackage := Project as INPPackage;
-  FParser := TDelphiParser.Create(Source);
+  FParser := TDelphiLexer.Create(Source);
   FMessages := TCompilerMessages.Create;
   //FVisibility := vPublic;
   FIntfScope := TScope.Create(stGlobal, @FVarSpace, @FProcSpace, nil, Self);
