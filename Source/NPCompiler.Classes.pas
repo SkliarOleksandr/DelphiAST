@@ -983,6 +983,9 @@ type
     procedure WriteToStream(Stream: TStream; const Package: INPPackage); override;
   end;
 
+  TIDRecordConstant = class(TIDXXXConstant<TIDStructure>)
+  end;
+
   TExpressonType = (
     etDeclaration,
     etExpressionList
@@ -1532,6 +1535,13 @@ type
     function FindIDRecurcive(const ID: string; out Expression: TIDExpression): TIDDeclaration; override;
     function FindMembers(const ID: string): TIDDeclaration; override;
     property Struct: TIDStructure read FStruct;
+  end;
+
+  TRecordInitScope = class(TScope)
+  private
+    fStructType: TIDStructure;
+  public
+    property Struct: TIDStructure read fStructType write fStructType;
   end;
 
   TWithScope = class(TProcScope)

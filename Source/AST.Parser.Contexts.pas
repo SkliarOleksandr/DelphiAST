@@ -18,7 +18,7 @@ type
   public
     constructor Create(const Module: TASTModule; Proc: TProc; Block: TASTBlock); overload;
     constructor Create(const Module: TASTModule); overload;
-    function MakeChild(Block: TASTBlock): TASTSContext<TProc>; inline;
+    function MakeChild(Block: TASTBlock): TASTSContext<TProc>; //inline;
     function Add<T: TASTItem>: T;
     procedure AddItem(const Item: TASTItem);
     property Module: TASTModule read fModule;

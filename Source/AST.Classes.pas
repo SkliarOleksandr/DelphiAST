@@ -321,7 +321,12 @@ type
     property Expression: TASTExpression read fExpression write fExpression;
   end;
 
+
+
   TASTKWIF = class(TASTKeyword)
+  type
+    TASTKWIfThenBlock = class(TASTBlock) end;
+    TASTKWIfElseBlock = class(TASTBlock) end;
   private
     fExpression: TASTExpression;
     fThenBody: TASTBlock;
@@ -737,7 +742,7 @@ end;
 
 constructor TASTKWIF.Create(Parent: TASTItem);
 begin
-  fThenBody := TASTBlock.Create(Self);
+  fThenBody := TASTKWIfThenBlock.Create(Self);
 end;
 
 function TASTKWIF.GetDisplayName: string;
@@ -830,8 +835,21 @@ end;
 { TASTBody }
 
 function TASTBlock.GetIsLoopBody: Boolean;
+var
+  Item: TASTItem;
 begin
   Result := fParent is TASTKWLoop;
+  if not Result then
+  begin
+    Item := fParent;
+    while Assigned(Item) do
+    begin
+       if (Item is TASTBlock) and TASTBlock(Item).IsLoopBody then
+         Exit(True);
+       Item := Item.Parent;
+    end;
+  end;
+  Result := False;
 end;
 
 function TASTBlock.GetIsTryBlock: Boolean;

@@ -122,6 +122,7 @@ type
     function ParseProperty(Struct: TIDStructure): TTokenID; override;
     function ParseVarDefaultValue(Scope: TScope; DataType: TIDType; out DefaultValue: TIDExpression): TTokenID; override;
     function ParseVarStaticArrayDefaultValue(Scope: TScope; ArrType: TIDArray; out DefaultValue: TIDExpression): TTokenID; override;
+    function ParseRecordInitValue(Scope: TRecordInitScope; var FirstField: TIDExpression): TTokenID;
 
     function ParseCondInclude(Scope: TScope): TTokenID; override;
 
@@ -2303,6 +2304,7 @@ end;
 function TASTDelphiUnit.ParseBreakStatement(Scope: TScope; var SContext: TSContext): TTokenID;
 begin
   if not SContext.IsLoopBody then
+    if not SContext.IsLoopBody then
     AbortWork(sBreakOrContinueAreAllowedOnlyInALoops, parser_Position);
 
   SContext.Add<TASTKWBreak>;
@@ -2650,9 +2652,11 @@ var
   Status: TRPNStatus;
   Expr: TIDExpression;
   RoundCount: Integer;
+  RecordInitResultExpr: TIDExpression;
 begin
   Status := rprOk;
   RoundCount := 0;
+  RecordInitResultExpr := nil;
   Result := parser_CurTokenID;
   ASTE := TASTExpression.Create(nil);
   while True do begin
@@ -2838,6 +2842,20 @@ begin
           begin
             Status := rpOperand;
             continue;
+          end;
+
+          // the record default value init
+          if (Result = token_colon) and (Scope is TRecordInitScope) then
+          begin
+            if not Assigned(RecordInitResultExpr) then
+            begin
+              var Decl := TIDRecordConstant.CreateAnonymous(Scope, TRecordInitScope(Scope).Struct, nil);
+              //Decl.DataType := TRecordInitScope(Scope).Struct;
+              RecordInitResultExpr := TIDExpression.Create(Decl, Expr.TextPosition);
+              EContext.RPNPushExpression(RecordInitResultExpr);
+            end;
+            Result := ParseRecordInitValue(TRecordInitScope(Scope), Expr);
+            Continue;
           end;
 
           //if Expr.ExpressionType = etDeclaration then
@@ -3102,7 +3120,7 @@ begin
   if LoopVar.DataType = nil then
     LoopVar.DataType := SYSUnit._Int32
   else
-  if (LoopVar.ItemType <> itVar) or not (LoopVar.DataTypeID in [dtInt32, dtUInt64]) then
+  if (LoopVar.ItemType <> itVar) or not (LoopVar.DataType.Ordinal) then
     AbortWork(sForLoopIndexVarsMastBeSimpleIntVar, parser_Position);
 
   // начальное значение
@@ -3277,7 +3295,7 @@ begin
     else
       NewScope := Scope;
 
-    KW.ElseBody := TASTBlock.Create(KW);
+    KW.ElseBody := TASTKWIF.TASTKWIfElseBlock.Create(KW);
     ElseSContext := SContext.MakeChild(KW.ElseBody);
     Result := ParseStatements(NewScope, ElseSContext, False);
   end;
@@ -3680,6 +3698,16 @@ begin
     CheckClassExpression(EExcept);
   KW := SContext.Add<TASTKWRaise>;
   KW.Expression := ASTExpr;
+end;
+
+function TASTDelphiUnit.ParseRecordInitValue(Scope: TRecordInitScope; var FirstField: TIDExpression): TTokenID;
+var
+  FldValue: TIDExpression;
+begin
+  parser_NextToken(Scope);
+  Result := ParseConstExpression(Scope, FldValue, ExprRValue);
+  if Result = token_semicolon then
+    Result := parser_NextToken(Scope);
 end;
 
 function TASTDelphiUnit.ParseRepeatStatement(Scope: TScope; var SContext: TSContext): TTokenID;
@@ -4089,6 +4117,7 @@ function TASTDelphiUnit.ParseVarStaticArrayDefaultValue(Scope: TScope; ArrType: 
     Expr: TIDExpression;
     EContext: TEContext;
     SContext: TSContext;
+    NewScope: TScope;
   begin
     Result := parser_NextToken(Scope);
     // first element initializer
@@ -4098,6 +4127,14 @@ function TASTDelphiUnit.ParseVarStaticArrayDefaultValue(Scope: TScope; ArrType: 
       Exit; // todo:
     end;
 
+    if ArrType.ElementDataType.DataTypeID = dtRecord then
+    begin
+      NewScope := TRecordInitScope.Create(stGlobal, Scope);
+      TRecordInitScope(NewScope).Struct := TIDStructure(ArrType.ElementDataType);
+      NewScope.AddScope(TIDStructure(ArrType.ElementDataType).Members);
+    end else
+      NewScope := Scope;
+
     parser_MatchToken(Result, token_openround);
     c := ArrType.Dimensions[DimIndex].ElementsCount - 1;
     for i := 0 to c do
@@ -4106,16 +4143,7 @@ function TASTDelphiUnit.ParseVarStaticArrayDefaultValue(Scope: TScope; ArrType: 
         Result := DoParse(ArrType, DimIndex + 1, CArray)
       else begin
         parser_NextToken(Scope);
-        try
-          SContext := TSContext.Create(Self);
-          InitEContext(EContext, SContext, ExprNested);
-          var ASTExpr: TASTExpression := nil;
-          Result := ParseExpression(Scope, SContext, EContext, ASTExpr);
-          Expr := EContext.Result;
-        except
-          on e: exception do
-            raise;
-        end;
+        Result := ParseConstExpression(NewScope, Expr, ExprNested);
         CheckEmptyExpression(Expr);
         if CheckImplicit(Expr, ArrType.ElementDataType) = nil then
           ERROR_INCOMPATIBLE_TYPES(Expr, ArrType.ElementDataType);
