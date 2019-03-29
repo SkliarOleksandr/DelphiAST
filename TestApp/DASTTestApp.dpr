@@ -3,10 +3,8 @@ program DASTTestApp;
 uses
   Vcl.Forms,
   TestAppMain in 'TestAppMain.pas' {frmTestAppMain},
-  ARC in '..\Source\ARC.pas',
   AVL in '..\Source\AVL.pas',
   IL.Instructions in '..\Source\IL.Instructions.pas',
-  IL.TypeInfo in '..\Source\IL.TypeInfo.pas',
   IL.Types in '..\Source\IL.Types.pas',
   NPCompiler.Classes in '..\Source\NPCompiler.Classes.pas',
   NPCompiler.ConstCalculator in '..\Source\NPCompiler.ConstCalculator.pas',

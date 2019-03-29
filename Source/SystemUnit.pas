@@ -95,13 +95,6 @@ type
     function RegisterConstInt(const Name: string; DataType: TIDType; Value: Int64): TIDIntConstant;
     function RegisterBuiltin(const BuiltinClass: TIDBuiltInFunctionClass): TIDBuiltInFunction; overload;
   private
-    procedure CreateCopyArrayOfObjProc;
-    procedure CreateCopyArrayOfStrProc;
-    procedure CreateFinalArrayOfObjProc;
-    procedure CreateFinalArrayOfStrProc;
-    procedure CreateFinalArrayOfVarProc;
-    procedure CreateAsserProc;
-    procedure CreateSystemRoutinsTypes;
     procedure SearchSystemTypes;
     procedure AddCustomExplicits(const Sources: array of TDataTypeID; Dest: TIDType); overload;
     function AddSysRTFunction(const SysFuncClass: TIDSysRuntimeFunctionClass; const Name: string; ResultType: TIDType): TIDSysRuntimeFunction;
@@ -950,136 +943,9 @@ begin
   RegisterBuiltinFunctions;
 end;
 
-procedure TSYSTEMUnit.CreateAsserProc;
-var
-  Proc: TIDProcedure;
-  IL: TIL;
-  EAssertCtor: TIDProcedure;
-  Code: TILInstruction;
-  EExpr: TIDExpression;
-  StrParam: TIDParam;
-  StrArg: TIDExpression;
-begin
-  Proc := CreateSysProc('$assert');
-  StrParam := Proc.AddParam('Str', _String, [VarConst]);
-  IL := Proc.IL as TIL;
-  // ñîçäàåì ýêçåìïëÿð êëàññà EAssert
-  EExpr := TIDExpression.Create(Proc.GetTMPVar(SYSUnit._EAssert, [VarTmpResOwner]));
-  Code := TIL.IL_DNew(EExpr, TIDExpression.Create(SYSUnit._EAssert));
-  IL.Write(Code);
-  // âûçûâàåì êîíñòðóêòîð êëàññà EAssert
-  StrArg := TIDExpression.Create(StrParam);
-  EAssertCtor := _EAssert.FindMethod('Create');
-  Code := TIL.IL_ProcCall(TIDExpression.Create(EAssertCtor), nil, EExpr, [StrArg]);
-  IL.Write(Code);
-  // âûáðàñûâàåì èñêëþ÷åíèå
-  IL.Write(TIL.IL_EThrow(cNone, EExpr));
-  FAsserProc := Proc;
-end;
-
-procedure TSYSTEMUnit.CreateCopyArrayOfStrProc;
-var
-  Param: TIDVariable;
-  Ctx: TLoopCodeContext;
-begin
-  FCopyArrayOfStrProc := CreateArraySysProc(FSysTStrDynArray, FSysTStrDynArray.Name + '$copy', Param);
-  Ctx := TLoopCodeContext.Create(FCopyArrayOfStrProc, Param);
-  // ãåíåðèðóåì êîä öèêëà ïðîõîäà ïî ìàññèâó
-  MakeLoopBodyBegin(Ctx);
-  // òåëî öèêëà
-  Ctx.IL.Write(TIL.IL_IncRef(Ctx.ItemExpr));
-  // êîíåö öèêëà
-  MakeLoopBodyEnd(Ctx);
-end;
-
-procedure TSYSTEMUnit.CreateCopyArrayOfObjProc;
-var
-  Param: TIDVariable;
-  Ctx: TLoopCodeContext;
-begin
-  FCopyArrayOfObjProc := CreateArraySysProc(FSysTObjDynArray, FSysTObjDynArray.Name + '$copy', Param);
-  Ctx := TLoopCodeContext.Create(FCopyArrayOfObjProc, Param);
-  // ãåíåðèðóåì êîä öèêëà ïðîõîäà ïî ìàññèâó
-  MakeLoopBodyBegin(Ctx);
-  // òåëî öèêëà
-  Ctx.IL.Write(TIL.IL_IncRef(Ctx.ItemExpr));
-  // êîíåö öèêëà
-  MakeLoopBodyEnd(Ctx);
-end;
-
-procedure TSYSTEMUnit.CreateFinalArrayOfStrProc;
-var
-  Param: TIDVariable;
-  Ctx: TLoopCodeContext;
-begin
-  FFinalArrayOfStrProc := CreateArraySysProc(FSysTStrDynArray, FSysTStrDynArray.Name + '$final', Param);
-  Ctx := TLoopCodeContext.Create(FFinalArrayOfStrProc, Param);
-  // ãåíåðèðóåì êîä öèêëà ïðîõîäà ïî ìàññèâó
-  MakeLoopBodyBegin(Ctx);
-  // òåëî öèêëà
-  Ctx.IL.Write(TIL.IL_DecRef(Ctx.ItemExpr));
-  // êîíåö öèêëà
-  MakeLoopBodyEnd(Ctx);
-end;
-
-procedure TSYSTEMUnit.CreateFinalArrayOfVarProc;
-var
-  Param: TIDVariable;
-  Ctx: TLoopCodeContext;
-begin
-  FFinalArrayOfVarProc := CreateArraySysProc(FSysTVarDynArray, FSysTVarDynArray.Name + '$final', Param);
-  Ctx := TLoopCodeContext.Create(FFinalArrayOfVarProc, Param);
-  // ãåíåðèðóåì êîä öèêëà ïðîõîäà ïî ìàññèâó
-  MakeLoopBodyBegin(Ctx);
-  // òåëî öèêëà
-  Ctx.IL.Write(TIL.IL_DecRef(Ctx.ItemExpr));
-  // êîíåö öèêëà
-  MakeLoopBodyEnd(Ctx);
-end;
-
-procedure TSYSTEMUnit.CreateFinalArrayOfObjProc;
-var
-  Param: TIDVariable;
-  Ctx: TLoopCodeContext;
-begin
-  FFinalArrayOfObjProc := CreateArraySysProc(FSysTObjDynArray, FSysTObjDynArray.Name + '$final', Param);
-  Ctx := TLoopCodeContext.Create(FFinalArrayOfObjProc, Param);
-  // ãåíåðèðóåì êîä öèêëà ïðîõîäà ïî ìàññèâó
-  MakeLoopBodyBegin(Ctx);
-  // òåëî öèêëà
-  Ctx.IL.Write(TIL.IL_DecRef(Ctx.ItemExpr));
-  // êîíåö öèêëà
-  MakeLoopBodyEnd(Ctx);
-end;
-
 procedure TSYSTEMUnit.CreateSystemRoutins;
 begin
-
-
-
   RegisterSystemRTBuiltinFunctions;
-  CreateSystemRoutinsTypes;
-{  CreateCopyArrayOfObjProc;
-  CreateCopyArrayOfStrProc;
-  CreateFinalArrayOfObjProc;
-  CreateFinalArrayOfStrProc;
-  CreateFinalArrayOfVarProc;
-  CreateAsserProc;          }
-end;
-
-procedure TSYSTEMUnit.CreateSystemRoutinsTypes;
-begin
-  FSysTStrDynArray := TIDDynArray.CreateAsSystem(ImplSection, '$TStrDynArray');
-  FSysTStrDynArray.ElementDataType := _String;
-  AddType(FSysTStrDynArray);
-
-  FSysTObjDynArray := TIDDynArray.CreateAsSystem(ImplSection, '$TObjDynArray');
-  FSysTObjDynArray.ElementDataType := _TObject;
-  AddType(FSysTObjDynArray);
-
-  FSysTVarDynArray := TIDDynArray.CreateAsSystem(ImplSection, '$TVarDynArray');
-  FSysTVarDynArray.ElementDataType := _Variant;
-  AddType(FSysTVarDynArray);
 end;
 
 procedure TSYSTEMUnit.InsertToScope(Declaration: TIDDeclaration);

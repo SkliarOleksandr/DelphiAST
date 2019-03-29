@@ -121,6 +121,7 @@ type
     function ParseASMStatement(Scope: TScope; var SContext: TSContext): TTokenID;
     function ParseProperty(Struct: TIDStructure): TTokenID; override;
     function ParseVarDefaultValue(Scope: TScope; DataType: TIDType; out DefaultValue: TIDExpression): TTokenID; override;
+    function ParseVarStaticArrayDefaultValue(Scope: TScope; ArrType: TIDArray; out DefaultValue: TIDExpression): TTokenID; override;
 
     function ParseCondInclude(Scope: TScope): TTokenID; override;
 
@@ -4079,6 +4080,57 @@ begin
     if DefaultValue.IsAnonymous then
       DefaultValue.Declaration.DataType := DataType; // подгоняем фактичиский тип константы под необходимый
   end;
+end;
+
+function TASTDelphiUnit.ParseVarStaticArrayDefaultValue(Scope: TScope; ArrType: TIDArray; out DefaultValue: TIDExpression): TTokenID;
+  function DoParse(ArrType: TIDArray; DimIndex: Integer; const CArray: TIDDynArrayConstant): TTokenID;
+  var
+    i, c: Integer;
+    Expr: TIDExpression;
+    EContext: TEContext;
+    SContext: TSContext;
+  begin
+    Result := parser_NextToken(Scope);
+    // first element initializer
+    if Result = token_identifier then
+    begin
+      Result := ParseConstExpression(Scope, Expr, ExprRValue);
+      Exit; // todo:
+    end;
+
+    parser_MatchToken(Result, token_openround);
+    c := ArrType.Dimensions[DimIndex].ElementsCount - 1;
+    for i := 0 to c do
+    begin
+      if ArrType.DimensionsCount > (DimIndex + 1) then
+        Result := DoParse(ArrType, DimIndex + 1, CArray)
+      else begin
+        parser_NextToken(Scope);
+        try
+          SContext := TSContext.Create(Self);
+          InitEContext(EContext, SContext, ExprNested);
+          var ASTExpr: TASTExpression := nil;
+          Result := ParseExpression(Scope, SContext, EContext, ASTExpr);
+          Expr := EContext.Result;
+        except
+          on e: exception do
+            raise;
+        end;
+        CheckEmptyExpression(Expr);
+        if CheckImplicit(Expr, ArrType.ElementDataType) = nil then
+          ERROR_INCOMPATIBLE_TYPES(Expr, ArrType.ElementDataType);
+        Expr.Declaration.DataType := ArrType.ElementDataType;
+        CArray.AddItem(Expr);
+      end;
+      if i < c  then
+        parser_MatchToken(Result, token_coma);
+    end;
+    parser_MatchToken(Result, token_closeround);
+    Result := parser_NextToken(Scope);
+  end;
+begin
+  DefaultValue := CreateAnonymousConstTuple(Scope, ArrType.ElementDataType);
+  Result := DoParse(ArrType, 0, DefaultValue.AsDynArrayConst);
 end;
 
 procedure TASTDelphiUnit.ParseVector(Scope: TScope; var EContext: TEContext);

@@ -104,10 +104,8 @@
             <Form>frmTestAppMain</Form>
             <FormType>dfm</FormType>
         </DCCReference>
-        <DCCReference Include="..\Source\ARC.pas"/>
         <DCCReference Include="..\Source\AVL.pas"/>
         <DCCReference Include="..\Source\IL.Instructions.pas"/>
-        <DCCReference Include="..\Source\IL.TypeInfo.pas"/>
         <DCCReference Include="..\Source\IL.Types.pas"/>
         <DCCReference Include="..\Source\NPCompiler.Classes.pas"/>
         <DCCReference Include="..\Source\NPCompiler.ConstCalculator.pas"/>
