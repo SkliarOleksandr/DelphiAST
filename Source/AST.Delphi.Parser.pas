@@ -83,7 +83,7 @@ type
     function MatchArrayImplicit(const SContext: TSContext; Source: TIDExpression; DstArray: TIDArray): TIDExpression;
     function MatchRecordImplicit(const SContext: TSContext; Source: TIDExpression; DstRecord: TIDRecord): TIDExpression;
     function MatchBinarOperator(const SContext: TSContext; Op: TOperatorID; var Left, Right: TIDExpression): TIDDeclaration;
-
+    function MatchBinarOperatorWithImplicit(const SContext: TSContext; Op: TOperatorID; var Left, Right: TIDexpression): TIDDeclaration;
   public
     function ParseStatements(Scope: TScope; var SContext: TSContext; IsBlock: Boolean): TTokenID; overload;
     function ParseExpression(Scope: TScope; var SContext: TSContext; var EContext: TEContext; out ASTE: TASTExpression): TTokenID; overload;
@@ -1147,10 +1147,10 @@ begin
         Op := MatchBinarOperatorWithTuple(SContext, OpID, Left, Right);
 
       if not Assigned(OP) and Right.IsDynArrayConst then
-        Op := MatchBinarOperatorWithTuple(SContext, OpID, Right, Left);
+        Op := MatchBinarOperatorWithTuple(SContext, OpID, Right, Left);   }
 
       if not Assigned(Op) then
-        Op := MatchBinarOperatorWithImplicit(SContext, OpID, Left, Right);}
+        Op := MatchBinarOperatorWithImplicit(EContext.SContext, OpID, Left, Right);
 
       // если аргументы - константы, производим константные вычисления
       if (Left.IsConstant and Right.IsConstant) and
@@ -1992,6 +1992,66 @@ begin
     end;
   end;
   Result := nil;
+end;
+
+function TASTDelphiUnit.MatchBinarOperatorWithImplicit(const SContext: TSContext; Op: TOperatorID; var Left,
+                                                       Right: TIDexpression): TIDDeclaration;
+  {function WriteImplicitCast(Implicit: TIDDeclaration; Src: TIDExpression): TIDExpression;
+  var
+    PCall: TIDCallExpression;
+  begin
+    if Implicit.ItemType = itType then
+    begin
+      Result := GetTMPVarExpr(SContext, TIDType(Implicit));
+      ILWrite(SContext, TIL.IL_Move(Result, Src));
+    end else
+    if Implicit.ItemType = itProcedure then
+    begin
+      Result := GetTMPVarExpr(SContext, Implicit.DataType);
+      PCall := TIDCallExpression.Create(Implicit);
+      PCall.TextPosition := Src.TextPosition;
+      PCall.ArgumentsCount := 2;
+      PCall.Instance := GetOperatorInstance(Op, Result, Src);
+      Result := Process_CALL_direct(SContext, PCall, TIDExpressions.Create(Result, Src));
+    end else begin
+      ERROR_FEATURE_NOT_SUPPORTED;
+      Result := nil;
+    end;
+  end;}
+var
+  LeftDT, RightDT: TIDType;
+  Operators: TIDPairList;
+  LeftImplicit, RightImplicit, LeftBinarOp, RightBinarOp: TIDDeclaration;
+  LeftImplicitFactor, RightImplicitFactor: Integer;
+begin
+  LeftImplicitFactor := 0;
+  RightImplicitFactor := 0;
+  LeftDT := Left.DataType.ActualDataType;
+  RightDT := Right.DataType.ActualDataType;
+
+  Operators := LeftDT.BinarOperators[Op];
+  if Assigned(Operators) then
+    LeftImplicit := FindImplicitFormBinarOperators(Operators, RightDT, LeftImplicitFactor, LeftBinarOp)
+  else
+    LeftImplicit := nil;
+
+  Operators := RightDT.BinarOperators[Op];
+  if Assigned(Operators) then
+    RightImplicit := FindImplicitFormBinarOperators(Operators, LeftDT, RightImplicitFactor, RightBinarOp)
+  else
+    RightImplicit := nil;
+
+  if not Assigned(LeftImplicit) and not Assigned(RightImplicit) then
+    ERROR_NO_OVERLOAD_OPERATOR_FOR_TYPES(Op, Left, Right);
+
+  if LeftImplicitFactor >= RightImplicitFactor then
+  begin
+    Result := LeftBinarOp;
+    //Right := WriteImplicitCast(LeftImplicit, Right);
+  end else begin
+    Result := RightBinarOp;
+    //Left := WriteImplicitCast(RightImplicit, Left);
+  end;
 end;
 
 class function TASTDelphiUnit.MatchExplicit(const Source: TIDExpression; Destination: TIDType): TIDDeclaration;
@@ -3261,7 +3321,7 @@ var
   KW: TASTKWIF;
   CondExpr: TASTExpression;
 begin
-  KW := SContext.Add<TASTKWIF>;
+  KW := SContext.Add(TASTKWIF) as TASTKWIF;
   InitEContext(EContext, SContext, ExprRValue);
   parser_NextToken(Scope);
   Result := ParseExpression(Scope, SContext, EContext, CondExpr);

@@ -19,7 +19,8 @@ type
     constructor Create(const Module: TASTModule; Proc: TProc; Block: TASTBlock); overload;
     constructor Create(const Module: TASTModule); overload;
     function MakeChild(Block: TASTBlock): TASTSContext<TProc>; //inline;
-    function Add<T: TASTItem>: T;
+    function Add<T: TASTItem>: T; overload;
+    function Add(T: TASTItemClass): TASTItem; overload;
     procedure AddItem(const Item: TASTItem);
     property Module: TASTModule read fModule;
     property Proc: TProc read fProc;
@@ -274,6 +275,12 @@ begin
 end;
 
 { TASTSContext }
+
+function TASTSContext<TProc>.Add(T: TASTItemClass): TASTItem;
+begin
+  Result := T.Create(Block);
+  Block.AddChild(Result);
+end;
 
 function TASTSContext<TProc>.Add<T>: T;
 begin

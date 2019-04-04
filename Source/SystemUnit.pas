@@ -161,6 +161,7 @@ type
     property _OrdinalType: TIDType read FOrdinalType;
     property _PAnsiCharType: TIDType read fPAnsiChar;
     property _PCharType: TIDType read fPChar;
+    property _AnyArrayType: TIDArray read FArrayType;
   end;
 
 var
@@ -679,6 +680,7 @@ begin
   RegisterBuiltin(TCT_HiBound);
   RegisterBuiltin(TCT_Inc);
   RegisterBuiltin(TCT_Dec);
+  RegisterBuiltin(TCT_Length);
 end;
 
 function TSYSTEMUnit.RegisterBuiltin(const Name: string; MacroID: TBuiltInFunctionID; ResultDataType: TIDType; Flags: TProcFlags = [pfPure]): TIDBuiltInFunction;
@@ -709,10 +711,6 @@ begin
   Decl := RegisterBuiltin('memset', bf_memset, nil);
   Decl.AddParam('Value', FRefType, [VarConstRef]);
   Decl.AddParam('FillChar', _UInt8, [VarConst, VarHasDefault], _ZeroExpression);
-
-  // Length
-  Decl := RegisterBuiltin('Length', bf_length, _UInt32);
-  Decl.AddParam('S', FArrayType, [VarConst]);
 
   // SetLength
   Decl := RegisterBuiltin('SetLength', bf_setlength, FArrayType);
@@ -755,6 +753,7 @@ begin
   Result := RegisterType(TypeName, TIDOrdinal, DataType);
   TIDOrdinal(Result).LowBound := LowBound;
   TIDOrdinal(Result).HighBound := HighBound;
+  TIDOrdinal(Result).SignedBound  := LowBound < 0;
 end;
 
 function TSYSTEMUnit.Compile(RunPostCompile: Boolean = True): TCompilerResult;

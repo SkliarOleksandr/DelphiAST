@@ -742,6 +742,7 @@ end;
 
 constructor TASTKWIF.Create(Parent: TASTItem);
 begin
+  inherited;
   fThenBody := TASTKWIfThenBlock.Create(Self);
 end;
 
@@ -849,7 +850,6 @@ begin
        Item := Item.Parent;
     end;
   end;
-  Result := False;
 end;
 
 function TASTBlock.GetIsTryBlock: Boolean;

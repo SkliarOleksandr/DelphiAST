@@ -95,6 +95,14 @@ type
     class function Register(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {function: Length}
+  TCT_Length = class(TIDSysRuntimeFunction)
+  protected
+    function Process(var EContext: TEContext): TIDExpression; override;
+  public
+    class function Register(Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
 
 implementation
 
@@ -409,6 +417,70 @@ begin
   Result := TCT_Dec.Create(Scope, 'Dec', SYSUnit._OrdinalType);
   Result.AddParam('Value', SYSUnit._OrdinalType, [VarInOut]);
   Result.AddParam('Decrement', SYSUnit._OrdinalType, [VarConst, VarHasDefault], SYSUnit._OneExpression);
+  TNPUnit.InsertToScope(Scope, Result);
+end;
+
+{ TCT_Length }
+
+function TCT_Length.Process(var EContext: TEContext): TIDExpression;
+var
+  Expr: TIDExpression;
+  DataType: TIDType;
+  Decl: TIDDeclaration;
+  ParamName: string;
+begin
+  // read argument
+  Expr := EContext.RPNPopExpression();
+  DataType := Expr.DataType.ActualDataType;
+  case DataType.DataTypeID of
+    // static array
+    dtStaticArray: Result := IntConstExpression(TIDArray(DataType).Dimensions[0].ElementsCount);
+    // oppen array
+    dtOpenArray: begin
+      Decl := Expr.Declaration;
+      if Decl.ItemType = itConst then
+        Result := IntConstExpression(TIDDynArrayConstant(Decl).ArrayLength)
+      else begin
+        ParamName := Decl.Name + '$Length';
+        Decl := Expr.Declaration.Scope.FindID(ParamName);
+        if not Assigned(Decl) then
+          AbortWorkInternal('%s param is not forund', [ParamName], Expr.TextPosition);
+        Result := TIDExpression.Create(Decl, Expr.TextPosition);
+      end;
+    end;
+    // dynamic array, string
+    dtDynArray, dtString, dtAnsiString: begin
+      if Expr.Declaration is TIDDynArrayConstant then
+        Result := IntConstExpression(Expr.AsDynArrayConst.ArrayLength)
+      else
+      if Expr.IsConstant then
+        Result := IntConstExpression(Expr.AsStrConst.StrLength)
+      else begin
+        var TMPVar := EContext.Proc.GetTMPVar(SYSUnit._NativeUInt);
+        Result := TIDExpression.Create(TMPVar, Expr.TextPosition);
+      end;
+    end;
+    // pchar, pansichar
+    dtPointer: begin
+      if (DataType = SYSUnit._PCharType) or (DataType = SYSUnit._PAnsiCharType) then
+      begin
+        var TMPVar := EContext.Proc.GetTMPVar(SYSUnit._NativeUInt);
+        Result := TIDExpression.Create(TMPVar, Expr.TextPosition);
+      end else begin
+        AbortWork(sArrayOrStringTypeRequired, Expr.TextPosition);
+        Result := nil;
+      end;
+    end
+  else
+    AbortWork(sArrayOrStringTypeRequired, Expr.TextPosition);
+    Result := nil;
+  end;
+end;
+
+class function TCT_Length.Register(Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := TCT_Length.Create(Scope, 'Length', SYSUnit._Int32);
+  Result.AddParam('S', SYSUnit._AnyArrayType);
   TNPUnit.InsertToScope(Scope, Result);
 end;
 

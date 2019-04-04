@@ -2386,25 +2386,27 @@ end;
 class procedure TNPUnit.CheckConstValueOverflow(Src: TIDExpression; DstDataType: TIDType);
 var
   Matched: Boolean;
-  IntValue: Int64;
+  ValueI64: Int64;
+  ValueU64: Int64;
   DataType: TIDType;
 begin
   if Src.Declaration is TIDIntConstant then
   begin
-    IntValue := TIDIntConstant(Src.Declaration).AsInt64;
     DataType := DstDataType.ActualDataType;
+    ValueI64 := TIDIntConstant(Src.Declaration).AsInt64;
+    ValueU64 := TIDIntConstant(Src.Declaration).AsUInt64;
     case DataType.DataTypeID of
-      dtInt8: Matched := (IntValue >= MinInt8) and (IntValue <= MaxInt8);
-      dtInt16: Matched := (IntValue >= MinInt16) and (IntValue <= MaxInt16);
-      dtInt32: Matched := (IntValue >= MinInt32) and (IntValue <= MaxInt32);
+      dtInt8: Matched := (ValueI64 >= MinInt8) and (ValueI64 <= MaxInt8);
+      dtInt16: Matched := (ValueI64 >= MinInt16) and (ValueI64 <= MaxInt16);
+      dtInt32: Matched := (ValueI64 >= MinInt32) and (ValueI64 <= MaxInt32);
       //dtInt64: Matched := (IntValue >= MinInt64) and (IntValue <= MaxInt64); // always true
-      dtUInt8: Matched := (IntValue >= 0) and (IntValue <= MaxUInt8);
-      dtUInt16: Matched := (IntValue >= 0) and (IntValue <= MaxUInt16);
-      dtUInt32: Matched := (IntValue >= 0) and (IntValue <= MaxUInt32);
-      dtUInt64: Matched := (IntValue >= 0) and (UInt64(IntValue) <= MaxUInt64);
-      dtBoolean: Matched := (IntValue >= 0) and (IntValue <= 1);
-      dtAnsiChar: Matched := (IntValue >= 0) and (IntValue <= MaxUInt8);
-      dtChar: Matched := (IntValue >= 0) and (IntValue <= MaxUInt16);
+      dtUInt8: Matched := (ValueU64 <= MaxUInt8);
+      dtUInt16: Matched := (ValueU64 <= MaxUInt16);
+      dtUInt32: Matched := (ValueU64 <= MaxUInt32);
+      dtUInt64: Matched := (ValueU64 <= MaxUInt64);
+      dtBoolean: Matched := (ValueU64 <= 1);
+      dtAnsiChar: Matched := (ValueU64 <= MaxUInt8);
+      dtChar: Matched := (ValueU64 <= MaxUInt16);
     else
       Matched := True;
     end;
@@ -5323,9 +5325,6 @@ begin
 
     if Assigned(DataType) then
     begin
-      if Parser.LinePosition.Row = 4312 then
-        sleep(1);
-
       Result := ParseVarDefaultValue(Scope, DataType, Expr);
       Expr.Declaration.DataType := DataType;
       Expr.AsConst.ExplicitDataType := DataType;
@@ -13515,7 +13514,8 @@ var
   i: Integer;
   ID: TIdentifier;
   Expr: TIDExpression;
-  Expressions: TIDExpressions;
+  Decl: TIDDeclaration;
+  Expressions: TIDRecordConstantFields;
 begin
   i := 0;
   parser_MatchNextToken(Scope, token_openround);
@@ -13525,13 +13525,17 @@ begin
     parser_MatchNextToken(Scope, token_colon);
     Result := parser_NextToken(Scope);
     Result := ParseConstExpression(Scope, Expr, ExprRValue);
-    Expressions[i] := Expr;
+    Expressions[i].Field := Struct.FindField(ID.Name);
+    Expressions[i].Value := Expr;
     Inc(i);
     if Result = token_semicolon then
       Continue;
     Break;
   end;
-  // todo: finish
+  // create anonymous record constant
+  Decl := TIDRecordConstant.CreateAnonymous(Scope, Struct, Expressions);
+  DefaultValue := TIDExpression.Create(Decl, parser_Position);
+
   parser_MatchToken(Result, token_closeround);
   Result := parser_NextToken(Scope);
 end;
@@ -13561,3 +13565,4 @@ initialization
   FormatSettings.DecimalSeparator := '.';
 
 end.
+

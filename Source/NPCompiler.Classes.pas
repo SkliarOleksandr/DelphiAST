@@ -197,6 +197,7 @@ type
     function GetIndex: Integer; virtual;
     function GetCValue: TIDConstant; virtual;
     procedure SetCValue(const Value: TIDConstant); virtual;
+    procedure SetDataType(const Value: TIDType); virtual;
   public
     constructor CreateAsAnonymous(Scope: TScope); virtual;
     constructor CreateAsSystem(Scope: TScope; const Name: string); overload; virtual;
@@ -209,7 +210,7 @@ type
     //property TextPosition: TTextPosition read FID.TextPosition write FID.TextPosition;
     property DisplayName: string read GetDisplayName;
     property Scope: TScope read FScope;
-    property DataType: TIDType read FDataType write FDataType;
+    property DataType: TIDType read FDataType write SetDataType;
     //property SourcePosition: TTextPosition read FID.TextPosition;
     property Visibility: TVisibility read FVisibility write FVisibility;
     property Index: Integer read FIndex write SetIndex;
@@ -615,6 +616,7 @@ type
     function FindVirtualProcInAncestor(Proc: TIDProcedure): TIDProcedure;
     procedure AddMethod(const Decl: TIDProcedure); inline;
     function AddField(const Name: string; DataType: TIDType): TIDField;
+    function FindField(const Name: string): TIDField;
     function FindMethod(const Name: string): TIDProcedure;
     procedure IncRefCount(RCPath: UInt32); override;
     procedure DecRefCount(RCPath: UInt32); override;
@@ -983,7 +985,13 @@ type
     procedure WriteToStream(Stream: TStream; const Package: INPPackage); override;
   end;
 
-  TIDRecordConstant = class(TIDXXXConstant<TIDStructure>)
+  TIDRecordConstantField = record
+    Field: TIDField;
+    Value: TIDExpression;
+  end;
+  TIDRecordConstantFields = array of TIDRecordConstantField;
+
+  TIDRecordConstant = class(TIDXXXConstant<TIDRecordConstantFields>)
   end;
 
   TExpressonType = (
@@ -2207,6 +2215,11 @@ end;
 procedure TIDDeclaration.SetCValue(const Value: TIDConstant);
 begin
 
+end;
+
+procedure TIDDeclaration.SetDataType(const Value: TIDType);
+begin
+  FDataType := Value;
 end;
 
 procedure TIDDeclaration.SetIndex(const Value: Integer);
@@ -3906,6 +3919,11 @@ begin
   OverloadExplicitTo(Self);
 end;
 
+function TIDStructure.FindField(const Name: string): TIDField;
+begin
+  Result := FMembers.FindMembers(Name) as TIDField;
+end;
+
 function TIDStructure.FindMethod(const Name: string): TIDProcedure;
 begin
   Result := TIDProcedure(FMembers.FindMembers(Name));
@@ -4669,8 +4687,29 @@ begin
     OverloadBinarOperator2(opAdd, Self, Self);
     OverloadBinarOperator2(opSubtract, Self, Self);
 
+    OverloadBinarOperator2(opAdd, SYSUnit._Int8, Self);
+    OverloadBinarOperator2(opAdd, SYSUnit._Int16, Self);
     OverloadBinarOperator2(opAdd, SYSUnit._Int32, Self);
+    OverloadBinarOperator2(opAdd, SYSUnit._Int64, Self);
+    OverloadBinarOperator2(opAdd, SYSUnit._NativeInt, Self);
+
+    OverloadBinarOperator2(opAdd, SYSUnit._UInt8, Self);
+    OverloadBinarOperator2(opAdd, SYSUnit._UInt16, Self);
+    OverloadBinarOperator2(opAdd, SYSUnit._UInt32, Self);
+    OverloadBinarOperator2(opAdd, SYSUnit._UInt64, Self);
+    OverloadBinarOperator2(opAdd, SYSUnit._NativeUInt, Self);
+
+    OverloadBinarOperator2(opSubtract, SYSUnit._Int8, Self);
+    OverloadBinarOperator2(opSubtract, SYSUnit._Int16, Self);
     OverloadBinarOperator2(opSubtract, SYSUnit._Int32, Self);
+    OverloadBinarOperator2(opSubtract, SYSUnit._Int64, Self);
+    OverloadBinarOperator2(opSubtract, SYSUnit._NativeInt, Self);
+
+    OverloadBinarOperator2(opSubtract, SYSUnit._UInt8, Self);
+    OverloadBinarOperator2(opSubtract, SYSUnit._UInt16, Self);
+    OverloadBinarOperator2(opSubtract, SYSUnit._UInt32, Self);
+    OverloadBinarOperator2(opSubtract, SYSUnit._UInt64, Self);
+    OverloadBinarOperator2(opSubtract, SYSUnit._NativeUInt, Self);
   end;
 end;
 
