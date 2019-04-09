@@ -68,6 +68,7 @@ type
     function Process_operator_Is(var EContext: TEContext): TIDExpression;
     function Process_operator_As(var EContext: TEContext): TIDExpression;
     function Process_operator_Period(var EContext: TEContext): TIDExpression;
+    function Process_operator_dot(var EContext: TEContext): TIDExpression;
     class function CheckImplicit(Source: TIDExpression; Dest: TIDType): TIDDeclaration; override;
 
     function GetTMPVar(const SContext: TSContext; DataType: TIDType): TIDVariable; overload;
@@ -90,6 +91,7 @@ type
     function ParseConstExpression(Scope: TScope; out Expr: TIDExpression; EPosition: TExpessionPosition): TTokenID; override;
     function ParseMember(Scope: TScope; out Expression: TIDExpression; var EContext: TEContext;
                          var SContext: TSContext; const ASTE: TASTExpression): TTokenID;
+    function ParseMember2(Scope: TScope; var EContext: TEContext; var SContext: TSContext; const ASTE: TASTExpression): TTokenID;
     function ParseArrayMember(Scope: TScope; var PMContext: TPMContext; Decl: TIDDeclaration; out DataType: TIDType;
                               var EContext: TEContext; var SContext: TSContext; ASTE: TASTExpression): TTokenID;
     function ParsePropertyMember(var PMContext: TPMContext; Scope: TScope; Prop: TIDProperty; out Expression: TIDExpression;
@@ -1275,6 +1277,10 @@ begin
     AbortWork('Cannot dereference the untyped pointer', Src.TextPosition);
 
   Result := TIDDrefExpression.Create(Src);
+end;
+
+function TASTDelphiUnit.Process_operator_dot(var EContext: TEContext): TIDExpression;
+begin
 end;
 
 function TASTDelphiUnit.Process_operator_In(var EContext: TEContext; const Left, Right: TIDExpression): TIDExpression;
@@ -2888,6 +2894,11 @@ begin
         Status := rpOperand;
         continue;
       end;
+      token_dot: begin
+        Result := ParseMember2(Scope, EContext, SContext, ASTE);
+        Status := rpOperand;
+        continue;
+      end;
       token_identifier: begin
         // есил встретился подряд воторой идентификатор, то выходим
         if Status = rpOperand then
@@ -4056,6 +4067,60 @@ begin
 
     break;
   end;
+end;
+
+function TASTDelphiUnit.ParseMember2(Scope: TScope; var EContext: TEContext; var SContext: TSContext;
+  const ASTE: TASTExpression): TTokenID;
+var
+  Left, Right: TIDExpression;
+  Decl: TIDDeclaration;
+  ID: TIdentifier;
+  SearchScope: TScope;
+  DataType: TIDType;
+begin
+  Left := EContext.RPNPopExpression();
+  Decl := Left.Declaration;
+  if Decl.ItemType = itUnit then
+    SearchScope := TIDNameSpace(Decl).Members
+  else
+  if Decl.ItemType <> itType then
+    DataType := Decl.DataType
+  else
+    DataType := TIDType(Decl);
+
+  if DataType.ClassType = TIDAliasType then
+    DataType := TIDAliasType(DataType).Original;
+
+  if DataType.DataTypeID in [dtStaticArray, dtDynArray] then
+    DataType := TIDArray(DataType).ElementDataType;
+
+  if DataType.DataTypeID in [dtPointer, dtClassOf] then
+    DataType := TIDPointer(DataType).ReferenceType;
+
+  if DataType is TIDStructure then
+    SearchScope := TIDStructure(DataType).Members
+  else
+  if Decl.ClassType = TIDEnum then
+    SearchScope := TIDEnum(Decl).Items
+  else begin
+    ERROR_IDENTIFIER_HAS_NO_MEMBERS(Decl);
+    Exit;
+  end;
+
+  //ASTE.AddOperation<TASTOpMemberAccess>;
+
+  parser_ReadNextIdentifier(Scope, ID);
+
+  Decl := SearchScope.FindMembers(ID.Name);
+
+  if not Assigned(Decl) then
+    ERROR_UNDECLARED_ID(ID);
+
+  Right := TIDExpression.Create(Decl, ID.TextPosition);
+  Left := TIDMultiExpression.Create(Left, Right, ID.TextPosition);
+  EContext.RPNPushExpression(Left);
+
+  Result := parser_NextToken(Scope);
 end;
 
 function TASTDelphiUnit.ParseIndexedPropertyArgs(Scope: TScope; out ArgumentsCount: Integer; var EContext: TEContext): TTokenID;
