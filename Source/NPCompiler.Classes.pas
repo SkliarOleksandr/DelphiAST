@@ -1126,8 +1126,10 @@ type
     FDataType: TIDType;
   protected
     function GetDataType: TIDType; override;
+    function GetDisplayName: string; override;
   public
     constructor Create(Declaration: TIDDeclaration; CastDataType: TIDType; const TextPosition: TTextPosition); reintroduce;
+
   end;
 
   TIDCastedCallExpression = class(TIDCallExpression)
@@ -1145,6 +1147,16 @@ type
     function GetDataType: TIDType; override;
   public
     constructor Create(Src: TIDExpression); reintroduce;
+  end;
+
+  TIDArrayExpression = class(TIDExpression)
+  private
+    fIndexes: TIDExpressions;
+  protected
+    function GetDataType: TIDType; override;
+    function GetDisplayName: string; override;
+  public
+    property Indexes: TIDExpressions read fIndexes write fIndexes;
   end;
 
   {result of logical boolean expression lile: a < b, x = y, ... }
@@ -5359,6 +5371,11 @@ begin
   Result := FDataType;
 end;
 
+function TIDCastExpression.GetDisplayName: string;
+begin
+  Result := inherited GetDisplayName + ' as ' + FDataType.DisplayName
+end;
+
 { TImplementationScope }
 
 constructor TImplementationScope.Create(InterfaceScope, Parent: TScope);
@@ -6323,6 +6340,22 @@ end;
 function TIDCastedCallExpression.GetDataType: TIDType;
 begin
   Result := FDataType;
+end;
+
+{ TIDArrayExpression }
+
+function TIDArrayExpression.GetDataType: TIDType;
+begin
+  Result := TIDArray(FDeclaration).ElementDataType;
+end;
+
+function TIDArrayExpression.GetDisplayName: string;
+var
+  Str: string;
+begin
+  for var i := 0 to Length(fIndexes) - 1 do
+    Str := AddStringSegment(Str, fIndexes[i].DisplayName);
+  Result := inherited Declaration.DisplayName + '[' + Str + ']';
 end;
 
 initialization

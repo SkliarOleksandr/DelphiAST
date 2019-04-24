@@ -89,11 +89,16 @@ type
     function ParseStatements(Scope: TScope; var SContext: TSContext; IsBlock: Boolean): TTokenID; overload;
     function ParseExpression(Scope: TScope; var SContext: TSContext; var EContext: TEContext; out ASTE: TASTExpression): TTokenID; overload;
     function ParseConstExpression(Scope: TScope; out Expr: TIDExpression; EPosition: TExpessionPosition): TTokenID; override;
+
+    function ParseMemberCall(Scope: TScope; var EContext: TEContext; var SContext: TSContext; const ASTE: TASTExpression): TTokenID;
+
     function ParseMember(Scope: TScope; out Expression: TIDExpression; var EContext: TEContext;
                          var SContext: TSContext; const ASTE: TASTExpression): TTokenID;
     function ParseMember2(Scope: TScope; var EContext: TEContext; var SContext: TSContext; const ASTE: TASTExpression): TTokenID;
+    function ParseIdentifier(Scope, SearchScope: TScope; out Expression: TIDExpression; var EContext: TEContext; var SContext: TSContext; const ASTE: TASTExpression): TTokenID;
     function ParseArrayMember(Scope: TScope; var PMContext: TPMContext; Decl: TIDDeclaration; out DataType: TIDType;
                               var EContext: TEContext; var SContext: TSContext; ASTE: TASTExpression): TTokenID;
+    function ParseArrayMember2(Scope: TScope; var EContext: TEContext; var SContext: TSContext; ASTE: TASTExpression): TTokenID;
     function ParsePropertyMember(var PMContext: TPMContext; Scope: TScope; Prop: TIDProperty; out Expression: TIDExpression;
                                  var EContext: TEContext): TTokenID;
     function ParseIndexedPropertyArgs(Scope: TScope; out ArgumentsCount: Integer; var EContext: TEContext): TTokenID;
@@ -2261,6 +2266,99 @@ begin
     ERROR_NEED_SPECIFY_NINDEXES(Decl);
 end;
 
+function TASTDelphiUnit.ParseArrayMember2(Scope: TScope; var EContext: TEContext; var SContext: TSContext; ASTE: TASTExpression): TTokenID;
+var
+  ArrExpr: TIDExpression;
+  ArrDecl: TIDDeclaration;
+  IdxCount: Integer; // кол-во индексов указанных при обращении к массиву
+  Expr: TIDExpression;
+  InnerEContext: TEContext;
+  DimensionsCount: Integer;
+  DeclType: TIDType;
+  DataType: TIDType;
+
+begin
+  ArrExpr := EContext.RPNPopExpression();
+  ArrDecl := ArrExpr.Declaration;
+
+  DeclType := ArrDecl.DataType;
+  if DeclType.DataTypeID = dtPointer then
+    DeclType := TIDPointer(DeclType).ReferenceType;
+
+  if (ArrDecl.ItemType <> itProperty) and (DeclType is TIDArray) then
+  begin
+    DimensionsCount := TIDArray(DeclType).DimensionsCount;
+    DataType := TIDArray(DeclType).ElementDataType;
+  end else
+  if (ArrDecl.ItemType = itProperty) and (TIDProperty(ArrDecl).Params.Count > 0) then
+  begin
+    DimensionsCount := TIDProperty(ArrDecl).ParamsCount;
+    DataType := TIDProperty(ArrDecl).DataType;
+  end else
+  if (DeclType is TIDStructure) and Assigned(TIDStructure(DeclType).DefaultProperty) then
+  begin
+    ArrDecl := TIDStructure(DeclType).DefaultProperty;
+    DimensionsCount := TIDProperty(ArrDecl).ParamsCount;
+    DataType := TIDProperty(ArrDecl).DataType;
+    Expr := TIDExpression.Create(ArrDecl);
+    if EContext.EPosition = ExprRValue then
+    begin
+      //Result := ParsePropertyMember(PMContext, Scope, TIDProperty(Decl), Expr, EContext);
+      DataType := nil;
+      Exit;
+    end;
+    //PMContext.Add(Expr);
+  end else
+  begin
+    ERROR_ARRAY_TYPE_REQUIRED(ArrDecl.ID);
+    DimensionsCount := 0;
+  end;
+
+  var Op: TASTOpArrayAccess := ASTE.AddOperation<TASTOpArrayAccess>;
+
+  IdxCount := 0;
+  InitEContext(InnerEContext, SContext, ExprNested);
+  var Indexes: TIDExpressions := [];
+  while True do begin
+    parser_NextToken(Scope);
+    var ASTExpr: TASTExpression := nil;
+    Result := ParseExpression(Scope, SContext, InnerEContext, ASTExpr);
+    Op.AddIndex(ASTExpr);
+    Expr := InnerEContext.Result;
+    CheckEmptyExpression(Expr);
+
+    Indexes := Indexes + [Expr];
+    {if Assigned(InnerEContext.LastBoolNode) then
+      Bool_CompleteImmediateExpression(InnerEContext, Expr);}
+
+    if Expr.Declaration.ItemType = itConst then
+      // статическая проверка на границы массива
+      StaticCheckBounds(Expr.AsConst, ArrDecl, IdxCount)
+    else begin
+       // динамическая проверка на границы массива
+       {if UseCheckBound then
+         EmitDynCheckBound(EContext.SContext, Decl, Expr);}
+    end;
+
+    //PMContext.Add(Expr);
+    Inc(IdxCount);
+    if Result = token_coma then
+    begin
+      InnerEContext.Reset;
+      Continue;
+    end;
+    parser_MatchToken(Result, token_closeblock);
+    Result := parser_NextToken(Scope);
+    Break;
+  end;
+  if IdxCount <> DimensionsCount then
+    ERROR_NEED_SPECIFY_NINDEXES(ArrDecl);
+
+  var AExpr := TIDArrayExpression.Create(ArrDecl, ArrExpr.TextPosition);
+  AExpr.Indexes := Indexes;
+  EContext.RPNPushExpression(ArrExpr);
+end;
+
 function TASTDelphiUnit.ParseASMStatement(Scope: TScope; var SContext: TSContext): TTokenID;
 var
   KW: TASTKWAsm;
@@ -2729,10 +2827,17 @@ begin
     case Result of
       token_eof: Break;// ERROR_END_OF_FILE;
       token_openround: begin
-        Inc(RoundCount);
-        EContext.RPNPushOpenRaund;
-        ASTE.AddSubItem(TASTOpOpenRound);
-        Status := rprOk;
+        if Status = rpOperand then
+        begin
+          Result := ParseMemberCall(Scope, EContext, SContext, ASTE);
+          Status := rpOperand;
+          continue;
+        end else begin
+          Inc(RoundCount);
+          EContext.RPNPushOpenRaund;
+          ASTE.AddSubItem(TASTOpOpenRound);
+          Status := rprOk;
+        end;
       end;
       token_closeround: begin
         Dec(RoundCount);
@@ -2748,7 +2853,13 @@ begin
         Status := rpOperand;
       end;
       token_openblock: begin
-        ParseVector(Scope, EContext);
+        if Status = rpOperand then
+        begin
+          Result := ParseArrayMember2(Scope, EContext, SContext, ASTE);
+          continue;
+        end else
+          ParseVector(Scope, EContext);
+
         Status := rpOperand;
       end;
       token_closeblock: begin
@@ -2843,7 +2954,9 @@ begin
         Status := EContext.RPNPushOperator(opAddr);
       end;
       token_caret: begin
-        EContext.RPNPushOperator(opDereference);
+        // call the Process_operator_Deref directly
+        Expr := Process_operator_Deref(EContext);
+        EContext.RPNPushExpression(Expr);
         Status := rpOperand;
       end;
       token_and: begin
@@ -2906,7 +3019,9 @@ begin
         if parser_IdentifireType = itIdentifier then
         begin
           Expr := nil;
-          Result := ParseMember(Scope, Expr, EContext, SContext, ASTE);
+          //Result := ParseMember(Scope, Expr, EContext, SContext, ASTE);
+          Result := ParseIdentifier(Scope, nil, Expr, EContext, SContext, ASTE);
+
           // если результат = nil значит это был вызов функции и все
           // необходимые параметры погружены в стек, поэтому идем дальше
           if not Assigned(Expr) then
@@ -2945,14 +3060,8 @@ begin
                   Result := ParseExplicitCast(Scope, SContext, Expr);
                   Status := rpOperand;
                 end;
-                {доступ к члену типа}
-                token_dot: begin
-                  ERROR_FEATURE_NOT_SUPPORTED;
-                  Expr := nil;
-                end;
-                else begin
-                  Status := rpOperand;
-                end;
+              else
+                Status := rpOperand;
               end;
             end;
           end;
@@ -4069,6 +4178,270 @@ begin
   end;
 end;
 
+function TASTDelphiUnit.ParseIdentifier(Scope, SearchScope: TScope; out Expression: TIDExpression;  var EContext: TEContext;
+                                        var SContext: TSContext; const ASTE: TASTExpression): TTokenID;
+var
+  Decl: TIDDeclaration;
+  DataType: TIDType;
+  Indexes: TIDExpressions;
+  i: Integer;
+  Expr, NExpr: TIDExpression;
+  GenericArgs: TIDExpressions;
+  CallExpr: TIDCallExpression;
+  PMContext: TPMContext;
+  WasProperty, StrictSearch: Boolean;
+begin
+  WasProperty := False;
+  PMContext.Init;
+  PMContext.ItemScope := Scope;
+  //while True do begin
+    parser_ReadCurrIdentifier(PMContext.ID);
+    if not Assigned(SearchScope) then
+      Decl := FindIDNoAbort(Scope, PMContext.ID, Expr)
+    else begin
+      Decl := SearchScope.FindMembers(PMContext.ID.Name);
+      Expr := nil;
+    end;
+
+    StrictSearch := Assigned(SearchScope);
+
+    Result := parser_NextToken(Scope);
+    if not Assigned(Decl) then begin
+      if Result = token_less then
+        Result := ParseGenericMember(PMContext, {SContext}nil, StrictSearch, Decl, Expr);
+
+      if PMContext.ItemScope is TConditionalScope then
+      begin
+        Decl := TIDStringConstant.CreateAnonymous(PMContext.ItemScope, SYSUnit._String, PMContext.ID.Name);
+      end;
+
+      if not Assigned(Decl) then
+        ERROR_UNDECLARED_ID(PMContext.ID);
+    end;
+
+    // если Scope порожден конструкцией WITH
+    // то добавляем в выражение первым элементом
+    if Assigned(Expr) then begin
+      if Expr.ExpressionType = etDeclaration then begin
+        PMContext.Add(Expr);
+      end else begin
+        Indexes := TIDMultiExpression(Expr).Items;
+        for i := 0 to Length(Indexes) - 1 do
+          PMContext.Add(Indexes[i]);
+      end;
+    end;
+
+    {проверяем на псевдоним}
+    if Decl.ItemType = itAlias then
+      Decl := TIDAlias(Decl).Original;
+
+    {проверяем на доступ к члену типа}
+    //if Assigned(EContext.SContext) then
+    //  CheckAccessMember(SContext, Decl, PMContext.ID);
+
+    case Decl.ItemType of
+      {процедура/функция}
+      itProcedure: begin
+        Expression := TIDCallExpression.Create(Decl, PMContext.ID.TextPosition);
+        // если есть открытая угловая скобка, - значит generic-вызов
+        if Result = token_less then
+        begin
+          Result := ParseGenericsArgs(Scope, SContext, GenericArgs);
+          SetProcGenericArgs(TIDCallExpression(Expression), GenericArgs);
+        end;
+        // если есть открытая скобка, - значит вызов
+        if Result = token_openround then
+        begin
+          Result := ParseEntryCall(Scope, TIDCallExpression(Expression), EContext, SContext, ASTE);
+          // если это метод, подставляем self из пула
+          if PMContext.Count > 0 then
+          begin
+            if PMContext.Count > 1 then
+              Expr := ProcessMemberExpression({SContext}nil, WasProperty, PMContext)
+            else
+              Expr := PMContext.Last;
+
+            if (Expr.Declaration is TIDField) and (PMContext.Count = 1) then
+            begin
+              NExpr := GetTMPRefExpr(SContext, Expr.DataType);
+              NExpr.TextPosition := Expr.TextPosition;
+              Expr := NExpr;
+            end;
+            TIDCallExpression(Expression).Instance := Expr;
+          end else
+          if (Decl.ItemType = itProcedure) and Assigned(TIDProcedure(Decl).Struct) and
+             (TIDProcedure(Decl).Struct = SContext.Proc.Struct) then
+          begin
+            // если это собственный метод, добавляем self из списка параметров
+            TIDCallExpression(Expression).Instance := TIDExpression.Create(SContext.Proc.SelfParam);
+          end;
+
+          // если выражение продолжается дальше, генерируем вызов процедуры
+          if Result in [token_dot, token_openblock] then
+          begin
+            Expression := EContext.RPNPopOperator();
+            Decl := Expression.Declaration;
+            PMContext.Clear;
+          end else begin
+            Expression := nil;
+            //Break;
+          end;
+
+        end else begin // иначе создаем процедурный тип, если он отсутствовал
+          TIDProcedure(Decl).CreateProcedureTypeIfNeed(Scope);
+          PMContext.DataType := TIDProcedure(Decl).DataType;
+          AddType(TIDProcedure(Decl).DataType);
+        end;
+      end;
+      {макро функция}
+      itMacroFunction: begin
+        Expression := TIDExpression.Create(Decl, PMContext.ID.TextPosition);  // создание Expression под ???
+        Result := ParseBuiltinCall(Scope, Expression, EContext);
+        Expression := nil;
+        //Break;
+      end;
+      {переменная}
+      itVar: begin
+        {if Decl.ClassType = TIDMacroArgument then
+          Result := ParseMacroArg(Scope, PMContext.ID, TIDMacroArgument(Decl), Expression, EContext)
+        else }begin
+          // если есть открытая скобка, - значит вызов
+          if Result = token_openround then
+          begin
+            if Decl.DataTypeID <> dtProcType then
+              ERROR_PROC_OR_PROCVAR_REQUIRED(PMContext.ID);
+
+            Expression := TIDCallExpression.Create(Decl, PMContext.ID.TextPosition);
+            Result := ParseEntryCall(Scope, TIDCallExpression(Expression), EContext, SContext, ASTE);
+            Expression := nil;
+            //Break;
+          end;
+          Expression := TIDExpression.Create(Decl, PMContext.ID.TextPosition);
+        end;
+        PMContext.DataType := Decl.DataType;
+      end;
+      itConst, itUnit, itLabel: begin
+        Expression := TIDExpression.Create(Decl, PMContext.ID.TextPosition);
+        PMContext.DataType := Decl.DataType;
+      end;
+      {свойство}
+      itProperty: begin
+        WasProperty := True;
+        Result := ParsePropertyMember(PMContext, Scope, TIDProperty(Decl), Expression, EContext);
+        // заменяем декларацию
+        if Assigned(Expression) then
+        begin
+          Decl := Expression.Declaration;
+          // если геттер/сеттер - поле, то снимаем флаг "свойства"
+          if Decl.ItemType = itVar then
+            WasProperty := False;
+        end;
+        PMContext.DataType := Decl.DataType;
+      end;
+      {тип}
+      itType: begin
+        Expression := TIDExpression.Create(Decl, PMContext.ID.TextPosition);
+        {явное преобразование типов}
+        if Result = token_openround then
+           Result := ParseExplicitCast(Scope, SContext, Expression);
+
+        PMContext.DataType := Decl.DataType;
+      end;
+    else
+      ERROR_FEATURE_NOT_SUPPORTED;
+    end;
+
+    //PMContext.Add(Expression);
+    //CheckEmptyExpression(Expression);
+
+    if Assigned(Expression) then
+      ASTE.AddDeclItem(Expression.Declaration, Expression.TextPosition);
+
+    {array type}
+//    if Result = token_openblock then begin
+//      Result := ParseArrayMember(Scope, PMContext, Decl, PMContext.DataType, EContext, SContext, ASTE);
+//      if PMContext.DataType = nil then
+//      begin
+//        Expression := nil;
+//        Break;
+//      end;
+//    end;
+//
+//    {call} // todo: make this code as main (remove previous same code)
+//    if (Result = token_openround) and (Expression.DataTypeID = dtProcType) then
+//    begin
+//      if Expression.DataTypeID <> dtProcType then
+//        ERROR_PROC_OR_PROCVAR_REQUIRED(PMContext.ID);
+//
+//      if not (Expression is TIDCastExpression) then
+//        CallExpr := TIDCallExpression.Create(Expression.Declaration, Expression.TextPosition)
+//      else begin
+//        CallExpr := TIDCastedCallExpression.Create(Expression.Declaration, Expression.TextPosition);
+//        TIDCastedCallExpression(CallExpr).DataType := Expression.DataType;
+//      end;
+//
+//      Result := ParseEntryCall(Scope, CallExpr, EContext, SContext, ASTE);
+//      Expression := nil;
+//      Break;
+//    end;
+//
+//    if Result = token_caret then
+//    begin
+//      //EContext.RPNPushOperator(opDereference);
+//      Result := parser_NextToken(Scope);
+//    end;
+//
+//
+//    {struct/class/interafce/enum/unit/namespace}
+//    if (Result = token_dot) then
+//    begin
+//      if Decl.ItemType = itUnit then begin
+//        PMContext.ItemScope := TIDNameSpace(Decl).Members;
+//        PMContext.Clear;
+//        parser_NextToken(Scope);
+//        StrictSearch := True;
+//        continue;
+//      end else
+//      if Decl.ItemType <> itType then
+//        DataType := Decl.DataType
+//      else
+//        DataType := TIDType(Decl);
+//
+//      if DataType.ClassType = TIDAliasType then
+//        DataType := TIDAliasType(DataType).Original;
+//
+//      if DataType.DataTypeID in [dtStaticArray, dtDynArray] then
+//        DataType := TIDArray(DataType).ElementDataType;
+//
+//      if DataType.DataTypeID in [dtPointer, dtClassOf] then
+//        DataType := TIDPointer(DataType).ReferenceType;
+//
+//      if DataType is TIDStructure then
+//        PMContext.ItemScope := TIDStructure(DataType).Members
+//      else
+//      if Decl.ClassType = TIDEnum then begin
+//        PMContext.ItemScope := TIDEnum(Decl).Items;
+//        PMContext.Clear;
+//      end else
+//        ERROR_IDENTIFIER_HAS_NO_MEMBERS(Decl);
+//
+//      ASTE.AddOperation<TASTOpMemberAccess>;
+//
+//      parser_NextToken(Scope);
+//      StrictSearch := True;
+//      continue;
+//    end;
+//
+//    if PMContext.Count > 1 then
+//    begin
+//      Expression := TIDMultiExpression.Create(PMContext.Items, PMContext.ID.TextPosition);
+//      TIDMultiExpression(Expression).EffectiveDataType := PMContext.DataType;
+//    end;
+
+//    break;
+//  end;
+end;
+
 function TASTDelphiUnit.ParseMember2(Scope: TScope; var EContext: TEContext; var SContext: TSContext;
   const ASTE: TASTExpression): TTokenID;
 var
@@ -4082,45 +4455,81 @@ begin
   Decl := Left.Declaration;
   if Decl.ItemType = itUnit then
     SearchScope := TIDNameSpace(Decl).Members
-  else
-  if Decl.ItemType <> itType then
-    DataType := Decl.DataType
-  else
-    DataType := TIDType(Decl);
-
-  if DataType.ClassType = TIDAliasType then
-    DataType := TIDAliasType(DataType).Original;
-
-  if DataType.DataTypeID in [dtStaticArray, dtDynArray] then
-    DataType := TIDArray(DataType).ElementDataType;
-
-  if DataType.DataTypeID in [dtPointer, dtClassOf] then
-    DataType := TIDPointer(DataType).ReferenceType;
-
-  if DataType is TIDStructure then
-    SearchScope := TIDStructure(DataType).Members
-  else
-  if Decl.ClassType = TIDEnum then
-    SearchScope := TIDEnum(Decl).Items
   else begin
-    ERROR_IDENTIFIER_HAS_NO_MEMBERS(Decl);
-    Exit;
+    if Decl.ItemType <> itType then
+      DataType := Left.DataType
+    else
+      DataType := TIDType(Decl);
+
+    if DataType.ClassType = TIDAliasType then
+      DataType := TIDAliasType(DataType).Original;
+
+    if DataType.DataTypeID in [dtStaticArray, dtDynArray] then
+      DataType := TIDArray(DataType).ElementDataType;
+
+    if DataType.DataTypeID in [dtPointer, dtClassOf] then
+      DataType := TIDPointer(DataType).ReferenceType;
+
+    if DataType is TIDStructure then
+      SearchScope := TIDStructure(DataType).Members
+    else
+    if Decl.ClassType = TIDEnum then
+      SearchScope := TIDEnum(Decl).Items
+    else begin
+      ERROR_IDENTIFIER_HAS_NO_MEMBERS(Decl);
+      Exit;
+    end;
   end;
 
-  //ASTE.AddOperation<TASTOpMemberAccess>;
+  ASTE.AddOperation<TASTOpMemberAccess>;
 
-  parser_ReadNextIdentifier(Scope, ID);
+  parser_NextToken(Scope);
+  Result := ParseIdentifier(Scope, SearchScope, Right, EContext, SContext, ASTE);
 
-  Decl := SearchScope.FindMembers(ID.Name);
+  if Assigned(Right) then
+    EContext.RPNPushExpression(Right);
+end;
 
-  if not Assigned(Decl) then
-    ERROR_UNDECLARED_ID(ID);
+function TASTDelphiUnit.ParseMemberCall(Scope: TScope; var EContext: TEContext; var SContext: TSContext;
+  const ASTE: TASTExpression): TTokenID;
+var
+  Expr: TIDExpression;
+  CallExpr: TIDCallExpression;
+begin
+  Expr := EContext.RPNPopExpression();
 
-  Right := TIDExpression.Create(Decl, ID.TextPosition);
-  Left := TIDMultiExpression.Create(Left, Right, ID.TextPosition);
-  EContext.RPNPushExpression(Left);
+  if Expr.ItemType = itProcedure then
+    CallExpr := TIDCallExpression.Create(Expr.Declaration, Expr.TextPosition)
+  else
+  if (Expr.ItemType = itVar) and (Expr.DataType is TIDProcType) then
+  begin
+    CallExpr := TIDCastedCallExpression.Create(Expr.Declaration, Expr.TextPosition);
+    TIDCastedCallExpression(CallExpr).DataType := Expr.DataType;
+  end else
+    ERROR_FEATURE_NOT_SUPPORTED;
+  Result := ParseEntryCall(Scope, CallExpr, EContext, SContext, ASTE);
+    (*// если это метод, подставляем self из пула
+    if PMContext.Count > 0 then
+    begin
+      if PMContext.Count > 1 then
+        Expr := ProcessMemberExpression({SContext}nil, WasProperty, PMContext)
+      else
+        Expr := PMContext.Last;
 
-  Result := parser_NextToken(Scope);
+      if (Expr.Declaration is TIDField) and (PMContext.Count = 1) then
+      begin
+        NExpr := GetTMPRefExpr(SContext, Expr.DataType);
+        NExpr.TextPosition := Expr.TextPosition;
+        Expr := NExpr;
+      end;
+      TIDCallExpression(Expression).Instance := Expr;
+    end else
+    if (Decl.ItemType = itProcedure) and Assigned(TIDProcedure(Decl).Struct) and
+       (TIDProcedure(Decl).Struct = SContext.Proc.Struct) then
+    begin
+      // если это собственный метод, добавляем self из списка параметров
+      TIDCallExpression(Expression).Instance := TIDExpression.Create(SContext.Proc.SelfParam);
+    end;*)
 end;
 
 function TASTDelphiUnit.ParseIndexedPropertyArgs(Scope: TScope; out ArgumentsCount: Integer; var EContext: TEContext): TTokenID;
