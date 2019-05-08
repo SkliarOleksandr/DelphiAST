@@ -153,7 +153,7 @@ type
     constructor Create(Scope: TScope; const Name: string; ResultType: TIDType); reintroduce; virtual;
     /////////////////////////////////////////////////////////////////////////////////////////
     property FunctionID: TBuiltInFunctionID read GetFunctionID;
-    class function Register(Scope: TScope): TIDBuiltInFunction; virtual; abstract;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; virtual; abstract;
   end;
   TIDBuiltInFunctionClass = class of TIDBuiltInFunction;
 
@@ -295,6 +295,13 @@ type
 
   {внутренний implicit оператор Variant -> Any}
   TIDOpImplicitVariantToAny = class(TIDInternalOpImplicit)
+  public
+    function Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; override;
+    function Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
+  end;
+
+  {внутренний implicit оператор Variant -> Any}
+  TIDOpImplicitAnyToUntyped = class(TIDInternalOpImplicit)
   public
     function Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; override;
     function Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
@@ -1273,14 +1280,9 @@ end;
 function TASTDelphiUnit.Process_operator_Deref(var EContext: TEContext): TIDExpression;
 var
   Src: TIDExpression;
-  RefDt: TIDType;
 begin
   Src := EContext.RPNPopExpression();
   CheckPointerType(Src);
-  RefDt := TIDPointer(Src.DataType).ReferenceType;
-  if not Assigned(RefDt) then
-    AbortWork('Cannot dereference the untyped pointer', Src.TextPosition);
-
   Result := TIDDrefExpression.Create(Src);
 end;
 
@@ -1892,6 +1894,12 @@ begin
             Exit(Source); // нужна еще проверка на констрейты
         end;
       end;
+    end else
+    if Decl is TIDInternalOpImplicit then
+    begin
+      Result := TIDInternalOpImplicit(Decl).Match(@SContext, Source, Dest);
+      if Assigned(Result) then
+        Exit;
     end;
   end;
 
@@ -5331,6 +5339,18 @@ end;
 function TIDOpImplicitStringToPChar.Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
 begin
   Result := Src;
+end;
+
+{ TIDOpImplicitAnyToUntyped }
+
+function TIDOpImplicitAnyToUntyped.Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+begin
+  Result := Dst;
+end;
+
+function TIDOpImplicitAnyToUntyped.Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
+begin
+  Result := TIDCastExpression.Create(Src.Declaration, Dst, Src.TextPosition);
 end;
 
 end.

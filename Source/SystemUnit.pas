@@ -681,6 +681,7 @@ begin
   RegisterBuiltin(TCT_Inc);
   RegisterBuiltin(TCT_Dec);
   RegisterBuiltin(TCT_Length);
+  RegisterBuiltin(TCT_Ord);
 end;
 
 function TSYSTEMUnit.RegisterBuiltin(const Name: string; MacroID: TBuiltInFunctionID; ResultDataType: TIDType; Flags: TProcFlags = [pfPure]): TIDBuiltInFunction;
@@ -693,7 +694,8 @@ end;
 
 function TSYSTEMUnit.RegisterBuiltin(const BuiltinClass: TIDBuiltInFunctionClass): TIDBuiltInFunction;
 begin
-  Result := BuiltinClass.Register(Self.IntfSection);
+  Result := BuiltinClass.CreateDecl(Self.IntfSection);
+  TNPUnit.InsertToScope(Self.IntfSection, Result);
 end;
 
 procedure TSYSTEMUnit.RegisterBuiltinFunctions;
@@ -731,11 +733,6 @@ begin
   // TypeInfo
   Decl := RegisterBuiltin('TypeInfo', bf_typeinfo, _TObject);
   Decl.AddParam('Declaration', _Pointer, [VarConst]);
-
-  // Ord(const Ordinal)
-  Decl := RegisterBuiltin('Ord', bf_Ord, _Int64);
-  Decl.AddParam('Value', _Void, [VarConst]);
-
 
   // include(var Set; const SubSet)
   Decl := RegisterBuiltin('include', bf_include, nil);
@@ -790,6 +787,7 @@ begin
 
   FUntypedReferenceType := TIDPointer.CreateAsSystem(IntfSection, 'Untyped reference');
   IntfSection.InsertID(FUntypedReferenceType);
+  FUntypedReferenceType.OverloadImplicitFromAny(TIDOpImplicitAnyToUntyped.CreateAsIntOp);
 
   FOrdinalType := TIDOrdinal.CreateAsSystem(nil, 'ordinal');
   FExplicitEnumFromAny := TIDOpExplicitIntToEnum.CreateAsIntOp;
@@ -874,7 +872,9 @@ begin
   FPointerType.OverloadBinarOperator2(opSubtract, FPointerType, FPointerType);
 
   FPointerType.OverloadBinarOperator2(opAdd, _Int32, FPointerType);
+  FPointerType.OverloadBinarOperator2(opAdd, _UInt32, FPointerType);
   FPointerType.OverloadBinarOperator2(opSubtract, _Int32, FPointerType);
+  FPointerType.OverloadBinarOperator2(opSubtract, _UInt32, FPointerType);
   //===============================================================
 
   // Delphi system aliases

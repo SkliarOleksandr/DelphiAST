@@ -12,7 +12,7 @@ type
   protected
     function Process(var EContext: TEContext): TIDExpression; override;
   public
-    class function Register(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {function: RunError}
@@ -20,7 +20,7 @@ type
   protected
     function Process(var EContext: TEContext): TIDExpression; override;
   public
-    class function Register(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {function: Defined}
@@ -28,7 +28,7 @@ type
   protected
     function Process(const Ctx: TSysFunctionContext): TIDExpression; override;
   public
-    class function Register(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {function: Declared}
@@ -36,7 +36,7 @@ type
   protected
     function Process(const Ctx: TSysFunctionContext): TIDExpression; override;
   public
-    class function Register(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {function: AtomicExchange}
@@ -44,7 +44,7 @@ type
   protected
     function Process(var EContext: TEContext): TIDExpression; override;
   public
-    class function Register(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {function: AtomicCmpExchange}
@@ -52,7 +52,7 @@ type
   protected
     function Process(var EContext: TEContext): TIDExpression; override;
   public
-    class function Register(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {function: SizeOf}
@@ -60,7 +60,7 @@ type
   protected
     function Process(var EContext: TEContext): TIDExpression; override;
   public
-    class function Register(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {function: Low}
@@ -68,7 +68,7 @@ type
   protected
     function Process(var EContext: TEContext): TIDExpression; override;
   public
-    class function Register(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {function: High}
@@ -76,7 +76,7 @@ type
   protected
     function Process(var EContext: TEContext): TIDExpression; override;
   public
-    class function Register(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {function: Inc}
@@ -84,7 +84,7 @@ type
   protected
     function Process(var EContext: TEContext): TIDExpression; override;
   public
-    class function Register(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {function: Dec}
@@ -92,7 +92,7 @@ type
   protected
     function Process(var EContext: TEContext): TIDExpression; override;
   public
-    class function Register(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {function: Length}
@@ -100,7 +100,15 @@ type
   protected
     function Process(var EContext: TEContext): TIDExpression; override;
   public
-    class function Register(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
+  {function: Ord}
+  TCT_Ord = class(TIDSysRuntimeFunction)
+  protected
+    function Process(var EContext: TEContext): TIDExpression; override;
+  public
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
 
@@ -109,16 +117,18 @@ implementation
 { TSF_now }
 
 function TSF_now.Process(var EContext: TEContext): TIDExpression;
-//var
-//  ILCode: TILInstruction;
+var
+  ResVar: TIDVariable;
+  UN: TNPUnit;
 begin
-//  Result := EContext.SContext.GetTMPVarExpr(SYSUnit._DateTime, GetUnit(EContext).parser_Position);
+  UN := GetUnit(EContext);
+  ResVar := EContext.SContext.Proc.GetTMPVar(SYSUnit._DateTime);
+  Result := TIDExpression.Create(ResVar, UN.parser_Position);
 end;
 
-class function TSF_now.Register(Scope: TScope): TIDBuiltInFunction;
+class function TSF_now.CreateDecl(Scope: TScope): TIDBuiltInFunction;
 begin
-  Result := TSF_now.Create(Scope, 'New', SYSUnit._DateTime);
-  TNPUnit.InsertToScope(Scope, Result);
+  Result := TSF_now.Create(Scope, 'Now', SYSUnit._DateTime);
 end;
 
 { TSCTF_Defined }
@@ -138,11 +148,10 @@ begin
     Result := SYSUnit._FalseExpression;
 end;
 
-class function TSCTF_Defined.Register(Scope: TScope): TIDBuiltInFunction;
+class function TSCTF_Defined.CreateDecl(Scope: TScope): TIDBuiltInFunction;
 begin
   Result := TSCTF_Defined.Create(Scope, 'Defined', SYSUnit._Boolean);
   Result.AddParam('Expression', SYSUnit._Boolean, [VarConst]);
-  TNPUnit.InsertToScope(Scope, Result);
 end;
 
 { TSF_AtomicExchange }
@@ -157,12 +166,11 @@ begin
   // todo:
 end;
 
-class function TSF_AtomicExchange.Register(Scope: TScope): TIDBuiltInFunction;
+class function TSF_AtomicExchange.CreateDecl(Scope: TScope): TIDBuiltInFunction;
 begin
   Result := TSF_AtomicExchange.Create(Scope, 'AtomicExchange', SYSUnit._NativeInt);
   Result.AddParam('Left', _Void, [VarInOut]);
   Result.AddParam('Right', _Void, [VarInOut]);
-  TNPUnit.InsertToScope(Scope, Result);
 end;
 
 { TSF_AtomicCmpExchange }
@@ -176,13 +184,12 @@ begin
 end;
 
 
-class function TSF_AtomicCmpExchange.Register(Scope: TScope): TIDBuiltInFunction;
+class function TSF_AtomicCmpExchange.CreateDecl(Scope: TScope): TIDBuiltInFunction;
 begin
   Result := TSF_AtomicCmpExchange.Create(Scope, 'AtomicCmpExchange', SYSUnit._NativeInt);
   Result.AddParam('Target', _Void, [VarInOut]);
   Result.AddParam('Comparand', _Void, [VarIn]);
   Result.AddParam('Succeeded', _Void, [VarOut]);
-  TNPUnit.InsertToScope(Scope, Result);
 end;
 
 { TSCTF_Declared }
@@ -203,11 +210,10 @@ begin
 
 end;
 
-class function TSCTF_Declared.Register(Scope: TScope): TIDBuiltInFunction;
+class function TSCTF_Declared.CreateDecl(Scope: TScope): TIDBuiltInFunction;
 begin
   Result := TSCTF_Declared.Create(Scope, 'Declared', SYSUnit._Boolean);
   Result.AddParam('Expression', SYSUnit._Boolean, [VarConst]);
-  TNPUnit.InsertToScope(Scope, Result);
 end;
 
 { TSF_RunError }
@@ -221,11 +227,10 @@ begin
   Result := nil;
 end;
 
-class function TSF_RunError.Register(Scope: TScope): TIDBuiltInFunction;
+class function TSF_RunError.CreateDecl(Scope: TScope): TIDBuiltInFunction;
 begin
   Result := TSF_RunError.Create(Scope, 'RunError', nil);
   Result.AddParam('ErrorCode', SYSUnit._Int32, []);
-  TNPUnit.InsertToScope(Scope, Result);
 end;
 
 { TCT_SizeOf }
@@ -253,11 +258,10 @@ begin
   end;
 end;
 
-class function TCT_SizeOf.Register(Scope: TScope): TIDBuiltInFunction;
+class function TCT_SizeOf.CreateDecl(Scope: TScope): TIDBuiltInFunction;
 begin
   Result := TCT_SizeOf.Create(Scope, 'SizeOf', SYSUnit._Int32);
   Result.AddParam('S', _Void);
-  TNPUnit.InsertToScope(Scope, Result);
 end;
 
 { TCT_LoBound }
@@ -311,11 +315,10 @@ begin
   Result := TIDExpression.Create(Decl, UN.parser_Position);
 end;
 
-class function TCT_LoBound.Register(Scope: TScope): TIDBuiltInFunction;
+class function TCT_LoBound.CreateDecl(Scope: TScope): TIDBuiltInFunction;
 begin
   Result := TCT_LoBound.Create(Scope, 'Low', SYSUnit._OrdinalType);
   Result.AddParam('Value', _Void, [VarConst]);
-  TNPUnit.InsertToScope(Scope, Result);
 end;
 
 { TCT_HiBound }
@@ -369,11 +372,10 @@ begin
   Result := TIDExpression.Create(Decl, UN.parser_Position);
 end;
 
-class function TCT_HiBound.Register(Scope: TScope): TIDBuiltInFunction;
+class function TCT_HiBound.CreateDecl(Scope: TScope): TIDBuiltInFunction;
 begin
   Result := TCT_HiBound.Create(Scope, 'High', SYSUnit._OrdinalType);
   Result.AddParam('Value', _Void, [VarConst]);
-  TNPUnit.InsertToScope(Scope, Result);
 end;
 
 { TCT_Inc }
@@ -390,12 +392,11 @@ begin
   Result := nil;
 end;
 
-class function TCT_Inc.Register(Scope: TScope): TIDBuiltInFunction;
+class function TCT_Inc.CreateDecl(Scope: TScope): TIDBuiltInFunction;
 begin
   Result := TCT_Inc.Create(Scope, 'Inc', SYSUnit._OrdinalType);
   Result.AddParam('Value', SYSUnit._OrdinalType, [VarInOut]);
   Result.AddParam('Increment', SYSUnit._OrdinalType, [VarConst, VarHasDefault], SYSUnit._OneExpression);
-  TNPUnit.InsertToScope(Scope, Result);
 end;
 
 { TCT_Dec }
@@ -412,12 +413,11 @@ begin
   Result := nil;
 end;
 
-class function TCT_Dec.Register(Scope: TScope): TIDBuiltInFunction;
+class function TCT_Dec.CreateDecl(Scope: TScope): TIDBuiltInFunction;
 begin
   Result := TCT_Dec.Create(Scope, 'Dec', SYSUnit._OrdinalType);
   Result.AddParam('Value', SYSUnit._OrdinalType, [VarInOut]);
   Result.AddParam('Decrement', SYSUnit._OrdinalType, [VarConst, VarHasDefault], SYSUnit._OneExpression);
-  TNPUnit.InsertToScope(Scope, Result);
 end;
 
 { TCT_Length }
@@ -477,11 +477,36 @@ begin
   end;
 end;
 
-class function TCT_Length.Register(Scope: TScope): TIDBuiltInFunction;
+class function TCT_Length.CreateDecl(Scope: TScope): TIDBuiltInFunction;
 begin
   Result := TCT_Length.Create(Scope, 'Length', SYSUnit._Int32);
   Result.AddParam('S', SYSUnit._AnyArrayType);
-  TNPUnit.InsertToScope(Scope, Result);
+end;
+
+{ TCT_Ord }
+
+function TCT_Ord.Process(var EContext: TEContext): TIDExpression;
+var
+  Expr: TIDExpression;
+  CValue: Int64;
+  UN: TNPUnit;
+begin
+  UN := GetUnit(EContext);
+  // read the argument
+  Expr := EContext.RPNPopExpression();
+  UN.CheckEmptyExpression(Expr);
+  UN.CheckOrdinalExpression(Expr);
+  if Expr.IsConstant then begin
+    CValue := Expr.AsConst.AsInt64;
+    Result := TIDExpression.Create(TIDIntConstant.CreateAnonymous(nil, SYSUnit._Int32, CValue), Expr.TextPosition)
+  end else
+    Result := TIDCastExpression.Create(Expr.Declaration, SYSUnit._Int32, UN.parser_PrevPosition);
+end;
+
+class function TCT_Ord.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := TCT_Ord.Create(Scope, 'Ord', SYSUnit._Int64);
+  Result.AddParam('Value', _Void, [VarConst]);
 end;
 
 end.

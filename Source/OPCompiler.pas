@@ -11867,17 +11867,8 @@ begin
 end;
 
 function TNPUnit.Process_operator_Deref(var EContext: TEContext): TIDExpression;
-var
-  Src: TIDExpression;
-  RefDt: TIDType;
 begin
-  Src := RPNPopExpression(EContext);
-  CheckPointerType(Src);
-  RefDt := TIDPointer(Src.DataType).ReferenceType;
-  if not Assigned(RefDt) then
-    AbortWork('Cannot dereference the untyped pointer', Src.TextPosition);
-
-  Result := TIDDrefExpression.Create(Src);
+  Assert(false);
 end;
 
 procedure TNPUnit.Process_operator_AssignMulti(var EContext: TEContext);

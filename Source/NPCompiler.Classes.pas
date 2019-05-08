@@ -2951,7 +2951,7 @@ begin
       Exit(TIDDeclaration(Node.Data));
   end;
 
-  Result := nil;
+  Result := SysImplicitToAny;
 end;
 
 function TIDType.GetImplicitOperatorFrom(const Source: TIDType): TIDDeclaration;
@@ -2962,7 +2962,7 @@ begin
   if Assigned(Node) then
     Exit(TIDDeclaration(Node.Data));
 
-  Result := nil;
+  Result := SysImplicitFromAny;
 end;
 
 function TIDType.GetActualDataType: TIDType;
@@ -6276,6 +6276,8 @@ end;
 function TIDDrefExpression.GetDataType: TIDType;
 begin
   Result := (FSrc.DataType as TIDPointer).ReferenceType;
+  if not Assigned(Result) then
+    Result := SYSUnit._UntypedReference;
 end;
 
 { TIDClosure }
