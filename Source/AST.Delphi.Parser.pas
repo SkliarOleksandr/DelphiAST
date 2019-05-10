@@ -191,8 +191,13 @@ type
   TIDInternalOpImplicit = class(TIDInternalOperator)
   public
     constructor CreateInternal(ResultType: TIDType); reintroduce;
-    function Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; virtual; abstract;
+    function Check(const Src, Dst: TIDType): Boolean; overload; virtual; abstract;
+    function Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; overload; virtual;
     function Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; virtual; abstract;
+  end;
+
+  TIDInternalOpExplisit = class(TIDInternalOpImplicit)
+
   end;
 
   {внутренний implicit оператор String -> AnsiString}
@@ -319,6 +324,30 @@ type
   public
     function Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; override;
     function Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
+    function Check(const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
+  {internal explicit operator: Class of -> Pointer type}
+  TIDOpExplicitClassOfToAny = class(TIDInternalOpImplicit)
+  public
+    function Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; override;
+    function Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
+  end;
+
+  {internal explicit operator: Class of <- Any}
+  TIDOpExplicitClassOfFromAny = class(TIDInternalOpExplisit)
+  public
+    function Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; override;
+    function Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
+    function Check(const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
+  {internal implicit operator: Pointer -> Any}
+  TIDOpImplicitPointerToAny = class(TIDInternalOpImplicit)
+  public
+    function Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; override;
+    function Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
+    function Check(const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
   function GetUnit(const SContext: PSContext): TASTDelphiUnit; overload;
@@ -2085,19 +2114,29 @@ begin
     Exit(Destination);
 
   Result := SrcDataType.GetExplicitOperatorTo(DstDataType);
-  if not Assigned(Result) then
-    Result := DstDataType.GetExplicitOperatorFrom(SrcDataType);
-
   if Assigned(Result) then
-    Exit;
-
-  ExplicitIntOp := DstDataType.SysExplicitFromAny;
-  if ExplicitIntOp is TIDInternalOpImplicit then
   begin
-    if TIDInternalOpImplicit(ExplicitIntOp).Check(Source, Destination) <> nil then
-      Exit(Destination);
+    if Result is TIDInternalOpImplicit then
+    begin
+      Result := TIDInternalOpImplicit(Result).Check(Source, DstDataType);
+      if Assigned(Result) then
+        Exit;
+    end else
+      Exit;
   end;
-  Result := nil;
+
+  if not Assigned(Result) then
+  begin
+    Result := DstDataType.GetExplicitOperatorFrom(SrcDataType);
+    if Assigned(Result) then
+    begin
+      if Result is TIDInternalOpImplicit then
+      begin
+        if TIDInternalOpImplicit(Result).Check(DstDataType, SrcDataType) then
+          Exit(SrcDataType);
+      end;
+    end;
+  end;
 end;
 
 class function TASTDelphiUnit.CheckImplicit(Source: TIDExpression; Dest: TIDType): TIDDeclaration;
@@ -5180,6 +5219,14 @@ end;
 
 { TIDInternalOpImplicit }
 
+function TIDInternalOpImplicit.Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+begin
+  if Check(Src.DataType, Dst) then
+    Result := Dst
+  else
+    Result := nil;
+end;
+
 constructor TIDInternalOpImplicit.CreateInternal(ResultType: TIDType);
 begin
   CreateFromPool;
@@ -5279,6 +5326,11 @@ end;
 
 { TIDOpExplicitTProcFromAny }
 
+function TIDOpExplicitTProcFromAny.Check(const Src, Dst: TIDType): Boolean;
+begin
+  Result := (Dst.DataTypeID = dtPointer) and (Src as TIDProcType).IsStatic;
+end;
+
 function TIDOpExplicitTProcFromAny.Match(const SContext: PSContext; const Src: TIDExpression;
                                          const Dst: TIDType): TIDExpression;
 begin
@@ -5351,6 +5403,70 @@ end;
 function TIDOpImplicitAnyToUntyped.Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
 begin
   Result := TIDCastExpression.Create(Src.Declaration, Dst, Src.TextPosition);
+end;
+
+{ TIDOpExplicitClassOfToPointer }
+
+function TIDOpExplicitClassOfToAny.Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+begin
+  if Dst.DataTypeID = dtPointer then
+    Result := Dst
+  else
+    Result := nil;
+end;
+
+function TIDOpExplicitClassOfToAny.Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
+begin
+  if Dst.DataTypeID = dtPointer then
+    Result := Src
+  else
+    Result := nil;
+end;
+
+{ TIDOpImplicitPointerToAny }
+
+function TIDOpImplicitPointerToAny.Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+begin
+  if Dst.DataTypeID = dtPointer then
+    Result := Dst
+  else
+    Result := nil;
+end;
+
+function TIDOpImplicitPointerToAny.Check(const Src, Dst: TIDType): Boolean;
+begin
+  Result := Dst.DataTypeID = dtPointer;
+end;
+
+function TIDOpImplicitPointerToAny.Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
+begin
+  if Dst.DataTypeID = dtPointer then
+    Result := Src
+  else
+    Result := nil;
+end;
+
+{ TIDOpExplicitClassOfFromAny }
+
+function TIDOpExplicitClassOfFromAny.Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+begin
+  if Dst.DataTypeID in [dtPointer, dtNativeInt, dtNativeUInt] then
+    Result := Dst
+  else
+    Result := nil;
+end;
+
+function TIDOpExplicitClassOfFromAny.Check(const Src, Dst: TIDType): Boolean;
+begin
+  Result := Dst.DataTypeID in [dtPointer, dtNativeInt, dtNativeUInt];
+end;
+
+function TIDOpExplicitClassOfFromAny.Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
+begin
+  if Dst.DataTypeID in [dtPointer, dtNativeInt, dtNativeUInt] then
+    Result := Src
+  else
+    Result := nil;
 end;
 
 end.

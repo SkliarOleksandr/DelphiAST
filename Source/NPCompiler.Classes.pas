@@ -58,6 +58,7 @@ type
   TIDConstant = class;
   TIDStructure = class;
   TIDClass = class;
+  TIDClassOf = class;
   TIDInterface = class;
   TIDProperty = class;
   TIDOperator = class;
@@ -2835,7 +2836,8 @@ begin
     if Assigned(Node) then
       Exit(TIDDeclaration(Node.Data));
   end;
-  Result := nil;
+
+  Result := SysExplicitFromAny;
 end;
 
 function TIDType.GetExplicitOperatorTo(const Destination: TIDType): TIDDeclaration;
@@ -2845,7 +2847,8 @@ begin
   Node := FExplicitsTo.Find(Destination);
   if Assigned(Node) then
     Exit(TIDDeclaration(Node.Data));
-  Result := nil;
+
+  Result := SysExplicitToAny;
 end;
 
 function TIDType.FindImplicitOperatorFrom(const Source: TIDType): TIDDeclaration;
@@ -4722,6 +4725,8 @@ begin
     OverloadBinarOperator2(opSubtract, SYSUnit._UInt32, Self);
     OverloadBinarOperator2(opSubtract, SYSUnit._UInt64, Self);
     OverloadBinarOperator2(opSubtract, SYSUnit._NativeUInt, Self);
+
+    OverloadImplicitToAny(TIDOpImplicitPointerToAny.CreateAsIntOp);
   end;
 end;
 
@@ -4743,6 +4748,7 @@ begin
 
     OverloadBinarOperator2(opAdd, SYSUnit._Int32, Self);
     OverloadBinarOperator2(opSubtract, SYSUnit._Int32, Self);
+    OverloadImplicitToAny(TIDOpImplicitPointerToAny.CreateAsIntOp);
   end;
 end;
 
@@ -6060,12 +6066,16 @@ constructor TIDClassOf.Create(Scope: TScope; const Identifier: TIdentifier);
 begin
   inherited;
   DataTypeID := dtClassOf;
+  OverloadExplicitToAny(TIDOpExplicitClassOfToAny.CreateAsIntOp);
+  OverloadExplicitFromAny(TIDOpExplicitClassOfFromAny.CreateAsIntOp);
 end;
 
 constructor TIDClassOf.CreateAsSystem(Scope: TScope; const Name: string);
 begin
   inherited;
   FDataTypeID := dtClassOf;
+  OverloadExplicitToAny(TIDOpExplicitClassOfToAny.CreateAsIntOp);
+  OverloadExplicitFromAny(TIDOpExplicitClassOfFromAny.CreateAsIntOp);
 end;
 
 function TIDClassOf.GetDisplayName: string;

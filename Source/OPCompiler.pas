@@ -3503,7 +3503,8 @@ begin
     vmpPassArgument: ERROR_ARG_VAR_REQUIRED(Expression);
   end;
   Flags := TIDVariable(Decl).Flags;
-  if VarConst in Flags then begin
+  if (VarConst in Flags) and (Expression.DataType <> SYSUnit._UntypedReference) then
+  begin
     ERROR_CANNOT_MODIFY_CONSTANT(Expression);
   end;
   if VarLoopIndex in Flags then
@@ -13556,4 +13557,3 @@ initialization
   FormatSettings.DecimalSeparator := '.';
 
 end.
-

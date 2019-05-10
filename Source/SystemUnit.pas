@@ -933,6 +933,12 @@ begin
   // constant for deprecated
   fDeprecatedDefaultStr := TIDStringConstant.CreateAsSystem(IntfSection, 'The declaration is deprecated');
 
+
+  _PAnsiCharType.OverloadBinarOperator2(opAdd, _Int32, _PAnsiCharType);
+  _PAnsiCharType.OverloadBinarOperator2(opAdd, _UInt32, _PAnsiCharType);
+  _PCharType.OverloadBinarOperator2(opSubtract, _Int32, _PCharType);
+  _PCharType.OverloadBinarOperator2(opSubtract, _UInt32, _PCharType);
+
   AddImplicists;
   AddExplicists;
   AddArithmeticOperators;
