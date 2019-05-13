@@ -2,9 +2,12 @@ unit NPCompiler.Contexts;
 
 interface
 
-uses System.SysUtils, NPCompiler.Classes, IL.Instructions, iDStringParser;
+uses System.SysUtils, NPCompiler.Classes, iDStringParser;
 
 type
+  TILInstruction = TObject;
+  TIL = TObject;
+
   {try context - контекст оброботки исключений}
   PTryContext = ^TTryContext;
   TTryContext = record
@@ -97,24 +100,18 @@ end;
 
 function TSContext.ILFirst: TILInstruction;
 begin
-  if Assigned(IL) then
-    Result := IL.First
-  else
-    Result := nil;
+  Result := nil;
 end;
 
 function TSContext.ILLast: TILInstruction;
 begin
-  if Assigned(IL) then
-    Result := IL.Last
-  else
-    Result := nil;
+  Result := nil;
 end;
 
 procedure TSContext.ILWrite(Instruction: TILInstruction);
 begin
-  if WriteIL then
-    IL.Write(Instruction);
+//  if WriteIL then
+//    IL.Write(Instruction);
 end;
 
 procedure TSContext.Initialize;

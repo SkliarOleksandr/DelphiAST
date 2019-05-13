@@ -39,14 +39,21 @@ type
   PEContext = ^TEContext;
 
   TASTDelphiUnit = class(TNPUnit)
+
+
   private
     procedure CheckLeftOperand(const Status: TRPNStatus);
+    procedure CheckAndCallFuncImplicit(const EContext: TEContext); overload;
+    function CheckAndCallFuncImplicit(const SContext: TSContext; Expr: TIDExpression; out WasCall: Boolean): TIDExpression; overload;
+
     function CreateAnonymousConstant(Scope: TScope; var EContext: TEContext;
       const ID: TIdentifier; IdentifierType: TIdentifierType): TIDExpression;
     procedure InitEContext(var EContext: TEContext; const SContext: TSContext; EPosition: TExpessionPosition); inline;
 
     class function MatchExplicit(const Source: TIDExpression; Destination: TIDType): TIDDeclaration; static;
     class function MatchArrayImplicitToRecord(Source: TIDExpression; Destination: TIDStructure): TIDExpression; static;
+    function FindBinaryOperator(const SContext: TSContext; OpID: TOperatorID; Left, Right: TIDExpression): TIDDeclaration;
+    function DoMatchBinarOperator(const SContext: TSContext; OpID: TOperatorID; Left, Right: TIDExpression): TIDDeclaration;
 
   protected
     function GetModuleName: string; override;
@@ -56,6 +63,7 @@ type
     function GetFirstConst: TASTDeclaration; override;
     procedure CheckLabelExpression(const Expr: TIDExpression); overload;
     procedure CheckLabelExpression(const Decl: TIDDeclaration); overload;
+
     function Process_operators2(var EContext: TEContext; OpID: TOperatorID): TIDExpression;
     function Process_CALL(var EContext: TEContext): TIDExpression;
     function Process_CALL_direct(const SContext: TSContext; PExpr: TIDCallExpression; CallArguments: TIDExpressions): TIDExpression;
@@ -1157,6 +1165,48 @@ begin
   Result := nil
 end;
 
+function TASTDelphiUnit.DoMatchBinarOperator(const SContext: TSContext; OpID: TOperatorID; Left, Right: TIDExpression): TIDDeclaration;
+begin
+  if OpID in [opShiftLeft, opShiftRight] then
+    Result := MatchBinarOperator(SContext, OpID, Left, Left)
+  else
+    Result := MatchBinarOperator(SContext, OpID, Left, Right);
+
+  if not Assigned(Result) then
+    Result := MatchBinarOperatorWithImplicit(SContext, OpID, Left, Right);
+end;
+
+function TASTDelphiUnit.FindBinaryOperator(const SContext: TSContext; OpID: TOperatorID; Left, Right: TIDExpression): TIDDeclaration;
+var
+  WasCall: Boolean;
+begin
+  Result := DoMatchBinarOperator(SContext, OpID, Left, Right);
+
+  if not Assigned(Result) then
+  begin
+    Left := CheckAndCallFuncImplicit(SContext, Left, WasCall);
+    if WasCall then
+      Result := DoMatchBinarOperator(SContext, OpID, Left, Right);
+  end;
+
+  if not Assigned(Result) then
+  begin
+    Left := CheckAndCallFuncImplicit(SContext, Left, WasCall);
+    if WasCall then
+      Result := DoMatchBinarOperator(SContext, OpID, Left, Right);
+
+    if not Assigned(Result) then
+    begin
+      Right := CheckAndCallFuncImplicit(SContext, Right, WasCall);
+      if WasCall then
+        Result := FindBinaryOperator(SContext, OpID, Left, Right);
+    end;
+
+    if not Assigned(Result) then
+      ERROR_NO_OVERLOAD_OPERATOR_FOR_TYPES(OpID, Left, Right);
+  end;
+end;
+
 function TASTDelphiUnit.Process_operators2(var EContext: TEContext; OpID: TOperatorID): TIDExpression;
 var
   Left, Right: TIDExpression;
@@ -1181,19 +1231,7 @@ begin
       // Читаем второй операнд
       Left := EContext.RPNPopExpression();
 
-      if OpID in [opShiftLeft, opShiftRight] then
-        Op := MatchBinarOperator(EContext.SContext, OpID, Left, Left)
-      else
-        Op := MatchBinarOperator(EContext.SContext, OpID, Left, Right);
-
-      {if not Assigned(OP) and Left.IsDynArrayConst then
-        Op := MatchBinarOperatorWithTuple(SContext, OpID, Left, Right);
-
-      if not Assigned(OP) and Right.IsDynArrayConst then
-        Op := MatchBinarOperatorWithTuple(SContext, OpID, Right, Left);   }
-
-      if not Assigned(Op) then
-        Op := MatchBinarOperatorWithImplicit(EContext.SContext, OpID, Left, Right);
+      Op := FindBinaryOperator(EContext.SContext, OpID, Left, Right);
 
       // если аргументы - константы, производим константные вычисления
       if (Left.IsConstant and Right.IsConstant) and
@@ -2090,7 +2128,7 @@ begin
     RightImplicit := nil;
 
   if not Assigned(LeftImplicit) and not Assigned(RightImplicit) then
-    ERROR_NO_OVERLOAD_OPERATOR_FOR_TYPES(Op, Left, Right);
+    Exit(nil);
 
   if LeftImplicitFactor >= RightImplicitFactor then
   begin
@@ -2137,6 +2175,37 @@ begin
       end;
     end;
   end;
+end;
+
+procedure TASTDelphiUnit.CheckAndCallFuncImplicit(const EContext: TEContext);
+var
+  Expr, Res: TIDExpression;
+begin
+  Expr := EContext.Result;
+  if not Assigned(Expr) then
+    Exit;
+
+  if Expr.DataTypeID <> dtProcType then
+    Exit;
+
+  if Assigned(Expr.AsProcedure.ResultType) then
+  begin
+    Res := GetTMPVarExpr(EContext, Expr.AsProcedure.ResultType, Expr.TextPosition);
+    EContext.RPNPushExpression(Res);
+  end;
+end;
+
+function TASTDelphiUnit.CheckAndCallFuncImplicit(const SContext: TSContext; Expr: TIDExpression; out WasCall: Boolean): TIDExpression;
+begin
+  WasCall := False;
+  if Expr.DataTypeID <> dtProcType then
+    Exit(Expr);
+
+  WasCall := True;
+  if Assigned(Expr.AsProcedure.ResultType) then
+    Result := GetTMPVarExpr(SContext, Expr.AsProcedure.ResultType, Expr.TextPosition)
+  else
+    Result := Expr;
 end;
 
 class function TASTDelphiUnit.CheckImplicit(Source: TIDExpression; Dest: TIDType): TIDDeclaration;
@@ -2931,6 +3000,7 @@ begin
       end;
       token_equal: begin
         CheckLeftOperand(Status);
+
         Status := EContext.RPNPushOperator(opEqual);
         ASTE.AddSubItem(TASTOpEqual);
       end;
@@ -3096,19 +3166,19 @@ begin
 
           case Expr.ItemType of
             {именованная константа}
-            itConst: status := rpOperand;
+            //itConst: status := rpOperand;
             {переменная}
-            itVar: Status := rpOperand;
+            //itVar: Status := rpOperand;
             {тип}
             itType: begin
               case Result of
                 {явное преобразование типов}
                 token_openround: begin
                   Result := ParseExplicitCast(Scope, SContext, Expr);
-                  Status := rpOperand;
+                  //Status := rpOperand;
                 end;
               else
-                Status := rpOperand;
+                //Status := rpOperand;
               end;
             end;
           end;
@@ -3121,6 +3191,7 @@ begin
           ASTE.AddDeclItem(Expr.Declaration, Expr.TextPosition);
         end;
         EContext.RPNPushExpression(Expr);
+        Status := rpOperand;
         Continue;
       end;
     else
@@ -3493,6 +3564,7 @@ begin
   parser_NextToken(Scope);
   Result := ParseExpression(Scope, SContext, EContext, CondExpr);
   KW.Expression := CondExpr;
+  CheckAndCallFuncImplicit(EContext);
   Expression := EContext.Result;
   CheckEmptyExpression(Expression);
   CheckBooleanExpression(Expression);

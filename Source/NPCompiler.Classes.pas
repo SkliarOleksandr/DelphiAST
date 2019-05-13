@@ -20,6 +20,8 @@ uses System.SysUtils, System.Classes, System.StrUtils, System.Math, System.Gener
      AST.Project;
 type
 
+  TILInstruction = TObject;
+
   TExpessionPosition = (ExprNested, ExprLValue, ExprRValue, ExprNestedGeneric);
 
   ECompilerAbort = class(EAbort)
@@ -65,7 +67,6 @@ type
   TIDExpression = class;
   TIDNameSpace = class;
   TIDGenericType = class;
-//  TIDUserDefinedMacro = class;
   TIDMacroArgument = class;
   TIDStringConstant = class;
   TIDProcType = class;
@@ -265,20 +266,6 @@ type
   TTypeKind = (tkType, tkAlias, tkRefernce);
 
   TIDTypeClass = class of TIDType;
-
-  TUnarOperatorInfo = record
-
-  end;
-
-
-  TIDILInstruction = class(TIDDeclaration)
-  private
-    FILCode: TILCode;
-  public
-    constructor Create(Scope: TScope; const Name: string; ILCode: TILCode); reintroduce;
-    ////////////////////////////////////////////////////////////////////////////
-    property ILCode: TILCode read FILCode;
-  end;
 
   TIDTypeList = array of TIDType;
 
@@ -1643,7 +1630,7 @@ type
 
 implementation
 
-uses IL.Instructions, SystemUnit, OPCompiler, AST.Delphi.Parser;
+uses SystemUnit, OPCompiler, AST.Delphi.Parser;
 
 function IDCompare(const Key1, Key2: TIDDeclaration): NativeInt;
 begin
@@ -2267,26 +2254,26 @@ begin
 end;
 
 function TIDProcedure.CECalc(const Args: TIDExpressions): TIDConstant;
-var
-  i: Integer;
-  Param: TIDVariable;
+//var
+//  i: Integer;
+//  Param: TIDVariable;
 begin
-  // загрузка аргументов в параметры
-  Param := FVarSpace.First;
-  if Assigned(FResultType) then
-    Param := TIDVariable(Param.NextItem);
-  for i := 0 to Length(Args) - 1 do
-  begin
-    Param.CValue := Args[i].CValue;
-    Param := TIDVariable(Param.NextItem);
-  end;
-  // запуск выполнения IL кода
-  if IsCompleted then
-    TIL(FIL).CECalc;
-  // получение результата
-  if Assigned(FResultType) then
-    Result := FVarSpace.First.CValue
-  else
+//  // загрузка аргументов в параметры
+//  Param := FVarSpace.First;
+//  if Assigned(FResultType) then
+//    Param := TIDVariable(Param.NextItem);
+//  for i := 0 to Length(Args) - 1 do
+//  begin
+//    Param.CValue := Args[i].CValue;
+//    Param := TIDVariable(Param.NextItem);
+//  end;
+//  // запуск выполнения IL кода
+//  if IsCompleted then
+//    TIL(FIL).CECalc;
+//  // получение результата
+//  if Assigned(FResultType) then
+//    Result := FVarSpace.First.CValue
+//  else
     Result := nil;
 end;
 
@@ -2477,37 +2464,37 @@ begin
 end;
 
 procedure TIDProcedure.SaveBodyToStream(Stream: TStream; const Package: INPPackage);
-var
-  c: Integer;
-  Variable: TIDVariable;
+//var
+//  c: Integer;
+//  Variable: TIDVariable;
 begin
-  {Локальные переменные}
-  c := FVarSpace.Count - ParamsCount;
-  if Assigned(FResultType) then
-    Dec(c);
-  if Assigned(FStruct) and (not (pfOperator in Flags)) then
-    Dec(c);
-
-  Stream.WriteStretchUInt(c);
-  Variable := TIDVariable(FVarSpace.First);
-  while Assigned(Variable) do begin
-    if not (VarParameter in Variable.FFlags) then
-      Variable.SaveToStream(Stream, Package);
-    Variable := TIDVariable(Variable.NextItem);
-  end;
-
-  {локальные процедуры}
-  if Assigned(ProcSpace.First) then
-  begin
-    SaveProcDecls(Stream, Package, @FProcSpace);
-    SaveProcBodies(Stream, Package, @FProcSpace);
-  end;
-
-  {IL код}
-  if Assigned(FIL) then
-    TIL(FIL).SaveToStream(Stream, Package)
-  else
-    Stream.WriteUInt8(0);  // IL instructions count
+//  {Локальные переменные}
+//  c := FVarSpace.Count - ParamsCount;
+//  if Assigned(FResultType) then
+//    Dec(c);
+//  if Assigned(FStruct) and (not (pfOperator in Flags)) then
+//    Dec(c);
+//
+//  Stream.WriteStretchUInt(c);
+//  Variable := TIDVariable(FVarSpace.First);
+//  while Assigned(Variable) do begin
+//    if not (VarParameter in Variable.FFlags) then
+//      Variable.SaveToStream(Stream, Package);
+//    Variable := TIDVariable(Variable.NextItem);
+//  end;
+//
+//  {локальные процедуры}
+//  if Assigned(ProcSpace.First) then
+//  begin
+//    SaveProcDecls(Stream, Package, @FProcSpace);
+//    SaveProcBodies(Stream, Package, @FProcSpace);
+//  end;
+//
+//  {IL код}
+//  if Assigned(FIL) then
+//    TIL(FIL).SaveToStream(Stream, Package)
+//  else
+//    Stream.WriteUInt8(0);  // IL instructions count
 end;
 
 procedure TIDProcedure.SetEntryScope(const Value: TScope);
@@ -2543,10 +2530,10 @@ end;
 
 function TIDProcedure.GetDebugIL: string;
 begin
-  if Assigned(FIL) then
-    Result := TIL(FIL).GetAsText(True, True)
-  else
-    Result := ''
+//  if Assigned(FIL) then
+//    Result := TIL(FIL).GetAsText(True, True)
+//  else
+//    Result := ''
 end;
 
 function TIDProcedure.GetDebugVariables: string;
@@ -2756,7 +2743,7 @@ end;
 
 procedure TIDProcedure.RemoveILReferences(var RCPathCount: UInt32);
 begin
-  TIL(FIL).RemoveReferences(RCPathCount);
+//  TIL(FIL).RemoveReferences(RCPathCount);
 end;
 
 { TIDTypeDeclaration }
@@ -3468,16 +3455,17 @@ end;
 
 function TIDVariable.GetLastRWInstruction: TObject;
 begin
-  if Assigned(FLastRInstruction) then
-  begin
-    if Assigned(FLastWInstruction) then
-    begin
-      if TILInstruction(FLastRInstruction).Position < TILInstruction(FLastWInstruction).Position then
-        Exit(FLastWInstruction);
-    end;
-    Result := FLastRInstruction;
-  end else
-    Result := FLastWInstruction;
+//  if Assigned(FLastRInstruction) then
+//  begin
+//    if Assigned(FLastWInstruction) then
+//    begin
+//      if TILInstruction(FLastRInstruction).Position < TILInstruction(FLastWInstruction).Position then
+//        Exit(FLastWInstruction);
+//    end;
+//    Result := FLastRInstruction;
+//  end else
+//    Result := FLastWInstruction;
+  Result := nil;
 end;
 
 function TIDVariable.GetReference: Boolean;
@@ -5207,14 +5195,6 @@ end;
 procedure TSpace<T>.Initialize;
 begin
   FillChar(Self, SizeOf(Self), #0);
-end;
-
-{ TIDILInstruction }
-
-constructor TIDILInstruction.Create(Scope: TScope; const Name: string;  ILCode: TILCode);
-begin
-  inherited Create(Scope, Identifier(Name));
-  FILCode := ILCode;
 end;
 
 { TIDAliasType }

@@ -3,10 +3,16 @@
 interface
 
 uses System.SysUtils, System.Classes, System.Types, Generics.Collections, System.IOUtils,
-     AVL, NPCompiler.DataTypes, NPCompiler.Classes, NPCompiler.Options, NPLCompiler.Targets,
-     NPCompiler.Intf, NPCompiler.Utils, OPCompiler, SystemUnit,
-     AST.Classes,
-     NPCompiler.Evaluater;
+     AVL,
+     NPCompiler.DataTypes,
+     NPCompiler.Classes,
+     NPCompiler.Options,
+     NPLCompiler.Targets,
+     NPCompiler.Intf,
+     NPCompiler.Utils,
+     OPCompiler,
+     SystemUnit,
+     AST.Classes;
 
 type
   TUnits = TList<TASTModule>;
@@ -35,7 +41,6 @@ type
     FMessages: ICompilerMessages;
     FRTTICharset: TRTTICharset;
     FOptions: TPackageOptions;
-    FEvaluater: INPCEvaluater;
     function GetIncludeDebugInfo: Boolean;
     function OpenUnit(const UnitName: string): TASTModule;
     function RefCount: Integer;
@@ -77,7 +82,6 @@ type
     function GetMessages: ICompilerMessages;
     function Compile: TCompilerResult; virtual;
     function CompileInterfacesOnly: TCompilerResult; virtual;
-    property Evaluater: INPCEvaluater read FEvaluater write FEvaluater;
   end;
 
 implementation

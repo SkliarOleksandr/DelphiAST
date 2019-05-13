@@ -2,7 +2,7 @@
 
 interface
 
-uses OPCompiler, NPCompiler.Classes, NPCompiler.DataTypes, NPCompiler.Errors, SystemUnit, IL.Instructions,
+uses OPCompiler, NPCompiler.Classes, NPCompiler.DataTypes, NPCompiler.Errors, SystemUnit,
      NPCompiler.Contexts, NPCompiler.ExpressionContext, AST.Delphi.Parser;
 
 type

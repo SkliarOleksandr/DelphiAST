@@ -105,15 +105,12 @@
             <FormType>dfm</FormType>
         </DCCReference>
         <DCCReference Include="..\Source\AVL.pas"/>
-        <DCCReference Include="..\Source\IL.Instructions.pas"/>
         <DCCReference Include="..\Source\IL.Types.pas"/>
         <DCCReference Include="..\Source\NPCompiler.Classes.pas"/>
         <DCCReference Include="..\Source\NPCompiler.ConstCalculator.pas"/>
         <DCCReference Include="..\Source\NPCompiler.Contexts.pas"/>
         <DCCReference Include="..\Source\NPCompiler.DataTypes.pas"/>
         <DCCReference Include="..\Source\NPCompiler.Errors.pas"/>
-        <DCCReference Include="..\Source\NPCompiler.Evaluater.pas"/>
-        <DCCReference Include="..\Source\NPCompiler.Evaluater.VM.pas"/>
         <DCCReference Include="..\Source\NPCompiler.ExpressionContext.pas"/>
         <DCCReference Include="..\Source\NPCompiler.Intf.pas"/>
         <DCCReference Include="..\Source\NPCompiler.Messages.pas"/>

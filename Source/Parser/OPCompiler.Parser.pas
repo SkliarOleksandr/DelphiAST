@@ -56,7 +56,6 @@ type
     token_cdecl,                    // keyword: cdecl
     token_unit,                     // keyword: unit
     token_uses,                     // keyword: uses
-    token_using,                    // keyword: using
 
     token_program,                  // keyword: program
     token_library,                  // keyword: library
@@ -125,7 +124,6 @@ type
     token_repeat,                   // keyword: repeat
     token_reintroduce,              // keyword: reintroduce
     token_until,                    // keyword: until
-    token_union,                    // keyword: union
     token_unsafe,                   // keyword: unsafe
     token_with,                     // keyword: until
     token_case,                     // keyword: case
@@ -444,10 +442,8 @@ begin
   RegisterToken('helper', token_helper);
   RegisterToken('until', token_until);
   RegisterToken('unit', token_unit);
-  RegisterToken('union', token_union);
   RegisterToken('unsafe', token_unsafe);
   RegisterToken('uses', token_uses);
-  RegisterToken('using', token_using);
   RegisterToken('var', token_var);
   RegisterToken('varargs', token_varargs);
   RegisterToken('virtual', token_virtual);

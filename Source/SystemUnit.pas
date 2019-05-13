@@ -175,7 +175,7 @@ implementation
 
 { TSystemUnit }
 
-uses NPCompiler.Messages, IL.Instructions, NPCompiler.SysFunctions;
+uses NPCompiler.Messages, NPCompiler.SysFunctions;
 
 procedure AddUnarOperator(Op: TOperatorID; Source, Destination: TIDType); inline;
 begin

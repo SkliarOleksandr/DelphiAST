@@ -3,9 +3,10 @@
 interface
 
 uses System.SysUtils, NPCompiler.Classes, NPCompiler.Operators, NPCompiler.Contexts,
-     IL.Instructions, IL.Types;
+     IL.Types;
 
 type
+  TILInstruction = TObject;
 
   PBoolExprNode = ^TBoolExprNode;
   TBoolExprNode = record
