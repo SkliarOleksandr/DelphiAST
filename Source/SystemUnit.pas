@@ -61,10 +61,10 @@ type
     FFinalArrayOfStrProc: TIDProcedure;
     FFinalArrayOfVarProc: TIDProcedure;
     FAsserProc: TIDProcedure;
-    FSysTStrDynArray: TIDDynArray;
-    FSysTObjDynArray: TIDDynArray;
-    FSysTVarDynArray: TIDDynArray;
-    fExtended: TIDAliasType;
+//    FSysTStrDynArray: TIDDynArray;
+//    FSysTObjDynArray: TIDDynArray;
+//    FSysTVarDynArray: TIDDynArray;
+//    fExtended: TIDAliasType;
     fWideString: TIDType;
     fShortString: TIDType;
     fOpenString: TIDType;
@@ -88,7 +88,6 @@ type
     function RegisterBuiltin(const Name: string; MacroID: TBuiltInFunctionID; ResultDataType: TIDType; Flags: TProcFlags = [pfPure]): TIDBuiltInFunction; overload;
     function RegisterType(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
     function RegisterTypeCustom(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
-    function RegisterRefType(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
     function RegisterOrdinal(const TypeName: string; DataType: TDataTypeID; LowBound: Int64; HighBound: UInt64): TIDType;
     function RegisterTypeAlias(const TypeName: string; OriginalType: TIDType): TIDAliasType;
     function RegisterPointer(const TypeName: string; TargetType: TIDType): TIDPointer;
@@ -97,8 +96,6 @@ type
   private
     procedure SearchSystemTypes;
     procedure AddCustomExplicits(const Sources: array of TDataTypeID; Dest: TIDType); overload;
-    function AddSysRTFunction(const SysFuncClass: TIDSysRuntimeFunctionClass; const Name: string; ResultType: TIDType): TIDSysRuntimeFunction;
-    function AddSysCTFunction(const SysFuncClass: TIDSysCompileFunctionClass; const Name: string; ResultType: TIDType): TIDSysCompileFunction;
   public
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     constructor Create(const Project: IASTProject; const FileName: string; const Source: string); override;
@@ -454,20 +451,6 @@ begin
   AddUnarOperator(opPostDec, _UInt64, _UInt64);
 end;
 
-function TSYSTEMUnit.AddSysCTFunction(const SysFuncClass: TIDSysCompileFunctionClass; const Name: string; ResultType: TIDType): TIDSysCompileFunction;
-begin
-  Result := SysFuncClass.Create(IntfSection, Name, ResultType);
-  Result.DataType := ResultType;
-  InsertToScope(Result);
-end;
-
-function TSYSTEMUnit.AddSysRTFunction(const SysFuncClass: TIDSysRuntimeFunctionClass; const Name: string; ResultType: TIDType): TIDSysRuntimeFunction;
-begin
-  Result := SysFuncClass.Create(IntfSection, Name, ResultType);
-  Result.DataType := ResultType;
-  InsertToScope(Result);
-end;
-
 procedure TSYSTEMUnit.AddAddOperators;
 begin
   AddBinarOperator(opAdd, _Int8, [_Int8, _UInt8], _Int8);
@@ -657,13 +640,6 @@ begin
   FException := GetPublicClass('Exception');
   FEAssertClass := GetPublicClass('EAssert');
   FTypeIDType := GetPublicType('TDataTypeID');}
-end;
-
-function TSYSTEMUnit.RegisterRefType(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
-begin
-  Result := RegisterType(TypeName, TypeClass, DataType);
-  // äîáàâëÿåì implicit nullptr
-  FNullPtrType.OverloadImplicitTo(Result);
 end;
 
 procedure TSYSTEMUnit.RegisterSystemRTBuiltinFunctions;

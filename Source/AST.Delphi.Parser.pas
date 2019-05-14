@@ -53,11 +53,7 @@ type
     class function MatchExplicit(const Source: TIDExpression; Destination: TIDType): TIDDeclaration; static;
     class function MatchArrayImplicitToRecord(Source: TIDExpression; Destination: TIDStructure): TIDExpression; static;
   protected
-    function GetModuleName: string; override;
-    function GetFirstFunc: TASTDeclaration; override;
-    function GetFirstVar: TASTDeclaration; override;
-    function GetFirstType: TASTDeclaration; override;
-    function GetFirstConst: TASTDeclaration; override;
+
     procedure CheckLabelExpression(const Expr: TIDExpression); overload;
     procedure CheckLabelExpression(const Decl: TIDDeclaration); overload;
 
@@ -74,8 +70,6 @@ type
     function Process_operator_As(var EContext: TEContext): TIDExpression;
     function Process_operator_Period(var EContext: TEContext): TIDExpression;
     function Process_operator_dot(var EContext: TEContext): TIDExpression;
-    class function CheckImplicit(Source: TIDExpression; Dest: TIDType): TIDDeclaration; override;
-
     function GetTMPVar(const SContext: TSContext; DataType: TIDType): TIDVariable; overload;
     function GetTMPVar(const EContext: TEContext; DataType: TIDType): TIDVariable; overload;
     function GetTMPRef(const SContext: TSContext; DataType: TIDType): TIDVariable;
@@ -93,6 +87,13 @@ type
     function FindBinaryOperator(const SContext: TSContext; OpID: TOperatorID; Left, Right: TIDExpression): TIDDeclaration;
     function DoMatchBinarOperator(const SContext: TSContext; OpID: TOperatorID; Left, Right: TIDExpression): TIDDeclaration;
   public
+    function GetModuleName: string; override;
+    function GetFirstFunc: TASTDeclaration; override;
+    function GetFirstVar: TASTDeclaration; override;
+    function GetFirstType: TASTDeclaration; override;
+    function GetFirstConst: TASTDeclaration; override;
+    class function CheckImplicit(Source: TIDExpression; Dest: TIDType): TIDDeclaration; override;
+
     function ParseStatements(Scope: TScope; var SContext: TSContext; IsBlock: Boolean): TTokenID; overload;
     function ParseExpression(Scope: TScope; var SContext: TSContext; var EContext: TEContext; out ASTE: TASTExpression): TTokenID; overload;
     function ParseConstExpression(Scope: TScope; out Expr: TIDExpression; EPosition: TExpessionPosition): TTokenID; override;
@@ -3739,7 +3740,7 @@ begin
         Proc.LastBodyLine := parser_Line;
         // геренация кода процедуры завершено
         Proc.Flags := Proc.Flags + [pfCompleted];
-        BENodesPool.Clear;
+        //BENodesPool.Clear;
         Exit;
       end;
     else
@@ -4569,7 +4570,6 @@ function TASTDelphiUnit.ParseMember2(Scope: TScope; var EContext: TEContext; var
 var
   Left, Right: TIDExpression;
   Decl: TIDDeclaration;
-  ID: TIdentifier;
   SearchScope: TScope;
   DataType: TIDType;
 begin
@@ -4771,8 +4771,6 @@ function TASTDelphiUnit.ParseVarStaticArrayDefaultValue(Scope: TScope; ArrType: 
   var
     i, c: Integer;
     Expr: TIDExpression;
-    EContext: TEContext;
-    SContext: TSContext;
     NewScope: TScope;
   begin
     Result := parser_NextToken(Scope);
@@ -5044,6 +5042,7 @@ function TIDOpImplicitStringToAnsiString.Match(const SContext: PSContext; const 
 //  TmpVar: TIDVariable;
 //  Constant: TIDStringConstant;
 begin
+  Result := nil;
 //  if Src.IsVariable then
 //  begin
 //    TmpVar := SContext.Proc.GetTMPVar(Dst);
@@ -5092,6 +5091,7 @@ begin
 //    Constant.Index := UN.Package.GetStringConstant(Constant);
 //    Result := TIDExpression.Create(Constant, Src.TextPosition);
 //  end;
+  Result := nil;
 end;
 
 { TIDOpImplicitCharToString }
@@ -5126,6 +5126,7 @@ begin
 //    Constant.Index := UN.Package.GetStringConstant(Constant);
 //    Result := TIDExpression.Create(Constant, Src.TextPosition);
 //  end;
+  Result := nil;
 end;
 
 { TIDOpImplicitCharToAnsiString }
@@ -5237,6 +5238,7 @@ begin
 //  UN.AddConstant(Decl);
 //
 //  Result := TIDExpression.Create(Decl, Src.TextPosition);
+  Result := nil;
 end;
 
 { TIDIntOpImplicitStringToGUID }
@@ -5261,6 +5263,7 @@ function TIDOpImplicitStringToGUID.Match(const SContext: PSContext; const Src: T
 //  Constant: TIDGuidConstant;
 //  UN: TNPUnit;
 begin
+  Assert(False);
 //  UN := GetUnit(SContext);
 //  if Src.IsConstant then
 //  begin
@@ -5272,7 +5275,7 @@ begin
 //      Exit(Result);
 //    end;
 //  end;
-//  Result := nil;
+  Result := nil;
 end;
 
 
@@ -5290,6 +5293,7 @@ begin
 //  Result := TIDExpression.Create(SContext.Proc.GetTMPVar(Dst));
 //  MethodExpr := TIDExpression.Create((Src.AsVariable.DataType as TIDClosure).Methods.Last);
 //  SContext.ILWrite(TIL.IL_LDMethod(Result, Src, MethodExpr));
+  Result := nil;
 end;
 
 { TIDInternalOpImplicit }
@@ -5352,6 +5356,7 @@ begin
 //    SContext.ILWrite(TIL.IL_Convert(Result, Src));
 //  end else
 //    Result := Src;
+  Result := nil;
 end;
 
 { TIDOpImplicitVariantToAny }
@@ -5367,8 +5372,8 @@ begin
 end;
 
 function TIDOpImplicitVariantToAny.Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
-var
-  TmpVar: TIDVariable;
+//var
+//  TmpVar: TIDVariable;
 begin
 //  if Src.DataTypeID <> Dst.DataTypeID then
 //  begin
@@ -5377,6 +5382,7 @@ begin
 //    SContext.ILWrite(TIL.IL_Convert(Result, Src));
 //  end else
 //    Result := Src;
+  Result := nil;
 end;
 
 { TIDOpExplicitIntToEnum }
@@ -5436,7 +5442,6 @@ constructor TIDBuiltInFunction.Create(Scope: TScope; const Name: string; ResultT
 begin
   CreateFromPool;
   FID.Name := Name;
-  Scope := Scope;
   ItemType := itMacroFunction;
   Self.DataType := ResultType;
 end;

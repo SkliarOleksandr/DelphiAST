@@ -260,7 +260,7 @@ type
   protected
     function GetDisplayName: string; override;
   public
-    constructor Create(Decl: TASTDeclaration; const SrcPos: TTextPosition);
+    constructor Create(Decl: TASTDeclaration; const SrcPos: TTextPosition); reintroduce;
   end;
 
   TASTExpression = class(TASTParentItem)

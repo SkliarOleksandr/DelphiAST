@@ -250,8 +250,6 @@ begin
 end;
 
 function TDelphiLexer.NextToken: TTokenID;
-var
-  Token: PCharToken;
 begin
   Result := TTokenID(NextTokenID);
   if Result = token_identifier then
