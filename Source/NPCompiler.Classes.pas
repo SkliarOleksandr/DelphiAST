@@ -4721,47 +4721,49 @@ end;
 procedure TIDPointer.CreateStandardOperators;
 begin
   inherited;
-  OverloadImplicitTo(Self);
-  OverloadBinarOperator2(opEqual, SYSUnit._NilPointer, SYSUnit._Boolean);
-  OverloadBinarOperator2(opNotEqual, SYSUnit._NilPointer, SYSUnit._Boolean);
-  OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
-  OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
-  OverloadBinarOperator2(opGreater, Self, SYSUnit._Boolean);
-  OverloadBinarOperator2(opGreaterOrEqual, Self, SYSUnit._Boolean);
-  OverloadBinarOperator2(opLess, Self, SYSUnit._Boolean);
-  OverloadBinarOperator2(opLessOrEqual, Self, SYSUnit._Boolean);
-  OverloadExplicitTo(SYSUnit._NativeInt);
-  OverloadExplicitTo(SYSUnit._NativeUInt);
-  OverloadImplicitTo(SYSUnit._Pointer);
+  if Assigned(SYSUnit) then
+  begin
+    OverloadImplicitTo(Self);
+    OverloadBinarOperator2(opEqual, SYSUnit._NilPointer, SYSUnit._Boolean);
+    OverloadBinarOperator2(opNotEqual, SYSUnit._NilPointer, SYSUnit._Boolean);
+    OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
+    OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
+    OverloadBinarOperator2(opGreater, Self, SYSUnit._Boolean);
+    OverloadBinarOperator2(opGreaterOrEqual, Self, SYSUnit._Boolean);
+    OverloadBinarOperator2(opLess, Self, SYSUnit._Boolean);
+    OverloadBinarOperator2(opLessOrEqual, Self, SYSUnit._Boolean);
+    OverloadExplicitTo(SYSUnit._NativeInt);
+    OverloadExplicitTo(SYSUnit._NativeUInt);
 
-  OverloadBinarOperator2(opAdd, Self, Self);
-  OverloadBinarOperator2(opSubtract, Self, Self);
+    OverloadBinarOperator2(opAdd, Self, Self);
+    OverloadBinarOperator2(opSubtract, Self, Self);
 
-  OverloadBinarOperator2(opAdd, SYSUnit._Int8, Self);
-  OverloadBinarOperator2(opAdd, SYSUnit._Int16, Self);
-  OverloadBinarOperator2(opAdd, SYSUnit._Int32, Self);
-  OverloadBinarOperator2(opAdd, SYSUnit._Int64, Self);
-  OverloadBinarOperator2(opAdd, SYSUnit._NativeInt, Self);
+    OverloadBinarOperator2(opAdd, SYSUnit._Int8, Self);
+    OverloadBinarOperator2(opAdd, SYSUnit._Int16, Self);
+    OverloadBinarOperator2(opAdd, SYSUnit._Int32, Self);
+    OverloadBinarOperator2(opAdd, SYSUnit._Int64, Self);
+    OverloadBinarOperator2(opAdd, SYSUnit._NativeInt, Self);
 
-  OverloadBinarOperator2(opAdd, SYSUnit._UInt8, Self);
-  OverloadBinarOperator2(opAdd, SYSUnit._UInt16, Self);
-  OverloadBinarOperator2(opAdd, SYSUnit._UInt32, Self);
-  OverloadBinarOperator2(opAdd, SYSUnit._UInt64, Self);
-  OverloadBinarOperator2(opAdd, SYSUnit._NativeUInt, Self);
+    OverloadBinarOperator2(opAdd, SYSUnit._UInt8, Self);
+    OverloadBinarOperator2(opAdd, SYSUnit._UInt16, Self);
+    OverloadBinarOperator2(opAdd, SYSUnit._UInt32, Self);
+    OverloadBinarOperator2(opAdd, SYSUnit._UInt64, Self);
+    OverloadBinarOperator2(opAdd, SYSUnit._NativeUInt, Self);
 
-  OverloadBinarOperator2(opSubtract, SYSUnit._Int8, Self);
-  OverloadBinarOperator2(opSubtract, SYSUnit._Int16, Self);
-  OverloadBinarOperator2(opSubtract, SYSUnit._Int32, Self);
-  OverloadBinarOperator2(opSubtract, SYSUnit._Int64, Self);
-  OverloadBinarOperator2(opSubtract, SYSUnit._NativeInt, Self);
+    OverloadBinarOperator2(opSubtract, SYSUnit._Int8, Self);
+    OverloadBinarOperator2(opSubtract, SYSUnit._Int16, Self);
+    OverloadBinarOperator2(opSubtract, SYSUnit._Int32, Self);
+    OverloadBinarOperator2(opSubtract, SYSUnit._Int64, Self);
+    OverloadBinarOperator2(opSubtract, SYSUnit._NativeInt, Self);
 
-  OverloadBinarOperator2(opSubtract, SYSUnit._UInt8, Self);
-  OverloadBinarOperator2(opSubtract, SYSUnit._UInt16, Self);
-  OverloadBinarOperator2(opSubtract, SYSUnit._UInt32, Self);
-  OverloadBinarOperator2(opSubtract, SYSUnit._UInt64, Self);
-  OverloadBinarOperator2(opSubtract, SYSUnit._NativeUInt, Self);
+    OverloadBinarOperator2(opSubtract, SYSUnit._UInt8, Self);
+    OverloadBinarOperator2(opSubtract, SYSUnit._UInt16, Self);
+    OverloadBinarOperator2(opSubtract, SYSUnit._UInt32, Self);
+    OverloadBinarOperator2(opSubtract, SYSUnit._UInt64, Self);
+    OverloadBinarOperator2(opSubtract, SYSUnit._NativeUInt, Self);
 
-  OverloadImplicitToAny(TIDOpImplicitPointerToAny.CreateAsIntOp);
+    OverloadImplicitToAny(TIDOpImplicitPointerToAny.CreateAsIntOp);
+  end;
 end;
 
 function TIDPointer.GetDisplayName: string;

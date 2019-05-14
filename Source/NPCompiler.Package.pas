@@ -237,6 +237,7 @@ begin
         SysSource := 'unit system; end.';
 
       SYSUnit := TSYSTEMUnit.Create(Self, SysFileName, SysSource);
+      SYSUnit.InitSystemUnit;
     end;
   except
     on e: exception do

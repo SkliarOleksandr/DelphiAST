@@ -106,6 +106,7 @@ type
     function CompileIntfOnly: TCompilerResult; override;
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     procedure CreateSystemRoutins;
+    procedure InitSystemUnit;
     //procedure RegisterExternalProc
     property DataTypes: TDataTypes read FDataTypes;
     property _Int8: TIDType read FDataTypes[dtInt8] write FDataTypes[dtInt8];
@@ -337,8 +338,6 @@ begin
   AddExplicits(_Float64, dtFloat32, dtFloat64);
 
   _String.OverloadExplicitTo(_Pointer);
-  _Pointer.OverloadExplicitTo(_NativeInt);
-  _Pointer.OverloadExplicitTo(_NativeUInt);
   _AnsiString.OverloadExplicitTo(_Pointer);
 
   AddCustomExplicits([dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean], _Char);
@@ -864,18 +863,6 @@ begin
   AddType(FTimeType);
   //===============================================================
   FPointerType := RegisterPointer('Pointer', nil);
-  FPointerType.OverloadBinarOperator2(opEqual, FPointerType, _Boolean);     // ñòàíäàðòíûå îïåðàòîðû
-  FPointerType.OverloadBinarOperator2(opNotEqual, FPointerType, _Boolean);
-  FPointerType.OverloadBinarOperator2(opEqual, _NilPointer, _Boolean);
-  FPointerType.OverloadBinarOperator2(opNotEqual, _NilPointer, _Boolean);
-
-  FPointerType.OverloadBinarOperator2(opAdd, FPointerType, FPointerType);
-  FPointerType.OverloadBinarOperator2(opSubtract, FPointerType, FPointerType);
-
-  FPointerType.OverloadBinarOperator2(opAdd, _Int32, FPointerType);
-  FPointerType.OverloadBinarOperator2(opAdd, _UInt32, FPointerType);
-  FPointerType.OverloadBinarOperator2(opSubtract, _Int32, FPointerType);
-  FPointerType.OverloadBinarOperator2(opSubtract, _UInt32, FPointerType);
   //===============================================================
 
   // Delphi system aliases
@@ -901,7 +888,6 @@ begin
   RegisterTypeAlias('LongBool', _Boolean);
   RegisterTypeAlias('OleVariant', _Variant);
 
-  // todo: make RegisterPointer method
   fPAnsiChar := RegisterPointer('PAnsiChar', _AnsiChar);
   fPChar := RegisterPointer('PWideChar', _Char);
   RegisterTypeAlias('PChar', _Char);
@@ -934,12 +920,6 @@ begin
   // constant for deprecated
   fDeprecatedDefaultStr := TIDStringConstant.CreateAsSystem(IntfSection, 'The declaration is deprecated');
 
-
-  _PAnsiCharType.OverloadBinarOperator2(opAdd, _Int32, _PAnsiCharType);
-  _PAnsiCharType.OverloadBinarOperator2(opAdd, _UInt32, _PAnsiCharType);
-  _PCharType.OverloadBinarOperator2(opSubtract, _Int32, _PCharType);
-  _PCharType.OverloadBinarOperator2(opSubtract, _UInt32, _PCharType);
-
   AddImplicists;
   AddExplicists;
   AddArithmeticOperators;
@@ -947,14 +927,18 @@ begin
   AddBitwiseOperators;
   AddCompareOperators;
   RegisterBuiltinFunctions;
-
-  fPAnsiChar.CreateStandardOperators;
-  fPChar.CreateStandardOperators;
 end;
 
 procedure TSYSTEMUnit.CreateSystemRoutins;
 begin
   RegisterSystemRTBuiltinFunctions;
+end;
+
+procedure TSYSTEMUnit.InitSystemUnit;
+begin
+  fPointerType.CreateStandardOperators;
+  fPAnsiChar.CreateStandardOperators;
+  fPChar.CreateStandardOperators;
 end;
 
 procedure TSYSTEMUnit.InsertToScope(Declaration: TIDDeclaration);

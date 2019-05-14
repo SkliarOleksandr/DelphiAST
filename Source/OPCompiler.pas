@@ -8035,11 +8035,11 @@ begin
         Result := parser_NextToken(Scope);
       end;
       token_deprecated: begin
-        Result := CheckAndParseDeprecated(Scope, token_deprecated);
+        CheckAndParseDeprecated(Scope, token_deprecated);
         Result := parser_NextToken(Scope);
       end;
       token_platform: begin
-        Result := ParsePlatform(Scope);
+        ParsePlatform(Scope);
         Result := parser_NextToken(Scope);
       end;
     else
@@ -8726,7 +8726,7 @@ begin
     Result := parser_NextToken(Scope);
     if Result = token_Coma then begin
       Inc(c);
-      Result := parser_NextToken(Scope);
+      parser_NextToken(Scope);
       Continue;
     end;
     parser_MatchToken(Result, token_colon);
