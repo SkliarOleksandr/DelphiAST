@@ -52,9 +52,6 @@ type
 
     class function MatchExplicit(const Source: TIDExpression; Destination: TIDType): TIDDeclaration; static;
     class function MatchArrayImplicitToRecord(Source: TIDExpression; Destination: TIDStructure): TIDExpression; static;
-    function FindBinaryOperator(const SContext: TSContext; OpID: TOperatorID; Left, Right: TIDExpression): TIDDeclaration;
-    function DoMatchBinarOperator(const SContext: TSContext; OpID: TOperatorID; Left, Right: TIDExpression): TIDDeclaration;
-
   protected
     function GetModuleName: string; override;
     function GetFirstFunc: TASTDeclaration; override;
@@ -93,6 +90,8 @@ type
     function MatchRecordImplicit(const SContext: TSContext; Source: TIDExpression; DstRecord: TIDRecord): TIDExpression;
     function MatchBinarOperator(const SContext: TSContext; Op: TOperatorID; var Left, Right: TIDExpression): TIDDeclaration;
     function MatchBinarOperatorWithImplicit(const SContext: TSContext; Op: TOperatorID; var Left, Right: TIDexpression): TIDDeclaration;
+    function FindBinaryOperator(const SContext: TSContext; OpID: TOperatorID; Left, Right: TIDExpression): TIDDeclaration;
+    function DoMatchBinarOperator(const SContext: TSContext; OpID: TOperatorID; Left, Right: TIDExpression): TIDDeclaration;
   public
     function ParseStatements(Scope: TScope; var SContext: TSContext; IsBlock: Boolean): TTokenID; overload;
     function ParseExpression(Scope: TScope; var SContext: TSContext; var EContext: TEContext; out ASTE: TASTExpression): TTokenID; overload;
@@ -707,6 +706,7 @@ begin
     bf_sysctfunction: Expr := TIDSysCompileFunction(FuncDecl).Process(Ctx);
   else
     ERROR_FEATURE_NOT_SUPPORTED;
+    Expr := nil;
   end;
   if Assigned(Expr) then begin
     Expr.TextPosition := CallExpr.TextPosition;
@@ -1187,13 +1187,6 @@ begin
     Left := CheckAndCallFuncImplicit(SContext, Left, WasCall);
     if WasCall then
       Result := DoMatchBinarOperator(SContext, OpID, Left, Right);
-  end;
-
-  if not Assigned(Result) then
-  begin
-    Left := CheckAndCallFuncImplicit(SContext, Left, WasCall);
-    if WasCall then
-      Result := DoMatchBinarOperator(SContext, OpID, Left, Right);
 
     if not Assigned(Result) then
     begin
@@ -1347,10 +1340,20 @@ end;
 function TASTDelphiUnit.Process_operator_Deref(var EContext: TEContext): TIDExpression;
 var
   Src: TIDExpression;
+  PtrType: TIDPointer;
+  RefType: TIDType;
 begin
   Src := EContext.RPNPopExpression();
   CheckPointerType(Src);
-  Result := TIDDrefExpression.Create(Src);
+
+  PtrType := Src.DataType as TIDPointer;
+  RefType := PtrType.ReferenceType;
+  if not Assigned(RefType) then
+    RefType := SYSUnit._UntypedReference;
+
+  Result := GetTMPVarExpr(EContext, RefType, Src.TextPosition);
+
+//  Result := TIDDrefExpression.Create(Src);
 end;
 
 function TASTDelphiUnit.Process_operator_dot(var EContext: TEContext): TIDExpression;
@@ -2396,8 +2399,8 @@ var
 begin
   ArrExpr := EContext.RPNPopExpression();
   ArrDecl := ArrExpr.Declaration;
+  DeclType := ArrExpr.DataType;
 
-  DeclType := ArrDecl.DataType;
   if DeclType.DataTypeID = dtPointer then
     DeclType := TIDPointer(DeclType).ReferenceType;
 
@@ -2472,7 +2475,7 @@ begin
 
   var AExpr := TIDArrayExpression.Create(ArrDecl, ArrExpr.TextPosition);
   AExpr.Indexes := Indexes;
-  EContext.RPNPushExpression(ArrExpr);
+  EContext.RPNPushExpression(AExpr);
 end;
 
 function TASTDelphiUnit.ParseASMStatement(Scope: TScope; var SContext: TSContext): TTokenID;

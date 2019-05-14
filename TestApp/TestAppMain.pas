@@ -34,7 +34,7 @@ type
     procedure Button1Click(Sender: TObject);
   private
     { Private declarations }
-    fPKG: INPPackage;
+    //fPKG: INPPackage;
   public
     { Public declarations }
     procedure IndexSources(const RootPath: string; Dict: TSourcesDict);

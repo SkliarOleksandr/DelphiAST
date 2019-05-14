@@ -9,105 +9,99 @@ type
 
   {function: now}
   TSF_now = class(TIDSysRuntimeFunction)
-  protected
-    function Process(var EContext: TEContext): TIDExpression; override;
   public
+    function Process(var EContext: TEContext): TIDExpression; override;
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {function: RunError}
   TSF_RunError = class(TIDSysRuntimeFunction)
-  protected
-    function Process(var EContext: TEContext): TIDExpression; override;
   public
+    function Process(var EContext: TEContext): TIDExpression; override;
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {function: Defined}
   TSCTF_Defined = class(TIDSysCompileFunction)
-  protected
-    function Process(const Ctx: TSysFunctionContext): TIDExpression; override;
   public
+    function Process(const Ctx: TSysFunctionContext): TIDExpression; override;
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {function: Declared}
   TSCTF_Declared = class(TIDSysCompileFunction)
-  protected
-    function Process(const Ctx: TSysFunctionContext): TIDExpression; override;
   public
+    function Process(const Ctx: TSysFunctionContext): TIDExpression; override;
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {function: AtomicExchange}
   TSF_AtomicExchange = class(TIDSysRuntimeFunction)
-  protected
-    function Process(var EContext: TEContext): TIDExpression; override;
   public
+    function Process(var EContext: TEContext): TIDExpression; override;
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {function: AtomicCmpExchange}
   TSF_AtomicCmpExchange = class(TIDSysRuntimeFunction)
-  protected
-    function Process(var EContext: TEContext): TIDExpression; override;
   public
+    function Process(var EContext: TEContext): TIDExpression; override;
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {function: SizeOf}
   TCT_SizeOf = class(TIDSysRuntimeFunction)
-  protected
-    function Process(var EContext: TEContext): TIDExpression; override;
   public
+    function Process(var EContext: TEContext): TIDExpression; override;
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {function: Low}
   TCT_LoBound = class(TIDSysRuntimeFunction)
-  protected
-    function Process(var EContext: TEContext): TIDExpression; override;
   public
+    function Process(var EContext: TEContext): TIDExpression; override;
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {function: High}
   TCT_HiBound = class(TIDSysRuntimeFunction)
-  protected
-    function Process(var EContext: TEContext): TIDExpression; override;
   public
+    function Process(var EContext: TEContext): TIDExpression; override;
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {function: Inc}
   TCT_Inc = class(TIDSysRuntimeFunction)
-  protected
-    function Process(var EContext: TEContext): TIDExpression; override;
   public
+    function Process(var EContext: TEContext): TIDExpression; override;
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {function: Dec}
   TCT_Dec = class(TIDSysRuntimeFunction)
-  protected
-    function Process(var EContext: TEContext): TIDExpression; override;
   public
+    function Process(var EContext: TEContext): TIDExpression; override;
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {function: Length}
   TCT_Length = class(TIDSysRuntimeFunction)
-  protected
-    function Process(var EContext: TEContext): TIDExpression; override;
   public
+    function Process(var EContext: TEContext): TIDExpression; override;
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {function: Ord}
   TCT_Ord = class(TIDSysRuntimeFunction)
-  protected
-    function Process(var EContext: TEContext): TIDExpression; override;
   public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
+  {function: FillChar}
+  TCT_FillChar = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
@@ -507,6 +501,26 @@ class function TCT_Ord.CreateDecl(Scope: TScope): TIDBuiltInFunction;
 begin
   Result := TCT_Ord.Create(Scope, 'Ord', SYSUnit._Int64);
   Result.AddParam('Value', _Void, [VarConst]);
+end;
+
+{ TCT_FillChar }
+
+class function TCT_FillChar.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := TCT_FillChar.Create(Scope, 'FillChar', nil);
+  Result.AddParam('X', SYSUnit._UntypedReference, [VarInOut]);
+  Result.AddParam('Count', SYSUnit._NativeInt, [VarConst]);
+  Result.AddParam('Value', SYSUnit._OrdinalType, [VarConst]);
+end;
+
+function TCT_FillChar.Process(var EContext: TEContext): TIDExpression;
+var
+  EX, ECount, EValue: TIDExpression;
+begin
+  EX := EContext.RPNPopExpression();
+  ECount := EContext.RPNPopExpression();
+  EValue := EContext.RPNPopExpression();
+  Result := nil;
 end;
 
 end.

@@ -425,6 +425,8 @@ type
     procedure OverloadBinarOperator2(Op: TOperatorID; Right: TIDType; Result: TIDDeclaration); overload;
     procedure OverloadBinarOperatorFor(Op: TOperatorID; const Left: TIDType; const Result: TIDDeclaration);
     procedure OverloadBinarOperator(Op: TOperatorID; Declaration: TIDOperator); overload; inline;
+    procedure CreateStandardOperators; virtual;
+
 
     property GenericDescriptor: PGenericDescriptor read FGenericDescriptor write SetGenericDescriptor;
     property GenericNextOverload: TIDType read FGenericNextOverload write FGenericNextOverload;
@@ -476,11 +478,14 @@ type
     function GetDisplayName: string; override;
   public
     constructor CreateAnonymous(Scope: TScope; ReferenceType: TIDType); reintroduce; virtual;
+    constructor CreateAsAnonymous(Scope: TScope); override;
+    procedure CreateStandardOperators; override;
     constructor Create(Scope: TScope; const ID: TIdentifier); override;
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
     procedure IncRefCount(RCPath: UInt32); override;
     procedure DecRefCount(RCPath: UInt32); override;
     procedure SaveDeclToStream(Stream: TStream; const Package: INPPackage); override;
+
     property ReferenceType: TIDType read GetReferenceType write FReferenceType;
   end;
 
@@ -980,6 +985,14 @@ type
   TIDRecordConstantFields = array of TIDRecordConstantField;
 
   TIDRecordConstant = class(TIDXXXConstant<TIDRecordConstantFields>)
+  public
+    function ValueDataType: TDataTypeID; override;
+    function ValueByteSize: Integer; override;
+    function AsString: string; override;
+    function AsInt64: Int64; override;
+    function AsVariant: Variant; override;
+    function CompareTo(Constant: TIDConstant): Integer; override;
+    procedure WriteToStream(Stream: TStream; const Package: INPPackage); override;
   end;
 
   TExpressonType = (
@@ -2790,6 +2803,11 @@ begin
   FImplicitsTo := TIDPairList.Create;
   FImplicitsFrom := TIDPairList.Create;
   FExplicitsTo := TIDPairList.Create;
+end;
+
+procedure TIDType.CreateStandardOperators;
+begin
+
 end;
 
 destructor TIDType.Destroy;
@@ -4677,45 +4695,7 @@ begin
   inherited Create(Scope, ID);
   DataTypeID := dtPointer;
   TypeKind := tkRefernce;
-  OverloadImplicitTo(Self);
-  if Assigned(SYSUnit) then begin
-    OverloadBinarOperator2(opEqual, SYSUnit._NilPointer, SYSUnit._Boolean);
-    OverloadBinarOperator2(opNotEqual, SYSUnit._NilPointer, SYSUnit._Boolean);
-    OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
-    OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
-    OverloadExplicitTo(SYSUnit._NativeInt);
-    OverloadExplicitTo(SYSUnit._NativeUInt);
-    OverloadImplicitTo(SYSUnit._Pointer);
-
-    OverloadBinarOperator2(opAdd, Self, Self);
-    OverloadBinarOperator2(opSubtract, Self, Self);
-
-    OverloadBinarOperator2(opAdd, SYSUnit._Int8, Self);
-    OverloadBinarOperator2(opAdd, SYSUnit._Int16, Self);
-    OverloadBinarOperator2(opAdd, SYSUnit._Int32, Self);
-    OverloadBinarOperator2(opAdd, SYSUnit._Int64, Self);
-    OverloadBinarOperator2(opAdd, SYSUnit._NativeInt, Self);
-
-    OverloadBinarOperator2(opAdd, SYSUnit._UInt8, Self);
-    OverloadBinarOperator2(opAdd, SYSUnit._UInt16, Self);
-    OverloadBinarOperator2(opAdd, SYSUnit._UInt32, Self);
-    OverloadBinarOperator2(opAdd, SYSUnit._UInt64, Self);
-    OverloadBinarOperator2(opAdd, SYSUnit._NativeUInt, Self);
-
-    OverloadBinarOperator2(opSubtract, SYSUnit._Int8, Self);
-    OverloadBinarOperator2(opSubtract, SYSUnit._Int16, Self);
-    OverloadBinarOperator2(opSubtract, SYSUnit._Int32, Self);
-    OverloadBinarOperator2(opSubtract, SYSUnit._Int64, Self);
-    OverloadBinarOperator2(opSubtract, SYSUnit._NativeInt, Self);
-
-    OverloadBinarOperator2(opSubtract, SYSUnit._UInt8, Self);
-    OverloadBinarOperator2(opSubtract, SYSUnit._UInt16, Self);
-    OverloadBinarOperator2(opSubtract, SYSUnit._UInt32, Self);
-    OverloadBinarOperator2(opSubtract, SYSUnit._UInt64, Self);
-    OverloadBinarOperator2(opSubtract, SYSUnit._NativeUInt, Self);
-
-    OverloadImplicitToAny(TIDOpImplicitPointerToAny.CreateAsIntOp);
-  end;
+  CreateStandardOperators;
 end;
 
 constructor TIDPointer.CreateAnonymous(Scope: TScope; ReferenceType: TIDType);
@@ -4723,27 +4703,65 @@ begin
   inherited CreateAsAnonymous(Scope);
   FDataTypeID := dtPointer;
   FReferenceType := ReferenceType;
-  OverloadImplicitTo(Self);
-  if Assigned(SYSUnit) then begin
-    OverloadBinarOperator2(opEqual, SYSUnit._NilPointer, SYSUnit._Boolean);
-    OverloadBinarOperator2(opNotEqual, SYSUnit._NilPointer, SYSUnit._Boolean);
-    OverloadExplicitTo(SYSUnit._NativeInt);
-    OverloadExplicitTo(SYSUnit._NativeUInt);
-    OverloadImplicitTo(SYSUnit._Pointer);
+  CreateStandardOperators;
+end;
 
-    OverloadBinarOperator2(opAdd, Self, Self);
-    OverloadBinarOperator2(opSubtract, Self, Self);
+constructor TIDPointer.CreateAsAnonymous(Scope: TScope);
+begin
+  inherited;
 
-    OverloadBinarOperator2(opAdd, SYSUnit._Int32, Self);
-    OverloadBinarOperator2(opSubtract, SYSUnit._Int32, Self);
-    OverloadImplicitToAny(TIDOpImplicitPointerToAny.CreateAsIntOp);
-  end;
 end;
 
 constructor TIDPointer.CreateAsSystem(Scope: TScope; const Name: string);
 begin
   inherited;
   FDataTypeID := dtPointer;
+end;
+
+procedure TIDPointer.CreateStandardOperators;
+begin
+  inherited;
+  OverloadImplicitTo(Self);
+  OverloadBinarOperator2(opEqual, SYSUnit._NilPointer, SYSUnit._Boolean);
+  OverloadBinarOperator2(opNotEqual, SYSUnit._NilPointer, SYSUnit._Boolean);
+  OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
+  OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
+  OverloadBinarOperator2(opGreater, Self, SYSUnit._Boolean);
+  OverloadBinarOperator2(opGreaterOrEqual, Self, SYSUnit._Boolean);
+  OverloadBinarOperator2(opLess, Self, SYSUnit._Boolean);
+  OverloadBinarOperator2(opLessOrEqual, Self, SYSUnit._Boolean);
+  OverloadExplicitTo(SYSUnit._NativeInt);
+  OverloadExplicitTo(SYSUnit._NativeUInt);
+  OverloadImplicitTo(SYSUnit._Pointer);
+
+  OverloadBinarOperator2(opAdd, Self, Self);
+  OverloadBinarOperator2(opSubtract, Self, Self);
+
+  OverloadBinarOperator2(opAdd, SYSUnit._Int8, Self);
+  OverloadBinarOperator2(opAdd, SYSUnit._Int16, Self);
+  OverloadBinarOperator2(opAdd, SYSUnit._Int32, Self);
+  OverloadBinarOperator2(opAdd, SYSUnit._Int64, Self);
+  OverloadBinarOperator2(opAdd, SYSUnit._NativeInt, Self);
+
+  OverloadBinarOperator2(opAdd, SYSUnit._UInt8, Self);
+  OverloadBinarOperator2(opAdd, SYSUnit._UInt16, Self);
+  OverloadBinarOperator2(opAdd, SYSUnit._UInt32, Self);
+  OverloadBinarOperator2(opAdd, SYSUnit._UInt64, Self);
+  OverloadBinarOperator2(opAdd, SYSUnit._NativeUInt, Self);
+
+  OverloadBinarOperator2(opSubtract, SYSUnit._Int8, Self);
+  OverloadBinarOperator2(opSubtract, SYSUnit._Int16, Self);
+  OverloadBinarOperator2(opSubtract, SYSUnit._Int32, Self);
+  OverloadBinarOperator2(opSubtract, SYSUnit._Int64, Self);
+  OverloadBinarOperator2(opSubtract, SYSUnit._NativeInt, Self);
+
+  OverloadBinarOperator2(opSubtract, SYSUnit._UInt8, Self);
+  OverloadBinarOperator2(opSubtract, SYSUnit._UInt16, Self);
+  OverloadBinarOperator2(opSubtract, SYSUnit._UInt32, Self);
+  OverloadBinarOperator2(opSubtract, SYSUnit._UInt64, Self);
+  OverloadBinarOperator2(opSubtract, SYSUnit._NativeUInt, Self);
+
+  OverloadImplicitToAny(TIDOpImplicitPointerToAny.CreateAsIntOp);
 end;
 
 function TIDPointer.GetDisplayName: string;
@@ -6337,8 +6355,15 @@ end;
 { TIDArrayExpression }
 
 function TIDArrayExpression.GetDataType: TIDType;
+var
+  DatType: TIDType;
 begin
-  Result := TIDArray(FDeclaration).ElementDataType;
+  if FDeclaration.DataTypeID = dtPointer then
+    DatType := TIDPointer(FDeclaration.DataType).ReferenceType
+  else
+    DatType := FDeclaration.DataType;
+
+  Result := (DatType as TIDArray).ElementDataType;
 end;
 
 function TIDArrayExpression.GetDisplayName: string;
@@ -6348,6 +6373,45 @@ begin
   for var i := 0 to Length(fIndexes) - 1 do
     Str := AddStringSegment(Str, fIndexes[i].DisplayName);
   Result := inherited Declaration.DisplayName + '[' + Str + ']';
+end;
+
+{ TIDRecordConstant }
+
+function TIDRecordConstant.AsInt64: Int64;
+begin
+  Result := 0;
+  AbortWorkInternal('Not supported', []);
+end;
+
+function TIDRecordConstant.AsString: string;
+begin
+  Result := '';
+end;
+
+function TIDRecordConstant.AsVariant: Variant;
+begin
+  Result := null;
+end;
+
+function TIDRecordConstant.CompareTo(Constant: TIDConstant): Integer;
+begin
+  Result := 0;
+end;
+
+function TIDRecordConstant.ValueByteSize: Integer;
+begin
+  Result := 0;
+end;
+
+function TIDRecordConstant.ValueDataType: TDataTypeID;
+begin
+  Result := dtRecord;
+end;
+
+procedure TIDRecordConstant.WriteToStream(Stream: TStream; const Package: INPPackage);
+begin
+  inherited;
+
 end;
 
 initialization

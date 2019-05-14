@@ -157,8 +157,6 @@ type
     FOptions: TCompilerOptions;
     FBreakPoints: TBreakPoints;
     FUseCheckBound: Boolean;
-    fInitProcSConect: TSContext;
-    fFinalProcSConect: TSContext;
     function GetMessagesText: string;
     //========================================================================================================
     // процедуры генерации ошибок компиляции
@@ -300,6 +298,11 @@ type
     procedure CondCompPush(Condition: Boolean);
     procedure CondCompPop;
     procedure SetUnitName(const Name: string);
+    function GetModuleName: string; override;
+    function GetFirstFunc: TASTDeclaration; override;
+    function GetFirstVar: TASTDeclaration; override;
+    function GetFirstType: TASTDeclaration; override;
+    function GetFirstConst: TASTDeclaration; override;
   public
     function CreateSysProc(const SysName: string): TIDProcedure;
     function CreateArraySysProc(const Arr: TIDArray; const Name: string; out ProcParam: TIDVariable): TIDProcedure;
@@ -691,15 +694,7 @@ type
     property Parser: TDelphiLexer read FParser;
   strict private
     function GetTMPVar(SContext: PSContext; DataType: TIDType): TIDVariable; overload;
-    function GetTMPVar(var EContext: TEContext; DataType: TIDType): TIDVariable; overload;
-    function GetTMPVar(SContext: PSContext; DataType: TIDType; VarFlags: TVariableFlags): TIDVariable; overload;
-    function GetTMPRef(SContext: PSContext; DataType: TIDType): TIDVariable;
-    function GetTMPRefExpr(SContext: PSContext; DataType: TIDType): TIDExpression; overload; inline;
-    function GetTMPVarExpr(SContext: PSContext; DataType: TIDType): TIDExpression; overload; inline;
-    function GetTMPVarExpr(const EContext: TEContext; DataType: TIDType): TIDExpression; overload; inline;
-    function GetTMPVarExpr(SContext: PSContext; DataType: TIDType; VarFlags: TVariableFlags): TIDExpression; overload; inline;
     function GetTMPVarExpr(SContext: PSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline;
-    function GetTMPVarExpr(var EContext: TEContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline;
   public
     ////////////////////////////////////////////////////////////////////////////
     constructor Create(const Project: IASTProject; const FileName: string; const Source: string = ''); override;
@@ -6035,6 +6030,7 @@ function TNPUnit.ParseTrySection(Scope: TScope; SContext: PSContext): TTokenID;
 //  JumpOnEndSection: TILJmp;
 begin
   Assert(False);
+  Result := token_unknown;
 //  // создаем новый TryBlock
 //  TryBegin := TIL.IL_TryBegin(nil, parser_Line);
 //  ILWrite(SContext, TryBegin);
@@ -6218,6 +6214,7 @@ function TNPUnit.ParseIfThenStatement(Scope: TScope; SContext: PSContext): TToke
 //  IFCondition: (condConstNone, condConstTrue, condConstFalse);
 begin
   Assert(False);
+  Result := token_unknown;
 //  InitEContext(EContext, SContext, ExprRValue);
 //  CFBBegin(SContext, CFB_IF);
 //  Result := ParseExpression(Scope, EContext, parser_NextToken(Scope));
@@ -6325,6 +6322,7 @@ function TNPUnit.ParseForInStatement(Scope: TScope; SContext: PSContext; LoopVar
 //  ExitCond: TILCondition;
 begin
   Assert(False);
+  Result := token_unknown;
 //  // парсим выражение-коллекцию
 //  InitEContext(EContext, SContext, ExprRValue);
 //  Result := ParseExpression(Scope, EContext, parser_NextToken(Scope));
@@ -6405,6 +6403,7 @@ function TNPUnit.ParseForStatement(Scope: TScope; SContext: PSContext): TTokenID
 //  CmpInstr: TILInstruction;
 begin
   Assert(False);
+  Result := token_unknown;
 //  LContext := PLContext(FLoopPool.Add);
 //  LContext.TryContext := SContext.TryBlock;
 //  LContext.Parent := SContext.LContext;
@@ -6558,6 +6557,7 @@ function TNPUnit.ParseGenericsArgs(Scope: TScope; SContext: PSContext; out Args:
 //  ArgsCount: Integer;
 begin
   Assert(False);
+  Result := token_unknown;
 //  ArgsCount := 0;
 //  while true do begin
 //    InitEContext(EContext, SContext, ExprNestedGeneric);
@@ -8394,6 +8394,7 @@ function TNPUnit.ParseRaiseStatement(Scope: TScope; SContext: PSContext): TToken
 //  EContext: TEContext;
 begin
   Assert(False);
+  Result := token_unknown;
 //  InitEContext(EContext, SContext, ExprRValue);
 //  Result := ParseExpression(Scope, EContext, parser_NextToken(Scope));
 //  EExcept := EContext.Result;
@@ -8664,6 +8665,7 @@ end;
 function TNPUnit.ParseVarStaticArrayDefaultValue(Scope: TScope; ArrType: TIDArray; out DefaultValue: TIDExpression): TTokenID;
 begin
   Assert(False);
+  Result := token_unknown;
 end;
 
 function TNPUnit.ParseVarDefaultValue(Scope: TScope; DataType: TIDType; out DefaultValue: TIDExpression): TTokenID;
@@ -8672,6 +8674,7 @@ function TNPUnit.ParseVarDefaultValue(Scope: TScope; DataType: TIDType; out Defa
 //  EContext: TEContext;
 begin
   Assert(False);
+  Result := token_unknown;
 //  case DataType.DataTypeID of
 //    dtStaticArray: Result := ParseVarStaticArrayDefaultValue(Scope, DataType as TIDArray, DefaultValue);
 //    dtRecord: Result := ParseVarRecordDefaultValue(Scope, DataType as TIDStructure, DefaultValue);
@@ -8714,7 +8717,6 @@ var
 begin
   c := 0;
   Names := TIdentifiersPool.Create(2);
-  Result := parser_CurTokenID;
   while True do begin
     VarFlags := [];
     Result := CheckAndParseAttribute(Scope);
@@ -8831,7 +8833,7 @@ begin
         Result := parser_NextToken(Scope);
       end;
       token_var: begin
-        Result := parser_NextToken(Scope);
+        parser_NextToken(Scope);
         Result := ParseVarSection(Decl.Members, Visibility, Decl);
       end;
       token_const: Result := ParseConstSection(Decl.Members);
@@ -8866,6 +8868,7 @@ function TNPUnit.ParseRepeatStatement(Scope: TScope; SContext: PSContext): TToke
 //  FirstLoopBodyCode: TILInstruction;
 begin
   Assert(False);
+  Result := token_unknown;
 //  LContext := PLContext(FLoopPool.Add);
 //  LContext.TryContext := SContext.TryBlock;
 //  LContext.Parent := SContext.LContext;
@@ -9092,7 +9095,7 @@ begin
       token_constructor: Result := ParseProcedure(Decl.Members, ptConstructor, Decl);
       token_destructor: Result := ParseProcedure(Decl.Members, ptDestructor, Decl);
       token_var: begin
-        Result := parser_NextToken(Scope);
+        parser_NextToken(Scope);
         Result := ParseVarSection(Decl.Members, Visibility, Decl);
       end;
       token_const: Result := ParseConstSection(Decl.Members);
@@ -9194,8 +9197,6 @@ begin
   if Result = token_identifier then
   begin
     {если после inherited идет полное описание вызова метода}
-    ArgsCnt := 0;
-    PrevProc := nil;
     Ancestor := Proc.Struct.Ancestor;
     while True do begin
       parser_ReadCurrIdentifier(ID);
@@ -9302,7 +9303,7 @@ var
   UID: TIDExpression;
   GUID: TGUID;
 begin
-  Result := parser_NextToken(Scope);
+  parser_NextToken(Scope);
   if parser_IdentifireType = itString then
   begin
     Result := ParseConstExpression(Scope, UID, ExprNested);
@@ -9584,7 +9585,7 @@ begin
     // type of
     /////////////////////////////////////////////////////////////////////////
     token_type: begin
-      Result := parser_NextToken(Scope);
+      parser_NextToken(Scope);
       var ResExpr: TIDExpression;
       Result := ParseConstExpression(Scope,  ResExpr, ExprRValue);
       if ResExpr.ItemType = itType then
@@ -9725,6 +9726,7 @@ function TNPUnit.ParseGenericTypeSpec(Scope: TScope; const ID: TIdentifier; out 
 //  SearchName: string;
 begin
   Assert(False);
+  Result := token_unknown;
 //  SContext.Initialize;
 //  Result := ParseGenericsArgs(Scope, @SContext, GenericArgs);
 //  SearchName := format('%s<%d>', [ID.Name, Length(GenericArgs)]);
@@ -10066,6 +10068,7 @@ function TNPUnit.ParseUnionSection(Scope: TScope; Struct: TIDStructure): TTokenI
 //  FieldDataType: TIDType;
 begin
   Assert(False);
+  Result := token_unknown;
 //  Result := parser_NextToken(Scope);
 //
 //  // если определен тип union-a
@@ -10222,6 +10225,7 @@ function TNPUnit.ParseUsingStatement(Scope: TScope; SContext: PSContext): TToken
 //  i, Cnt: Integer;
 begin
   Assert(False);
+  Result := token_unknown;
 //  Cnt := 0;
 //  UScope := TScope.Create(stLocal, Scope);
 //  CFBBegin(SContext, CFB_IF);
@@ -10288,6 +10292,7 @@ function TNPUnit.Process_operator_Addr(var EContext: TEContext): TIDExpression;
 //  LEAInstruction: TILInstruction;
 begin
   Assert(False);
+  Result := nil;
 //  Expr := RPNPopExpression(EContext);
 //  if (Expr.ItemType <> itVar) and
 //     ((Expr.ItemType = itConst) and not (Expr.DataType.DataTypeID in [dtRecord, dtStaticArray, dtGuid])) and
@@ -10487,6 +10492,7 @@ begin
 //
 //  Bool_AddExprNode(EContext, Instruction, cNotEqual);
 //  ReleaseExpression(SContext, Expr);
+  Result := nil;
 end;
 
 function TNPUnit.ProcessBuiltin_Copy(var EContext: TEContext): TIDExpression;
@@ -10573,6 +10579,7 @@ begin
 //  ReleaseExpression(EContext, Arr);
 //  ReleaseExpression(EContext, From);
 //  ReleaseExpression(EContext, Cnt);
+  Result := nil;
 end;
 
 function TNPUnit.ProcessBuiltin_MemSet(var EContext: TEContext): TIDExpression;
@@ -10591,7 +10598,7 @@ begin
 //  ILWrite(EContext, TIL.IL_MemSet(Value, BytePattern));
 //  ReleaseExpression(BytePattern);
 //  ReleaseExpression(Value);
-//  Result := nil;
+  Result := nil;
 end;
 
 function TNPUnit.ProcessBuiltin_Move(var EContext: TEContext): TIDExpression;
@@ -10623,6 +10630,7 @@ begin
 //  CheckEmptyExpression(DstArr);
 //  CheckEmptyExpression(DstIdx);
 //  CheckEmptyExpression(Cnt);
+  Result := nil;
 end;
 
 function TNPUnit.ProcessBuiltin_IncDec(var EContext: TEContext; MacroID: TBuiltInFunctionID): TIDExpression;
@@ -10679,7 +10687,7 @@ begin
 //  ReleaseExpression(EContext, Value);
 //  ReleaseExpression(EContext, Increment);
 //
-//  Result := nil;
+  Result := nil;
 end;
 
 function TNPUnit.ProcessBuiltin_Length(var EContext: TEContext): TIDExpression;
@@ -10727,6 +10735,7 @@ begin
 //    end;
 //  end;
 //  ReleaseExpression(EContext, Expr);
+  Result := nil;
 end;
 
 function TNPUnit.ProcessBuiltin_SetLength(var EContext: TEContext): TIDExpression;
@@ -10761,7 +10770,7 @@ begin
 //    AbortWork(sArrayOrStringTypeRequired, ArrExpr.TextPosition);
 //
 //  ReleaseExpression(EContext, LenExpr);
-//  Result := nil;
+  Result := nil;
 end;
 
 function TNPUnit.ProcessBuiltin_Assert(var EContext: TEContext; const ParamsTest: string; SourceRow: Integer): TIDExpression;
@@ -10819,7 +10828,7 @@ begin
 //  ReleaseExpression(EContext, AssertExpr);
 //  ReleaseExpression(EContext, ETextExpr);
 //
-//  Result := nil;
+  Result := nil;
 end;
 
 function TNPUnit.ProcessBuiltin_SizeOf(var EContext: TEContext): TIDExpression;
@@ -10845,6 +10854,7 @@ begin
 //    Result := TIDExpression.Create(Decl, Expr.TextPosition);
 //  end;
 //  ReleaseExpression(EContext, Expr);
+  Result := nil;
 end;
 
 function TNPUnit.ProcessBuiltin_New(var EContext: TEContext): TIDExpression;
@@ -10878,7 +10888,7 @@ begin
 //    Code := TIL.IL_ProcCall(PExpr, nil, Expr, []);
 //    ILWrite(EContext, Code);
 //  end;
-//  Result := nil;
+  Result := nil;
 end;
 
 function TNPUnit.ProcessBuiltin_Free(var EContext: TEContext): TIDExpression;
@@ -10914,7 +10924,7 @@ begin
 //  Code := TIL.IL_FreeInstance(Expr);
 //  ILWrite(EContext, Code);
 //
-//  Result := nil;
+  Result := nil;
 end;
 
 function TNPUnit.ProcessBuiltin_GetBit(var EContext: TEContext): TIDExpression;
@@ -10938,6 +10948,7 @@ begin
 //
 //  ReleaseExpression(Value);
 //  ReleaseExpression(BitIndex);
+  Result := nil;
 end;
 
 function TNPUnit.ProcessBuiltin_SetBit(var EContext: TEContext): TIDExpression;
@@ -10964,6 +10975,7 @@ begin
 //  ReleaseExpression(Value);
 //  ReleaseExpression(BitIndex);
 //  ReleaseExpression(BitValue);
+  Result := nil;
 end;
 
 function TNPUnit.ProcessBuiltin_GetRef(var EContext: TEContext): TIDExpression;
@@ -10979,6 +10991,7 @@ begin
 //  ILWrite(EContext, TIL.IL_Cmp(Dst, SYSUnit._NullPtrExpression));
 //  Result := GetTMPVarExpr(EContext, SYSUnit._Boolean);
 //  ILWrite(EContext, TIL.IL_SetBool(cNotEqual, Result));
+  Result := nil;
 end;
 
 function TNPUnit.ProcessBuiltin_Include(var EContext: TEContext): TIDExpression;
@@ -11016,7 +11029,7 @@ begin
 //  else
 //    ERROR_ORDINAL_OR_SET_REQUIRED(ASubSet);
 //  end;
-//  Result := nil;
+  Result := nil;
 end;
 
 function TNPUnit.ProcessBuiltin_Exclude(var EContext: TEContext): TIDExpression;
@@ -11057,7 +11070,7 @@ begin
 //  else
 //    ERROR_ORDINAL_OR_SET_REQUIRED(ASubSet);
 //  end;
-//  Result := nil;
+  Result := nil;
 end;
 
 function TNPUnit.ProcessBuiltin_TypeInfo(var EContext: TEContext): TIDExpression;
@@ -11070,6 +11083,7 @@ begin
 //  CheckEmptyExpression(Expr);
 //  Result := GetTMPVarExpr(EContext, SYSUnit._TObject);
 //  ILWrite(EContext, TIL.IL_TypeInfo(Result, Expr));
+  Result := nil;
 end;
 
 function TNPUnit.ProcessBuiltin_Ord(var EContext: TEContext): TIDExpression;
@@ -11089,6 +11103,7 @@ begin
 //    Result := TIDCastExpression.Create(Expr.Declaration, SYSUnit._Int32, parser_PrevPosition);
 //
 //  ReleaseExpression(EContext, Expr);
+  Result := nil;
 end;
 
 function TNPUnit.ProcessBuiltin_RefCount(var EContext: TEContext): TIDExpression;
@@ -11105,6 +11120,7 @@ begin
 //  Result.TextPosition := parser_Position;
 //
 //  ILWrite(EContext, TIL.IL_RefCount(Result, Expr));
+  Result := nil;
 end;
 
 function TNPUnit.ProcessBuiltin_LoHiBound(var EContext: TEContext; HiBound: Boolean): TIDExpression;
@@ -11160,6 +11176,7 @@ begin
 //    ERROR_ORDINAL_TYPE_REQUIRED(Expr.TextPosition);
 //
 //  Result := TIDExpression.Create(Decl, parser_Position);
+  Result := nil;
 end;
 
 function TNPUnit.ProcessBuiltin_TypeName(var EContext: TEContext): TIDExpression;
@@ -11182,6 +11199,7 @@ begin
 //    end;
 //  end;
 //  FPackage.GetStringConstant(TIDStringConstant(Result.Declaration));
+  Result := nil;
 end;
 
 function ArgListIsConst(const List: TIDExpressions): Boolean;
@@ -11220,6 +11238,7 @@ function TNPUnit.Process_CALL(var EContext: TEContext): TIDExpression;
 //  SContext: PSContext;
 begin
   Assert(False);
+  Result := nil;
 //  SContext := EContext.SContext;
 //  // читаем декларацию функции
 //  PExpr := TIDCallExpression(RPNPopExpression(EContext));
@@ -11462,6 +11481,7 @@ function TNPUnit.process_CALL_constructor(SContext: PSContext; CallExpression: T
 //  Code: TILInstruction;
 begin
   Assert(False);
+  Result := nil;
 //  Proc := CallExpression.AsProcedure;
 //  ResVar := GetTMPVar(SContext, Proc.Struct);
 //  ResVar.IncludeFlags([VarNotNull, VarTmpResOwner]);
@@ -11497,6 +11517,7 @@ function TNPUnit.Process_CALL_direct(SContext: PSContext; PExpr: TIDCallExpressi
 //  CallInstruction: TILProcCall;
 begin
   Assert(False);
+  Result := nil;
 //  ArgsCount := Length(CallArguments);
 //
 //  ProcDecl := PExpr.AsProcedure;
@@ -11570,6 +11591,7 @@ function TNPUnit.Process_operator_In(var EContext: TEContext; const Left, Right:
 //  LeftExpr: TIDExpression;
 begin
   Assert(False);
+  Result := nil;
 //  SContext := EContext.SContext;
 //  //Node := EContext.LastBoolNode;
 //  if Right.Declaration is TIDRangeConstant then
@@ -11612,6 +11634,7 @@ function TNPUnit.Process_operator_Is(var EContext: TEContext): TIDExpression;
 //  Src, Dst: TIDExpression;
 begin
   Assert(False);
+  Result := nil;
 //  Dst := RPNPopExpression(EContext);
 //  Src := RPNPopExpression(EContext);
 //  CheckClassOrIntfType(Src.DataType, Src.TextPosition);
@@ -11625,6 +11648,7 @@ function TNPUnit.Process_operator_As(var EContext: TEContext): TIDExpression;
 //  Src, Dst: TIDExpression;
 begin
   Assert(False);
+  Result := nil;
 //  Dst := RPNPopExpression(EContext);
 //  Src := RPNPopExpression(EContext);
 //  CheckClassOrIntfType(Src.DataType, Src.TextPosition);
@@ -11642,6 +11666,7 @@ function TNPUnit.ParseExplicitCast(Scope: TScope; SContext: PSContext; var DstEx
 //  TargetType: TIDType;
 begin
   Assert(False);
+  Result := token_unknown;
 //  InitEContext(EContext, SContext, ExprNested);
 //  Result := ParseExpression(Scope, EContext, FParser.NextToken);
 //  SrcExpr := RPNPopExpression(EContext);
@@ -11749,51 +11774,53 @@ begin
 end;
 
 function TNPUnit.Process_operator_assign_complex(Src: TIDExpression; Dst: TIDMultiExpression; var EContext: TEContext): Boolean;
-var
-  CallExpr: TIDCallExpression;
-  i, ai, ac: Integer;
-  Expr: TIDExpression;
+//var
+//  CallExpr: TIDCallExpression;
+//  i, ai, ac: Integer;
+//  Expr: TIDExpression;
 begin
-  ac := Length(Dst.Items);
-  for i := 0 to ac - 1 do
-  begin
-    Expr := Dst.Items[i];
-    // если необходимо вызывать setter
-    if Expr.ItemType = itProperty then
-    begin
-      {if ((ac - 1) = i + 1) then
-        ERROR_CANNOT_ASSIGN_TEMPORARRY_OBJECT(Expr); здесть небоходим детальный анализ!!!}
-
-      CallExpr := TIDCallExpression.Create(Expr.AsProperty.Setter);
-      CallExpr.ArgumentsCount := ac - i;
-      CallExpr.Instance := Dst.Items[0]; // тут надо корректно расчитать self
-
-      for ai := i + 1 to ac - 1 do
-        RPNPushExpression(EContext, Dst.Items[ai]);
-
-      RPNPushExpression(EContext, Src);
-      RPNPushExpression(EContext, CallExpr);
-      Process_CALL(EContext);   // возможно следует тут вызвать Process_operator_dall_direct ?
-      Exit(True);
-    end;
-  end;
-
-  {если приемник это перменная типа SET}
-  if (Dst.Items[0].DataTypeID = dtSet) or
-     ((Dst.DataTypeID = dtSet) and
-      (Src.DataTypeID <> dtSet)) then
-  begin
-    ProcessMoveSet(EContext.SContext, Dst, Src);
-    Exit(True); // !!!! необходимо правильно отчистить стек
-  end;
-
-  {обычная цепочка - обрабатываем в вызываемой процедуре}
+  Assert(False);
+//  ac := Length(Dst.Items);
+//  for i := 0 to ac - 1 do
+//  begin
+//    Expr := Dst.Items[i];
+//    // если необходимо вызывать setter
+//    if Expr.ItemType = itProperty then
+//    begin
+//      {if ((ac - 1) = i + 1) then
+//        ERROR_CANNOT_ASSIGN_TEMPORARRY_OBJECT(Expr); здесть небоходим детальный анализ!!!}
+//
+//      CallExpr := TIDCallExpression.Create(Expr.AsProperty.Setter);
+//      CallExpr.ArgumentsCount := ac - i;
+//      CallExpr.Instance := Dst.Items[0]; // тут надо корректно расчитать self
+//
+//      for ai := i + 1 to ac - 1 do
+//        RPNPushExpression(EContext, Dst.Items[ai]);
+//
+//      RPNPushExpression(EContext, Src);
+//      RPNPushExpression(EContext, CallExpr);
+//      Process_CALL(EContext);   // возможно следует тут вызвать Process_operator_dall_direct ?
+//      Exit(True);
+//    end;
+//  end;
+//
+//  {если приемник это перменная типа SET}
+//  if (Dst.Items[0].DataTypeID = dtSet) or
+//     ((Dst.DataTypeID = dtSet) and
+//      (Src.DataTypeID <> dtSet)) then
+//  begin
+//    ProcessMoveSet(EContext.SContext, Dst, Src);
+//    Exit(True); // !!!! необходимо правильно отчистить стек
+//  end;
+//
+//  {обычная цепочка - обрабатываем в вызываемой процедуре}
   Result := False;
 end;
 
 function TNPUnit.Process_operator_Deref(var EContext: TEContext): TIDExpression;
 begin
   Assert(false);
+  Result := nil;
 end;
 
 procedure TNPUnit.Process_operator_AssignMulti(var EContext: TEContext);
@@ -11935,7 +11962,7 @@ function TNPUnit.Process_operators(var EContext: TEContext; OpID: TOperatorID): 
 //  TmpVar: TIDVariable;
 begin
   Assert(False);
-//  Result := nil;
+  Result := nil;
 //  SContext := EContext.SContext;
 //  case OpID of
 //    opAssignment: Process_operator_Assign(EContext);
@@ -12152,6 +12179,7 @@ function TNPUnit.Process_operator_not(var EContext: TEContext): TIDExpression;
 //  OperatorItem: TIDType;
 begin
   Assert(False);
+  Result := nil;
 //  // Читаем операнд
 //  Right := RPNPopExpression(EContext);
 //
@@ -12188,6 +12216,11 @@ end;
 function TNPUnit.GetMessagesText: string;
 begin
   Result := FMessages.GetAsString;
+end;
+
+function TNPUnit.GetModuleName: string;
+begin
+
 end;
 
 function TNPUnit.GetSource: string;
@@ -12320,48 +12353,9 @@ begin
   end;
 end;
 
-function TNPUnit.GetTMPVarExpr(SContext: PSContext; DataType: TIDType): TIDExpression;
-begin
-  Result := TIDExpression.Create(GetTMPVar(SContext, DataType));
-end;
-
-function TNPUnit.GetTMPVar(SContext: PSContext; DataType: TIDType; VarFlags: TVariableFlags): TIDVariable;
-begin
-  if Assigned(SContext) and SContext.WriteIL then
-    Result := SContext.Proc.GetTMPVar(DataType, VarFlags)
-  else begin
-    Result := TIDVariable.CreateAsTemporary(nil, DataType);
-    Result.IncludeFlags(VarFlags);
-    FTMPVars.Push(Result);
-  end;
-end;
-
 function TNPUnit.GetTMPVarExpr(SContext: PSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression;
 begin
   Result := TIDExpression.Create(GetTMPVar(SContext, DataType), TextPos);
-end;
-
-function TNPUnit.GetTMPVarExpr(var EContext: TEContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression;
-begin
-  Result := GetTMPVarExpr(EContext.SContext, DataType, TextPos);
-end;
-
-function TNPUnit.GetTMPVarExpr(SContext: PSContext; DataType: TIDType; VarFlags: TVariableFlags): TIDExpression;
-begin
-  Result := TIDExpression.Create(GetTMPVar(SContext, DataType, VarFlags));
-end;
-
-function TNPUnit.GetTMPRef(SContext: PSContext; DataType: TIDType): TIDVariable;
-begin
-  if Assigned(SContext) then
-    Result := SContext.Proc.GetTMPRef(DataType)
-  else
-    Result := nil;
-end;
-
-function TNPUnit.GetTMPRefExpr(SContext: PSContext; DataType: TIDType): TIDExpression;
-begin
-  Result := TIDExpression.Create(GetTMPRef(SContext, DataType));
 end;
 
 function TNPUnit.GetTMPVar(SContext: PSContext; DataType: TIDType): TIDVariable;
@@ -12372,16 +12366,6 @@ begin
     Result := TIDVariable.CreateAsTemporary(nil, DataType);
     FTMPVars.Push(Result);
   end;
-end;
-
-function TNPUnit.GetTMPVar(var EContext: TEContext; DataType: TIDType): TIDVariable;
-begin
-  Result := GetTMPVar(EContext.SContext, DataType);
-end;
-
-function TNPUnit.GetTMPVarExpr(const EContext: TEContext; DataType: TIDType): TIDExpression;
-begin
-  Result := GetTMPVarExpr(EContext.SContext, DataType);
 end;
 
 function TNPUnit.GetWeakRefType(Scope: TScope; SourceDataType: TIDType): TIDWeekRef;
@@ -12753,10 +12737,10 @@ begin
 end;
 
 procedure TNPUnit.SaveDeclToStream(Stream: TStream);
-var
-  VDecl: TIDVariable;
-  Idx: Integer;
-  Flags: Byte;
+//var
+//  VDecl: TIDVariable;
+//  Idx: Integer;
+//  Flags: Byte;
 begin
   Assert(False);
 //  Flags := 0;
@@ -12795,9 +12779,9 @@ begin
 end;
 
 procedure TNPUnit.SaveBodyToStream(Stream: TStream);
-var
-  i: Integer;
-  BP: TBreakPoint;
+//var
+//  i: Integer;
+//  BP: TBreakPoint;
 begin
   Assert(False);
 //  {$IFDEF DEBUG_WRITE_LEBELS}DBG_WRITE_UNIT_BODY_LABEL(Stream, Self.Name);{$ENDIF}
@@ -13245,6 +13229,7 @@ end;
 
 function TNPUnit.ParseAttribute(Scope: TScope): TTokenID;
 begin
+  Result := parser_CurTokenID;
   while (Result <> token_closeblock) and (Result <> token_eof) do
   begin
     Result := parser_NextToken(Scope);
@@ -13305,14 +13290,12 @@ var
   i, c: Integer;
   DataType: TIDType;
   DefaultValue: TIDExpression;
-  ID: TIdentifier;
   Field: TIDVariable;
   Names: TIdentifiersPool;
   VarFlags: TVariableFlags;
 begin
   c := 0;
   Names := TIdentifiersPool.Create(2);
-  Result := parser_CurTokenID;
   while True do begin
     VarFlags := [];
     Result := CheckAndParseAttribute(Scope);
@@ -13322,7 +13305,7 @@ begin
     Result := parser_NextToken(Scope);
     if Result = token_Coma then begin
       Inc(c);
-      Result := parser_NextToken(Scope);
+      parser_NextToken(Scope);
       Continue;
     end;
     parser_MatchToken(Result, token_colon);
@@ -13407,7 +13390,6 @@ end;
 procedure TNPUnit.CheckAndCallFuncImplicit(const EContext: TEContext);
 var
   Expr: TIDExpression;
-  PExpr: TIDCallExpression;
 begin
   Expr := EContext.Result;
   if not Assigned(Expr) then
@@ -13421,7 +13403,6 @@ end;
 
 function TNPUnit.CheckAndCallFuncImplicit(SContext: PSContext; Source: TIDExpression): TIDExpression;
 var
-  Expr: TIDExpression;
   PExpr: TIDCallExpression;
 begin
   if Source.DataTypeID <> dtProcType then
@@ -13446,7 +13427,7 @@ begin
   while True do begin
     parser_ReadNextIdentifier(Scope, ID);
     parser_MatchNextToken(Scope, token_colon);
-    Result := parser_NextToken(Scope);
+    parser_NextToken(Scope);
     Result := ParseConstExpression(Scope, Expr, ExprRValue);
     Expressions[i].Field := Struct.FindField(ID.Name);
     Expressions[i].Value := Expr;
@@ -13472,6 +13453,26 @@ end;
 function TNPUnit.GetDefinesAsString: string;
 begin
   Result := FDefines.Text;
+end;
+
+function TNPUnit.GetFirstConst: TASTDeclaration;
+begin
+  Result := nil;
+end;
+
+function TNPUnit.GetFirstFunc: TASTDeclaration;
+begin
+  Result := nil;
+end;
+
+function TNPUnit.GetFirstType: TASTDeclaration;
+begin
+  Result := nil;
+end;
+
+function TNPUnit.GetFirstVar: TASTDeclaration;
+begin
+  Result := nil;
 end;
 
 function TNPUnit.parser_SkipTo(Scope: TScope; StopToken: TTokenID): TTokenID;

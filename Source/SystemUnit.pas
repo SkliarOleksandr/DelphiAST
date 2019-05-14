@@ -682,6 +682,7 @@ begin
   RegisterBuiltin(TCT_Dec);
   RegisterBuiltin(TCT_Length);
   RegisterBuiltin(TCT_Ord);
+  RegisterBuiltin(TCT_FillChar);
 end;
 
 function TSYSTEMUnit.RegisterBuiltin(const Name: string; MacroID: TBuiltInFunctionID; ResultDataType: TIDType; Flags: TProcFlags = [pfPure]): TIDBuiltInFunction;
@@ -862,7 +863,7 @@ begin
   AddType(FDateType);
   AddType(FTimeType);
   //===============================================================
-  FPointerType := RegisterRefType('Pointer', TIDPointer, dtPointer) as TIDPointer;
+  FPointerType := RegisterPointer('Pointer', nil);
   FPointerType.OverloadBinarOperator2(opEqual, FPointerType, _Boolean);     // ñòàíäàðòíûå îïåðàòîðû
   FPointerType.OverloadBinarOperator2(opNotEqual, FPointerType, _Boolean);
   FPointerType.OverloadBinarOperator2(opEqual, _NilPointer, _Boolean);
@@ -946,6 +947,9 @@ begin
   AddBitwiseOperators;
   AddCompareOperators;
   RegisterBuiltinFunctions;
+
+  fPAnsiChar.CreateStandardOperators;
+  fPChar.CreateStandardOperators;
 end;
 
 procedure TSYSTEMUnit.CreateSystemRoutins;
