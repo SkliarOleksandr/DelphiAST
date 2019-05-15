@@ -70,7 +70,7 @@ resourcestring
   msgUnknownOperatorFmt = 'Unknown operator "%s"';
   msgOperatorNeedNCountOfParameters = 'Operator "%s" need %d explicit parameters';
   msgIncompatibleTypesFmt = 'Incompatible types: "%s" and "%s"';
-  msgInvalidTypecastFmt = 'Can not convert type: "%s" into "%s"';
+  msgInvalidTypecastFmt = 'Can not explicitly convert type "%s" into "%s"';
   msgEmptyExpression = 'Empty expression';
   msgExpressionMustBeBoolean = 'Type of expression must be BOOLEAN';
   msgExpressionMustBeConstant = 'Expression must be a CONSTANT';

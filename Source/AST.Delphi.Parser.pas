@@ -201,7 +201,7 @@ type
     constructor CreateInternal(ResultType: TIDType); reintroduce;
     function Check(const Src, Dst: TIDType): Boolean; overload; virtual; abstract;
     function Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; overload; virtual;
-    function Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; virtual; abstract;
+    function Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; virtual;
   end;
 
   TIDInternalOpExplisit = class(TIDInternalOpImplicit)
@@ -355,6 +355,18 @@ type
   public
     function Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; override;
     function Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
+    function Check(const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
+  {internal explicit operator: Pointer <- Any}
+  TIDOpExplictPointerFromAny = class(TIDInternalOpExplisit)
+  public
+    function Check(const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
+  {internal implicit operator: array -> pointer}
+  TIDOpImplicitArrayToAny = class(TIDInternalOpImplicit)
+  public
     function Check(const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
@@ -1353,8 +1365,6 @@ begin
     RefType := SYSUnit._UntypedReference;
 
   Result := GetTMPVarExpr(EContext, RefType, Src.TextPosition);
-
-//  Result := TIDDrefExpression.Create(Src);
 end;
 
 function TASTDelphiUnit.Process_operator_dot(var EContext: TEContext): TIDExpression;
@@ -1859,6 +1869,9 @@ begin
   SDataType := Source.DataType.ActualDataType;
   Dest := Dest.ActualDataType;
 
+  if SDataType = Dest then
+    Exit(Source);
+
   SrcDTID := SDataType.DataTypeID;
   DstDTID := Dest.DataTypeID;
 
@@ -2219,6 +2232,9 @@ var
 begin
   SDataType := Source.DataType.ActualDataType;
   Dest := Dest.ActualDataType;
+
+  if SDataType = Dest then
+    Exit(Dest);
 
   // ищем явно определенный implicit у источника
   Result := SDataType.GetImplicitOperatorTo(Dest);
@@ -2906,7 +2922,7 @@ begin
         // todo: make new ANsiType with SrcExpr codepage
         Exit(Parser.NextToken);
       end else
-        ERROR_INVALID_TYPECAST(SrcExpr, DstExpression.AsType);
+        ERROR_INVALID_EXPLICIT_TYPECAST(SrcExpr, DstExpression.AsType);
     end;
   end;
 
@@ -5313,6 +5329,14 @@ begin
   Self.DataType := ResultType;
 end;
 
+function TIDInternalOpImplicit.Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
+begin
+  if Check(Src.DataType, Dst) then
+    Result := Src
+  else
+    Result := nil;
+end;
+
 { TIDOpImplicitDynArrayToSet }
 
 function TIDOpImplicitDynArrayToSet.Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
@@ -5547,6 +5571,23 @@ begin
     Result := Src
   else
     Result := nil;
+end;
+
+{ TIDOpImplicitArrayToAny }
+
+function TIDOpImplicitArrayToAny.Check(const Src, Dst: TIDType): Boolean;
+var
+  ElType: TIDType;
+begin
+  ElType := (Src as TIDArray).ElementDataType;
+  Result := (Dst.DataTypeID = dtPointer);
+end;
+
+{ TIDOpExplictPointerFromAny }
+
+function TIDOpExplictPointerFromAny.Check(const Src, Dst: TIDType): Boolean;
+begin
+  Result := Dst.Ordinal or (Dst.DataTypeID in [dtPointer]);
 end;
 
 end.

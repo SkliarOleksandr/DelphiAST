@@ -125,7 +125,7 @@ type
     class procedure ERROR_CONST_EXPRESSION_REQUIRED(Expr: TIDExpression); static;
     class procedure ERROR_INCOMPATIBLE_TYPES(const Src, Dst: TIDExpression); overload; static;
     class procedure ERROR_INCOMPATIBLE_TYPES(const Src: TIDExpression; Dst: TIDType); overload; static;
-    class procedure ERROR_INVALID_TYPECAST(const Src: TIDExpression; Dst: TIDType); static;
+    class procedure ERROR_INVALID_EXPLICIT_TYPECAST(const Src: TIDExpression; Dst: TIDType); static;
     class procedure ERROR_VAR_EXPRESSION_REQUIRED(Expr: TIDExpression); static;
     class procedure ERROR_VAR_OR_PROC_EXPRESSION_REQUIRED(Expr: TIDExpression); static;
     class procedure ERROR_CANNOT_MODIFY_FOR_LOOP_VARIABLE(Expr: TIDExpression); static;
@@ -978,7 +978,7 @@ begin
   AbortWork('Invalid HEX constant', parser_Position);
 end;
 
-class procedure TNPUnit.ERROR_INVALID_TYPECAST(const Src: TIDExpression; Dst: TIDType);
+class procedure TNPUnit.ERROR_INVALID_EXPLICIT_TYPECAST(const Src: TIDExpression; Dst: TIDType);
 begin
   AbortWork(sInvalidTypecast, [Src.DataTypeName, Dst.DisplayName], Src.TextPosition);
 end;
@@ -2017,6 +2017,12 @@ end;
 
 class function TNPUnit.MatchImplicit(Source, Destination: TIDType): TIDDeclaration;
 begin
+  Source := Source.ActualDataType;
+  Destination := Destination.ActualDataType;
+
+  if Source = Destination then
+    Exit(Destination);
+
   // ищем явно определенный implicit у источника
   Result := Source.GetImplicitOperatorTo(Destination);
   if Assigned(Result) then
@@ -12288,7 +12294,7 @@ begin
    Result := SourceDataType.WeakRefType;
    if not Assigned(Result) then
    begin
-     Result := TIDWeekRef.CreateAnonymous(Scope, SourceDataType);
+     Result := TIDWeekRef.CreateAsAnonymous(Scope, SourceDataType);
      Result.OverloadImplicitTo(SourceDataType);
      Result.OverloadImplicitFrom(SourceDataType);
      SourceDataType.WeakRefType := Result;

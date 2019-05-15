@@ -451,7 +451,7 @@ type
     property DefaultValue: TIDExpression read FDefaultValue write FDefaultValue;
   end;
 
-  {тип - ????}
+  {alias type}
   TIDAliasType = class(TIDType)
   private
     FOriginalType: TIDType; // оригинальный тип (не алиас)
@@ -469,39 +469,48 @@ type
     property Original: TIDType read FOriginalType;
   end;
 
-  {тип - указатель}
-  TIDPointer = class(TIDType)
+  {base referenced type}
+  TIDRefType = class(TIDType)
   private
     FReferenceType: TIDType;
     function GetReferenceType: TIDType;
   protected
     function GetDisplayName: string; override;
-  public
-    constructor CreateAnonymous(Scope: TScope; ReferenceType: TIDType); reintroduce; virtual;
-    constructor CreateAsAnonymous(Scope: TScope); override;
-    procedure CreateStandardOperators; override;
-    constructor Create(Scope: TScope; const ID: TIdentifier); override;
-    constructor CreateAsSystem(Scope: TScope; const Name: string); override;
     procedure IncRefCount(RCPath: UInt32); override;
     procedure DecRefCount(RCPath: UInt32); override;
-    procedure SaveDeclToStream(Stream: TStream; const Package: INPPackage); override;
-
+  public
+    constructor Create(Scope: TScope; const ID: TIdentifier); override;
+    constructor CreateAsSystem(Scope: TScope; const Name: string); override;
+    constructor CreateAsAnonymous(Scope: TScope; ReferenceType: TIDType); virtual;
+    procedure CreateStandardOperators; override;
     property ReferenceType: TIDType read GetReferenceType write FReferenceType;
   end;
 
-  TIDClassOf = class(TIDPointer)
+  {pointer type}
+  TIDPointer = class(TIDRefType)
+  public
+    constructor Create(Scope: TScope; const ID: TIdentifier); override;
+    constructor CreateAsSystem(Scope: TScope; const Name: string); override;
+    constructor CreateAsAnonymous(Scope: TScope; ReferenceType: TIDType); override;
+    procedure CreateStandardOperators; override;
+  end;
+
+  {class of type}
+  TIDClassOf = class(TIDRefType)
   protected
     function GetDisplayName: string; override;
   public
-    constructor CreateAsSystem(Scope: TScope; const Name: string); override;
     constructor Create(Scope: TScope; const Identifier: TIdentifier); override;
+    constructor CreateAsAnonymous(Scope: TScope; ReferenceType: TIDType); override;
+    constructor CreateAsSystem(Scope: TScope; const Name: string); override;
+    procedure CreateStandardOperators; override;
   end;
 
   TIDWeekRef = class(TIDPointer)
   protected
     function GetDisplayName: string; override;
   public
-    constructor CreateAnonymous(Scope: TScope; ReferenceType: TIDType); override;
+    constructor CreateAsAnonymous(Scope: TScope; ReferenceType: TIDType); override;
   end;
 
   {тип - специальный, только для константы nullptr}
@@ -711,6 +720,7 @@ type
     constructor Create(Scope: TScope; const Name: TIdentifier); override;
     constructor CreateAsAnonymous(Scope: TScope); overload; override;
     constructor CreateAnonymousStatic1Dim(Scope: TScope; ElementDataType: TIDType; Length: Integer; out BoundType: TIDOrdinal); overload;
+    procedure CreateStandardOperators; override;
     ////////////////////////////////////////////////////////////////////////////
     property ElementDataType: TIDType read FElementDataType write FElementDataType;
     property DimensionsCount: Integer read FDimensionsCount;
@@ -3028,7 +3038,7 @@ function TIDType.GetDefaultReference(Scope: TScope): TIDType;
 begin
   if not Assigned(FDefaultReference) then
   begin
-    FDefaultReference := TIDPointer.CreateAnonymous(Scope, Self);
+    FDefaultReference := TIDPointer.CreateAsAnonymous(Scope, Self);
 
   end;
   Result := FDefaultReference;
@@ -3985,7 +3995,7 @@ end;
 function TIDStructure.GetClassOfType: TIDClassOf;
 begin
   if not Assigned(FClassOfType) then
-    FClassOfType := TIDClassOf.CreateAnonymous(FMembers, Self);
+    FClassOfType := TIDClassOf.CreateAsAnonymous(FMembers, Self);
   Result := FClassOfType;
 end;
 
@@ -4526,20 +4536,25 @@ constructor TIDArray.Create(Scope: TScope; const Name: TIdentifier);
 begin
   inherited Create(Scope, Name);
   FDataTypeID := dtStaticArray;
-  OverloadImplicitTo(Self);
-  if Assigned(SYSUnit) then begin
-    OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
-    OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
-  end;
+  if Assigned(SYSUnit) then
+    CreateStandardOperators;
 end;
 
 constructor TIDArray.CreateAsAnonymous(Scope: TScope);
 begin
   inherited CreateAsAnonymous(Scope);
   FDataTypeID := dtStaticArray;
+  if Assigned(SYSUnit) then
+    CreateStandardOperators;
+end;
+
+procedure TIDArray.CreateStandardOperators;
+begin
+  inherited;
   OverloadImplicitTo(Self);
   OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
   OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
+  OverloadImplicitToAny(TIDOpImplicitArrayToAny.CreateAsIntOp);
 end;
 
 constructor TIDArray.CreateAnonymousStatic1Dim(Scope: TScope; ElementDataType: TIDType; Length: Integer; out BoundType: TIDOrdinal);
@@ -4688,85 +4703,10 @@ begin
   Stream.WriteInt64(FHBound);
 end;
 
-{ TIDPointerType }
+{ TIDRefType }
 
-constructor TIDPointer.Create(Scope: TScope; const ID: TIdentifier);
-begin
-  inherited Create(Scope, ID);
-  DataTypeID := dtPointer;
-  TypeKind := tkRefernce;
-  CreateStandardOperators;
-end;
 
-constructor TIDPointer.CreateAnonymous(Scope: TScope; ReferenceType: TIDType);
-begin
-  inherited CreateAsAnonymous(Scope);
-  FDataTypeID := dtPointer;
-  FReferenceType := ReferenceType;
-  CreateStandardOperators;
-end;
-
-constructor TIDPointer.CreateAsAnonymous(Scope: TScope);
-begin
-  inherited;
-
-end;
-
-constructor TIDPointer.CreateAsSystem(Scope: TScope; const Name: string);
-begin
-  inherited;
-  FDataTypeID := dtPointer;
-end;
-
-procedure TIDPointer.CreateStandardOperators;
-begin
-  inherited;
-  if Assigned(SYSUnit) then
-  begin
-    OverloadImplicitTo(Self);
-    OverloadBinarOperator2(opEqual, SYSUnit._NilPointer, SYSUnit._Boolean);
-    OverloadBinarOperator2(opNotEqual, SYSUnit._NilPointer, SYSUnit._Boolean);
-    OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
-    OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
-    OverloadBinarOperator2(opGreater, Self, SYSUnit._Boolean);
-    OverloadBinarOperator2(opGreaterOrEqual, Self, SYSUnit._Boolean);
-    OverloadBinarOperator2(opLess, Self, SYSUnit._Boolean);
-    OverloadBinarOperator2(opLessOrEqual, Self, SYSUnit._Boolean);
-    OverloadExplicitTo(SYSUnit._NativeInt);
-    OverloadExplicitTo(SYSUnit._NativeUInt);
-
-    OverloadBinarOperator2(opAdd, Self, Self);
-    OverloadBinarOperator2(opSubtract, Self, Self);
-
-    OverloadBinarOperator2(opAdd, SYSUnit._Int8, Self);
-    OverloadBinarOperator2(opAdd, SYSUnit._Int16, Self);
-    OverloadBinarOperator2(opAdd, SYSUnit._Int32, Self);
-    OverloadBinarOperator2(opAdd, SYSUnit._Int64, Self);
-    OverloadBinarOperator2(opAdd, SYSUnit._NativeInt, Self);
-
-    OverloadBinarOperator2(opAdd, SYSUnit._UInt8, Self);
-    OverloadBinarOperator2(opAdd, SYSUnit._UInt16, Self);
-    OverloadBinarOperator2(opAdd, SYSUnit._UInt32, Self);
-    OverloadBinarOperator2(opAdd, SYSUnit._UInt64, Self);
-    OverloadBinarOperator2(opAdd, SYSUnit._NativeUInt, Self);
-
-    OverloadBinarOperator2(opSubtract, SYSUnit._Int8, Self);
-    OverloadBinarOperator2(opSubtract, SYSUnit._Int16, Self);
-    OverloadBinarOperator2(opSubtract, SYSUnit._Int32, Self);
-    OverloadBinarOperator2(opSubtract, SYSUnit._Int64, Self);
-    OverloadBinarOperator2(opSubtract, SYSUnit._NativeInt, Self);
-
-    OverloadBinarOperator2(opSubtract, SYSUnit._UInt8, Self);
-    OverloadBinarOperator2(opSubtract, SYSUnit._UInt16, Self);
-    OverloadBinarOperator2(opSubtract, SYSUnit._UInt32, Self);
-    OverloadBinarOperator2(opSubtract, SYSUnit._UInt64, Self);
-    OverloadBinarOperator2(opSubtract, SYSUnit._NativeUInt, Self);
-
-    OverloadImplicitToAny(TIDOpImplicitPointerToAny.CreateAsIntOp);
-  end;
-end;
-
-function TIDPointer.GetDisplayName: string;
+function TIDRefType.GetDisplayName: string;
 var
   Pt: TIDType;
 begin
@@ -4783,7 +4723,7 @@ begin
     Result := '^' + ReferenceType.DisplayName;
 end;
 
-function TIDPointer.GetReferenceType: TIDType;
+function TIDRefType.GetReferenceType: TIDType;
 var
   Decl: TIDDeclaration;
 begin
@@ -4798,7 +4738,7 @@ begin
   Result := FReferenceType;
 end;
 
-procedure TIDPointer.IncRefCount(RCPath: UInt32);
+procedure TIDRefType.IncRefCount(RCPath: UInt32);
 begin
   if FRCPath = RCPath then
     Exit;
@@ -4808,7 +4748,48 @@ begin
     FReferenceType.IncRefCount(RCPath);
 end;
 
-procedure TIDPointer.DecRefCount(RCPath: UInt32);
+constructor TIDRefType.Create(Scope: TScope; const ID: TIdentifier);
+begin
+  inherited;
+  TypeKind := tkRefernce;
+end;
+
+constructor TIDRefType.CreateAsAnonymous(Scope: TScope; ReferenceType: TIDType);
+begin
+  inherited CreateAsAnonymous(Scope);
+  TypeKind := tkRefernce;
+  FReferenceType := ReferenceType;
+end;
+
+constructor TIDRefType.CreateAsSystem(Scope: TScope; const Name: string);
+begin
+  inherited;
+  TypeKind := tkRefernce;
+end;
+
+procedure TIDRefType.CreateStandardOperators;
+begin
+  inherited;
+  OverloadImplicitTo(Self);
+  OverloadBinarOperator2(opEqual, SYSUnit._NilPointer, SYSUnit._Boolean);
+  OverloadBinarOperator2(opNotEqual, SYSUnit._NilPointer, SYSUnit._Boolean);
+  OverloadBinarOperator2(opEqual, SYSUnit._Pointer, SYSUnit._Boolean);
+  OverloadBinarOperator2(opNotEqual, SYSUnit._Pointer, SYSUnit._Boolean);
+  OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
+  OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
+  OverloadBinarOperator2(opGreater, Self, SYSUnit._Boolean);
+  OverloadBinarOperator2(opGreaterOrEqual, Self, SYSUnit._Boolean);
+  OverloadBinarOperator2(opLess, Self, SYSUnit._Boolean);
+  OverloadBinarOperator2(opLessOrEqual, Self, SYSUnit._Boolean);
+
+
+  OverloadExplicitTo(SYSUnit._NativeInt);
+  OverloadExplicitTo(SYSUnit._NativeUInt);
+  OverloadExplicitFrom(SYSUnit._NativeUInt);
+  OverloadExplicitFrom(SYSUnit._NativeInt);
+end;
+
+procedure TIDRefType.DecRefCount(RCPath: UInt32);
 begin
   if FRCPath = RCPath then
     Exit;
@@ -4818,10 +4799,64 @@ begin
     FReferenceType.DecRefCount(RCPath);
 end;
 
-procedure TIDPointer.SaveDeclToStream(Stream: TStream; const Package: INPPackage);
+{ TIDPointerType }
+
+constructor TIDPointer.Create(Scope: TScope; const ID: TIdentifier);
+begin
+  inherited Create(Scope, ID);
+  DataTypeID := dtPointer;
+  TypeKind := tkRefernce;
+  CreateStandardOperators;
+end;
+
+constructor TIDPointer.CreateAsAnonymous(Scope: TScope; ReferenceType: TIDType);
+begin
+  inherited CreateAsAnonymous(Scope, ReferenceType);
+  FDataTypeID := dtPointer;
+  CreateStandardOperators;
+end;
+
+constructor TIDPointer.CreateAsSystem(Scope: TScope; const Name: string);
 begin
   inherited;
-  WriteDataTypeIndex(Stream, ReferenceType);
+  FDataTypeID := dtPointer;
+end;
+
+procedure TIDPointer.CreateStandardOperators;
+begin
+  if not Assigned(SYSUnit) then
+    Exit;
+  inherited CreateStandardOperators;
+
+  OverloadBinarOperator2(opAdd, Self, Self);
+  OverloadBinarOperator2(opSubtract, Self, Self);
+
+  OverloadBinarOperator2(opAdd, SYSUnit._Int8, Self);
+  OverloadBinarOperator2(opAdd, SYSUnit._Int16, Self);
+  OverloadBinarOperator2(opAdd, SYSUnit._Int32, Self);
+  OverloadBinarOperator2(opAdd, SYSUnit._Int64, Self);
+  OverloadBinarOperator2(opAdd, SYSUnit._NativeInt, Self);
+
+  OverloadBinarOperator2(opAdd, SYSUnit._UInt8, Self);
+  OverloadBinarOperator2(opAdd, SYSUnit._UInt16, Self);
+  OverloadBinarOperator2(opAdd, SYSUnit._UInt32, Self);
+  OverloadBinarOperator2(opAdd, SYSUnit._UInt64, Self);
+  OverloadBinarOperator2(opAdd, SYSUnit._NativeUInt, Self);
+
+  OverloadBinarOperator2(opSubtract, SYSUnit._Int8, Self);
+  OverloadBinarOperator2(opSubtract, SYSUnit._Int16, Self);
+  OverloadBinarOperator2(opSubtract, SYSUnit._Int32, Self);
+  OverloadBinarOperator2(opSubtract, SYSUnit._Int64, Self);
+  OverloadBinarOperator2(opSubtract, SYSUnit._NativeInt, Self);
+
+  OverloadBinarOperator2(opSubtract, SYSUnit._UInt8, Self);
+  OverloadBinarOperator2(opSubtract, SYSUnit._UInt16, Self);
+  OverloadBinarOperator2(opSubtract, SYSUnit._UInt32, Self);
+  OverloadBinarOperator2(opSubtract, SYSUnit._UInt64, Self);
+  OverloadBinarOperator2(opSubtract, SYSUnit._NativeUInt, Self);
+
+  OverloadImplicitToAny(TIDOpImplicitPointerToAny.CreateAsIntOp);
+  OverloadExplicitFromAny(TIDOpExplictPointerFromAny.CreateAsIntOp);
 end;
 
 { TIDEnumType }
@@ -6066,14 +6101,28 @@ constructor TIDClassOf.Create(Scope: TScope; const Identifier: TIdentifier);
 begin
   inherited;
   DataTypeID := dtClassOf;
-  OverloadExplicitToAny(TIDOpExplicitClassOfToAny.CreateAsIntOp);
-  OverloadExplicitFromAny(TIDOpExplicitClassOfFromAny.CreateAsIntOp);
+  CreateStandardOperators;
+end;
+
+constructor TIDClassOf.CreateAsAnonymous(Scope: TScope; ReferenceType: TIDType);
+begin
+  inherited;
+  DataTypeID := dtClassOf;
+  CreateStandardOperators;
 end;
 
 constructor TIDClassOf.CreateAsSystem(Scope: TScope; const Name: string);
 begin
   inherited;
   FDataTypeID := dtClassOf;
+  CreateStandardOperators;
+end;
+
+procedure TIDClassOf.CreateStandardOperators;
+begin
+  if not Assigned(SYSUnit) then
+    Exit;
+  inherited CreateStandardOperators;
   OverloadExplicitToAny(TIDOpExplicitClassOfToAny.CreateAsIntOp);
   OverloadExplicitFromAny(TIDOpExplicitClassOfFromAny.CreateAsIntOp);
 end;
@@ -6090,9 +6139,9 @@ end;
 
 { TIDWeekRef }
 
-constructor TIDWeekRef.CreateAnonymous(Scope: TScope; ReferenceType: TIDType);
+constructor TIDWeekRef.CreateAsAnonymous(Scope: TScope; ReferenceType: TIDType);
 begin
-  inherited CreateAnonymous(Scope, ReferenceType);
+  inherited CreateAsAnonymous(Scope, ReferenceType);
   FDataTypeID := dtWeakRef;
 end;
 
