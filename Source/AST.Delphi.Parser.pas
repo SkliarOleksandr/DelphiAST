@@ -43,8 +43,8 @@ type
 
   private
     procedure CheckLeftOperand(const Status: TRPNStatus);
-    procedure CheckAndCallFuncImplicit(const EContext: TEContext); overload;
-    function CheckAndCallFuncImplicit(const SContext: TSContext; Expr: TIDExpression; out WasCall: Boolean): TIDExpression; overload;
+    class procedure CheckAndCallFuncImplicit(const EContext: TEContext); overload; static;
+    class function CheckAndCallFuncImplicit(const SContext: TSContext; Expr: TIDExpression; out WasCall: Boolean): TIDExpression; overload; static;
 
     function CreateAnonymousConstant(Scope: TScope; var EContext: TEContext;
       const ID: TIdentifier; IdentifierType: TIdentifierType): TIDExpression;
@@ -52,6 +52,7 @@ type
 
     class function MatchExplicit(const Source: TIDExpression; Destination: TIDType): TIDDeclaration; static;
     class function MatchArrayImplicitToRecord(Source: TIDExpression; Destination: TIDStructure): TIDExpression; static;
+    class function MatchUnarOperator(const SContext: TSContext; Op: TOperatorID; Source: TIDExpression): TIDExpression; overload; static;
   protected
 
     procedure CheckLabelExpression(const Expr: TIDExpression); overload;
@@ -70,14 +71,14 @@ type
     function Process_operator_As(var EContext: TEContext): TIDExpression;
     function Process_operator_Period(var EContext: TEContext): TIDExpression;
     function Process_operator_dot(var EContext: TEContext): TIDExpression;
-    function GetTMPVar(const SContext: TSContext; DataType: TIDType): TIDVariable; overload;
-    function GetTMPVar(const EContext: TEContext; DataType: TIDType): TIDVariable; overload;
-    function GetTMPRef(const SContext: TSContext; DataType: TIDType): TIDVariable;
-    function GetTMPVarExpr(const SContext: TSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline;
-    function GetTMPVarExpr(const EContext: TEContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline;
-    function GetTMPRefExpr(const SContext: TSContext; DataType: TIDType): TIDExpression; overload; inline;
-    function GetTMPRefExpr(const SContext: TSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline;
-
+    class function GetTMPVar(const SContext: TSContext; DataType: TIDType): TIDVariable; overload; static;
+    class function GetTMPVar(const EContext: TEContext; DataType: TIDType): TIDVariable; overload; static;
+    class function GetTMPRef(const SContext: TSContext; DataType: TIDType): TIDVariable; static;
+    class function GetTMPVarExpr(const SContext: TSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline; static;
+    class function GetTMPVarExpr(const EContext: TEContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline; static;
+    class function GetTMPRefExpr(const SContext: TSContext; DataType: TIDType): TIDExpression; overload; inline; static;
+    class function GetTMPRefExpr(const SContext: TSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline; static;
+    class function GetStaticTMPVar(DataType: TIDType; VarFlags: TVariableFlags = []): TIDVariable; static;
     function MatchImplicit3(const SContext: TSContext; Source: TIDExpression; Dest: TIDType): TIDExpression;
     function MatchImplicitOrNil(const SContext: TSContext; Source: TIDExpression; Dest: TIDType): TIDExpression;
     function MatchArrayImplicit(const SContext: TSContext; Source: TIDExpression; DstArray: TIDArray): TIDExpression;
@@ -372,6 +373,7 @@ type
 
   function GetUnit(const SContext: PSContext): TASTDelphiUnit; overload;
   function GetUnit(const EContext: TEContext): TASTDelphiUnit; overload;
+  function GetBoolResultExpr(SContext: TSContext): TIDBoolResultExpression;
 
 implementation
 
@@ -397,6 +399,14 @@ end;
 function GetUnit(const EContext: TEContext): TASTDelphiUnit;
 begin
   Result := EContext.SContext.Module as TASTDelphiUnit;
+end;
+
+function GetBoolResultExpr(SContext: TSContext): TIDBoolResultExpression;
+var
+  Decl: TIDVariable;
+begin
+  Decl := TASTDelphiUnit.GetTMPVar(SContext, SYSUnit._Boolean);
+  Result := TIDBoolResultExpression.Create(Decl);
 end;
 
 { TASTDelphiUnit }
@@ -1270,7 +1280,7 @@ begin
           opLessOrEqual,
           opGreater,
           opGreaterOrEqual: begin
-            Result := GetBoolResultExpr(Result);
+            Result := NPCompiler.Classes.GetBoolResultExpr(Result);
             //ILWrite(SContext, TIL.IL_Cmp(Left, Right));
             {освобожадем временные переменные}
             //ReleaseExpression(SContext, Left);
@@ -1284,7 +1294,7 @@ begin
             if (OpID in [opAnd, opOr]) and (TmpVar.DataType = SYSUnit._Boolean) then
             begin
               // логические операции
-              Result := GetBoolResultExpr(Result);
+              Result := NPCompiler.Classes.GetBoolResultExpr(Result);
               //Process_operator_logical_AND_OR(EContext, OpID, Left, Right, Result);
             end;
           end;
@@ -1390,33 +1400,30 @@ end;
 function TASTDelphiUnit.Process_operator_neg(var EContext: TEContext): TIDExpression;
 var
   Right: TIDExpression;
-  OperatorItem: TIDType;
+  OperatorItem: TIDExpression;
 begin
   // Читаем операнд
   Right := EContext.RPNPopExpression();
 
-  //ReleaseExpression(EContext.SContext, Right);
-
-  OperatorItem := MatchUnarOperator(opNegative, Right.DataType);
+  OperatorItem := MatchUnarOperator(EContext.SContext, opNegative, Right);
   if not Assigned(OperatorItem) then
     ERROR_NO_OVERLOAD_OPERATOR_FOR_TYPES(opNegative, Right);
 
   if (Right.ItemType = itConst) and (Right.ClassType <> TIDSizeofConstant) then
     Result := ProcessConstOperation(Right, Right, opNegative)
   else begin
-    Result := GetTMPVarExpr(EContext, OperatorItem, Right.TextPosition);
+    Result := GetTMPVarExpr(EContext, OperatorItem.DataType, Right.TextPosition);
   end;
 end;
 
 function TASTDelphiUnit.Process_operator_not(var EContext: TEContext): TIDExpression;
 var
-  Right: TIDExpression;
-  OperatorItem: TIDType;
+  Right, OperatorItem: TIDExpression;
 begin
   // Читаем операнд
   Right := EContext.RPNPopExpression();
 
-  OperatorItem := MatchUnarOperator(opNot, Right.DataType);
+  OperatorItem := MatchUnarOperator(EContext.SContext, opNot, Right);
   if not Assigned(OperatorItem) then
     ERROR_NO_OVERLOAD_OPERATOR_FOR_TYPES(opNot, Right);
 
@@ -1647,41 +1654,47 @@ begin
   Result := _ID.Name;
 end;
 
-function TASTDelphiUnit.GetTMPVar(const EContext: TEContext; DataType: TIDType): TIDVariable;
+class function TASTDelphiUnit.GetTMPVar(const EContext: TEContext; DataType: TIDType): TIDVariable;
 begin
   Result := TIDProcedure(EContext.Proc).GetTMPVar(DataType);
 end;
 
-function TASTDelphiUnit.GetTMPVar(const SContext: TSContext; DataType: TIDType): TIDVariable;
+class function TASTDelphiUnit.GetStaticTMPVar(DataType: TIDType; VarFlags: TVariableFlags): TIDVariable;
+begin
+  Result := TIDVariable.CreateAsTemporary(nil, DataType);
+  Result.IncludeFlags(VarFlags);
+end;
+
+class function TASTDelphiUnit.GetTMPVar(const SContext: TSContext; DataType: TIDType): TIDVariable;
 begin
   if Assigned(SContext.Proc) then
     Result := SContext.Proc.GetTMPVar(DataType)
   else
-    Result := InitProc.GetTMPVar(DataType);
+    Result := GetStaticTMPVar(DataType);
 end;
 
-function TASTDelphiUnit.GetTMPVarExpr(const EContext: TEContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression;
+class function TASTDelphiUnit.GetTMPVarExpr(const EContext: TEContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression;
 begin
   Result := TIDExpression.Create(GetTMPVar(EContext, DataType), TextPos);
 end;
 
-function TASTDelphiUnit.GetTMPVarExpr(const SContext: TSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression;
+class function TASTDelphiUnit.GetTMPVarExpr(const SContext: TSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression;
 begin
   Result := TIDExpression.Create(GetTMPVar(SContext, DataType), TextPos);
 end;
 
-function TASTDelphiUnit.GetTMPRef(const SContext: TSContext; DataType: TIDType): TIDVariable;
+class function TASTDelphiUnit.GetTMPRef(const SContext: TSContext; DataType: TIDType): TIDVariable;
 begin
   Result := SContext.Proc.GetTMPRef(DataType);
 end;
 
-function TASTDelphiUnit.GetTMPRefExpr(const SContext: TSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression;
+class function TASTDelphiUnit.GetTMPRefExpr(const SContext: TSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression;
 begin
   Result := TIDExpression.Create(GetTMPRef(SContext, DataType));
   Result.TextPosition := TextPos;
 end;
 
-function TASTDelphiUnit.GetTMPRefExpr(const SContext: TSContext; DataType: TIDType): TIDExpression;
+class function TASTDelphiUnit.GetTMPRefExpr(const SContext: TSContext; DataType: TIDType): TIDExpression;
 begin
   Result := TIDExpression.Create(GetTMPRef(SContext, DataType));
 end;
@@ -1844,6 +1857,24 @@ begin
     DstFld :=  TIDVariable(DstFld.NextItem);
   end;
   Result := Source;
+end;
+
+class function TASTDelphiUnit.MatchUnarOperator(const SContext: TSContext; Op: TOperatorID; Source: TIDExpression): TIDExpression;
+var
+  OpDecl: TIDType;
+  WasCall: Boolean;
+begin
+  OpDecl := MatchUnarOperator(Op, Source.DataType.ActualDataType);
+  if Assigned(OpDecl) then
+    Exit(Source);
+
+  Source := CheckAndCallFuncImplicit(SContext, Source, WasCall);
+  if WasCall then
+  begin
+    OpDecl := MatchUnarOperator(Op, Source.DataType.ActualDataType);
+    if Assigned(OpDecl) then
+      Exit(Source);
+  end;
 end;
 
 function TASTDelphiUnit.MatchImplicitOrNil(const SContext: TSContext; Source: TIDExpression; Dest: TIDType): TIDExpression;
@@ -2194,7 +2225,7 @@ begin
   end;
 end;
 
-procedure TASTDelphiUnit.CheckAndCallFuncImplicit(const EContext: TEContext);
+class procedure TASTDelphiUnit.CheckAndCallFuncImplicit(const EContext: TEContext);
 var
   Expr, Res: TIDExpression;
 begin
@@ -2212,7 +2243,7 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.CheckAndCallFuncImplicit(const SContext: TSContext; Expr: TIDExpression; out WasCall: Boolean): TIDExpression;
+class function TASTDelphiUnit.CheckAndCallFuncImplicit(const SContext: TSContext; Expr: TIDExpression; out WasCall: Boolean): TIDExpression;
 begin
   WasCall := False;
   if Expr.DataTypeID <> dtProcType then
@@ -3722,6 +3753,7 @@ begin
   Result := parser_CurTokenID;
   while true do begin
     case Result of
+      token_eof: Exit;
       token_var: begin
         parser_NextToken(Scope);
         Result := ParseVarSection(Scope, vLocal, nil, False);
@@ -3990,6 +4022,9 @@ begin
           ERROR_DECL_DIFF_WITH_PREV_DECL(ID);
       end;
       Result := ParseProcBody(Proc);
+      if Result = token_eof then
+        Exit;
+
       if Result <> token_semicolon then
         ERROR_SEMICOLON_EXPECTED;
 

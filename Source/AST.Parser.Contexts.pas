@@ -74,7 +74,6 @@ type
     property Proc: TProc read GetProc;
   end;
 
-
 implementation
 
 uses

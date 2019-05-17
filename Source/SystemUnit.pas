@@ -658,6 +658,7 @@ begin
   RegisterBuiltin(TCT_Length);
   RegisterBuiltin(TCT_Ord);
   RegisterBuiltin(TCT_FillChar);
+  RegisterBuiltin(TRT_Assigned);
 end;
 
 function TSYSTEMUnit.RegisterBuiltin(const Name: string; MacroID: TBuiltInFunctionID; ResultDataType: TIDType; Flags: TProcFlags = [pfPure]): TIDBuiltInFunction;
@@ -680,10 +681,6 @@ var
 begin
   FArrayType := TIDArray.Create(nil, Identifier('<array type or string>'));
   FRefType := TIDType.Create(nil, Identifier(''));
-
-  // assigned
-  Decl := RegisterBuiltin('Assigned', bf_assigned, _Boolean);
-  Decl.AddParam('Value', FRefType, [VarConst]);
 
   // memset
   Decl := RegisterBuiltin('memset', bf_memset, nil);

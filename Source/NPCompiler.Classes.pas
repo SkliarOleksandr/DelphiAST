@@ -1651,9 +1651,18 @@ type
 
   procedure WriteConstToStream(Stream: TStream; Decl: TIDConstant; DataType: TIDType);
 
+  function GetBoolResultExpr(ExistExpr: TIDExpression): TIDBoolResultExpression;
+
 implementation
 
 uses SystemUnit, OPCompiler, AST.Delphi.Parser;
+
+
+function GetBoolResultExpr(ExistExpr: TIDExpression): TIDBoolResultExpression;
+begin
+  Result := TIDBoolResultExpression.Create(ExistExpr.Declaration, ExistExpr.TextPosition);
+end;
+
 
 function IDCompare(const Key1, Key2: TIDDeclaration): NativeInt;
 begin

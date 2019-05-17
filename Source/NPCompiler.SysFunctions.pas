@@ -105,6 +105,12 @@ type
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {function: FillChar}
+  TRT_Assigned = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
 
 implementation
 
@@ -521,6 +527,24 @@ begin
   ECount := EContext.RPNPopExpression();
   EValue := EContext.RPNPopExpression();
   Result := nil;
+end;
+
+{ TRT_Assigned }
+
+class function TRT_Assigned.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := TRT_Assigned.Create(Scope, 'Assigned', SYSUnit._Boolean);
+  Result.AddParam('Value', SYSUnit._Pointer, [VarConst]);
+end;
+
+function TRT_Assigned.Process(var EContext: TEContext): TIDExpression;
+var
+  Expr: TIDExpression;
+begin
+  // читаем аргумент
+  Expr := EContext.RPNPopExpression();
+  TNPUnit.CheckReferenceType(Expr);
+  Result := GetBoolResultExpr(EContext.SContext);
 end;
 
 end.

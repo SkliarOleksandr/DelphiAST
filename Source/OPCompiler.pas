@@ -597,8 +597,6 @@ type
     
     {функция возвращает специальную анонимную переменную - результат логических булевых выражений}
     {такая переменная не используется для генерации IL кода, а используется лишь для определения типа выражения}
-    class function GetBoolResultExpr(ExistExpr: TIDExpression): TIDBoolResultExpression; overload; static; inline;
-    function GetBoolResultExpr(SContext: PSContext): TIDBoolResultExpression; overload; inline;
 
     {функция CheckImplicit проверяет, возможно ли неявное преобразование}
     class function CheckImplicit(Source: TIDExpression; Dest: TIDType): TIDDeclaration; virtual;
@@ -634,7 +632,6 @@ type
     class procedure MatchPropGetter(Prop: TIDProperty; Getter: TIDProcedure; PropParams: TScope);
     class function MatchOperatorIn(const Left, Right: TIDExpression): TIDDeclaration; static;
     class function MatchUnarOperator(Op: TOperatorID; Right: TIDType): TIDType; static; inline;
-
 
     function FindImplicitFormBinarOperators(const Operators: TIDPairList; const Right: TIDType; out BetterFactor: Integer; out BetterOp: TIDDeclaration): TIDDeclaration;
     function MatchBinarOperator(SContext: PSContext; Op: TOperatorID; var Left, Right: TIDExpression): TIDDeclaration;
@@ -12300,19 +12297,6 @@ begin
      SourceDataType.WeakRefType := Result;
      AddType(Result);
    end;
-end;
-
-class function TNPUnit.GetBoolResultExpr(ExistExpr: TIDExpression): TIDBoolResultExpression;
-begin
-  Result := TIDBoolResultExpression.Create(ExistExpr.Declaration, ExistExpr.TextPosition);
-end;
-
-function TNPUnit.GetBoolResultExpr(SContext: PSContext): TIDBoolResultExpression;
-var
-  Decl: TIDVariable;
-begin
-  Decl := SContext.GetTMPVar(SYSUnit._Boolean);
-  Result := TIDBoolResultExpression.Create(Decl, parser_Position);
 end;
 
 {function TNPUnit.GetILText: string;

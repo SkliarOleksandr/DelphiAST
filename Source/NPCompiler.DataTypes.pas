@@ -330,7 +330,7 @@ const
     {dtArray}       False,
     {dtDynArray}    True,
     {dtOpenArray}   True,
-    {dtProcType}    False,
+    {dtProcType}    True,
     {dtRecord}      False,
     {dtClass}       True,
     {dtClassOf}     True,
