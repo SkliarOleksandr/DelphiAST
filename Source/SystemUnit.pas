@@ -83,9 +83,8 @@ type
     procedure AddCompareOperators;
     procedure AddArithmeticOperators;
     procedure RegisterBuiltinFunctions;
-    procedure RegisterSystemRTBuiltinFunctions;
     procedure InsertToScope(Declaration: TIDDeclaration);
-    function RegisterBuiltin(const Name: string; MacroID: TBuiltInFunctionID; ResultDataType: TIDType; Flags: TProcFlags = [pfPure]): TIDBuiltInFunction; overload;
+    function RegisterBuiltin(const Name: string; MacroID: TBuiltInFunctionID; ResultDataType: TIDType; Flags: TProcFlags = []): TIDBuiltInFunction; overload;
     function RegisterType(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
     function RegisterTypeCustom(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
     function RegisterOrdinal(const TypeName: string; DataType: TDataTypeID; LowBound: Int64; HighBound: UInt64): TIDType;
@@ -102,7 +101,6 @@ type
     function Compile(RunPostCompile: Boolean = True): TCompilerResult; override;
     function CompileIntfOnly: TCompilerResult; override;
     ////////////////////////////////////////////////////////////////////////////////////////////////////
-    procedure CreateSystemRoutins;
     procedure InitSystemUnit;
     //procedure RegisterExternalProc
     property DataTypes: TDataTypes read FDataTypes;
@@ -642,26 +640,7 @@ begin
   FTypeIDType := GetPublicType('TDataTypeID');}
 end;
 
-procedure TSYSTEMUnit.RegisterSystemRTBuiltinFunctions;
-begin
-  RegisterBuiltin(TSF_now);
-  RegisterBuiltin(TSF_AtomicExchange);
-  RegisterBuiltin(TSF_AtomicCmpExchange);
-  RegisterBuiltin(TSF_RunError);
-  RegisterBuiltin(TSCTF_Defined);
-  RegisterBuiltin(TSCTF_Declared);
-  RegisterBuiltin(TCT_SizeOf);
-  RegisterBuiltin(TCT_LoBound);
-  RegisterBuiltin(TCT_HiBound);
-  RegisterBuiltin(TCT_Inc);
-  RegisterBuiltin(TCT_Dec);
-  RegisterBuiltin(TCT_Length);
-  RegisterBuiltin(TCT_Ord);
-  RegisterBuiltin(TCT_FillChar);
-  RegisterBuiltin(TRT_Assigned);
-end;
-
-function TSYSTEMUnit.RegisterBuiltin(const Name: string; MacroID: TBuiltInFunctionID; ResultDataType: TIDType; Flags: TProcFlags = [pfPure]): TIDBuiltInFunction;
+function TSYSTEMUnit.RegisterBuiltin(const Name: string; MacroID: TBuiltInFunctionID; ResultDataType: TIDType; Flags: TProcFlags = []): TIDBuiltInFunction;
 begin
   Result := TIDBuiltInFunction.Create(Self.IntfSection, Name, ResultDataType);
   Result.ResultType := ResultDataType;
@@ -683,39 +662,55 @@ begin
   FRefType := TIDType.Create(nil, Identifier(''));
 
   // memset
-  Decl := RegisterBuiltin('memset', bf_memset, nil);
-  Decl.AddParam('Value', FRefType, [VarConstRef]);
-  Decl.AddParam('FillChar', _UInt8, [VarConst, VarHasDefault], _ZeroExpression);
+//  Decl := RegisterBuiltin('memset', bf_memset, nil);
+//  Decl.AddParam('Value', FRefType, [VarConstRef]);
+//  Decl.AddParam('FillChar', _UInt8, [VarConst, VarHasDefault], _ZeroExpression);
+//
+//  // SetLength
+//  Decl := RegisterBuiltin('SetLength', bf_setlength, FArrayType);
+//  Decl.AddParam('Str', FArrayType, [VarInOut]);
+//  Decl.AddParam('NewLength', _Int32);
+//
+//  // Copy
+//  Decl := RegisterBuiltin('Copy', bf_copy, nil);
+//  Decl.AddParam('Str', FArrayType, [VarInOut]);
+//  Decl.AddParam('From', _Int32, [VarIn], _ZeroExpression);
+//  Decl.AddParam('Count', _Int32, [VarIn], _MinusOneExpression);
+//
+//  // accert
+//  Decl := RegisterBuiltin('assert', bf_assert, nil);
+//  Decl.AddParam('Value', _Boolean);
+//  Decl.AddParam('ErrorText', _String, [], _EmptyStrExpression);
+//
+//  // TypeInfo
+//  Decl := RegisterBuiltin('TypeInfo', bf_typeinfo, _TObject);
+//  Decl.AddParam('Declaration', _Pointer, [VarConst]);
+//
+//  // include(var Set; const SubSet)
+//  Decl := RegisterBuiltin('include', bf_include, nil);
+//  Decl.AddParam('Set', _Void, [VarInOut]);
+//  Decl.AddParam('SubSet', _Void, [VarInOut]);
+//
+//  // exclude(var Set; const SubSet)
+//  Decl := RegisterBuiltin('exclude', bf_exclude, nil);
+//  Decl.AddParam('Set', _Void, [VarInOut]);
+//  Decl.AddParam('SubSet', _Void, [VarInOut]);
 
-  // SetLength
-  Decl := RegisterBuiltin('SetLength', bf_setlength, FArrayType);
-  Decl.AddParam('Str', FArrayType, [VarInOut]);
-  Decl.AddParam('NewLength', _Int32);
-
-  // Copy
-  Decl := RegisterBuiltin('Copy', bf_copy, nil);
-  Decl.AddParam('Str', FArrayType, [VarInOut]);
-  Decl.AddParam('From', _Int32, [VarIn], _ZeroExpression);
-  Decl.AddParam('Count', _Int32, [VarIn], _MinusOneExpression);
-
-  // accert
-  Decl := RegisterBuiltin('assert', bf_assert, nil);
-  Decl.AddParam('Value', _Boolean);
-  Decl.AddParam('ErrorText', _String, [], _EmptyStrExpression);
-
-  // TypeInfo
-  Decl := RegisterBuiltin('TypeInfo', bf_typeinfo, _TObject);
-  Decl.AddParam('Declaration', _Pointer, [VarConst]);
-
-  // include(var Set; const SubSet)
-  Decl := RegisterBuiltin('include', bf_include, nil);
-  Decl.AddParam('Set', _Void, [VarInOut]);
-  Decl.AddParam('SubSet', _Void, [VarInOut]);
-
-  // exclude(var Set; const SubSet)
-  Decl := RegisterBuiltin('exclude', bf_exclude, nil);
-  Decl.AddParam('Set', _Void, [VarInOut]);
-  Decl.AddParam('SubSet', _Void, [VarInOut]);
+  RegisterBuiltin(TSF_now);
+  RegisterBuiltin(TSF_AtomicExchange);
+  RegisterBuiltin(TSF_AtomicCmpExchange);
+  RegisterBuiltin(TSF_RunError);
+  RegisterBuiltin(TSCTF_Defined);
+  RegisterBuiltin(TSCTF_Declared);
+  RegisterBuiltin(TCT_SizeOf);
+  RegisterBuiltin(TCT_LoBound);
+  RegisterBuiltin(TCT_HiBound);
+  RegisterBuiltin(TCT_Inc);
+  RegisterBuiltin(TCT_Dec);
+  RegisterBuiltin(TCT_Length);
+  RegisterBuiltin(TCT_Ord);
+  RegisterBuiltin(TCT_FillChar);
+  RegisterBuiltin(TRT_Assigned);
 end;
 
 function TSYSTEMUnit.RegisterOrdinal(const TypeName: string; DataType: TDataTypeID; LowBound: Int64; HighBound: UInt64): TIDType;
@@ -730,7 +725,7 @@ function TSYSTEMUnit.Compile(RunPostCompile: Boolean = True): TCompilerResult;
 begin
   Result := CompileFail;
   try
-    CreateSystemRoutins;
+    RegisterBuiltinFunctions;
     Result := inherited Compile(False);
     if Result = CompileSuccess then
     begin
@@ -899,12 +894,6 @@ begin
   AddLogicalOperators;
   AddBitwiseOperators;
   AddCompareOperators;
-  RegisterBuiltinFunctions;
-end;
-
-procedure TSYSTEMUnit.CreateSystemRoutins;
-begin
-  RegisterSystemRTBuiltinFunctions;
 end;
 
 procedure TSYSTEMUnit.InitSystemUnit;

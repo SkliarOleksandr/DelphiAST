@@ -8,29 +8,6 @@ uses System.SysUtils, AST.Delphi.Classes, NPCompiler.Operators, NPCompiler.Conte
 type
   TILInstruction = TObject;
 
-//  PBoolExprNode = ^TBoolExprNode;
-//  TBoolExprNode = record
-//  type
-//    TNodeOrientation = (NodeRoot, NodeLeft, NodeRight);
-//    TNodeType = (
-//      ntCmp,   // любое сравнение
-//      ntAnd,   // логическое AND
-//      ntOr     // логическое OR
-//    );
-//  var
-//    NodeType: TNodeType;             // Тип нода
-//    Parent: PBoolExprNode;           // Parent в дереве
-//    Orientation: TNodeOrientation;   // Ориентация нода относительно Parent-а
-//    Instruction: TILInstruction;     // это последняя инструкция выражения; для типа ntNode это JMP инструкция
-//                                     // для типов ntAnd, ntOr это IL последняя инструкциия правого выражения
-//    LeftChild: PBoolExprNode;        // Левый child
-//    RightChild: PBoolExprNode;       // Правый child
-//    Condition: TILCondition;         // Условия сравнения (только для типа ntNode)
-//    LeftNode: PBoolExprNode;         // Левый нод (по исходному коду)
-//    RightNode: PBoolExprNode;        // Правый нод (по исходному коду)
-//    PrevNode: PBoolExprNode;         // Предыдущий нод (в стеке)
-//  end;
-
   {expression context - use RPN (Reverse Polish Notation) stack}
   TEContext = record
   type

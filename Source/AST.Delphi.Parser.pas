@@ -50,7 +50,6 @@ type
     function CreateAnonymousConstant(Scope: TScope; var EContext: TEContext;
       const ID: TIdentifier; IdentifierType: TIdentifierType): TIDExpression;
     procedure InitEContext(var EContext: TEContext; const SContext: TSContext; EPosition: TExpessionPosition); overload; inline;
-    procedure InitEContext(var EContext: TEContext; EPosition: TExpessionPosition); overload;inline;
 
     class function MatchExplicit(const Source: TIDExpression; Destination: TIDType): TIDDeclaration; static;
     class function MatchArrayImplicitToRecord(Source: TIDExpression; Destination: TIDStructure): TIDExpression; static;
@@ -62,7 +61,7 @@ type
     procedure CheckLabelExpression(const Expr: TIDExpression); overload;
     procedure CheckLabelExpression(const Decl: TIDDeclaration); overload;
 
-    function Process_operators2(var EContext: TEContext; OpID: TOperatorID): TIDExpression;
+    function Process_operators(var EContext: TEContext; OpID: TOperatorID): TIDExpression;
     function Process_CALL(var EContext: TEContext): TIDExpression;
     function Process_CALL_direct(const SContext: TSContext; PExpr: TIDCallExpression; CallArguments: TIDExpressions): TIDExpression;
     procedure Process_operator_Assign(var EContext: TEContext);
@@ -1096,15 +1095,16 @@ begin
 end;
 
 function TASTDelphiUnit.Process_CALL_direct(const SContext: TSContext; PExpr: TIDCallExpression; CallArguments: TIDExpressions): TIDExpression;
-var
-  AIndex, ArgsCount: Integer;
-  ProcDecl: TIDProcedure;
-  ProcParams: TVariableList;
-  ResVar: TIDVariable;
-  ProcResult: TIDType;
-  Param: TIDVariable;
-  AExpr: TIDExpression;
+//var
+//  AIndex, ArgsCount: Integer;
+//  ProcDecl: TIDProcedure;
+//  ProcParams: TVariableList;
+//  ResVar: TIDVariable;
+//  ProcResult: TIDType;
+//  Param: TIDVariable;
+//  AExpr: TIDExpression;
 begin
+  Result := nil;
 (*  ArgsCount := Length(CallArguments);
 
   ProcDecl := PExpr.AsProcedure;
@@ -1222,7 +1222,7 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.Process_operators2(var EContext: TEContext; OpID: TOperatorID): TIDExpression;
+function TASTDelphiUnit.Process_operators(var EContext: TEContext; OpID: TOperatorID): TIDExpression;
 var
   Left, Right: TIDExpression;
   Op: TIDDeclaration;
@@ -1795,11 +1795,6 @@ begin
   Result := TIDExpression.Create(GetTMPVar(EContext, DataType), TextPos);
 end;
 
-procedure TASTDelphiUnit.InitEContext(var EContext: TEContext; EPosition: TExpessionPosition);
-begin
-
-end;
-
 class function TASTDelphiUnit.GetTMPVarExpr(const SContext: TSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression;
 begin
   Result := TIDExpression.Create(GetTMPVar(SContext, DataType), TextPos);
@@ -1823,7 +1818,7 @@ end;
 
 procedure TASTDelphiUnit.InitEContext(var EContext: TEContext; const SContext: TSContext; EPosition: TExpessionPosition);
 begin
-  EContext.Initialize(SContext, Process_operators2);
+  EContext.Initialize(SContext, Process_operators);
   EContext.EPosition := EPosition;
 end;
 
@@ -2751,11 +2746,9 @@ end;
 
 function TASTDelphiUnit.ParseCondInclude(Scope: TScope): TTokenID;
 var
-  ID: TIdentifier;
   FileName: string;
   Pos: TParserPosition;
   Stream: TStringStream;
-  SC: TSContext;
 begin
   while True do begin
     Result := TTokenID(Parser.NextToken);
@@ -2793,7 +2786,7 @@ begin
     Exit;
   if Expr.IsAnonymous then
     Expr.TextPosition := parser_PrevPosition;
-  if (Expr.ItemType <> itType) and (Expr.DataTypeID <> dtGeneric) and not (Expr.Declaration is TIDMacroArgument) then
+  if (Expr.ItemType <> itType) and (Expr.DataTypeID <> dtGeneric) then
     CheckConstExpression(Expr);
 end;
 
@@ -3343,7 +3336,6 @@ begin
           parser_ReadCurrIdentifier(ID);
           Expr := CreateAnonymousConstant(Scope, EContext, ID, parser_IdentifireType);
           Result := parser_NextToken(Scope);
-          Status := rpOperand;
           ASTE.AddDeclItem(Expr.Declaration, Expr.TextPosition);
         end;
         EContext.RPNPushExpression(Expr);
@@ -4552,6 +4544,7 @@ begin
           if PrevProc.Name <> Proc.Name then
             ERROR_NO_METHOD_IN_BASE_CLASS(PrevProc);
           Result := parser_NextToken(Scope);
+         ArgsCnt := Length(CallArgs);
           if Result = token_openround then
           begin
             CallExpr := TIDCallExpression.Create(PrevProc, parser_Line);
@@ -4559,7 +4552,6 @@ begin
             CallExpr.ArgumentsCount := ArgsCnt;
             Result := ParseEntryCall(Scope, CallExpr, EContext, nil {tmp!!!});
           end;
-          ArgsCnt := Length(CallArgs);
           Break;
         end;
 //        itType: begin
@@ -5326,6 +5318,16 @@ end;
 function TIDOpExplicitTProcFromAny.Match(const SContext: PSContext; const Src: TIDExpression;
                                          const Dst: TIDType): TIDExpression;
 begin
+  if Src.ItemType = itProcedure then
+  begin
+    var SrcProc := Src.AsProcedure;
+    var DstProcType := Dst as TIDProcType;
+    if TNPUnit.StrictMatchProcSingnatures(SrcProc.ExplicitParams, DstProcType.Params, SrcProc.ResultType, DstProcType.ResultType) then
+      Exit(Src)
+    else
+      Exit(nil);
+  end;
+
   if (Src.DataTypeID = dtPointer) and (Dst as TIDProcType).IsStatic then
     Result := Src
   else

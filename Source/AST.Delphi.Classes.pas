@@ -65,7 +65,6 @@ type
   TIDExpression = class;
   TIDNameSpace = class;
   TIDGenericType = class;
-  TIDMacroArgument = class;
   TIDStringConstant = class;
   TIDProcType = class;
 
@@ -1034,12 +1033,10 @@ type
     function GetAsType: TIDType; inline;
     function GetAsVariable: TIDVariable; inline;
     function GetAsArrayConst: TIDDynArrayConstant; inline;
-    //function GetAsUserDefinedMacro: TIDUserDefinedMacro; inline;
     class function GetExpressionType: TExpressonType; virtual;
     function GetIsLocalVar: Boolean;
     function GetIsVariable: Boolean; inline;
     function GetLine: Integer; inline;
-    function GetAsMacroArgument: TIDMacroArgument;
     function GetIsTMPVar: Boolean;
     function GetIsTMPRef: Boolean;
     function GetAsCharConst: TIDCharConstant;
@@ -1094,7 +1091,6 @@ type
     //property AsUserDefinedMacro: TIDUserDefinedMacro read GetAsUserDefinedMacro;
     property AsArrayConst: TIDDynArrayConstant read GetAsArrayConst;
     property AsRangeConst: TIDRangeConstant read GetAsRangeConst;
-    property AsMacroArgument: TIDMacroArgument read GetAsMacroArgument;
     property AsClosure: TIDClosure read GetAsClosure;
     property CValue: TIDConstant read GetCValue write SetCValue;
   end;
@@ -1279,9 +1275,6 @@ type
     pfHasResult,
     pfVirtual,
     pfInline,
-    pfPure,
-    pfNoReturn,
-    pfNoExcept,
     pfOveload,
     pfExport,
     pfImport,
@@ -1430,60 +1423,9 @@ type
 
 
   TBuiltInFunctionID = (
-//    bf_userdefined,        // пользовательская макро-функция
     bf_sysrtfunction,      // системная run-time встроенная функция
-    bf_sysctfunction,      // системная compile-time встроенная функция
-    bf_assigned,
-    bf_inc,
-    bf_dec,
-    bf_memset,
-    bf_length,
-    bf_setlength,
-    bf_copy,
-    bf_move,
-    bf_sizeof,
-    bf_assert,
-    bf_typename,
-    bf_current_unit,
-    bf_current_function,
-    bf_current_line,
-    bf_new,
-    bf_free,
-    bf_getref,
-    bf_typeinfo,
-    bf_LoBound,
-    bf_HiBound,
-    bf_Ord,
-    bf_include,
-    bf_exclude,
-    bf_refcount,
-    bf_getbit,
-    bf_setbit
+    bf_sysctfunction       // системная compile-time встроенная функция
   );
-
-  TIDMacroArgument = class(TIDVariable)
-  private
-    FText: string;
-    FExpr: TIDExpression;
-  public
-    property Text: string read FText write FText;
-    property ArgExpession: TIDExpression read FExpr write FExpr;
-  end;
-
-  TMacroArgs = TList<TIDMacroArgument>;
-
-
-
-  {TIDUserDefinedMacro = class(TIDBuiltInFunction)
-  private
-    //FBody: string;
-    FBodyPosition: TParserPosition;
-  public
-    constructor Create(Scope: TScope; const ID: TIdentifier); reintroduce;
-    //property Body: string read FBody;
-    //procedure Append(const Text: string);
-    property BodyPosition: TParserPosition read FBodyPosition write FBodyPosition;
-  end;}
 
   TUnitList = TStringList;
 
@@ -3684,11 +3626,6 @@ end;
 function TIDExpression.GetAsIntConst: TIDIntConstant;
 begin
   Result := TIDIntConstant(FDeclaration);
-end;
-
-function TIDExpression.GetAsMacroArgument: TIDMacroArgument;
-begin
-  Result := FDeclaration as TIDMacroArgument;
 end;
 
 function TIDExpression.GetAsProcedure: TIDProcedure;
