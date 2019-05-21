@@ -4,7 +4,7 @@ interface
 
 {$i compilers.inc}
 
-uses iDStringParser, SysUtils, StrUtils, Types, Classes, NPCompiler.Classes, NPCompiler.Errors;
+uses iDStringParser, SysUtils, StrUtils, Types, Classes, AST.Delphi.Classes, NPCompiler.Errors;
 
 type
 
@@ -154,6 +154,7 @@ type
     token_destructor,               // keyword: destructor
     token_default,                  // keyword: default
     token_varargs,                  // keyword: varargs
+    token_threadvar,                // keyword: threadvar
     token_label,                    // keyword: label
     token_goto,                     // keyword: goto
 
@@ -436,6 +437,7 @@ begin
   RegisterToken('then', token_then);
   RegisterToken('to', token_to);
   RegisterToken('try', token_try);
+  RegisterToken('threadvar', token_threadvar);
   RegisterToken('type', token_type);
   RegisterToken('helper', token_helper);
   RegisterToken('until', token_until);

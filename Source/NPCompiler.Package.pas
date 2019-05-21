@@ -5,7 +5,7 @@ interface
 uses System.SysUtils, System.Classes, System.Types, Generics.Collections, System.IOUtils,
      AVL,
      NPCompiler.DataTypes,
-     NPCompiler.Classes,
+     AST.Delphi.Classes,
      NPCompiler.Options,
      NPLCompiler.Targets,
      NPCompiler.Intf,

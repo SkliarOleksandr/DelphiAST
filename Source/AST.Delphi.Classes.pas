@@ -1,4 +1,4 @@
-﻿unit NPCompiler.Classes;
+﻿unit AST.Delphi.Classes;
 
 interface
 
@@ -19,8 +19,6 @@ uses System.SysUtils, System.Classes, System.StrUtils, System.Math, System.Gener
      AST.Classes,
      AST.Project;
 type
-
-  TILInstruction = TObject;
 
   TExpessionPosition = (ExprNested, ExprLValue, ExprRValue, ExprNestedGeneric);
 
@@ -3492,16 +3490,6 @@ end;
 
 function TIDVariable.GetLastRWInstruction: TObject;
 begin
-//  if Assigned(FLastRInstruction) then
-//  begin
-//    if Assigned(FLastWInstruction) then
-//    begin
-//      if TILInstruction(FLastRInstruction).Position < TILInstruction(FLastWInstruction).Position then
-//        Exit(FLastWInstruction);
-//    end;
-//    Result := FLastRInstruction;
-//  end else
-//    Result := FLastWInstruction;
   Result := nil;
 end;
 

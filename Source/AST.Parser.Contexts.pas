@@ -5,7 +5,7 @@ interface
 uses System.SysUtils,
      NPCompiler.Operators,
      IL.Types,
-     NPCompiler.Classes,
+     AST.Delphi.Classes,
      AST.Classes;
 
 type
@@ -27,7 +27,7 @@ type
     property Block: TASTBlock read fBlock;
   end;
 
-  TExpessionPosition = NPCompiler.Classes.TExpessionPosition;// (ExprNested, ExprLValue, ExprRValue, ExprNestedGeneric);
+  TExpessionPosition = AST.Delphi.Classes.TExpessionPosition;// (ExprNested, ExprLValue, ExprRValue, ExprNestedGeneric);
 
   TRPNStatus = (rprOk, rpOperand, rpOperation);
 

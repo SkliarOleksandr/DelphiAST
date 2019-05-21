@@ -106,7 +106,7 @@
         </DCCReference>
         <DCCReference Include="..\Source\AVL.pas"/>
         <DCCReference Include="..\Source\IL.Types.pas"/>
-        <DCCReference Include="..\Source\NPCompiler.Classes.pas"/>
+        <DCCReference Include="..\Source\AST.Delphi.Classes.pas"/>
         <DCCReference Include="..\Source\NPCompiler.ConstCalculator.pas"/>
         <DCCReference Include="..\Source\NPCompiler.Contexts.pas"/>
         <DCCReference Include="..\Source\NPCompiler.DataTypes.pas"/>
@@ -117,7 +117,7 @@
         <DCCReference Include="..\Source\NPCompiler.Operators.pas"/>
         <DCCReference Include="..\Source\NPCompiler.Options.pas"/>
         <DCCReference Include="..\Source\NPCompiler.Package.pas"/>
-        <DCCReference Include="..\Source\NPCompiler.SysFunctions.pas"/>
+        <DCCReference Include="..\Source\AST.Delphi.SysFunctions.pas"/>
         <DCCReference Include="..\Source\NPCompiler.Utils.pas"/>
         <DCCReference Include="..\Source\NPLCompiler.Targets.pas"/>
         <DCCReference Include="..\Source\OPCompiler.pas"/>

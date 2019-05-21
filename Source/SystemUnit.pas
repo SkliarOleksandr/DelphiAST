@@ -4,7 +4,7 @@ interface
 
 {$i compilers.inc}
 
-uses Classes, SysUtils, OPCompiler, NPCompiler.Classes, NPCompiler.DataTypes, IL.Types,
+uses Classes, SysUtils, OPCompiler, AST.Delphi.Classes, NPCompiler.DataTypes, IL.Types,
      NPCompiler.Operators, NPCompiler.Utils, NPCompiler.Intf,
      AST.Classes,
      AST.Project,
@@ -173,7 +173,7 @@ implementation
 
 { TSystemUnit }
 
-uses NPCompiler.Messages, NPCompiler.SysFunctions;
+uses NPCompiler.Messages, AST.Delphi.SysFunctions;
 
 procedure AddUnarOperator(Op: TOperatorID; Source, Destination: TIDType); inline;
 begin

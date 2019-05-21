@@ -1,8 +1,8 @@
-﻿unit NPCompiler.SysFunctions;
+﻿unit AST.Delphi.SysFunctions;
 
 interface
 
-uses OPCompiler, NPCompiler.Classes, NPCompiler.DataTypes, NPCompiler.Errors, SystemUnit,
+uses OPCompiler, AST.Delphi.Classes, NPCompiler.DataTypes, NPCompiler.Errors, SystemUnit,
      NPCompiler.Contexts, NPCompiler.ExpressionContext, AST.Delphi.Parser;
 
 type

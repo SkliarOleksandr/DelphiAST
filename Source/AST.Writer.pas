@@ -45,7 +45,7 @@ implementation
 
 { TASTWriter<TDest> }
 
-uses NPCompiler.Classes;
+uses AST.Delphi.Classes;
 
 constructor TASTWriter<TDoc, TNode>.Create(const Doc: TDoc;
                        const Module: TASTModule;

@@ -2,7 +2,7 @@
 
 interface
 
-uses System.SysUtils, NPCompiler.Classes, NPCompiler.Operators, NPCompiler.Contexts,
+uses System.SysUtils, AST.Delphi.Classes, NPCompiler.Operators, NPCompiler.Contexts,
      IL.Types;
 
 type
