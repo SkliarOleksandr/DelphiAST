@@ -4,7 +4,6 @@ interface
 
 uses System.SysUtils,
      NPCompiler.Operators,
-     IL.Types,
      AST.Delphi.Classes,
      AST.Classes;
 

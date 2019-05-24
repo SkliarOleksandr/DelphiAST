@@ -12,7 +12,6 @@ uses System.SysUtils, System.Classes, System.StrUtils, System.Math, System.Gener
      NPCompiler.Operators,
      AVL,
      NPCompiler.Utils,
-     IL.Types,
      NPCompiler.Errors,
      NPCompiler.Intf,
      NPCompiler.Options,
@@ -1146,8 +1145,8 @@ type
     function GetDataType: TIDType; override;
     function GetDisplayName: string; override;
   public
-    constructor Create(Declaration: TIDDeclaration; CastDataType: TIDType; const TextPosition: TTextPosition); reintroduce;
-
+    constructor Create(Declaration: TIDDeclaration; CastDataType: TIDType; const TextPosition: TTextPosition); reintroduce; overload;
+    constructor Create(Source: TIDExpression; CastDataType: TIDType); reintroduce; overload;
   end;
 
   TIDCastedCallExpression = class(TIDCallExpression)
@@ -2358,90 +2357,8 @@ begin
 end;
 
 procedure TIDProcedure.SaveDeclToStream(Stream: TStream; const Package: INPPackage);
-var
-  i, c: Integer;
-  ProcFlags: UInt8;
-  ResultVar: TIDDeclaration;
-  ProcName: string;
 begin
-  c := ParamsCount;
-  {флаг процедура/функция}
-  if Assigned(ResultType) then
-  begin
-    ProcFlags := ILPROC_HASRESULT;
-    Inc(c);
-  end else
-    ProcFlags := 0;
 
-  if pfConstructor in Flags then
-    ProcFlags := ProcFlags or ILPROC_CONSTRUCTOR;
-
-  if (pfVirtual in Flags) or (Assigned(FStruct) and (FStruct.DataTypeID = dtInterface)) then
-    ProcFlags := ProcFlags or ILPROC_VIRTUAL;
-
-  {флаг наличия локальных процедур}
-  if Assigned(FProcSpace.First) then
-    ProcFlags := ProcFlags or ILPROC_HASLOCALPROCS;
-
-  {флаги экспорт/импорт}
-  if (ImportLib > 0) or (Assigned(FStruct) and (FStruct.ImportLib <> 0)) then
-    ProcFlags := ProcFlags or ILPROC_IMPORT;
-
-  if Export > 0 then
-    ProcFlags := ProcFlags or ILPROC_EXPORT;
-
-  if Assigned(FStruct) and (not (pfOperator in Flags)) then
-    ProcFlags := ProcFlags or ILPROC_HASSELFPTR;
-
-  {write flags}
-  Stream.WriteUInt8(UInt8(ProcFlags));
-
-  {write calling convention}
-  Stream.WriteUInt8(Ord(FCallConv));
-
-  {если процедура экспортная пишем индекс имени}
-  if Export > 0 then
-    Stream.WriteStretchUInt(Export)
-  else
-  if Package.IncludeDebugInfo then
-  begin
-    if Name <> '' then
-      ProcName := Name
-    else
-      ProcName := DisplayName;
-    Stream.WriteStretchUInt(Package.GetStringConstant(ProcName));
-  end;
-
-  {если процедура импортируемая пишем индекс имени билиотеки и имени функции}
-  if ImportLib > 0 then begin
-    Stream.WriteStretchUInt(ImportLib);
-    Stream.WriteStretchUInt(ImportName);
-  end else
-  if Assigned(FStruct) and (FStruct.ImportLib <> 0) then
-  begin
-    Stream.WriteStretchUInt(FStruct.ImportLib);
-    Stream.WriteStretchUInt(Package.GetStringConstant(Name));
-  end;
-
-  {если метод виртуальный - сохраняем индекс в VMT}
-  if (pfVirtual in Flags) or (Assigned(FStruct) and (FStruct.DataTypeID = dtInterface)) then
-    Stream.WriteStretchUInt(FVirtualIndex);
-
-  {кол-во параметров}
-  Stream.WriteStretchUInt(c);
-
-  FVarSpace.Reindex;
-
-  // RTTI выходного параметра Result
-  if Assigned(ResultType) then
-  begin
-    ResultVar := FVarSpace.First;
-    TIDVariable(ResultVar).SaveToStream(Stream, Package);
-  end;
-
-  // RTTI входных параметров
-  for i := 0 to ParamsCount - 1 do
-    FExplicitParams[i].SaveToStream(Stream, Package);
 end;
 
 function TIDProcedure.SameDeclaration(const Params: TVariableList): Boolean;
@@ -3517,54 +3434,8 @@ begin
 end;
 
 procedure TIDVariable.SaveToStream(Stream: TStream; const Package: INPPackage);
-var
-  ILFlags: UInt8;
-  VarDataType: TIDType;
 begin
-  ILFlags := 0;
 
-  if IsTemporary then
-    ILFlags := ILFlags or ILVAR_TEMP;
-
-  if Reference then
-    ILFlags := ILFlags or ILVAR_REFERENCE;
-
-  if Assigned(FAbsolute) then
-    ILFlags := ILFlags or ILVAR_HASINDEX;
-
-  // если это константный параметр
-  if (VarConst in Flags) or (VarConstRef in Flags) then
-    ILFlags := ILFlags or ILVAR_CONSTPARAM;
-
-  // если это глобальная переменная со значением по умолчанию
-  if Assigned(DefaultValue) and (Scope.ScopeType = stGlobal) then
-    ILFlags := ILFlags or ILVAR_HASVALUE;
-
-  VarDataType := DataType.ActualDataType;
-
-  // если тип обьявлен в другом модуле или не элементарный, пишим индекс модуля
-  if Assigned(Scope) and (DeclUnit <> VarDataType.DeclUnit) and not (VarDataType.Elementary) then
-    ILFlags := ILFlags + ILVAR_UNITTYPE;
-
-  Stream.WriteUInt8(UInt8(ILFlags));
-
-  if (DeclUnit <> VarDataType.DeclUnit) and not (VarDataType.Elementary) then
-    Stream.WriteStretchUInt(TNPUnit(VarDataType.Scope.DeclUnit).UnitID);
-
-  Stream.WriteStretchUInt(VarDataType.Index);
-
-  if Assigned(FAbsolute) then begin
-    Stream.WriteStretchUInt(FAbsolute.Index);
-    Stream.WriteStretchUInt(FAbsoluteOffset);
-  end;
-
-  if Package.IncludeDebugInfo then begin
-    {$IFDEF DEBUG} if FID.Name = '' then FID.Name := '$' + IntToStr(Index); {$ENDIF}
-    Stream.WriteStretchUInt(Package.GetStringConstant(Name));
-  end;
-
-  if Check(ILFlags, ILVAR_HASVALUE) then
-    WriteConstToStream(Stream, DefaultValue.AsConst, DataType);
 end;
 
 procedure TIDVariable.SetCValue(const Value: TIDConstant);
@@ -4216,53 +4087,8 @@ begin
 end;
 
 procedure TIDStructure.SaveDeclToStream(Stream: TStream; const Package: INPPackage);
-var
-  Decl: TIDVariable;
-  Proc: TIDProcedure;
-  Flags: UInt8;
 begin
-  inherited SaveDeclToStream(Stream, Package);
-  // флаги
-  Flags := 0;
 
-  if Assigned(FAncestor) then
-    Flags := ILTYPE_HAS_ANCESTOR;
-
-  if FImportName > 0 then
-    Flags := Flags or ILTYPE_IMPORT;
-
-  if FPacked then
-    Flags := Flags or ILTYPE_PACKED;
-
-  Flags := Flags or GetExtraFlags;
-
-  Stream.WriteUInt8(Flags);
-
-  // сохраняем информацию о предке (если есть)
-  if Assigned(FAncestor) then
-    WriteDataTypeIndex(Stream, FAncestor);
-
-  // сохраняем информацию об иморте (если есть)
-  if FImportName > 0 then begin
-    Stream.WriteStretchUInt(FImportLib);
-    Stream.WriteStretchUInt(FImportName);
-  end;
-
-  // сохраняем поля
-  Stream.WriteStretchUInt(FVarSpace.Count);
-  Decl := TIDVariable(FVarSpace.First);
-  while Assigned(Decl) do begin
-    Decl.SaveToStream(Stream, Package);
-    Decl := TIDVariable(Decl.NextItem);
-  end;
-
-  // сохраняем определения методов
-  Stream.WriteStretchUInt(FProcSpace.Count);
-  Proc := FProcSpace.First;
-  while Assigned(Proc) do begin
-    Proc.SaveDeclToStream(Stream, Package);
-    Proc := TIDProcedure(Proc.NextItem);
-  end;
 end;
 
 procedure TIDStructure.SetAncestor(const Value: TIDStructure);
@@ -4640,40 +4466,8 @@ begin
 end;
 
 procedure TIDArray.SaveDeclToStream(Stream: TStream; const Package: INPPackage);
-var
-  i: Integer;
-  DAFlags: Byte;
 begin
-  inherited SaveDeclToStream(Stream, Package);
-  case DataTypeID of
-    dtStaticArray: begin
-      Stream.WriteStretchUInt(FDimensionsCount);
-      // сохраняем индексы типов размерностей
-      for i := 0 to FDimensionsCount - 1 do
-        WriteDataTypeIndex(Stream, FDimensions[i].ActualDataType);
-    end;
-    dtSet: begin
-      WriteDataTypeIndex(Stream, FDimensions[0].ActualDataType);
-      Exit;
-    end;
-    dtDynArray, dtOpenArray: begin
-      DAFlags := 0;
-      if Assigned(InitProc) then
-        DAFlags := DAFlags or ILARRAY_HAS_INIT;
-      if Assigned(FinalProc) then
-        DAFlags := DAFlags or ILARRAY_HAS_FINAL;
-      Stream.WriteUInt8(DAFlags);
-      if Assigned(InitProc) then
-        Stream.WriteStretchUInt(InitProc.Index);
-      if Assigned(FinalProc) then
-      begin
-        Stream.WriteStretchUInt(FinalProc.UnitID);
-        Stream.WriteStretchUInt(FinalProc.Index);
-      end;
-    end;
-  end;
-  // тип элемента
-  WriteDataTypeIndex(Stream, FElementDataType.ActualDataType);
+
 end;
 
 { TIDOrdinalType }
@@ -5402,6 +5196,14 @@ begin
   CreateFromPool;
   FDeclaration := Declaration;
   FTextPosition := TextPosition;
+  FDataType := CastDataType;
+end;
+
+constructor TIDCastExpression.Create(Source: TIDExpression; CastDataType: TIDType);
+begin
+  CreateFromPool;
+  FDeclaration := Source.Declaration;
+  FTextPosition := Source.TextPosition;
   FDataType := CastDataType;
 end;
 
@@ -6199,8 +6001,6 @@ end;
 function TIDClass.GetExtraFlags: Byte;
 begin
   Result := 0;
-  if InterfacesCount > 0 then
-    Result := ILTYPE_IMPL_INTERFACES;
 end;
 
 function TIDClass.GetInterface(Index: Integer): TIDInterface;

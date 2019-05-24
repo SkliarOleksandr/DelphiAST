@@ -4,7 +4,6 @@ uses
   Vcl.Forms,
   TestAppMain in 'TestAppMain.pas' {frmTestAppMain},
   AVL in '..\Source\AVL.pas',
-  IL.Types in '..\Source\IL.Types.pas',
   AST.Delphi.Classes in '..\Source\AST.Delphi.Classes.pas',
   NPCompiler.ConstCalculator in '..\Source\NPCompiler.ConstCalculator.pas',
   NPCompiler.Contexts in '..\Source\NPCompiler.Contexts.pas',

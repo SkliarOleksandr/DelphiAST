@@ -105,7 +105,6 @@
             <FormType>dfm</FormType>
         </DCCReference>
         <DCCReference Include="..\Source\AVL.pas"/>
-        <DCCReference Include="..\Source\IL.Types.pas"/>
         <DCCReference Include="..\Source\AST.Delphi.Classes.pas"/>
         <DCCReference Include="..\Source\NPCompiler.ConstCalculator.pas"/>
         <DCCReference Include="..\Source\NPCompiler.Contexts.pas"/>

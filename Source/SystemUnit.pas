@@ -4,8 +4,13 @@ interface
 
 {$i compilers.inc}
 
-uses Classes, SysUtils, OPCompiler, AST.Delphi.Classes, NPCompiler.DataTypes, IL.Types,
-     NPCompiler.Operators, NPCompiler.Utils, NPCompiler.Intf,
+uses Classes, SysUtils,
+     OPCompiler,
+     AST.Delphi.Classes,
+     NPCompiler.DataTypes,
+     NPCompiler.Operators,
+     NPCompiler.Utils,
+     NPCompiler.Intf,
      AST.Classes,
      AST.Project,
      AST.Delphi.SysOperators,
@@ -52,10 +57,10 @@ type
     FDateType: TIDType;
     FTimeType: TIDType;
     FTypeIDType: TIDType;
-    FImplicitAnyToVariant: TIDInternalOpImplicit;
-    FImplicitVariantToAny: TIDInternalOpImplicit;
-    FExplicitEnumFromAny: TIDInternalOpImplicit;
-    fExplicitTProcFromAny: TIDInternalOpImplicit;
+    FImplicitAnyToVariant: TSysImplicit;
+    FImplicitVariantToAny: TSysImplicit;
+    FExplicitEnumFromAny: TSysImplicit;
+    fExplicitTProcFromAny: TSysImplicit;
     FCopyArrayOfObjProc: TIDProcedure;
     FCopyArrayOfStrProc: TIDProcedure;
     FFinalArrayOfObjProc: TIDProcedure;
@@ -150,8 +155,8 @@ type
     property _FinalArrayOfObjProc: TIDProcedure read FFinalArrayOfObjProc;
     property _FinalArrayOfStrProc: TIDProcedure read FFinalArrayOfStrProc;
     property _FinalArrayOfVarProc: TIDProcedure read FFinalArrayOfVarProc;
-    property _ExplicitEnumFromAny: TIDInternalOpImplicit read FExplicitEnumFromAny;
-    property _ExplicitTProcFromAny: TIDInternalOpImplicit read fExplicitTProcFromAny;
+    property _ExplicitEnumFromAny: TSysImplicit read FExplicitEnumFromAny;
+    property _ExplicitTProcFromAny: TSysImplicit read fExplicitTProcFromAny;
     property _AssertProc: TIDProcedure read FAsserProc;
     property _TypeID: TIDType read FTypeIDType;
     property _DeprecatedDefaultStr: TIDStringConstant read fDeprecatedDefaultStr;
@@ -261,6 +266,7 @@ begin
 
   // AnsiString
   _AnsiString.OverloadImplicitTo(_Variant, FImplicitAnyToVariant);
+  _AnsiString.OverloadExplicitFromAny(TSysExplicitAnsiStringFromAny.CreateAsIntOp);
 
 
   _String.OverloadImplicitTo(_AnsiString, TIDOpImplicitStringToAnsiString.CreateInternal(_AnsiString));
