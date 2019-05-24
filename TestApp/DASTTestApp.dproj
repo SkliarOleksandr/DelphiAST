@@ -111,7 +111,6 @@
         <DCCReference Include="..\Source\NPCompiler.Contexts.pas"/>
         <DCCReference Include="..\Source\NPCompiler.DataTypes.pas"/>
         <DCCReference Include="..\Source\NPCompiler.Errors.pas"/>
-        <DCCReference Include="..\Source\NPCompiler.ExpressionContext.pas"/>
         <DCCReference Include="..\Source\NPCompiler.Intf.pas"/>
         <DCCReference Include="..\Source\NPCompiler.Messages.pas"/>
         <DCCReference Include="..\Source\NPCompiler.Operators.pas"/>
@@ -130,6 +129,8 @@
         <DCCReference Include="..\Source\AST.Delphi.Project.pas"/>
         <DCCReference Include="..\Source\AST.Writer.pas"/>
         <DCCReference Include="..\Source\AST.Parser.Contexts.pas"/>
+        <DCCReference Include="..\Source\AST.Delphi.SysOperators.pas"/>
+        <DCCReference Include="..\Source\AST.Delphi.Contexts.pas"/>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
             <CfgParent>Base</CfgParent>

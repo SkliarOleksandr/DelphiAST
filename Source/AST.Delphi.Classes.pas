@@ -316,6 +316,7 @@ type
   type
     TUnarOperators = array [opAssignment..opNot] of TIDDeclaration;
     TBinarOperators = array [opIn..High(TOperatorID)] of TIDPairList;
+    TExplistIDList = TAVLTree<TDataTypeId, TIDDeclaration>;
   private
     FElementary: Boolean;
     FIsPooled: Boolean;         // если это анонимный тип, то флаг показывает находится ли этот тип в пуле
@@ -329,11 +330,16 @@ type
     FImplicitsFrom: TIDPairList;    // src -> self
     FSysImplicitToAny: TIDOperator;    // self -> any
     FSysImplicitFromAny: TIDOperator;  // any -> self
-    // lists of explicits operators
-    FExplicitsTo: TIDPairList;
-    FExplicitsFrom: TIDPairList;
-    fSysExplicitToAny: TIDOperator;     // явное вриведенеие типа к любому
-    fSysExplicitFromAny: TIDOperator;   // явное вриведенеие типа к любому
+
+    // lists of explicits operators (user level 2):
+    fExplicitsTo: TIDPairList;
+    fExplicitsFrom: TIDPairList;
+    // lists of explicits operators (sys level 1):
+    fSysExplicitsToID: TExplistIDList;
+    fSysExplicitsFromID: TExplistIDList;
+    // lists of explicits operators (sys level 0):
+    fSysExplicitToAny: TIDOperator;
+    fSysExplicitFromAny: TIDOperator;
 
     FUnarOperators: TUnarOperators;
     FBinarOperators: TBinarOperators;
@@ -359,6 +365,9 @@ type
     function GetActualDataType: TIDType; virtual;
     function GetParent: TIDType;
     procedure SetGenericDescriptor(const Value: PGenericDescriptor); virtual;
+
+    procedure CheckCreateSysExplicitsToID;
+    procedure CheckCreateSysExplicitsFromID;
   public
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
     constructor Create(Scope: TScope; const ID: TIdentifier); override;
@@ -413,6 +422,9 @@ type
     procedure OverloadExplicitTo(const Destination, Proc: TIDDeclaration); overload;
     procedure OverloadExplicitFrom(const Source: TIDDeclaration); overload;
     procedure OverloadExplicitFrom(const Source, Proc: TIDDeclaration); overload;
+
+    procedure OverloadExplicitToID(Destination: TDataTypeID; const Op: TIDDeclaration); overload;
+    procedure OverloadExplicitFromID(Source: TDataTypeID; const Op: TIDDeclaration); overload;
 
     procedure OverloadExplicitToAny(const Op: TIDOperator);
     procedure OverloadExplicitFromAny(const Op: TIDOperator);
@@ -567,6 +579,7 @@ type
   public
     constructor Create(Scope: TScope; const ID: TIdentifier); override;
     constructor CreateAsAnonymous(Scope: TScope); override;
+    procedure CreateStandardOperators; override;
     property Items: TScope read FItems write FItems;
   end;
 
@@ -1168,7 +1181,6 @@ type
   TIDBoolResultExpression = class(TIDExpression)
   end;
 
-
   TVariableFlags = set of
   (
     VarIn,           // входной параметр
@@ -1549,6 +1561,17 @@ type
   TConditionalScope = class(TScope)
   end;
 
+  TASTDelphiProc = class(TIDProcedure)
+  private
+    fBody: TASTBlock;
+  public
+    property Body: TASTBlock read fBody write fBody;
+  end;
+
+  TASTDelphiLabel = class(TIDDeclaration)
+    constructor Create(Scope: TScope; const Identifier: TIdentifier); overload; override;
+  end;
+
   TIDPairList = class (TAVLTree<TIDDeclaration, TObject>)
   private
     function GetItem(const Key: TIDDeclaration): TObject;
@@ -1595,7 +1618,7 @@ type
 
 implementation
 
-uses SystemUnit, OPCompiler, AST.Delphi.Parser;
+uses SystemUnit, OPCompiler, AST.Delphi.Parser, AST.Delphi.SysOperators;
 
 
 function GetBoolResultExpr(ExistExpr: TIDExpression): TIDBoolResultExpression;
@@ -1607,6 +1630,11 @@ end;
 function IDCompare(const Key1, Key2: TIDDeclaration): NativeInt;
 begin
   Result := NativeInt(Key1) - NativeInt(Key2);
+end;
+
+function DataTypeIDCompare(const Key1, Key2: TDataTypeID): NativeInt;
+begin
+  Result := Ord(Key1) - Ord(Key2);
 end;
 
 function IDVarCompare(const Key1, Key2: TIDVariable): NativeInt;
@@ -2734,6 +2762,18 @@ begin
   Result := nil;
 end;
 
+procedure TIDType.CheckCreateSysExplicitsFromID;
+begin
+  if not Assigned(fSysExplicitsToID) then
+    fSysExplicitsToID := TExplistIDList.Create(DataTypeIDCompare);
+end;
+
+procedure TIDType.CheckCreateSysExplicitsToID;
+begin
+  if not Assigned(fSysExplicitsFromID) then
+    fSysExplicitsFromID := TExplistIDList.Create(DataTypeIDCompare);
+end;
+
 constructor TIDType.Create(Scope: TScope; const ID: TIdentifier);
 begin
   inherited Create(Scope, ID);
@@ -3047,12 +3087,17 @@ begin
     Result := nil;
 end;
 
-procedure ERROR_OPERATOR_ALREADY_OVERLOADED(Op: TOperatorID; Type1, Type2: TIDDeclaration; const Position: TTextPosition);
+procedure ERROR_OPERATOR_ALREADY_OVERLOADED(Op: TOperatorID; Type1, Type2: TIDDeclaration; const Position: TTextPosition); overload;
 begin
   AbortWorkInternal(msgOperatorForTypesAlreadyOverloadedFmt,
                     [OperatorFullName(Op), Type1.DisplayName, Type2.DisplayName], Position);
 end;
 
+procedure ERROR_OPERATOR_ALREADY_OVERLOADED(Op: TOperatorID; Type1: TDataTypeID; Type2: TIDDeclaration; const Position: TTextPosition); overload;
+begin
+  AbortWorkInternal(msgOperatorForTypesAlreadyOverloadedFmt,
+                    [OperatorFullName(Op), GetDataTypeName(Type1), Type2.DisplayName], Position);
+end;
 
 procedure TIDType.OverloadUnarOperator(Op: TOperatorID; Destination: TIDDeclaration);
 begin
@@ -3146,6 +3191,20 @@ begin
     ERROR_OPERATOR_ALREADY_OVERLOADED(opExplicit, Self, Op, TextPosition);
 
   fSysExplicitToAny := Op;
+end;
+
+procedure TIDType.OverloadExplicitToID(Destination: TDataTypeID; const Op: TIDDeclaration);
+begin
+  CheckCreateSysExplicitsToID();
+  if Assigned(fSysExplicitsToID.InsertNode(Destination, Op)) then
+    ERROR_OPERATOR_ALREADY_OVERLOADED(opImplicit, Destination, Op, TextPosition);
+end;
+
+procedure TIDType.OverloadExplicitFromID(Source: TDataTypeID; const Op: TIDDeclaration);
+begin
+  CheckCreateSysExplicitsFromID();
+  if Assigned(fSysExplicitsFromID.InsertNode(Source, Op)) then
+    ERROR_OPERATOR_ALREADY_OVERLOADED(opImplicit, Source, Op, TextPosition);
 end;
 
 procedure TIDType.OverloadImplicitTo(const Destination: TIDDeclaration);
@@ -4793,22 +4852,6 @@ begin
   OverloadExplicitFromAny(TIDOpExplictPointerFromAny.CreateAsIntOp);
 end;
 
-{ TIDEnumType }
-
-constructor TIDEnum.Create(Scope: TScope; const ID: TIdentifier);
-begin
-  inherited Create(Scope, ID);
-  DataTypeID := dtEnum;
-  OverloadImplicitTo(Self);
-  OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
-  OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
-  OverloadBinarOperator2(opLess, Self, SYSUnit._Boolean);
-  OverloadBinarOperator2(opLessOrEqual, Self, SYSUnit._Boolean);
-  OverloadBinarOperator2(opGreater, Self, SYSUnit._Boolean);
-  OverloadBinarOperator2(opGreaterOrEqual, Self, SYSUnit._Boolean);
-  OverloadExplicitFromAny(SYSUnit._ExplicitEnumFromAny);
-end;
-
 { TIDRecordType }
 
 constructor TIDRecord.Create(Scope: TScope; const Name: TIdentifier);
@@ -4820,13 +4863,34 @@ begin
   OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
 end;
 
+{ TIDEnumType }
+
+constructor TIDEnum.Create(Scope: TScope; const ID: TIdentifier);
+begin
+  inherited Create(Scope, ID);
+  DataTypeID := dtEnum;
+  CreateStandardOperators;
+end;
+
 constructor TIDEnum.CreateAsAnonymous(Scope: TScope);
 begin
   inherited CreateAsAnonymous(Scope);
   DataTypeID := dtEnum;
+  CreateStandardOperators;
+end;
+
+procedure TIDEnum.CreateStandardOperators;
+begin
+  inherited;
   OverloadImplicitTo(Self);
   OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
   OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
+  OverloadBinarOperator2(opLess, Self, SYSUnit._Boolean);
+  OverloadBinarOperator2(opLessOrEqual, Self, SYSUnit._Boolean);
+  OverloadBinarOperator2(opGreater, Self, SYSUnit._Boolean);
+  OverloadBinarOperator2(opGreaterOrEqual, Self, SYSUnit._Boolean);
+  OverloadExplicitFromAny(SYSUnit._ExplicitEnumFromAny);
+  OverloadExplicitToAny(TSysExplicitEnumToAny.Instance);
 end;
 
 function TIDEnum.GetDataSize: Integer;
@@ -6397,6 +6461,14 @@ procedure TIDRecordConstant.WriteToStream(Stream: TStream; const Package: INPPac
 begin
   inherited;
 
+end;
+
+{ TASTDelphiLabel }
+
+constructor TASTDelphiLabel.Create(Scope: TScope; const Identifier: TIdentifier);
+begin
+  inherited;
+  ItemType := itLabel;
 end;
 
 initialization

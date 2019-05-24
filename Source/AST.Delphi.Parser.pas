@@ -17,27 +17,11 @@ uses System.SysUtils,
      AST.Delphi.Classes,
      NPCompiler.Utils,
      AST.Parser.Contexts,
+     AST.Delphi.SysOperators,
+     AST.Delphi.Contexts,
      AST.Project;
 
 type
-
-  TASTDelphiProc = class(TIDProcedure)
-  private
-    fBody: TASTBlock;
-  public
-    property Body: TASTBlock read fBody;
-  end;
-
-  TASTDelphiLabel = class(TIDDeclaration)
-    constructor Create(Scope: TScope; const Identifier: TIdentifier); overload; override;
-  end;
-
-
-  TSContext = TASTSContext<TASTDelphiProc>;
-  TEContext = TASTEcontext<TASTDelphiProc>;
-
-  PSContext = ^TSContext;
-  PEContext = ^TEContext;
 
   TASTDelphiUnit = class(TNPUnit)
 
@@ -192,22 +176,7 @@ type
   TIDSysRuntimeFunctionClass = class of TIDSysRuntimeFunction;
   TIDSysCompileFunctionClass = class of TIDSysCompileFunction;
 
-  TIDInternalOperator = class(TIDOperator)
-  public
-    constructor CreateAsIntOp; reintroduce;
-  end;
 
-  TIDInternalOpImplicit = class(TIDInternalOperator)
-  public
-    constructor CreateInternal(ResultType: TIDType); reintroduce;
-    function Check(const Src, Dst: TIDType): Boolean; overload; virtual; abstract;
-    function Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; overload; virtual;
-    function Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; virtual;
-  end;
-
-  TIDInternalOpExplisit = class(TIDInternalOpImplicit)
-
-  end;
 
   {внутренний implicit оператор String -> AnsiString}
   TIDOpImplicitStringToAnsiString = class(TIDInternalOpImplicit)
@@ -3364,12 +3333,12 @@ begin
   Scope := TProcScope.CreateInBody(ImplScope);
   FInitProc := TASTDelphiProc.CreateAsSystem(Scope, '$initialization');
   FInitProc.EntryScope := Scope;
-  TASTDelphiProc(FInitProc).fBody := TASTBlock.Create(FInitProc);
+  TASTDelphiProc(FInitProc).Body := TASTBlock.Create(FInitProc);
 
   Scope := TProcScope.CreateInBody(ImplScope);
   FFinalProc := TASTDelphiProc.CreateAsSystem(Scope, '$finalization');
   FFinalProc.EntryScope := Scope;
-  TASTDelphiProc(FFinalProc).fBody := TASTBlock.Create(FFinalProc);
+  TASTDelphiProc(FFinalProc).Body := TASTBlock.Create(FFinalProc);
 end;
 
 function TASTDelphiUnit.CreateAnonymousConstant(Scope: TScope; var EContext: TEContext; const ID: TIdentifier;
@@ -3873,10 +3842,10 @@ begin
       end;
       token_begin: begin
         Proc.FirstBodyLine := parser_Line;
-        Proc.fBody := TASTBlock.Create(Proc);
+        Proc.Body := TASTBlock.Create(Proc);
         //SContext.Initialize;
         //SContext.IL := TIL(Proc.IL);
-        SContext := TSContext.Create(Self, Proc, Proc.fBody);
+        SContext := TSContext.Create(Self, Proc, Proc.Body);
         //CheckInitVariables(@SContext, nil, @Proc.VarSpace);
         parser_NextToken(Scope);
         Result := ParseStatements(Scope, SContext, True);
@@ -4871,14 +4840,6 @@ begin
   end;
 end;
 
-{ TASTDelphiLabel }
-
-constructor TASTDelphiLabel.Create(Scope: TScope; const Identifier: TIdentifier);
-begin
-  inherited;
-  ItemType := itLabel;
-end;
-
 { TSContextHelper }
 
 function TSContextHelper.GetIsLoopBody: Boolean;
@@ -4890,20 +4851,6 @@ function TSContextHelper.GetIsTryBlock: Boolean;
 begin
    Result := Block.IsTryBlock;
 end;
-
-{ TIDOperatorInternal }
-
-(*constructor TIDInternalOperator.CreateAsIntOp;
-begin
-  CreateFromPool;
-end;
-
-constructor TIDInternalOpImplicit.CreateInternal(ResultType: TIDType);
-begin
-  CreateFromPool;
-  ItemType := itProcedure;
-  Self.DataType := ResultType;
-end;*)
 
 { TIDSysRuntimeFunction }
 
@@ -5191,31 +5138,6 @@ begin
   Result := nil;
 end;
 
-{ TIDInternalOpImplicit }
-
-function TIDInternalOpImplicit.Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
-begin
-  if Check(Src.DataType, Dst) then
-    Result := Dst
-  else
-    Result := nil;
-end;
-
-constructor TIDInternalOpImplicit.CreateInternal(ResultType: TIDType);
-begin
-  CreateFromPool;
-  ItemType := itProcedure;
-  Self.DataType := ResultType;
-end;
-
-function TIDInternalOpImplicit.Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
-begin
-  if Check(Src.DataType, Dst) then
-    Result := Src
-  else
-    Result := nil;
-end;
-
 { TIDOpImplicitDynArrayToSet }
 
 function TIDOpImplicitDynArrayToSet.Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
@@ -5340,13 +5262,6 @@ begin
     Result := Dst
   else
     Result := nil;
-end;
-
-{ TIDInternalOperator }
-
-constructor TIDInternalOperator.CreateAsIntOp;
-begin
-  CreateFromPool;
 end;
 
 { TIDBuiltInFunction }
@@ -5478,6 +5393,7 @@ function TIDOpExplictPointerFromAny.Check(const Src, Dst: TIDType): Boolean;
 begin
   Result := Dst.Ordinal or (Dst.DataTypeID in [dtPointer]);
 end;
+
 
 end.
 

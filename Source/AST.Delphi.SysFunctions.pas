@@ -2,8 +2,14 @@
 
 interface
 
-uses OPCompiler, AST.Delphi.Classes, NPCompiler.DataTypes, NPCompiler.Errors, SystemUnit,
-     NPCompiler.Contexts, NPCompiler.ExpressionContext, AST.Delphi.Parser;
+uses OPCompiler,
+     AST.Delphi.Classes,
+     NPCompiler.DataTypes,
+     NPCompiler.Errors,
+     SystemUnit,
+     NPCompiler.Contexts,
+     AST.Delphi.Parser,
+     AST.Delphi.Contexts;
 
 type
 

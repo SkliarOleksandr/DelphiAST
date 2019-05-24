@@ -8,6 +8,7 @@ uses Classes, SysUtils, OPCompiler, AST.Delphi.Classes, NPCompiler.DataTypes, IL
      NPCompiler.Operators, NPCompiler.Utils, NPCompiler.Intf,
      AST.Classes,
      AST.Project,
+     AST.Delphi.SysOperators,
      AST.Delphi.Parser;
      // System
 

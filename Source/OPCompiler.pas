@@ -17,7 +17,8 @@ uses SysUtils, Math, Classes, StrUtils, Types, IOUtils, Generics.Collections,
      NPCompiler.Utils,
      NPCompiler.Intf,
      NPCompiler.Contexts,
-     NPCompiler.ExpressionContext,
+     AST.Parser.Contexts,
+     AST.Delphi.Contexts,
      AST.Classes,
      NPCompiler.Options,
 
@@ -279,7 +280,7 @@ type
 
     procedure CheckIntfSectionMissing(Scope: TScope); inline;
     procedure CheckImplicitTypes(Src, Dst: TIDType; Position: TTextPosition); inline;
-    procedure CheckLeftOperand(const Status: TEContext.TRPNStatus); inline;
+    procedure CheckLeftOperand(const Status: TRPNStatus); inline;
     procedure CheckEmptyExpression(Expression: TIDExpression); inline;
     procedure CheckArrayExpression(Expression: TIDExpression); inline;
     procedure CheckIncompletedProcs(ProcSpace: PProcSpace); virtual;
@@ -3712,7 +3713,7 @@ begin
   Result := token_unknown;
 end;
 
-procedure TNPUnit.CheckLeftOperand(const Status: TEContext.TRPNStatus);
+procedure TNPUnit.CheckLeftOperand(const Status: TRPNStatus);
 begin
   if Status <> rpOperand then
     ERROR_EXPRESSION_EXPECTED;

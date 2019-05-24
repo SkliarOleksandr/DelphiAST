@@ -10,7 +10,6 @@ uses
   NPCompiler.Contexts in '..\Source\NPCompiler.Contexts.pas',
   NPCompiler.DataTypes in '..\Source\NPCompiler.DataTypes.pas',
   NPCompiler.Errors in '..\Source\NPCompiler.Errors.pas',
-  NPCompiler.ExpressionContext in '..\Source\NPCompiler.ExpressionContext.pas',
   NPCompiler.Intf in '..\Source\NPCompiler.Intf.pas',
   NPCompiler.Messages in '..\Source\NPCompiler.Messages.pas',
   NPCompiler.Operators in '..\Source\NPCompiler.Operators.pas',
@@ -28,7 +27,9 @@ uses
   AST.Project in '..\Source\AST.Project.pas',
   AST.Delphi.Project in '..\Source\AST.Delphi.Project.pas',
   AST.Writer in '..\Source\AST.Writer.pas',
-  AST.Parser.Contexts in '..\Source\AST.Parser.Contexts.pas';
+  AST.Parser.Contexts in '..\Source\AST.Parser.Contexts.pas',
+  AST.Delphi.SysOperators in '..\Source\AST.Delphi.SysOperators.pas',
+  AST.Delphi.Contexts in '..\Source\AST.Delphi.Contexts.pas';
 
 {$R *.res}
 
