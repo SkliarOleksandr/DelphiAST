@@ -20,6 +20,7 @@ uses System.SysUtils,
      AST.Delphi.SysOperators,
      AST.Delphi.Contexts,
      AST.Project;
+     // system
 
 type
 
@@ -2876,23 +2877,27 @@ begin
     Exit;
   end;
 
-  if OperatorDecl.ItemType = itType then
+  if Assigned(OperatorDecl) then
   begin
-    if (SrcExpr.ItemType = itConst) and (SrcExpr.IsAnonymous) then
+    if OperatorDecl.ItemType = itType then
     begin
-      TIDConstant(SrcExpr.Declaration).ExplicitDataType := OperatorDecl as TIDType;
-      DstExpression := TIDExpression.Create(SrcExpr.Declaration);
-    end else
-      DstExpression := TIDCastExpression.Create(SrcExpr.Declaration, TIDType(DstExpression.Declaration), DstExpression.TextPosition);
+      if (SrcExpr.ItemType = itConst) and (SrcExpr.IsAnonymous) then
+      begin
+        TIDConstant(SrcExpr.Declaration).ExplicitDataType := OperatorDecl as TIDType;
+        DstExpression := TIDExpression.Create(SrcExpr.Declaration);
+      end else
+        DstExpression := TIDCastExpression.Create(SrcExpr.Declaration, TIDType(DstExpression.Declaration), DstExpression.TextPosition);
 
+    end else
+    if OperatorDecl.ItemType = itProcedure then
+    begin
+      // вызываем explicit-оператор
+      CallExpr := TIDCallExpression.Create(OperatorDecl, DstExpression.TextPosition);
+      CallExpr.ArgumentsCount := 1;
+      DstExpression := Process_CALL_direct(SContext, CallExpr, TIDExpressions.Create(SrcExpr));
+    end;
   end else
-  if OperatorDecl.ItemType = itProcedure then
-  begin
-    // вызываем explicit-оператор
-    CallExpr := TIDCallExpression.Create(OperatorDecl, DstExpression.TextPosition);
-    CallExpr.ArgumentsCount := 1;
-    DstExpression := Process_CALL_direct(SContext, CallExpr, TIDExpressions.Create(SrcExpr));
-  end;
+    ERROR_INVALID_EXPLICIT_TYPECAST(SrcExpr, TargetType);
 end;
 
 function TASTDelphiUnit.ParseExpression(Scope: TScope; const SContext: TSContext; var EContext: TEContext;

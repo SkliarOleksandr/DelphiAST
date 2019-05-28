@@ -89,7 +89,7 @@ type
     procedure AddCompareOperators;
     procedure AddArithmeticOperators;
     procedure RegisterBuiltinFunctions;
-    procedure InsertToScope(Declaration: TIDDeclaration);
+    procedure InsertToScope(Declaration: TIDDeclaration); overload;
     function RegisterBuiltin(const Name: string; MacroID: TBuiltInFunctionID; ResultDataType: TIDType; Flags: TProcFlags = []): TIDBuiltInFunction; overload;
     function RegisterType(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
     function RegisterTypeCustom(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
@@ -97,6 +97,7 @@ type
     function RegisterTypeAlias(const TypeName: string; OriginalType: TIDType): TIDAliasType;
     function RegisterPointer(const TypeName: string; TargetType: TIDType): TIDPointer;
     function RegisterConstInt(const Name: string; DataType: TIDType; Value: Int64): TIDIntConstant;
+    function RegisterVariable(Scope: TScope; const Name: string; DataType: TIDType): TIDVariable;
     function RegisterBuiltin(const BuiltinClass: TIDBuiltInFunctionClass): TIDBuiltInFunction; overload;
   private
     procedure SearchSystemTypes;
@@ -639,6 +640,13 @@ begin
   AddType(Result);
 end;
 
+function TSYSTEMUnit.RegisterVariable(Scope: TScope; const Name: string; DataType: TIDType): TIDVariable;
+begin
+  Result := TIDVariable.CreateAsSystem(Scope, Name);
+  Result.DataType := DataType;
+  InsertToScope(Scope, Result);
+end;
+
 procedure TSYSTEMUnit.SearchSystemTypes;
 begin
 {  FTObject := GetPublicClass('TObject');
@@ -718,6 +726,8 @@ begin
   RegisterBuiltin(TCT_Ord);
   RegisterBuiltin(TCT_FillChar);
   RegisterBuiltin(TRT_Assigned);
+
+  RegisterVariable(ImplSection, 'ReturnAddress', _Pointer);
 end;
 
 function TSYSTEMUnit.RegisterOrdinal(const TypeName: string; DataType: TDataTypeID; LowBound: Int64; HighBound: UInt64): TIDType;
