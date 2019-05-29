@@ -36,8 +36,9 @@ type
       const ID: TIdentifier; IdentifierType: TIdentifierType): TIDExpression;
     procedure InitEContext(var EContext: TEContext; const SContext: TSContext; EPosition: TExpessionPosition); overload; inline;
 
-    class function MatchExplicit(const Source: TIDExpression; Destination: TIDType): TIDDeclaration; static;
-    class function MatchExplicit2(const Source: TIDExpression; Destination: TIDType; out Explicit: TIDDeclaration): TIDExpression; static;
+    class function CheckExplicit(const Source, Destination: TIDType; out ExplicitOp: TIDDeclaration): Boolean; overload; static;
+    class function MatchExplicit(const Source: TIDExpression; Destination: TIDType): TIDDeclaration; overload; static;
+    class function MatchExplicit2(const Source: TIDExpression; Destination: TIDType; out Explicit: TIDDeclaration): TIDExpression; overload; static;
 
     class function MatchArrayImplicitToRecord(Source: TIDExpression; Destination: TIDStructure): TIDExpression; static;
     class function MatchUnarOperator(const SContext: TSContext; Op: TOperatorID; Source: TIDExpression): TIDExpression; overload; static;
@@ -2215,6 +2216,44 @@ begin
   end;
 end;
 
+class function TASTDelphiUnit.CheckExplicit(const Source, Destination: TIDType; out ExplicitOp: TIDDeclaration): Boolean;
+var
+  SrcDataType: TIDType;
+  DstDataType: TIDType;
+begin
+  ExplicitOp := nil;
+  SrcDataType := Source.ActualDataType;
+  DstDataType := Destination.ActualDataType;
+  if SrcDataType = DstDataType then
+    Exit(True);
+
+  ExplicitOp := SrcDataType.GetExplicitOperatorTo(DstDataType);
+  if Assigned(ExplicitOp) then
+  begin
+    if ExplicitOp is TSysImplicit then
+    begin
+      if TSysImplicit(ExplicitOp).Check(SrcDataType, DstDataType) then
+        Exit(True);
+    end else
+      Exit(True);
+  end;
+
+  if not Assigned(ExplicitOp) then
+  begin
+    ExplicitOp := DstDataType.GetExplicitOperatorFrom(SrcDataType);
+    if Assigned(ExplicitOp) then
+    begin
+      if ExplicitOp is TSysImplicit then
+      begin
+        if TSysImplicit(ExplicitOp).Check(DstDataType, SrcDataType) then
+          Exit(True);
+      end else
+        Exit(True);
+    end
+  end;
+  Result := False;
+end;
+
 class function TASTDelphiUnit.MatchExplicit2(const Source: TIDExpression; Destination: TIDType; out Explicit: TIDDeclaration): TIDExpression;
 var
   SrcDataType: TIDType;
@@ -2222,34 +2261,11 @@ var
 begin
   SrcDataType := Source.DataType.ActualDataType;
   DstDataType := Destination.ActualDataType;
-  if SrcDataType = DstDataType then
-  begin
-    Explicit := SrcDataType;
-    Exit(Source);
-  end;
 
-  Explicit := SrcDataType.GetExplicitOperatorTo(DstDataType);
-  if Assigned(Explicit) then
-  begin
-    if Explicit is TSysImplicit then
-    begin
-      Result := TSysImplicit(Explicit).Match(nil, Source, DstDataType);
-      if Assigned(Result) then
-        Exit;
-    end else
-      Exit(nil);
-  end;
-
-  Result := nil;
-  Explicit := DstDataType.GetExplicitOperatorFrom(SrcDataType);
-  if Assigned(Explicit) then
-  begin
-    if Explicit is TSysImplicit then
-    begin
-      if TSysImplicit(Explicit).Check(DstDataType, SrcDataType) then
-        Exit(TIDCastExpression.Create(Source, DstDataType));
-    end;
-  end
+  if CheckExplicit(SrcDataType, DstDataType, Explicit) then
+    Result := TIDCastExpression.Create(Source, DstDataType)
+  else
+    Result := nil;
 end;
 
 class procedure TASTDelphiUnit.CheckAndCallFuncImplicit(const EContext: TEContext);

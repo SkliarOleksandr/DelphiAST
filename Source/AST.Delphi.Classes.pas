@@ -1059,7 +1059,8 @@ type
     function GetIsNonAnonimousVariable: Boolean;
     function GetIsAnyLocalVar: Boolean;
     function GetCValue: TIDConstant; inline;
-    procedure SetCValue(Value: TIDConstant); inline;        
+    procedure SetCValue(Value: TIDConstant); inline;
+    function GetIsParam: Boolean;
   protected
     function GetDataType: TIDType; virtual;
   public
@@ -1088,6 +1089,7 @@ type
     property IsLocalVar: Boolean read GetIsLocalVar;
     property IsAnyLocalVar: Boolean read GetIsAnyLocalVar;
     property IsVariable: Boolean read GetIsVariable;
+    property IsParam: Boolean read GetIsParam;
     property IsNonAnonimousVariable: Boolean read GetIsNonAnonimousVariable;
     property IsNullableVariable: Boolean read GetIsNullableVariable;
     property AsType: TIDType read GetAsType;
@@ -3668,6 +3670,11 @@ begin
             (not (VarNotNull in TIDVariable(FDeclaration).Flags));
 end;
 
+function TIDExpression.GetIsParam: Boolean;
+begin
+  Result := FDeclaration is TIDParam;
+end;
+
 function TIDExpression.GetIsProcedure: Boolean;
 begin
   Result := (FDeclaration.ItemType = itProcedure);
@@ -4642,8 +4649,10 @@ begin
   OverloadBinarOperator2(opSubtract, SYSUnit._UInt64, Self);
   OverloadBinarOperator2(opSubtract, SYSUnit._NativeUInt, Self);
 
-  OverloadImplicitToAny(TIDOpImplicitPointerToAny.CreateAsIntOp);
-  OverloadExplicitFromAny(TIDOpExplictPointerFromAny.CreateAsIntOp);
+  OverloadImplicitToAny(TIDOpImplicitPointerToAny.Instance);
+
+  OverloadExplicitToAny(TIDOpExplictPointerToAny.Instance);
+  OverloadExplicitFromAny(TIDOpExplictPointerFromAny.Instance);
 end;
 
 { TIDRecordType }
