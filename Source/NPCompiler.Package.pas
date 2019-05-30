@@ -86,7 +86,7 @@ type
 
 implementation
 
-uses NPCompiler.Messages;
+uses NPCompiler.Messages, AST.Parser.Errors;
 
 function TNPPackage.GetOptions: TPackageOptions;
 begin
@@ -444,89 +444,13 @@ begin
 end;
 
 procedure TNPPackage.SaveStrLiterals(Stream: TStream);
-type
-  TCRec = record
-    DTID: TDataTypeID;
-    Str: string;
-  end;
-var
-  Idx, c: Integer;
-  Node: TStrLiterals.PAVLNode;
-  Consts: array of TCRec;
-  CItem: ^TCRec;
 begin
-  c := FStrLiterals.Count;
-  Stream.WriteStretchUInt(c);
 
-  {переупорядочиваем литералы по индексам}
-  SetLength(Consts, c);
-  Node := FStrLiterals.First;
-  while Assigned(Node) do begin
-    Idx := Node.Data.Index;
-    CItem := addr(Consts[Idx]);
-    CItem.DTID := Node.Key.StrTypeID;
-    CItem.Str := Node.Key.StrValue;
-    Node := FStrLiterals.Next(Node);
-  end;
-
-  {сохраняем строки в кодировке UTF8}
-  for Idx := 0 to c - 1 do begin
-    CItem := addr(Consts[Idx]);
-    Stream.WriteUInt8(Ord(CItem.DTID)); // пишем тип литерала
-    case CItem.DTID of
-      dtString: Stream.WriteUTF8String(CItem.Str);  // сам литерал как UTF8
-      dtAnsiString: Stream.WriteAnsiString(AnsiString(CItem.Str)); // пишем как Ansi
-    end;
-  end;
 end;
 
 procedure TNPPackage.SaveToStream(Stream: TStream);
-var
-  i, UnitCnt: Integer;
-  UnitsStream: TMemoryStream;
 begin
-  {заголовок}
-  Stream.WriteBoolean(IncludeDebugInfo);
 
-  {простановка номеров модулей}
-  UnitCnt := 0;
-  for i := 0 to FUnits.Count - 1 do
-  begin
-    if TNPUnit(FUnits[i]).CheckUsed then
-    begin
-      TNPUnit(FUnits[i]).UnitID := UnitCnt;
-      Inc(UnitCnt);
-    end;
-  end;
-
-  {подготавливаем строковые литералы перед сохранением IL}
-  PrepareStrLiterals;
-
-  {сохраняем модули в промежуточный файл}
-  UnitsStream := TMemoryStream.Create;
-  try
-    UnitsStream.WriteStretchUInt(UnitCnt);
-
-    {сохраняем все декларации}
-    for i := 0 to FUnits.Count - 1 do
-      if TNPUnit(FUnits[i]).CheckUsed then
-        TNPUnit(FUnits[i]).SaveDeclToStream(UnitsStream);
-
-    {сохраняем все тела процедур}
-    for i := 0 to FUnits.Count - 1 do
-      if TNPUnit(FUnits[i]).CheckUsed then
-        TNPUnit(FUnits[i]).SaveBodyToStream(UnitsStream);
-
-    {табличные строковые константы}
-    SaveStrLiterals(Stream);
-
-    // переносим в основной файл модули
-    UnitsStream.Position := 0;
-    Stream.CopyFrom(UnitsStream, UnitsStream.Size);
-
-  finally
-    UnitsStream.Free;
-  end;
 end;
 
 procedure TNPPackage.SetIncludeDebugInfo(const Value: Boolean);

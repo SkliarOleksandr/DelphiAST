@@ -76,7 +76,9 @@ type
 implementation
 
 uses
-  OPCompiler, NPCompiler.Errors;
+  AST.Parser.Errors,
+  OPCompiler,
+  NPCompiler.Errors;
 
 { TRPN }
 

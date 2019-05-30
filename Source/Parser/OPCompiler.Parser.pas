@@ -4,7 +4,7 @@ interface
 
 {$i compilers.inc}
 
-uses iDStringParser, SysUtils, StrUtils, Types, Classes, AST.Delphi.Classes, NPCompiler.Errors;
+uses iDStringParser, SysUtils, StrUtils, Types, Classes, AST.Parser.Errors, NPCompiler.Errors;
 
 type
 

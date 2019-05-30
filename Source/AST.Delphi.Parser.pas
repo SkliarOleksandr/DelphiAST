@@ -187,9 +187,11 @@ type
 
 implementation
 
-uses NPCompiler.DataTypes,
+uses AST.Parser.Errors,
+     AST.Delphi.Errors,
+     NPCompiler.DataTypes,
      NPCompiler.ConstCalculator,
-    SystemUnit;
+     SystemUnit;
 
 type
   TSContextHelper = record helper for TSContext
@@ -1315,7 +1317,6 @@ function TASTDelphiUnit.Compile(RunPostCompile: Boolean): TCompilerResult;
 var
   Token: TTokenID;
   Scope: TScope;
-  Platform: TIDPlatform;
 begin
   Result := CompileFail;
   Messages.Clear;
@@ -1333,7 +1334,7 @@ begin
         end;
         token_asm: begin
           CheckIntfSectionMissing(Scope);
-          Token := ParseAsmSpecifier(Platform);
+          Token := ParseAsmSpecifier();
           case Token of
             token_function: Token := ParseProcedure(Scope, ptFunc);
             token_procedure: Token := ParseProcedure(Scope, ptProc);
@@ -2413,8 +2414,17 @@ begin
   DeclType := ArrExpr.DataType;
 
   if DeclType.DataTypeID = dtPointer then
+  begin
     DeclType := TIDPointer(DeclType).ReferenceType;
-
+    if DeclType is TIDArray then
+    begin
+      DimensionsCount := TIDArray(DeclType).DimensionsCount;
+      DataType := TIDArray(DeclType).ElementDataType;
+    end else begin
+      DimensionsCount := 1;
+      DataType := DeclType;
+    end;
+  end else
   if (ArrDecl.ItemType <> itProperty) and (DeclType is TIDArray) then
   begin
     DimensionsCount := TIDArray(DeclType).DimensionsCount;
@@ -2440,7 +2450,7 @@ begin
     //PMContext.Add(Expr);
   end else
   begin
-    ERROR_ARRAY_TYPE_REQUIRED(ArrDecl.ID);
+    ERROR_ARRAY_TYPE_REQUIRED(ArrDecl.ID, ArrExpr.TextPosition);
     DimensionsCount := 0;
   end;
 

@@ -175,10 +175,7 @@ var
 
 implementation
 
-
-{ TSystemUnit }
-
-uses NPCompiler.Messages, AST.Delphi.SysFunctions;
+uses AST.Parser.Errors, NPCompiler.Messages, AST.Delphi.SysFunctions;
 
 procedure AddUnarOperator(Op: TOperatorID; Source, Destination: TIDType); inline;
 begin
@@ -202,6 +199,8 @@ begin
       AddBinarOperator(Op, Right, Left, Result);
   end;
 end;
+
+{ TSYSTEMUnit }
 
 procedure TSYSTEMUnit.AddImplicists;
   procedure AddBaseImplicits(DataType: TIDType);
@@ -341,7 +340,11 @@ begin
   AddExplicits(_Float64, dtFloat32, dtFloat64);
 
   _String.OverloadExplicitTo(_Pointer);
+  _String.OverloadExplicitTo(_PCharType);
   _AnsiString.OverloadExplicitTo(_Pointer);
+  _AnsiString.OverloadExplicitTo(_PAnsiCharType);
+
+  _AnsiChar.OverloadExplicitTo(_Char);
 
   AddCustomExplicits([dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean], _Char);
   AddCustomExplicits([dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean], _AnsiChar);
@@ -676,56 +679,24 @@ begin
   FArrayType := TIDArray.Create(nil, Identifier('<array type or string>'));
   FRefType := TIDType.Create(nil, Identifier(''));
 
-  // memset
-//  Decl := RegisterBuiltin('memset', bf_memset, nil);
-//  Decl.AddParam('Value', FRefType, [VarConstRef]);
-//  Decl.AddParam('FillChar', _UInt8, [VarConst, VarHasDefault], _ZeroExpression);
-//
-//  // SetLength
-//  Decl := RegisterBuiltin('SetLength', bf_setlength, FArrayType);
-//  Decl.AddParam('Str', FArrayType, [VarInOut]);
-//  Decl.AddParam('NewLength', _Int32);
-//
-//  // Copy
-//  Decl := RegisterBuiltin('Copy', bf_copy, nil);
-//  Decl.AddParam('Str', FArrayType, [VarInOut]);
-//  Decl.AddParam('From', _Int32, [VarIn], _ZeroExpression);
-//  Decl.AddParam('Count', _Int32, [VarIn], _MinusOneExpression);
-//
-//  // accert
-//  Decl := RegisterBuiltin('assert', bf_assert, nil);
-//  Decl.AddParam('Value', _Boolean);
-//  Decl.AddParam('ErrorText', _String, [], _EmptyStrExpression);
-//
-//  // TypeInfo
-//  Decl := RegisterBuiltin('TypeInfo', bf_typeinfo, _TObject);
-//  Decl.AddParam('Declaration', _Pointer, [VarConst]);
-//
-//  // include(var Set; const SubSet)
-//  Decl := RegisterBuiltin('include', bf_include, nil);
-//  Decl.AddParam('Set', _Void, [VarInOut]);
-//  Decl.AddParam('SubSet', _Void, [VarInOut]);
-//
-//  // exclude(var Set; const SubSet)
-//  Decl := RegisterBuiltin('exclude', bf_exclude, nil);
-//  Decl.AddParam('Set', _Void, [VarInOut]);
-//  Decl.AddParam('SubSet', _Void, [VarInOut]);
-
-  RegisterBuiltin(TSF_now);
+  RegisterBuiltin(TSF_Now);
   RegisterBuiltin(TSF_AtomicExchange);
   RegisterBuiltin(TSF_AtomicCmpExchange);
   RegisterBuiltin(TSF_RunError);
   RegisterBuiltin(TSCTF_Defined);
   RegisterBuiltin(TSCTF_Declared);
   RegisterBuiltin(TCT_SizeOf);
-  RegisterBuiltin(TCT_LoBound);
-  RegisterBuiltin(TCT_HiBound);
-  RegisterBuiltin(TCT_Inc);
+  RegisterBuiltin(TSF_LoBound);
+  RegisterBuiltin(TSF_HiBound);
+  RegisterBuiltin(TSF_Inc);
   RegisterBuiltin(TCT_Dec);
-  RegisterBuiltin(TCT_Length);
-  RegisterBuiltin(TCT_Ord);
-  RegisterBuiltin(TCT_FillChar);
-  RegisterBuiltin(TRT_Assigned);
+  RegisterBuiltin(TSF_Length);
+  RegisterBuiltin(TSF_SetLength);
+  RegisterBuiltin(TSF_SetString);
+  RegisterBuiltin(TSF_Ord);
+  RegisterBuiltin(TSF_Chr);
+  RegisterBuiltin(TSF_FillChar);
+  RegisterBuiltin(TSF_Assigned);
 
   RegisterVariable(ImplSection, 'ReturnAddress', _Pointer);
 end;
@@ -875,7 +846,7 @@ begin
 
   fPAnsiChar := RegisterPointer('PAnsiChar', _AnsiChar);
   fPChar := RegisterPointer('PWideChar', _Char);
-  RegisterTypeAlias('PChar', _Char);
+  RegisterTypeAlias('PChar', _PCharType);
   RegisterTypeAlias('Text', _Pointer);
   //RegisterTypeAlias('FixedInt', _Int32);
   //RegisterTypeAlias('FixedUInt', _UInt32);

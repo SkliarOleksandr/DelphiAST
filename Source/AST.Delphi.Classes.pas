@@ -21,30 +21,23 @@ type
 
   TExpessionPosition = (ExprNested, ExprLValue, ExprRValue, ExprNestedGeneric);
 
-  ECompilerAbort = class(EAbort)
-  private
-    FCompilerMessage: TCompilerMessage;
-    function GetCompilerMessage: PCompilerMessage;
-  public
-    constructor Create(const MessageText: string); overload;
-    constructor Create(const MessageText: string; const SourcePosition: TTextPosition); overload;
-    constructor CreateAsInteranl(const MessageText: string; const SourcePosition: TTextPosition);
-    property CompilerMessage: PCompilerMessage read GetCompilerMessage;
-  end;
-
-  ECompilerInternalError = class(ECompilerAbort);
-
-  ECompilerStop = class(ECompilerAbort)
-  private
-    FCompileSuccess: Boolean;
-  public
-    constructor Create(CompileSuccess: Boolean); reintroduce;
-    property CompileSuccess: Boolean read FCompileSuccess;
-  end;
-
-  ECompilerSkip = class(ECompilerAbort)
-    constructor Create();
-  end;
+  TProcSpecification = (
+    PS_FORWARD,
+    PS_INLINE,
+    PS_PURE,
+    PS_NORETURN,
+    PS_NOEXCEPT,
+    PS_OVELOAD,
+    PS_EXPORT,
+    PS_IMPORT,
+    PS_VIRTUAL,
+    PS_OVERRIDE,
+    PS_STATIC,
+    PS_STDCALL,
+    PS_FASTCALL,
+    PS_CDECL,
+    PS_REINTRODUCE
+  );
 
   TIDList = class;
   TIDPairList = class;
@@ -1581,19 +1574,6 @@ type
     property Items[const Key: TIDDeclaration]: TObject read GetItem;
   end;
 
-  procedure AbortWork(Error: TCompilerError); overload;
-  procedure AbortWork(Error: TCompilerError; const SourcePosition: TTextPosition); overload;
-  procedure AbortWork(Error: TCompilerError; const Params: array of const; const SourcePosition: TTextPosition); overload;
-
-
-  procedure AbortWork(const Message: string; const SourcePosition: TTextPosition); overload;
-  procedure AbortWork(const MessageFmt: string; const Params: array of const; const SourcePosition: TTextPosition); overload;
-
-  procedure AbortWorkInternal(const Message: string); overload;
-  procedure AbortWorkInternal(const Message: string; const SourcePosition: TTextPosition); overload;
-  procedure AbortWorkInternal(const Message: string; const Params: array of const); overload;
-  procedure AbortWorkInternal(const Message: string; const Params: array of const; const SourcePosition: TTextPosition); overload;
-
   procedure SaveProcDecls(Stream: TStream; const Package: INPPackage; ProcSpace: PProcSpace);
   procedure SaveProcBodies(Stream: TStream; const Package: INPPackage; ProcSpace: PProcSpace);
   function Identifier(const Name: string; TextPosition: TTextPosition): TIdentifier; overload; inline;
@@ -1619,7 +1599,11 @@ type
 
 implementation
 
-uses SystemUnit, OPCompiler, AST.Delphi.Parser, AST.Delphi.SysOperators;
+uses SystemUnit,
+     OPCompiler,
+     AST.Parser.Errors,
+     AST.Delphi.Parser,
+     AST.Delphi.SysOperators;
 
 
 function GetBoolResultExpr(ExistExpr: TIDExpression): TIDBoolResultExpression;
@@ -1708,69 +1692,6 @@ var
 begin
   Decl := TIDStringConstant.CreateAnonymous(nil, SYSUnit._String, Value);
   Result := TIDExpression.Create(Decl);
-end;
-
-procedure AbortWork(const Message: string; const SourcePosition: TTextPosition);
-begin
-  raise ECompilerAbort.Create(Message, SourcePosition);
-end;
-
-procedure AbortWorkInternal(const Message: string);
-var
-  POS: TTextPosition;
-begin
-  POS.Row := 0;
-  POS.Col := 0;
-  raise ECompilerAbort.CreateAsInteranl(Message, POS);
-end;
-
-procedure AbortWorkInternal(const Message: string; const SourcePosition: TTextPosition);
-begin
-  raise ECompilerAbort.CreateAsInteranl(Message, SourcePosition);
-end;
-
-procedure AbortWorkInternal(const Message: string; const Params: array of const);
-var
-  POS: TTextPosition;
-begin
-  POS.Row := 0;
-  POS.Col := 0;
-  raise ECompilerAbort.CreateAsInteranl(Format(Message, Params), POS);
-end;
-
-procedure AbortWorkInternal(const Message: string; const Params: array of const; const SourcePosition: TTextPosition);
-begin
-  raise ECompilerAbort.CreateAsInteranl(Format(Message, Params), SourcePosition);
-end;
-
-procedure AbortWork(Error: TCompilerError);
-var
-  ErrorStr: string;
-begin
-  ErrorStr := GetErrorText(Error);
-  raise ECompilerAbort.Create(ErrorStr);
-end;
-
-procedure AbortWork(Error: TCompilerError; const SourcePosition: TTextPosition); overload;
-var
-  ErrorStr: string;
-begin
-  ErrorStr := GetErrorText(Error);
-  raise ECompilerAbort.Create(ErrorStr, SourcePosition);
-end;
-
-procedure AbortWork(Error: TCompilerError; const Params: array of const; const SourcePosition: TTextPosition); overload;
-var
-  ErrorStr: string;
-begin
-  ErrorStr := GetErrorText(Error);
-  ErrorStr := Format(ErrorStr, Params);
-  raise ECompilerAbort.Create(ErrorStr, SourcePosition);
-end;
-
-procedure AbortWork(const MessageFmt: string; const  Params: array of const; const SourcePosition: TTextPosition);
-begin
-  AbortWork(Format(MessageFmt, Params), SourcePosition);
 end;
 
 function Identifier(const Name: string; SourceRow: Integer = 0; SourceCol: Integer = 0): TIdentifier;
@@ -3715,30 +3636,6 @@ begin
   FDeclaration.CValue := Value;
 end;
 
-{ EComplilerAbort }
-
-constructor ECompilerAbort.Create(const MessageText: string);
-begin
-  inherited Create(MessageText);
-  FCompilerMessage := TCompilerMessage.Create(nil, cmtError, MessageText, TTextPosition.Create(0, 0));
-end;
-
-constructor ECompilerAbort.Create(const MessageText: string; const SourcePosition: TTextPosition);
-begin
-  inherited Create(MessageText);
-  FCompilerMessage := TCompilerMessage.Create(nil, cmtError, MessageText, SourcePosition);
-end;
-
-constructor ECompilerAbort.CreateAsInteranl(const MessageText: string; const SourcePosition: TTextPosition);
-begin
-  inherited Create(MessageText);
-  FCompilerMessage := TCompilerMessage.Create(nil, cmtInteranlError, MessageText, SourcePosition);
-end;
-
-function ECompilerAbort.GetCompilerMessage: PCompilerMessage;
-begin
-  Result := addr(FCompilerMessage);
-end;
 
 { TIDOperator }
 
@@ -5897,13 +5794,6 @@ begin
   ItemType := itUnit;
 end;
 
-{ EComplilerStop }
-
-constructor ECompilerStop.Create(CompileSuccess: Boolean);
-begin
-  FCompileSuccess := CompileSuccess;
-end;
-
 { TIDClassOf }
 
 constructor TIDClassOf.Create(Scope: TScope; const Identifier: TIdentifier);
@@ -5998,13 +5888,6 @@ begin
     Result := FAncestorScope.FindMembers(ID)
   else
     Result := nil;
-end;
-
-{ ECompilerSkip }
-
-constructor ECompilerSkip.Create;
-begin
-
 end;
 
 function TIDClass.GetExtraFlags: Byte;
@@ -6214,14 +6097,17 @@ end;
 
 function TIDArrayExpression.GetDataType: TIDType;
 var
-  DatType: TIDType;
+  dataType: TIDType;
 begin
   if FDeclaration.DataTypeID = dtPointer then
-    DatType := TIDPointer(FDeclaration.DataType).ReferenceType
+    dataType := TIDPointer(FDeclaration.DataType).ReferenceType
   else
-    DatType := FDeclaration.DataType;
+    dataType := FDeclaration.DataType;
 
-  Result := (DatType as TIDArray).ElementDataType;
+  if dataType is TIDArray then
+    Result := (dataType as TIDArray).ElementDataType
+  else
+    Result := dataType;
 end;
 
 function TIDArrayExpression.GetDisplayName: string;

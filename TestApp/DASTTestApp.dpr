@@ -28,7 +28,9 @@ uses
   AST.Writer in '..\Source\AST.Writer.pas',
   AST.Parser.Contexts in '..\Source\AST.Parser.Contexts.pas',
   AST.Delphi.SysOperators in '..\Source\AST.Delphi.SysOperators.pas',
-  AST.Delphi.Contexts in '..\Source\AST.Delphi.Contexts.pas';
+  AST.Delphi.Contexts in '..\Source\AST.Delphi.Contexts.pas',
+  AST.Delphi.Errors in '..\Source\AST.Delphi.Errors.pas',
+  AST.Parser.Errors in '..\Source\AST.Parser.Errors.pas';
 
 {$R *.res}
 

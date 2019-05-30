@@ -385,7 +385,7 @@ begin
   if (Source <= dtVariant) and (Destination <= dtVariant) then
     Result := _ImplicitFactors[Source, Destination]
   else
-    Result := 100;
+    Result := 0;
 end;
 
 function DataLossFactor(const Source, Destination: TDataTypeID): Integer;
