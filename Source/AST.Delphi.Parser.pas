@@ -44,6 +44,23 @@ type
     class function MatchUnarOperator(const SContext: TSContext; Op: TOperatorID; Source: TIDExpression): TIDExpression; overload; static;
 
     function parser_MatchSemicolonAndNext(Scope: TScope; ActualToken: TTokenID): TTokenID;
+
+
+    //========================================================================================================
+    function ProcSpec_Inline(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+    function ProcSpec_Export(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+    function ProcSpec_Forward(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+    function ProcSpec_Import(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+    function ProcSpec_Overload(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+    function ProcSpec_Virtual(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+    function ProcSpec_Override(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+    function ProcSpec_Reintroduce(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+    function ProcSpec_Static(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+    function ProcSpec_FastCall(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
+    function ProcSpec_StdCall(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
+    function ProcSpec_CDecl(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
+    function SpecializeGenericProc(CallExpr: TIDCallExpression; const CallArgs: TIDExpressions): TASTDelphiProc;
+    function SpecializeGenericType(GenericType: TIDType; const ID: TIdentifier; const SpecializeArgs: TIDExpressions): TIDType;
   protected
 
     procedure CheckLabelExpression(const Expr: TIDExpression); overload;
@@ -87,9 +104,40 @@ type
     function GetFirstConst: TASTDeclaration; override;
     class function CheckImplicit(Source: TIDExpression; Dest: TIDType): TIDDeclaration; override;
 
+    function ParseUnitName(Scope: TScope; out ID: TIdentifier): TTokenID;
+    procedure ParseUnitDecl(Scope: TScope);
+    function ParseUsesSection(Scope: TScope): TTokenID;
+    //=======================================================================================================================
+    ///  Парсинг типов
+    procedure ParseEnumType(Scope: TScope; Decl: TIDEnum);
+    procedure ParseRangeType(Scope: TScope; Expr: TIDExpression; Decl: TIDRangeType);
+    function ParseImportStatement(Scope: TScope; Decl: TIDDeclaration): TTokenID;
+    function ParseStaticArrayType(Scope: TScope; Decl: TIDArray): TTokenID;
+    function ParseSetType(Scope: TScope; Decl: TIDSet): TTokenID;
+    function ParseProcType(Scope: TScope; const ID: TIdentifier; ProcType: TProcType; out Decl: TIDProcType): TTokenID;
+    function ParseRecordType(Scope: TScope; Decl: TIDStructure): TTokenID;
+    function ParseCaseRecord(Scope: TScope; Decl: TIDStructure): TTokenID;
+    function ParseClassAncestorType(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; ClassDecl: TIDClass): TTokenID;
+    function ParseClassType(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier; out Decl: TIDClass): TTokenID;
+    function ParseTypeMember(Scope: TScope; Struct: TIDStructure): TTokenID;
+    function ParseClassOfType(Scope: TScope; const ID: TIdentifier; out Decl: TIDClassOf): TTokenID;
+    function ParseInterfaceType(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier; out Decl: TIDInterface): TTokenID;
+    function ParseIntfGUID(Scope: TScope; Decl: TIDInterface): TTokenID;
+    //=======================================================================================================================
+    function ParseTypeRecord(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
+    function ParseTypeArray(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
+    function ParseTypeHelper(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
+    // функция парсинга анонимного типа
+    function ParseTypeDecl(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
+    // функция парсинга именованного типа
+    function ParseNamedTypeDecl(Scope: TScope): TTokenID;
+    // функция парсинга указания типа (имени существующего или анонимного типа)
+    function ParseTypeSpec(Scope: TScope; out DataType: TIDType): TTokenID;
+    function ParseGenericTypeSpec(Scope: TScope; const ID: TIdentifier; out DataType: TIDType): TTokenID; virtual;
+    function ParseGenericsArgs(Scope: TScope; const SContext: TSContext; out Args: TIDExpressions): TTokenID;
     function ParseStatements(Scope: TScope; const SContext: TSContext; IsBlock: Boolean): TTokenID; overload;
     function ParseExpression(Scope: TScope; const SContext: TSContext; var EContext: TEContext; out ASTE: TASTExpression): TTokenID; overload;
-    function ParseConstExpression(Scope: TScope; out Expr: TIDExpression; EPosition: TExpessionPosition): TTokenID; override;
+    function ParseConstExpression(Scope: TScope; out Expr: TIDExpression; EPosition: TExpessionPosition): TTokenID;
     function ParseMemberCall(Scope: TScope; var EContext: TEContext; const ASTE: TASTExpression): TTokenID;
     function ParseMember(Scope: TScope; var EContext: TEContext; const ASTE: TASTExpression): TTokenID;
     function ParseIdentifier(Scope, SearchScope: TScope; out Expression: TIDExpression; var EContext: TEContext;
@@ -104,7 +152,11 @@ type
     function ParseExplicitCast(Scope: TScope; const SContext: TSContext; var DstExpression: TIDExpression): TTokenID;
     function ParseExitStatement(Scope: TScope; const SContext: TSContext): TTokenID; overload;
     function ParseProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure = nil): TTokenID; override;
+    function ParseProcName(var Scope: TScope; out Name: TIdentifier; var Struct: TIDStructure; out ProcScope: TProcScope; out GenericParams: TIDTypeList): TTokenID;
     function ParseProcBody(Proc: TASTDelphiProc): TTokenID;
+    function ParseGenericProcRepeatedly(Scope: TScope; GenericProc, Proc: TASTDelphiProc; Struct: TIDStructure): TTokenID;
+    function ParseOperator(Scope: TScope; Struct: TIDStructure): TTokenID;
+    function ParseGenericMember(const PMContext: TPMContext; const SContext: TSContext; StrictSearch: Boolean; out Decl: TIDDeclaration; out WithExpression: TIDExpression): TTokenID;
     function ParseIfThenStatement(Scope: TScope; const SContext: TSContext): TTokenID;
     function ParseWhileStatement(Scope: TScope; const SContext: TSContext): TTokenID;
     function ParseRepeatStatement(Scope: TScope; const SContext: TSContext): TTokenID;
@@ -122,19 +174,32 @@ type
     function ParseLabelSection(Scope: TScope): TTokenID;
     function ParseGoToStatement(Scope: TScope; const SContext: TSContext): TTokenID;
     function ParseASMStatement(Scope: TScope; const SContext: TSContext): TTokenID;
-    function ParseProperty(Struct: TIDStructure): TTokenID; override;
-    function ParseVarDefaultValue(Scope: TScope; DataType: TIDType; out DefaultValue: TIDExpression): TTokenID; override;
-    function ParseVarStaticArrayDefaultValue(Scope: TScope; ArrType: TIDArray; out DefaultValue: TIDExpression): TTokenID; override;
+    function ParseProperty(Struct: TIDStructure): TTokenID;
+    function ParseVarDefaultValue(Scope: TScope; DataType: TIDType; out DefaultValue: TIDExpression): TTokenID;
+    function ParseVarStaticArrayDefaultValue(Scope: TScope; ArrType: TIDArray; out DefaultValue: TIDExpression): TTokenID;
+    function ParseVarRecordDefaultValue(Scope: TScope; Struct: TIDStructure; out DefaultValue: TIDExpression): TTokenID;
     function ParseRecordInitValue(Scope: TRecordInitScope; var FirstField: TIDExpression): TTokenID;
-
+    function ParseConstSection(Scope: TScope): TTokenID;
+    function ParseVarSection(Scope: TScope; Visibility: TVisibility; Struct: TIDStructure; IsWeak: Boolean = False; isRef: Boolean = False): TTokenID;
+    function ParseVarInCaseRecord(Scope: TScope; Visibility: TVisibility; Struct: TIDStructure): TTokenID;
     function ParseCondInclude(Scope: TScope): TTokenID; override;
-
-    function ParseGenericsArgs(Scope: TScope; const SContext: TSContext; out Args: TIDExpressions): TTokenID;
-    function ParseGenericTypeSpec(Scope: TScope; const ID: TIdentifier; out DataType: TIDType): TTokenID; override;
+    function ParseParameters(Scope: TScope; InMacro: Boolean = False): TTokenID;
+    function ParseAnonymousProc(Scope: TScope; var EContext: TEContext; const SContext: TSContext; ProcType: TTokenID): TTokenID;
     function ParseInitSection: TTokenID;
     function ParseFinalSection: TTokenID;
-
+    function ParseDeprecated(Scope: TScope; out &Deprecated: TIDExpression): TTokenID;
+    function ParseCondStatements(Scope: TScope; Token: TTokenID): TTokenID; override;
+    function ParseCondIf(Scope: TScope; out ExpressionResult: TCondIFValue): TTokenID;
+    function ParseCondOptSet(Scope: TScope): TTokenID;
+    function CheckAndMakeClosure(const SContext: TSContext; const ProcDecl: TIDProcedure): TIDClosure;
+    function EmitCreateClosure(const SContext: TSContext; Closure: TIDClosure): TIDExpression;
     procedure CheckIncompletedProcs(ProcSpace: PProcSpace); override;
+    function CheckAndParseDeprecated(Scope: TScope; CurrToken: TTokenID): TTokenID;
+    function CheckAndParseAttribute(Scope: TScope): TTokenID;
+    function CheckAndParseProcTypeCallConv(Scope: TScope; TypeDecl: TIDType): TTokenID;
+
+
+
     function Compile(RunPostCompile: Boolean = True): TCompilerResult; override;
     function CompileIntfOnly: TCompilerResult; override;
     function CompileSource(Section: TUnitSection; const Source: string): ICompilerMessages;
@@ -187,7 +252,9 @@ type
 
 implementation
 
-uses AST.Parser.Errors,
+uses
+     System.Math,
+     AST.Parser.Errors,
      AST.Delphi.Errors,
      NPCompiler.DataTypes,
      NPCompiler.ConstCalculator,
@@ -222,6 +289,43 @@ begin
 end;
 
 { TASTDelphiUnit }
+
+function TASTDelphiUnit.ParseSetType(Scope: TScope; Decl: TIDSet): TTokenID;
+var
+  ID: TIdentifier;
+  Base: TIDDeclaration;
+  Expression: TIDExpression;
+begin
+  parser_MatchToken(parser_NextToken(Scope), token_of);
+  Result := parser_NextToken(Scope);
+  case Result of
+    token_identifier: begin
+      Result := ParseConstExpression(Scope, Expression, ExprRValue);
+      if Expression.ItemType = itType then begin
+        Base := Expression.Declaration;
+        if not TIDType(Base).Ordinal then
+          AbortWork(sOrdinalTypeRequired, parser_PrevPosition);
+      end else begin
+        Base := TIDRangeType.Create(Scope, ID);
+        ParseRangeType(Scope, Expression, TIDRangeType(Base));
+        AddType(TIDType(Base));
+      end;
+    end;
+    token_openround: begin
+      Base := TIDEnum.CreateAsAnonymous(Scope);
+      ParseEnumType(Scope, TIDEnum(Base));
+      Result := parser_NextToken(Scope);
+      AddType(TIDType(Base));
+    end;
+    else begin
+      ERROR_ORDINAL_TYPE_REQUIRED(parser_PrevPosition);
+      Exit;
+    end;
+  end;
+  Decl.AddBound(TIDOrdinal(Base));
+  Decl.BaseType := TIDOrdinal(Base);
+  Decl.BaseType.OverloadBinarOperator2(opIn, Decl, SYSUnit._Boolean);
+end;
 
 function TASTDelphiUnit.ParseStatements(Scope: TScope; const SContext: TSContext; IsBlock: Boolean): TTokenID;
 var
@@ -347,6 +451,61 @@ begin
   end;
 end;
 
+function TASTDelphiUnit.ParseStaticArrayType(Scope: TScope; Decl: TIDArray): TTokenID;
+  procedure CheckExpression(Expr: TIDExpression);
+  begin
+    CheckEmptyExpression(Expr);
+    if not ((Expr.ItemType = itConst) or
+           ((Expr.ItemType = itType) and (TIDType(Expr.Declaration).Ordinal))) then
+      ERROR_ORDINAL_CONST_OR_TYPE_REQURED;
+  end;
+var
+  Expr: TIDExpression;
+  Bound: TIDOrdinal;
+  DataType: TIDType;
+begin
+  // todo сделать парсинг многомерного массива вида array of array of ...
+  while True do begin
+    // нижняя граница/тип/размер
+    parser_NextToken(Scope);
+    Result := ParseConstExpression(Scope, Expr, ExprNested);
+    CheckExpression(Expr);
+    if Result = token_period then begin
+     Bound := TIDRangeType.CreateAsAnonymous(Scope);
+      ParseRangeType(Scope, Expr, TIDRangeType(Bound));
+      AddType(Bound);
+    end else begin
+      if Expr.ItemType = itType then begin
+        Bound := TIDOrdinal(Expr.Declaration);
+      end else begin
+        Bound := TIDRangeType.CreateAsAnonymous(Scope);
+        if Expr.Declaration is TIDIntConstant then
+        begin
+          Bound.LowBound := 0;
+          if Expr.AsIntConst.Value <> 0 then
+            Bound.HighBound := Expr.AsIntConst.Value - 1
+          else
+            Bound.HighBound := 0;
+        end else begin
+          Bound.LowBound := Expr.AsRangeConst.Value.LBExpression.AsConst.AsInt64;
+          Bound.HighBound := Expr.AsRangeConst.Value.HBExpression.AsConst.AsInt64;
+        end;
+        AddType(Bound);
+      end;
+    end;
+    Decl.AddBound(Bound);
+    if Result = token_coma then begin
+      continue;
+    end;
+    Break;
+  end;
+  parser_MatchToken(Result, token_closeblock);
+  Result := parser_NextToken(Scope);
+  parser_MatchToken(Result, token_of);
+  Result := ParseTypeSpec(Scope, DataType);
+  Decl.ElementDataType := DataType;
+end;
+
 function TASTDelphiUnit.ParseTrySection(Scope: TScope; const SContext: TSContext): TTokenID;
 var
   KW: TASTKWTryBlock;
@@ -387,6 +546,419 @@ begin
   else
     AbortWork(sExceptOrFinallySectionWasMissed, parser_Position);
   end;
+end;
+
+function TASTDelphiUnit.ParseTypeArray(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier;
+  out Decl: TIDType): TTokenID;
+var
+  TypeScope: TScope;
+  DataType: TIDType;
+begin
+  if Assigned(GDescriptor) then
+    TypeScope := GDescriptor.Scope
+  else
+  if Assigned(GenericScope) then
+    TypeScope := GenericScope
+  else
+    TypeScope := Scope;
+
+  Result := parser_NextToken(Scope);
+  if Result = token_openblock then
+  begin
+    {static array}
+    Decl := TIDArray.Create(Scope, ID);
+    Decl.GenericDescriptor := GDescriptor;
+    if ID.Name <> '' then begin
+      if Assigned(GDescriptor) then
+        InsertToScope(Scope, GDescriptor.SearchName, Decl)
+      else
+        InsertToScope(Scope, Decl);
+    end;
+    Result := ParseStaticArrayType(TypeScope, TIDArray(Decl));
+  end else begin
+    {dynamic array}
+    parser_MatchToken(Result, token_of);
+    Decl := TIDDynArray.Create(Scope, ID);
+    Decl.GenericDescriptor := GDescriptor;
+    if ID.Name <> '' then begin
+      if Assigned(GDescriptor) then
+        InsertToScope(Scope, GDescriptor.SearchName, Decl)
+      else
+        InsertToScope(Scope, Decl);
+    end;
+    Result := ParseTypeSpec(TypeScope, DataType);
+    TIDDynArray(Decl).ElementDataType := DataType;
+  end;
+end;
+
+function TASTDelphiUnit.ParseTypeDecl(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier;
+  out Decl: TIDType): TTokenID;
+var
+  DataType: TIDType;
+  IsPacked: Boolean;
+  IsAnonimous: Boolean;
+  TmpID: TIdentifier;
+begin
+  Result := parser_CurTokenID;
+
+  // является ли тип анонимным
+  IsAnonimous := (ID.Name = '');
+
+  // является ли тип упакованным
+  if Result <> token_packed then
+    IsPacked := False
+  else begin
+    IsPacked := True;
+    Result := parser_NextToken(Scope);
+  end;
+
+  case Result of
+    /////////////////////////////////////////////////////////////////////////
+    // type of
+    /////////////////////////////////////////////////////////////////////////
+    token_type: begin
+      parser_NextToken(Scope);
+      var ResExpr: TIDExpression;
+      Result := ParseConstExpression(Scope,  ResExpr, ExprRValue);
+      if ResExpr.ItemType = itType then
+      begin
+        Decl := TIDAliasType.CreateAlias(Scope, ID, ResExpr.AsType);
+        InsertToScope(Scope, Decl);
+      end;
+      Exit;
+    end;
+    /////////////////////////////////////////////////////////////////////////
+    // pointer type
+    /////////////////////////////////////////////////////////////////////////
+    token_caret: begin
+      parser_ReadNextIdentifier(Scope, TmpID);
+      DataType := TIDType(FindIDNoAbort(Scope, TmpID));
+      if Assigned(DataType) then
+      begin
+        if DataType.ItemType <> itType then
+          AbortWork(sTypeIdExpectedButFoundFmt, [TmpID.Name], Parser.Position);
+        if IsAnonimous then begin
+          Decl := DataType.GetDefaultReference(Scope);
+          {признак, что этот анонимный тип является ссылкой на структуру которая еще не закончена}
+          if (TIDPointer(Decl).ReferenceType is TIDStructure) and (Scope.ScopeType = stStruct) and
+             (TIDPointer(Decl).ReferenceType = TStructScope(Scope).Struct) then
+            TIDPointer(Decl).NeedForward := True;
+        end else begin
+          Decl := TIDPointer.Create(Scope, ID);
+          TIDPointer(Decl).ReferenceType := DataType;
+          InsertToScope(Scope, Decl);
+        end;
+      end else begin
+        Decl := TIDPointer.Create(Scope, ID);
+        TIDPointer(Decl).ForwardID := TmpID;
+        TIDPointer(Decl).NeedForward := True;
+        InsertToScope(Scope, Decl);
+      end;
+      Result := parser_NextToken(Scope);
+    end;
+    /////////////////////////////////////////////////////////////////////////
+    // helper type
+    /////////////////////////////////////////////////////////////////////////
+    token_helper: Result := ParseTypeHelper(Scope, GenericScope, GDescriptor, ID, Decl);
+    /////////////////////////////////////////////////////////////////////////
+    // array type
+    /////////////////////////////////////////////////////////////////////////
+    token_array: Result := ParseTypeArray(Scope, GenericScope, GDescriptor, ID, Decl);
+    /////////////////////////////////////////////////////////////////////////
+    // procedural type
+    /////////////////////////////////////////////////////////////////////////
+    token_function: Result := ParseProcType(Scope, ID, TProcType.ptFunc, TIDProcType(Decl));
+    token_procedure: Result := ParseProcType(Scope, ID, TProcType.ptProc, TIDProcType(Decl));
+    /////////////////////////////////////////////////////////////////////////
+    // open array
+    /////////////////////////////////////////////////////////////////////////
+    (*token_openarray: begin
+      if not IsAnonimous then
+        AbortWork(sOpenArrayAllowedOnlyAsTypeOfParam, FParser.Position);
+      parser_MatchToken(parser_NextToken(Scope), token_of);
+      Decl := TIDOpenArray.CreateAsAnonymous(Scope);
+      Result := ParseTypeSpec(Scope, DataType);
+      TIDArray(Decl).ElementDataType := DataType;
+    end;*)
+    /////////////////////////////////////////////////////////////////////////
+    // set
+    /////////////////////////////////////////////////////////////////////////
+    token_set: begin
+      Decl := TIDSet.Create(Scope, ID);
+      if not IsAnonimous then
+        InsertToScope(Scope, Decl);
+      Result := ParseSetType(Scope, TIDSet(Decl));
+    end;
+    /////////////////////////////////////////////////////////////////////////
+    // enum
+    /////////////////////////////////////////////////////////////////////////
+    token_openround: begin
+      Decl := TIDEnum.Create(Scope, ID);
+      if not IsAnonimous then
+        InsertToScope(Scope, Decl)
+      else {если это анонимная декларация типа для параметра, то добавляем его в более высокий scope}
+      if Assigned(Scope.Parent) and (Scope.ScopeClass = scProc) then
+        Scope := Scope.Parent;
+      ParseEnumType(Scope, TIDEnum(Decl));
+      Result := parser_NextToken(Scope);
+    end;
+    /////////////////////////////////////////////////////////////////////////
+    // record
+    /////////////////////////////////////////////////////////////////////////
+    token_record: Result := ParseTypeRecord(Scope, GenericScope, GDescriptor, ID, Decl);
+    /////////////////////////////////////////////////////////////////////////
+    // class
+    /////////////////////////////////////////////////////////////////////////
+    token_class: begin
+      Result := parser_NextToken(Scope);
+      if Result = token_of then
+        Result := ParseClassOfType(Scope, ID, TIDClassOf(Decl))
+      else begin
+        if IsAnonimous then
+          AbortWork(sClassTypeCannotBeAnonimous, Parser.PrevPosition);
+        Result := ParseClassType(Scope, GenericScope, GDescriptor, ID, TIDClass(Decl));
+      end;
+    end;
+    /////////////////////////////////////////////////////////////////////////
+    // interface
+    /////////////////////////////////////////////////////////////////////////
+    token_interface: Result := ParseInterfaceType(Scope, GenericScope, GDescriptor, ID, TIDInterface(Decl));
+    /////////////////////////////////////////////////////////////////////////
+    // other
+    /////////////////////////////////////////////////////////////////////////
+    token_identifier: begin
+      var ResExpr: TIDExpression;
+      Result := ParseConstExpression(Scope, ResExpr, ExprRValue);
+      {alias type}
+      if ResExpr.ItemType = itType then begin
+        Decl := TIDAliasType.CreateAlias(Scope, ID, ResExpr.AsType);
+      end else
+      {range type}
+      begin
+        Decl := TIDRangeType.Create(Scope, ID);
+        ParseRangeType(Scope, ResExpr, TIDRangeType(Decl));
+      end;
+      if not IsAnonimous then
+        InsertToScope(Scope, Decl);
+    end;
+    else begin
+      Decl := nil;
+      Exit;
+    end;
+  end;
+  // добовляем тип в пул
+  Decl.IsPacked := IsPacked;
+  AddType(Decl);
+end;
+
+function TASTDelphiUnit.ParseTypeHelper(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier;
+  out Decl: TIDType): TTokenID;
+var
+  HelpedID: TIdentifier;
+  HelpedDecl: TIDType;
+begin
+  parser_ReadToken(Scope, token_for);
+
+  parser_ReadNextIdentifier(Scope, HelpedID);
+  HelpedDecl := TIDType(FindID(Scope, HelpedID));
+  if HelpedDecl.ItemType <> itType then
+    ERROR_TYPE_REQUIRED(parser_PrevPosition);
+
+  parser_ReadToken(Scope, token_end);
+  Result := parser_NextToken(Scope);
+end;
+
+function TASTDelphiUnit.ParseTypeMember(Scope: TScope; Struct: TIDStructure): TTokenID;
+begin
+  Result := parser_NextToken(Scope);
+  case Result of
+    token_procedure: Result := ParseProcedure(Struct.Members, ptClassProc, Struct);
+    token_function: Result := ParseProcedure(Struct.Members, ptClassFunc, Struct);
+    token_property: Result := ParseProperty(Struct);
+    token_operator: Result := ParseOperator(Struct.Members, Struct);
+    token_var: ParseVarSection(Struct.Members, vLocal, Struct);
+  else
+    ERROR_PROC_OR_PROP_OR_VAR_REQUIRED;
+  end;
+end;
+
+function TASTDelphiUnit.ParseTypeRecord(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier;
+  out Decl: TIDType): TTokenID;
+{var
+  TypeScope: TScope;}
+begin
+  {if Assigned(GDescriptor) then
+    TypeScope := GDescriptor.Scope
+  else
+    TypeScope := Scope;}
+
+  Decl := TIDRecord.Create(Scope, ID);
+  Decl.GenericDescriptor := GDescriptor;
+  if Assigned(GenericScope) then
+    TIDRecord(Decl).Members.AddScope(GenericScope);
+
+  if ID.Name <> '' then begin
+    if Assigned(GDescriptor) then
+      InsertToScope(Scope, GDescriptor.SearchName, Decl)
+    else
+      InsertToScope(Scope, Decl);
+  end;
+
+  Result := ParseRecordType(Scope, TIDRecord(Decl));
+end;
+
+function TASTDelphiUnit.ParseTypeSpec(Scope: TScope; out DataType: TIDType): TTokenID;
+var
+  ID: TIdentifier;
+  Decl: TIDDeclaration;
+  Empty: TIdentifier;
+  SearchScope: TScope;
+begin
+  Result := parser_NextToken(Scope);
+  if Result = token_identifier then
+  begin
+    SearchScope := nil;
+    while True do begin
+      parser_ReadCurrIdentifier(ID);
+      Result := parser_NextToken(Scope);
+
+      {если это специализация обобщенного типа}
+      if Result = token_less then
+      begin
+        Result := ParseGenericTypeSpec(Scope, ID, DataType);
+        Exit;
+      end;
+
+      if SearchScope = nil then
+        Decl := FindIDNoAbort(Scope, ID)
+      else
+        Decl := SearchScope.FindMembers(ID.Name);
+
+      if not Assigned(Decl) then
+      begin
+        Decl := FindIDNoAbort(Scope, ID);
+        ERROR_UNDECLARED_ID(ID);
+      end;
+
+      case Decl.ItemType of
+        itType: begin
+          DataType := TIDType(Decl).ActualDataType;
+          if Result = token_dot then
+          begin
+            if not (DataType is TIDStructure) then
+              ERROR_STRUCT_TYPE_REQUIRED(parser_PrevPosition);
+            SearchScope := TIDStructure(DataType).Members;
+            parser_NextToken(Scope);
+            continue;
+          end;
+          Exit;
+        end;
+        itAlias: begin
+          Decl := Decl.Original;
+          if Decl.ItemType = itType then
+          begin
+            DataType := Decl as TIDType;
+            if Result = token_dot then
+            begin
+              if not (DataType is TIDStructure) then
+                ERROR_STRUCT_TYPE_REQUIRED(parser_PrevPosition);
+              SearchScope := TIDStructure(DataType).Members;
+              parser_NextToken(Scope);
+              continue;
+            end;
+            Exit;
+          end;
+        end;
+      else
+        ERROR_INVALID_TYPE_DECLARATION;
+      end;
+      Exit;
+    end;
+    Exit;
+  end;
+  Result := ParseTypeDecl(Scope, nil, nil, Empty, DataType);
+  if not Assigned(DataType) then
+    ERROR_INVALID_TYPE_DECLARATION;
+end;
+
+procedure TASTDelphiUnit.ParseUnitDecl(Scope: TScope);
+var
+  Decl: TIDUnit;
+  Token: TTokenID;
+begin
+  parser_ReadToken(Scope, token_Unit);
+  Token := ParseUnitName(Scope, fUnitName);
+  parser_MatchSemicolon(Token);
+  Decl := TIDUnit.Create(Scope, Self);
+  InsertToScope(Scope, Decl);
+end;
+
+function TASTDelphiUnit.ParseUnitName(Scope: TScope; out ID: TIdentifier): TTokenID;
+var
+  UName: string;
+begin
+  Result := parser_NextToken(Scope);
+  while True do begin
+    parser_MatchIdentifier(Result);
+    UName := AddStringSegment(UName, Parser.OriginalToken, '.');
+    Result := parser_NextToken(Scope);
+    if Result <> token_dot then
+      break;
+    Result := parser_NextToken(Scope);
+  end;
+  Package.GetStringConstant(UName);
+  ID := Identifier(UName, parser_PrevPosition);
+end;
+
+procedure StopCompile(CompileSuccess: Boolean);
+begin
+  raise ECompilerStop.Create(CompileSuccess);
+end;
+
+function TASTDelphiUnit.ParseUsesSection(Scope: TScope): TTokenID;
+var
+  Token: TTokenID;
+  ID: TIdentifier;
+  UUnit: TNPUnit;
+  Idx: Integer;
+begin
+  while true do begin
+    Token := ParseUnitName(Scope, ID);
+
+    if ID.Name = Self.FUnitName.Name then
+      ERROR_UNIT_RECURSIVELY_USES_ITSELF(ID);
+
+    UUnit := Package.UsesUnit(ID.Name, nil) as TNPUnit;
+    if not Assigned(UUnit) then
+      ERROR_UNIT_NOT_FOUND(ID);
+
+    // если модуль используется первый раз - компилируем
+    if not UUnit.Compiled then
+    begin
+      if UUnit.Compile = CompileFail then begin
+        Messages.CopyFrom(UUnit.Messages);
+        StopCompile(False);
+      end;
+    end;
+
+    if not IntfImportedUnits.Find(ID.Name, Idx) then
+      IntfImportedUnits.AddObject(ID.Name, UUnit)
+    else begin
+      if (UUnit <> SYSUnit) or FSystemExplicitUse then
+        ERROR_ID_REDECLARATED(ID);
+    end;
+
+    if UUnit = SYSUnit then
+      FSystemExplicitUse := True;
+
+    case Token of
+      token_coma: continue;
+      token_semicolon: break;
+    else
+      ERROR_SEMICOLON_EXPECTED;
+    end;
+  end;
+  Result := parser_NextToken(Scope);
 end;
 
 function TASTDelphiUnit.ParseEntryCall(Scope: TScope; CallExpr: TIDCallExpression; var EContext: TEContext;
@@ -445,6 +1017,54 @@ begin
   TIDCallExpression(CallExpr).ArgumentsCount := ArgumentsCount;
   EContext.RPNPushExpression(CallExpr);
   EContext.RPNPushOperator(opCall);
+end;
+
+procedure TASTDelphiUnit.ParseEnumType(Scope: TScope; Decl: TIDEnum);
+var
+  ID: TIdentifier;
+  Token: TTokenID;
+  Item: TIDIntConstant;
+  Expr: TIDExpression;
+  LB, HB, LCValue: Int64;
+begin
+  LCValue := 0;
+  LB := MaxInt64;
+  HB := MinInt64;
+  Decl.Items := TScope.Create(stLocal, Scope);
+  Token := parser_NextToken(Scope);
+  while True do begin
+    parser_MatchIdentifier(Token);
+    parser_ReadCurrIdentifier(ID);
+    Item := TIDIntConstant.Create(Decl.Items, ID);
+    Item.DataType := Decl;
+    InsertToScope(Decl.Items, Item);
+    InsertToScope(Scope, Item);
+    Token := parser_NextToken(Scope);
+    if Token = token_equal then begin
+      parser_NextToken(Scope);
+      Token := ParseConstExpression(Scope, Expr, ExprNested);
+      CheckEmptyExpression(Expr);
+      CheckConstExpression(Expr);
+      LCValue := TIDIntConstant(Expr.Declaration).Value;
+    end;
+    Item.Value := LCValue;
+    LB := Min(LB, LCValue);
+    HB := Max(HB, LCValue);
+    case Token of
+      token_coma: begin
+        Token := parser_NextToken(Scope);
+        Inc(LCValue);
+        Continue;
+      end;
+      token_closeround: begin
+        Decl.LowBound := LB;
+        Decl.HighBound := HB;
+        Break;
+      end;
+    else
+      AbortWork(sComaOrCloseRoundExpected, parser_PrevPosition);
+    end;
+  end;
 end;
 
 function TASTDelphiUnit.ParseBuiltinCall(Scope: TScope; CallExpr: TIDExpression; var EContext: TEContext): TTokenID;
@@ -1008,6 +1628,11 @@ begin
 
   if not Assigned(Result) then
     Result := MatchBinarOperatorWithImplicit(SContext, OpID, Left, Right);
+end;
+
+function TASTDelphiUnit.EmitCreateClosure(const SContext: TSContext; Closure: TIDClosure): TIDExpression;
+begin
+
 end;
 
 function TASTDelphiUnit.FindBinaryOperator(const SContext: TSContext; OpID: TOperatorID; Left, Right: TIDExpression): TIDDeclaration;
@@ -2300,6 +2925,57 @@ begin
     Result := Expr;
 end;
 
+function TASTDelphiUnit.CheckAndMakeClosure(const SContext: TSContext; const ProcDecl: TIDProcedure): TIDClosure;
+begin
+
+end;
+
+function TASTDelphiUnit.CheckAndParseAttribute(Scope: TScope): TTokenID;
+begin
+  // todo: complete the attributes parsing
+  Result := parser_CurTokenID;
+  if Result = token_openblock then
+    Result := ParseAttribute(Scope);
+end;
+
+function TASTDelphiUnit.CheckAndParseDeprecated(Scope: TScope; CurrToken: TTokenID): TTokenID;
+var
+  MessageExpr: TIDExpression;
+begin
+  Result := CurrToken;
+  if CurrToken = token_deprecated then
+  begin
+    Result := parser_NextToken(Scope);
+    if Result = token_identifier then
+    begin
+      Result := ParseConstExpression(Scope, MessageExpr, TExpessionPosition.ExprRValue);
+      CheckStringExpression(MessageExpr);
+    end;
+  end;
+end;
+
+function TASTDelphiUnit.CheckAndParseProcTypeCallConv(Scope: TScope; TypeDecl: TIDType): TTokenID;
+begin
+  Result := parser_NextToken(Scope);
+  case Result of
+    token_stdcall: begin
+      TIDProcType(TypeDecl).CallConv := ConvStdCall;
+      parser_ReadSemicolon(Scope);
+      Result := parser_NextToken(Scope);
+    end;
+    token_fastcall: begin
+      TIDProcType(TypeDecl).CallConv := ConvFastCall;
+      parser_ReadSemicolon(Scope);
+      Result := parser_NextToken(Scope);
+    end;
+    token_cdecl: begin
+      TIDProcType(TypeDecl).CallConv := ConvCDecl;
+      parser_ReadSemicolon(Scope);
+      Result := parser_NextToken(Scope);
+    end;
+  end;
+end;
+
 class function TASTDelphiUnit.CheckImplicit(Source: TIDExpression; Dest: TIDType): TIDDeclaration;
 var
   SDataType: TIDType;
@@ -2395,6 +3071,76 @@ begin
   end;
   if (DstDTID = dtGeneric) or (SrcDTID = dtGeneric) then
     Exit(Source.AsType); // нужна еще проверка на констрейты
+end;
+
+function TASTDelphiUnit.ParseAnonymousProc(Scope: TScope; var EContext: TEContext; const SContext: TSContext; ProcType: TTokenID): TTokenID;
+var
+  Parameters: TScope;
+  GenericsArgs: TIDTypeList;
+  ResultType: TIDType;
+  ResultParam: TIDVariable;
+  ProcDecl: TASTDelphiProc;
+  VarSpace: TVarSpace;
+  Closure: TIDClosure;
+  Expr: TIDExpression;
+begin
+  VarSpace.Initialize;
+  Parameters := TProcScope.CreateInDecl(Scope, @VarSpace, nil);
+
+  // создаем Result переменную (тип будет определен позже)
+  if ProcType = token_function then
+    ResultParam := AddResultParameter(Parameters)
+  else
+    ResultParam := nil;
+
+  Result := parser_NextToken(Scope);
+
+  // если generic
+  if Result = token_less then
+    Result := ParseGenericsHeader(Parameters, GenericsArgs);
+
+  // парсим параметры
+  if Result = token_openround then
+  begin
+    ParseParameters(Parameters);
+    Result := parser_NextToken(Scope); // move to "token_colon"
+  end;
+
+  if ProcType = token_function then
+  begin
+    parser_MatchToken(Result, token_colon);
+    // парсим тип возвращаемого значения
+    Result := ParseTypeSpec(Parameters, ResultType);
+    ResultParam.DataType := ResultType;
+    ResultParam.TextPosition := parser_Position;
+  end else
+    ResultType := nil;
+
+  parser_MatchToken(Result, token_begin);
+
+  ProcDecl := TASTDelphiProc.CreateAsAnonymous(ImplScope);
+  ProcDecl.VarSpace := VarSpace;
+  ProcDecl.ParamsScope := Parameters;
+  ProcDecl.EntryScope := Parameters;
+  ProcDecl.ExplicitParams := ScopeToVarList(Parameters, IfThen(ProcType = token_procedure, 0, 1));
+  ProcDecl.ResultType := ResultType;
+  ProcDecl.CreateProcedureTypeIfNeed(Scope);
+  {парсим тело анонимной процедуры}
+  Result := ParseProcBody(ProcDecl);
+
+  Closure := CheckAndMakeClosure(SContext, ProcDecl);
+  if Assigned(Closure) then
+  begin
+    {если это замыкание, меняем анонимную процедуру на метод замыкания}
+    ProcDecl.Struct := Closure;
+    ProcDecl.MakeSelfParam;
+    ProcDecl.Name := 'Run';
+    Expr := EmitCreateClosure(SContext, Closure);
+  end else begin
+    ImplScope.AddAnonymousProcedure(ProcDecl);
+    Expr := TIDExpression.Create(ProcDecl, parser_PrevPosition);
+  end;
+  EContext.RPNPushExpression(Expr);
 end;
 
 function TASTDelphiUnit.ParseArrayMember(Scope: TScope; var EContext: TEContext; ASTE: TASTExpression): TTokenID;
@@ -2615,6 +3361,23 @@ begin
   Result := parser_NextToken(Scope);
 end;
 
+function TASTDelphiUnit.ParseCondIf(Scope: TScope; out ExpressionResult: TCondIFValue): TTokenID;
+var
+  Expr: TIDExpression;
+  CondScope: TConditionalScope;
+begin
+  CondScope := TConditionalScope.Create(TScopeType.stLocal, Scope);
+  Parser.NextToken;
+  Result := ParseConstExpression(CondScope, Expr, ExprRValue);
+  if Expr.DataTypeID <> dtGeneric then
+  begin
+    CheckBooleanExpression(Expr);
+    ExpressionResult := TCondIFValue(Expr.AsBoolConst.Value);
+  end else
+    ExpressionResult := condIFUnknown;
+
+end;
+
 function TASTDelphiUnit.ParseCondInclude(Scope: TScope): TTokenID;
 var
   FileName: string;
@@ -2642,6 +3405,176 @@ begin
   end;
 end;
 
+function TASTDelphiUnit.ParseCondOptSet(Scope: TScope): TTokenID;
+var
+  ID: TIdentifier;
+  Expr: TIDExpression;
+begin
+  parser_ReadNextIdentifier(Scope, ID);
+  if not Options.Exist(ID.Name) then
+    ERROR_UNKNOWN_OPTION(ID);
+
+  parser_ReadToken(Scope, token_equal);
+
+  Parser.NextToken;
+  Result := ParseConstExpression(Scope, Expr, ExprRValue);
+
+  parser_MatchSemicolon(Result);
+
+  CheckEmptyExpression(Expr);
+
+  Options.OptSet(ID.Name, Expr.AsConst.AsVariant);
+  Result := Parser.NextToken;
+end;
+
+function TASTDelphiUnit.ParseCondStatements(Scope: TScope; Token: TTokenID): TTokenID;
+  function SkipToElseOrEnd(SkipToEnd: Boolean): TTokenID;
+  var
+    ifcnt: Integer;
+  begin
+    ifcnt := 0;
+    while True do begin
+      Result := Parser.NextToken;
+      case Result of
+        token_cond_if,
+        token_cond_ifdef,
+        token_cond_ifopt,
+        token_cond_ifndef: Inc(ifcnt); // считаем вложенные конструкции
+
+        token_cond_else: begin
+          if SkipToEnd then
+            continue;
+          if ifcnt = 0 then
+            Exit;
+        end;
+        token_cond_else_if: begin
+          if ifcnt = 0 then
+            Exit;
+        end;
+        token_cond_end: begin
+          if ifcnt = 0 then
+            Exit;
+          Dec(ifcnt);
+        end;
+        token_eof: ERROR_END_OF_FILE;
+      end;
+    end;
+  end;
+var
+  ExprResult: TCondIFValue;
+  CondResult: Boolean;
+begin
+  Result := Token;
+  while true do
+  begin
+    case Result of
+      //////////////////////////////////////////
+      // {$DEFINE ...}
+      token_cond_define: begin
+        ParseCondDefine(Scope, True);
+        Result := Parser.NextToken;
+        parser_MatchToken(Result, token_closefigure);
+        Result := parser_NextToken(Scope);
+      end;
+      //////////////////////////////////////////
+      // {$else ... }
+      token_cond_else: begin
+        // skip all comment tokens
+        repeat
+          Result := Parser.NextToken;
+        until (Result = token_eof) or (Result = token_closefigure);
+        if fCondStack.Top then
+          Result := SkipToElseOrEnd(False);
+      end;
+      //////////////////////////////////////////
+      // {$elseif (condition)}
+      token_cond_else_if: begin
+        if fCondStack.Top then
+          Result := SkipToElseOrEnd(True)
+        else begin
+          Result := ParseCondIf(Scope, ExprResult);
+          fCondStack.Top := (ExprResult = condIfTrue);
+          case ExprResult of
+            condIFFalse: Result := SkipToElseOrEnd(False);
+            condIfTrue:;
+            condIFUnknown: Result := SkipToElseOrEnd(True);
+          end;
+        end;
+      end;
+      //////////////////////////////////////////
+      // {$endif ...}
+      token_cond_end: begin
+        fCondStack.Pop;
+        repeat
+          Result := Parser.NextToken;
+        until (Result = token_eof) or (Result = token_closefigure);
+        Result := Parser.NextToken;
+      end;
+      //////////////////////////////////////////
+      // #include
+      token_cond_include: Result := ParseCondInclude(Scope);
+      //////////////////////////////////////////
+      // {$UNDEFINE ...}
+      token_cond_undefine: begin
+        ParseCondDefine(Scope, False);
+        Result := Parser.NextToken;
+        parser_MatchToken(Result, token_closefigure);
+        Result := parser_NextToken(Scope);
+      end;
+      //////////////////////////////////////////
+      // {$IFDEF ...}
+      token_cond_ifdef: begin
+        CondResult := ParseDelphiCondIfDef(Scope);
+        fCondStack.Push(CondResult);
+        if not CondResult then
+          Result := SkipToElseOrEnd(False)
+        else
+          Result := Parser.NextToken;
+      end;
+      //////////////////////////////////////////
+      // {$IFNDEF ...}
+      token_cond_ifndef: begin
+        CondResult := ParseDelphiCondIfDef(Scope);
+        fCondStack.Push(not CondResult);
+        if CondResult then
+          Result := SkipToElseOrEnd(False)
+        else
+          Result := Parser.NextToken;
+      end;
+      //////////////////////////////////////////
+      // {$IF...}
+      token_cond_if: begin
+        Result := ParseCondIf(Scope, ExprResult);
+        fCondStack.Push(ExprResult = condIfTrue);
+        case ExprResult of
+          condIFFalse: Result := SkipToElseOrEnd(False);
+          condIFUnknown: Result := SkipToElseOrEnd(True);
+        end;
+      end;
+      //////////////////////////////////////////
+      // {$IFOPT...}
+      token_cond_ifopt: begin
+        // todo: complete the options check
+        repeat
+          Result := Parser.NextToken;
+        until (Result = token_eof) or (Result = token_closefigure);
+        fCondStack.Push(False);
+        Result := SkipToElseOrEnd(False);
+      end;
+      //////////////////////////////////////////
+      // {$MESSAGE...}
+      token_cond_message: Result := ParseCondMessage(Scope);
+    else
+      ERROR_FEATURE_NOT_SUPPORTED;
+      Result := token_unknown;
+    end;
+    if Result = token_closefigure then
+      Result := Parser.NextToken;
+    if Result < token_cond_define then
+      Break;
+  end;
+end;
+
 function TASTDelphiUnit.ParseConstExpression(Scope: TScope; out Expr: TIDExpression; EPosition: TExpessionPosition): TTokenID;
 var
   EContext: TEContext;
@@ -2661,6 +3594,68 @@ begin
     CheckConstExpression(Expr);
 end;
 
+function TASTDelphiUnit.ParseConstSection(Scope: TScope): TTokenID;
+var
+  i, c: Integer;
+  DataType: TIDType;
+  Item: TIDDeclaration;
+  Expr: TIDExpression;
+  Names: TIdentifiersPool;
+begin
+  c := 0;
+  Names := TIdentifiersPool.Create(2);
+  parser_MatchIdentifier(parser_NextToken(Scope));
+  repeat
+    Names.Add;
+    parser_ReadCurrIdentifier(Names.Items[c]); // read name
+    Result := parser_NextToken(Scope);
+    if Result = token_Coma then begin
+      Inc(c);
+      Result := parser_NextToken(Scope);
+      parser_MatchIdentifier(Result);
+      Continue;
+    end;
+    if Result = token_colon then
+      Result := ParseTypeSpec(Scope, DataType)
+    else
+      DataType := nil;
+
+    // =
+    parser_MatchToken(Result, token_equal);
+
+    if Assigned(DataType) then
+    begin
+      Result := ParseVarDefaultValue(Scope, DataType, Expr);
+      Expr.Declaration.DataType := DataType;
+      Expr.AsConst.ExplicitDataType := DataType;
+    end else begin
+      // читаем значение константы
+      parser_NextToken(Scope);
+      Result := ParseConstExpression(Scope, Expr, ExprRValue);
+      CheckEmptyExpression(Expr);
+    end;
+
+    CheckConstExpression(Expr);
+
+    if Expr.Declaration.DataType.DataTypeID in [dtStaticArray, dtRecord, dtGuid] then
+      AddConstant(Expr.AsConst);
+
+    if Result = token_platform then
+      Result := ParsePlatform(Scope);
+
+    Result := CheckAndParseDeprecated(Scope, Result);
+
+    parser_MatchToken(Result, token_semicolon);
+    for i := 0 to c do begin
+      // создаем алиас на константу
+      Item := TIDAlias.CreateAlias(Scope, Names.Items[i], Expr.Declaration);
+      InsertToScope(Scope, Item);
+    end;
+    c := 0;
+    Result := parser_NextToken(Scope);
+  until Result <> token_identifier;
+end;
+
 function TASTDelphiUnit.ParseContinueStatement(Scope: TScope; const SContext: TSContext): TTokenID;
 begin
   if not SContext.IsLoopBody then
@@ -2670,6 +3665,65 @@ begin
   Result := parser_NextToken(Scope);
 end;
 
+
+function TASTDelphiUnit.ParseDeprecated(Scope: TScope; out Deprecated: TIDExpression): TTokenID;
+begin
+  Result := parser_NextToken(Scope);
+  if Result = token_identifier then
+  begin
+    Result := ParseConstExpression(Scope, &Deprecated, TExpessionPosition.ExprRValue);
+    CheckStringExpression(&Deprecated);
+  end else
+    &Deprecated  := TIDExpression.Create(SYSUnit._DeprecatedDefaultStr, parser_Position);
+end;
+
+function TASTDelphiUnit.ParseCaseRecord(Scope: TScope; Decl: TIDStructure): TTokenID;
+var
+  Expr: TIDExpression;
+begin
+  parser_NextToken(Scope);
+  Result := ParseConstExpression(Scope, Expr, ExprNested);
+  parser_MatchToken(Result,  token_of);
+  Result := parser_NextToken(Scope);
+  while Result <> token_eof do
+  begin
+    // parse case lable const expression: (example: ... 1: (a: integer; b: integer ...
+    Result := ParseConstExpression(Scope, Expr, ExprNested);
+    parser_MatchToken(Result, token_colon);
+    parser_ReadToken(Scope, token_openround);
+    Result := parser_NextToken(Scope);
+    if Result = token_case then
+    begin
+      Result := ParseCaseRecord(Scope, Decl);
+      parser_MatchToken(Result, token_closeround);
+      parser_ReadSemicolon(Scope);
+      Result := parser_NextToken(Scope);
+    end else
+    if Result <> token_closeround then
+      Result := ParseVarInCaseRecord(Scope, vPublic, Decl);
+
+    if Result = token_closeround then
+    begin
+      parser_ReadSemicolon(Scope);
+      Result := parser_NextToken(Scope);
+      case Result of
+        token_minus, token_identifier: Continue;
+        token_closeround, token_end: Exit;
+      else
+        ERROR_IDENTIFIER_EXPECTED(Result);
+      end;
+    end else
+    if Result = token_case then
+    begin
+      Result := ParseCaseRecord(Scope, Decl);
+      parser_MatchToken(Result, token_closeround);
+      parser_ReadSemicolon(Scope);
+      Result := parser_NextToken(Scope);
+    end;
+    if Result = token_closeround then
+      Exit;
+  end;
+end;
 
 function TASTDelphiUnit.ParseCaseStatement(Scope: TScope; const SContext: TSContext): TTokenID;
 type
@@ -2843,6 +3897,160 @@ begin
     parser_MatchToken(Result, token_end);
     Result := parser_NextToken(Scope);
   end;
+end;
+
+function TASTDelphiUnit.ParseClassAncestorType(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; ClassDecl: TIDClass): TTokenID;
+var
+  Expr: TIDExpression;
+  Decl: TIDType;
+  i: Integer;
+begin
+  i := 0;
+  while True do begin
+    parser_NextToken(Scope);
+    Result := ParseConstExpression(Scope, Expr, ExprNested);
+    if Assigned(Expr) then
+    begin
+      CheckClassOrIntfType(Expr);
+      Decl := Expr.AsType;
+      // проверка на зацикливание на себя
+      if Decl = ClassDecl then
+        AbortWork(sRecurciveTypeLinkIsNotAllowed, Expr.TextPosition);
+    end else begin
+      ERROR_CLASS_OR_INTF_TYPE_REQUIRED(parser_PrevPosition);
+      Decl := nil;
+    end;
+
+    if (Decl.DataTypeID = dtClass) then
+    begin
+      if i = 0 then
+        ClassDecl.Ancestor := TIDClass(Decl)
+      else
+        AbortWork('Multiple inheritance is not supported', Expr.TextPosition);
+    end else begin
+      if ClassDecl.FindInterface(TIDInterface(Decl)) then
+        ERROR_INTF_ALREADY_IMPLEMENTED(Expr);
+      ClassDecl.AddInterface(TIDInterface(Decl));
+    end;
+
+    inc(i);
+    if Result = token_coma then
+      continue;
+    break;
+  end;
+  parser_MatchToken(Result, token_closeround);
+  Result := parser_NextToken(Scope);
+end;
+
+function TASTDelphiUnit.ParseClassOfType(Scope: TScope; const ID: TIdentifier; out Decl: TIDClassOf): TTokenID;
+var
+  RefType: TIDClass;
+  Expr: TIDExpression;
+begin
+  parser_NextToken(Scope);
+  Result := ParseConstExpression(Scope, Expr, ExprRValue);
+  CheckClassType(Expr);
+  RefType := TIDClass(Expr.Declaration);
+  Decl := TIDClassOf.Create(Scope, ID);
+  Decl.ReferenceType := RefType;
+  InsertToScope(Scope, Decl);
+end;
+
+function TASTDelphiUnit.ParseClassType(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier;
+  out Decl: TIDClass): TTokenID;
+var
+  Visibility: TVisibility;
+  //Ancestor: TIDClass;
+  FwdDecl: TIDDeclaration;
+begin
+  Visibility := vPublic;
+
+  FwdDecl := Scope.FindID(ID.Name);
+  if not Assigned(FwdDecl) then
+  begin
+    Decl := TIDClass.Create(Scope, ID);
+    if Assigned(GenericScope) then
+      Decl.Members.AddScope(GenericScope);
+    Decl.GenericDescriptor := GDescriptor;
+    if not Assigned(GDescriptor) then
+      InsertToScope(Scope, Decl)
+    else
+      InsertToScope(Scope, GDescriptor.SearchName, Decl);
+  end else begin
+    if (FwdDecl.ItemType = itType) and (TIDType(FwdDecl).DataTypeID = dtClass) and TIDType(FwdDecl).NeedForward then
+      Decl := FwdDecl as TIDClass
+    else
+      ERROR_ID_REDECLARATED(FwdDecl);
+  end;
+
+  Result := parser_CurTokenID;
+  if Result = token_openround then
+  begin
+    Result := ParseClassAncestorType(Scope, GenericScope, GDescriptor, Decl);
+  end else begin
+    if Self <> SYSUnit then
+      Decl.Ancestor := SYSUnit._TObject;
+  end;
+
+  // если найден символ ; - то это forward-декларация
+  if Result = token_semicolon then
+  begin
+    if Decl.NeedForward then
+      ERROR_ID_REDECLARATED(ID);
+    Decl.NeedForward := True;
+    Exit;
+  end;
+
+  while True do begin
+    case Result of
+      token_openblock: Result := ParseAttribute(Scope);
+      token_class: Result := ParseTypeMember(Scope, Decl);
+      token_procedure: Result := ParseProcedure(Decl.Members, ptProc, Decl);
+      token_function: Result := ParseProcedure(Decl.Members, ptFunc, Decl);
+      token_property: Result := ParseProperty(Decl);
+      token_operator: Result := ParseOperator(Decl.Members, Decl);
+      token_constructor: Result := ParseProcedure(Decl.Members, ptConstructor, Decl);
+      token_destructor: Result := ParseProcedure(Decl.Members, ptDestructor, Decl);
+      token_var: begin
+        parser_NextToken(Scope);
+        Result := ParseVarSection(Decl.Members, Visibility, Decl);
+      end;
+      token_const: Result := ParseConstSection(Decl.Members);
+      token_type: Result := ParseNamedTypeDecl(Decl.Members);
+      token_public: begin
+        Visibility := vPublic;
+        Result := parser_NextToken(Scope);
+      end;
+      token_private: begin
+        Visibility := vPrivate;
+        Result := parser_NextToken(Scope);
+      end;
+      token_protected: begin
+        Visibility := vProtected;
+        Result := parser_NextToken(Scope);
+      end;
+      token_strict: begin
+        Result := parser_NextToken(Scope);
+        case Result of
+          token_private: Visibility := vStrictPrivate;
+          token_protected: Visibility := vStrictProtected;
+        else
+          ERROR_EXPECTED_TOKEN(token_private);
+        end;
+        Result := parser_NextToken(Scope);
+      end;
+      token_identifier: begin
+        Result := ParseVarSection(Decl.Members, Visibility, Decl);
+      end
+      else break;
+    end;
+  end;
+  CheckIncompleteType(Decl.Members);
+  Decl.StructFlags := Decl.StructFlags + [StructCompleted];
+  parser_MatchToken(Result, token_end);
+  Result := parser_NextToken(Scope);
+  if Result = token_external then
+    Result := ParseImportStatement(Scope, Decl);
 end;
 
 function TASTDelphiUnit.ParseExitStatement(Scope: TScope; const SContext: TSContext): TTokenID;
@@ -3671,6 +4879,41 @@ begin
   end;
 end;
 
+function TASTDelphiUnit.ParseImportStatement(Scope: TScope; Decl: TIDDeclaration): TTokenID;
+var
+  LibExpr, NameExpr: TIDExpression;
+begin
+  // читаем имя библиотеки
+  parser_NextToken(Scope);
+  Result := ParseConstExpression(Scope, LibExpr, ExprRValue);
+
+  if Assigned(LibExpr) then
+  begin
+    CheckStringExpression(LibExpr);
+
+    Decl.ImportLib := TIDConstant(LibExpr.Declaration).Index;
+
+    if Result = token_name then
+    begin
+      // читаем имя декларации
+      parser_NextToken(Scope);
+      Result := ParseConstExpression(Scope, NameExpr, ExprRValue);
+
+      CheckEmptyExpression(NameExpr);
+      CheckStringExpression(NameExpr);
+
+      Decl.ImportName := TIDConstant(NameExpr.Declaration).Index;
+    end else
+      Decl.ImportName := Package.GetStringConstant(Decl.Name);
+  end; // else todo:
+
+  // delayed
+  if Result = token_delayed then
+    Result := parser_NextToken(Scope);
+
+  parser_MatchSemicolon(Result);
+end;
+
 function TASTDelphiUnit.ParseLabelSection(Scope: TScope): TTokenID;
 var
   ID: TIdentifier;
@@ -3689,6 +4932,142 @@ begin
   end;
   parser_MatchSemicolon(Result);
   Result := parser_NextToken(Scope);
+end;
+
+function TASTDelphiUnit.ParseParameters(Scope: TScope; InMacro: Boolean): TTokenID;
+type
+  PIDItem = ^TIDItem;
+  TIDItem = record
+    ID: TIdentifier;
+    Param: TIDVariable;
+    NextItem: PIDItem;
+  end;
+var
+  DataType: TIDType;
+  Param: TIDVariable;
+  VarFlags: TVariableFlags;
+  DefaultExpr: TIDExpression;
+  IDItem: TIDItem;
+  CNItem: PIDItem;
+  NextItem: PIDItem;
+begin
+  CNItem := addr(IDItem);
+  CNItem.Param := nil;
+  CNItem.NextItem := nil;
+  while True do begin
+    Result := parser_NextToken(Scope);
+    if (Result = token_closeround) or
+       (Result = token_closeblock) then
+     Exit;
+    VarFlags := [VarParameter];
+    case Result of
+      token_const: begin
+        Include(VarFlags, VarConst);
+        Result := parser_NextToken(Scope);
+      end;
+      token_constref: begin
+        Include(VarFlags, VarConstRef);
+        Result := parser_NextToken(Scope);
+      end;
+      token_var: begin
+        Include(VarFlags, VarInOut);
+        Result := parser_NextToken(Scope);
+      end;
+      token_out: begin
+        Include(VarFlags, VarOut);
+        Result := parser_NextToken(Scope);
+      end;
+    end;
+    parser_MatchIdentifier(Result);
+    while True do begin
+      parser_ReadCurrIdentifier(CNItem.ID); // read name
+      Result := parser_NextToken(Scope);
+      if Result = token_coma then begin
+        Result := parser_NextToken(Scope);
+        parser_MatchParamNameIdentifier(Result);
+        New(NextItem);
+        CNItem.NextItem := NextItem;
+        CNItem := NextItem;
+        CNItem.Param := nil;
+        CNItem.NextItem := nil;
+        Continue;
+      end;
+      if Result = token_colon then
+      begin
+        Result := ParseTypeSpec(Scope, DataType);
+        // парсим значение по умолчанию
+        if Result = token_equal then
+        begin
+          parser_NextToken(Scope);
+          Result := ParseConstExpression(Scope, DefaultExpr, ExprNested)
+        end else
+          DefaultExpr := nil;
+      end else begin
+
+        // если тип не указан, то это нетепизированная ссылка
+        if (VarConst in VarFlags) or
+           (VarInOut in VarFlags) or
+           (VarOut in VarFlags) or
+           (VarConstRef in VarFlags) then
+        begin
+          DataType := SYSUnit._UntypedReference;
+        end else
+        if InMacro then
+          DataType := TIDGenericType.Create(Scope, Identifier('T'))
+        else
+          ERROR_PARAM_TYPE_REQUIRED;
+      end;
+
+      NextItem := addr(IDItem);
+      while Assigned(NextItem) do begin
+        if not Assigned(NextItem.Param) then
+        begin
+          Param := TIDVariable.Create(Scope, NextItem.ID, DataType, VarFlags);
+          Param.DefaultValue := DefaultExpr;
+          NextItem.Param := Param;
+        end;
+        NextItem := NextItem.NextItem;
+      end;
+      Break;
+    end;
+    if Result = token_semicolon then
+    begin
+      New(NextItem);
+      CNItem.NextItem := NextItem;
+      CNItem := NextItem;
+      CNItem.Param := nil;
+      CNItem.NextItem := nil;
+      continue;
+    end;
+
+    // insert params to proc scope
+    NextItem := addr(IDItem);
+    while Assigned(NextItem) do
+    begin
+      Param := NextItem.Param;
+      Scope.AddVariable(Param);
+      {если параметр - открытй массив, то добавляем скрытый параметр "Длинна массива"}
+      if Param.DataType.DataTypeID = dtOpenArray then
+      begin
+        Param := TIDVariable.CreateAsSystem(Scope, NextItem.ID.Name + '$Length');
+        Param.DataType := SYSUnit._UInt32;
+        Param.Flags := [VarParameter, VarHiddenParam, VarConst];
+        Scope.AddVariable(Param);
+      end;
+      NextItem := NextItem.NextItem;
+    end;
+    // disposing items
+    CNItem := addr(IDItem);
+    CNItem := CNItem.NextItem;
+    while Assigned(CNItem) do
+    begin
+      NextItem := CNItem;
+      CNItem := CNItem.NextItem;
+      Dispose(NextItem);
+    end;
+
+    Exit;
+  end;
 end;
 
 function TASTDelphiUnit.ParseProcBody(Proc: TASTDelphiProc): TTokenID;
@@ -3989,6 +5368,389 @@ begin
     CheckDestructorSignature(Proc);
 end;
 
+function TASTDelphiUnit.ParseProcName(var Scope: TScope; out Name: TIdentifier; var Struct: TIDStructure; out ProcScope: TProcScope;
+  out GenericParams: TIDTypeList): TTokenID;
+var
+  Decl: TIDDeclaration;
+  SearchName: string;
+begin
+  ProcScope := nil;
+  while True do begin
+    parser_ReadNextIdentifier(Scope, Name);
+    Result := parser_NextToken(Scope);
+    if Result = token_less then
+    begin
+      if Assigned(Struct) then
+        ProcScope := TMethodScope.CreateInDecl(Scope, Struct.Members)
+      else
+        ProcScope := TProcScope.CreateInDecl(Scope, nil, nil);
+      Result := ParseGenericsHeader(ProcScope, GenericParams);
+      SearchName := Format('%s<%d>', [Name.Name, Length(GenericParams)]);
+    end else
+      SearchName := Name.Name;
+
+    if Result = token_dot then
+    begin
+      Decl := Scope.FindID(SearchName);
+      if not Assigned(Decl) then
+        ERROR_UNDECLARED_ID(Name, GenericParams);
+
+      if Decl is TIDStructure then
+      begin
+        Struct := TIDStructure(Decl);
+        {т.к это имплементация обобщенного метода, то очищаем дупликатные обобщенные параметры}
+        if Assigned(ProcScope) then begin
+          ProcScope.OuterScope := Scope;
+          ProcScope.Parent := Struct.Members;
+          ProcScope.Clear;
+        end;
+      end
+      else if Decl.ItemType = itNameSpace then
+        Scope := TIDNameSpace(Decl).Members
+      else
+        ERROR_STRUCT_TYPE_REQUIRED(Name.TextPosition);
+      continue;
+    end;
+    if not Assigned(ProcScope) then
+    begin
+      if Assigned(Struct) then
+        ProcScope := TMethodScope.CreateInDecl(Scope, Struct.Members)
+      else
+        ProcScope := TProcScope.CreateInDecl(Scope, nil, nil);
+    end;
+    {$IFDEF DEBUG}ProcScope.Name := Name.Name + '_params'; {$ENDIF}
+    Exit;
+  end;
+end;
+
+function TASTDelphiUnit.ParseProcType(Scope: TScope; const ID: TIdentifier; ProcType: TProcType; out Decl: TIDProcType): TTokenID;
+var
+  Params: TScope;
+  VarSpace: TVarSpace;
+  ResultType: TIDType;
+begin
+  Decl := TIDProcType.Create(Scope, ID);
+  Result := parser_NextToken(Scope);
+  // если есть параметры
+  if Result = token_openround then
+  begin
+    VarSpace.Initialize;
+    Params := TScope.Create(stLocal, @VarSpace, nil, Scope, Self);
+    ParseParameters(Params);
+    Result := parser_NextToken(Scope);
+    Decl.Params := ScopeToVarList(Params, 0);
+  end;
+
+  if ProcType = ptFunc then
+  begin
+    parser_MatchToken(Result, token_colon);
+    Result := ParseTypeSpec(Scope, ResultType);
+    Decl.ResultType := ResultType;
+  end;
+
+  if Result = token_of then
+  begin
+    parser_ReadToken(Scope, token_object);
+    Result := parser_NextToken(Scope);
+    Decl.IsStatic := False;
+  end else
+    Decl.IsStatic := True;
+
+  if ID.Name <> '' then begin
+    parser_MatchToken(Result, token_semicolon);
+    InsertToScope(Scope, Decl);
+  end;
+end;
+
+function TASTDelphiUnit.ParseGenericProcRepeatedly(Scope: TScope; GenericProc, Proc: TASTDelphiProc; Struct: TIDStructure): TTokenID;
+{type
+  TFwdDeclState = (dsNew, dsDifferent, dsSame);}
+var
+  Parameters: TScope;
+  ResultType: TIDType;
+  RetVar: TIDVariable;
+  VarSpace: TVarSpace;
+  FirstSkipCnt: Integer;
+  CurParserPos: TParserPosition;
+  ProcFlags: TProcFlags;
+  GD: PGenericDescriptor;
+begin
+  GD := GenericProc.GenericDescriptor;
+  if not Assigned(GD) then
+    GD := Struct.GenericDescriptor;
+
+  if not Assigned(GD) then
+    Assert(Assigned(GD));
+
+  {перемещаем парсер на исходный код generic-процедуры}
+  Parser.SaveState(CurParserPos);
+  Parser.LoadState(GD.ImplSRCPosition);
+
+  Result := parser_CurTokenID;
+
+  VarSpace.Initialize;
+  if Assigned(Struct) then
+    Parameters := TMethodScope.CreateInDecl(Scope, Struct.Members, @VarSpace, nil)
+  else
+    Parameters := TProcScope.CreateInDecl(Scope, @VarSpace, nil);
+
+  // создаем Result переменную (пока без имени) и добовляем ее в VarSpace чтобы зарезервировать индекс
+  if Assigned(GenericProc.ResultType) then
+    RetVar := AddResultParameter(Parameters)
+  else
+    RetVar := nil;
+
+  if Assigned(Struct) then
+    AddSelfParameter(Parameters, Struct, False);
+
+  // парсим параметры
+  if Result = token_openround then
+  begin
+    ParseParameters(Parameters);
+    Result := parser_NextToken(Scope); // move to "token_colon"
+  end;
+
+  // парсим тип возвращаемого значения
+  if Assigned(GenericProc.ResultType) then
+  begin
+    parser_MatchToken(Result, token_colon);
+    Result := ParseTypeSpec(Parameters, ResultType);
+    RetVar.DataType := ResultType;
+    RetVar.TextPosition := parser_Position;
+  end else
+    ResultType := nil;
+
+  parser_MatchToken(Result, token_semicolon);
+
+  if not Assigned(Struct) then
+  begin
+    // Для Scope будут переопределены VarSpace и ProcSpace
+    Proc.ParamsScope := Parameters;
+    Proc.VarSpace := VarSpace;
+    Proc.ResultType := ResultType;
+    FirstSkipCnt := 0;
+    if Assigned(ResultType) then
+      Inc(FirstSkipCnt);
+    Proc.ExplicitParams := ScopeToVarList(Parameters, FirstSkipCnt);
+    ImplScope.AddProcedure(Proc);   // добовляем новую декларацию в структуру или глобольный список
+  end;
+  ProcFlags := [];
+
+  Result := parser_NextToken(Scope);
+  while True do begin
+    case Result of
+      token_forward: Result := ProcSpec_Forward(Scope, Proc, ProcFlags);
+      token_export: Result := ProcSpec_Export(Scope, Proc, ProcFlags);
+      token_inline: Result := ProcSpec_Inline(Scope, Proc, ProcFlags);
+      //token_noreturn: Result := ProcSpec_NoReturn(Scope, Proc, ProcFlags);
+      token_external: Result := ProcSpec_Import(Scope, Proc, ProcFlags);
+      token_overload: Result := ProcSpec_Overload(Scope, Proc, ProcFlags);
+      //token_pure: Result := ProcSpec_Pure(Scope, Proc, ProcFlags);
+      token_procedure,
+      token_function,
+      token_const,
+      token_type,
+      token_var,
+      token_begin:
+      begin
+        // т.к синтаксис проверен ранее, флаги процедуры нет необходимости проверять
+
+        // имена парметров реализации процедуры могут отличатся от ее определения
+        // копируем накопленный VarSpace в процедуру
+        Proc.VarSpace := Parameters.VarSpace^;
+        // Для Scope будут переопределены VarSpace и ProcSpace
+        Proc.EntryScope := Parameters;
+        Result := ParseProcBody(Proc);
+        parser_MatchSemicolon(Result);
+        Result := parser_NextToken(Scope);
+        Break;
+      end;
+      token_identifier: ERROR_KEYWORD_EXPECTED;
+    else
+      Break;
+    end;
+  end;
+  Parser.LoadState(CurParserPos);
+end;
+
+function TASTDelphiUnit.ParseOperator(Scope: TScope; Struct: TIDStructure): TTokenID;
+type
+  TFwdDeclState = (dsNew, dsDifferent, dsSame);
+var
+  ID: TIdentifier;
+  Parameters: TProcScope;
+  ResultType: TIDType;
+  ResultParam: TIDVariable;
+  VarSpace: TVarSpace;
+  GenericsParams: TIDTypeList;
+  Proc, ForwardDecl: TASTDelphiProc;
+  FwdDeclState: TFwdDeclState;
+  FirstSkipCnt: Integer;
+  SRCProcPos: TParserPosition;
+  OperatorID: TOperatorID;
+  ParamCount: Integer;
+  ProcFlags: TProcFlags;
+begin
+  Result := ParseProcName(Scope, ID, Struct, Parameters, GenericsParams);
+
+  OperatorID := GetOperatorID(ID.Name);
+  if OperatorID = opNone then
+    AbortWork(sUnknownOperatorFmt, [ID.Name], ID.TextPosition);
+
+  if not Assigned(Struct) then
+    ERROR_OPERATOR_MUST_BE_DECLARED_IN_STRUCT(ID.TextPosition);
+
+  VarSpace.Initialize;
+  Parameters.VarSpace := @VarSpace;
+
+  // создаем Result переменную
+  ResultParam := AddResultParameter(Parameters);
+
+  // если generic
+  Parser.SaveState(SRCProcPos);
+
+  // парсим параметры
+  parser_MatchToken(Result, token_openround);
+  ParseParameters(Parameters);
+  Result := parser_NextToken(Scope);
+
+  // проверка на кол-во необходимых параметров
+  ParamCount := IfThen(OperatorID < OpIn, 1, 2);
+  if ParamCount <> (Parameters.Count - 1) then
+    AbortWork(sOperatorNeedNCountOfParameters, [ID.Name, ParamCount], ID.TextPosition);
+
+  // парсим тип возвращаемого значения
+  parser_MatchToken(Result, token_colon);
+  Result := ParseTypeSpec(Parameters, ResultType);
+  ResultParam.DataType := ResultType;
+  ResultParam.TextPosition := parser_Position;
+  parser_MatchToken(Result, token_semicolon);
+
+  // ищем ранее обьявленную декларацию с таким же именем
+  ForwardDecl := TASTDelphiProc(Struct.Members.FindID(ID.Name));
+
+  Proc := nil;
+  FwdDeclState := dsDifferent;
+
+  {если найдена ранее обьявленная декларация, проверяем соответствие}
+  if Assigned(ForwardDecl) then begin
+    // ошибка если перекрыли идентификатор другого типа:
+    if ForwardDecl.ItemType <> itProcedure then
+      ERROR_ID_REDECLARATED(ID);
+    // ищем подходящую декларацию в списке перегруженных:
+    while True do begin
+      if ForwardDecl.SameDeclaration(Parameters) then begin
+        // нашли подходящую декларацию
+        FwdDeclState := dsSame;
+        if Assigned(ForwardDecl.IL) then
+          ERROR_ID_REDECLARATED(ID);
+        Proc := ForwardDecl;
+        Break;
+      end;
+      // не нашли подходящую декларацию, создаем новую
+      // проверку дерективы overload оставим на потом
+      if not Assigned(ForwardDecl.NextOverload) then
+      begin
+        Break;
+      end;
+      ForwardDecl := ForwardDecl.NextOverload as TASTDelphiProc;
+    end;
+  end else
+    FwdDeclState := dsNew;
+
+  ProcFlags := [pfOperator];
+  {создаем новую декларацию}
+  if not Assigned(Proc) then
+  begin
+    Proc := TIDOperator.Create(Scope, ID, OperatorID);
+    if Assigned(GenericsParams) then
+      Proc.CreateGenericDescriptor(GenericsParams, SRCProcPos);
+
+    // Для Scope будут переопределены VarSpace и ProcSpace
+    Proc.ParamsScope := Parameters;
+    Proc.VarSpace := Parameters.VarSpace^;
+    Proc.ResultType := ResultType;
+
+    FirstSkipCnt := 0;
+    if Assigned(ResultType) then
+      Inc(FirstSkipCnt);
+    Proc.ExplicitParams := ScopeToVarList(Parameters, FirstSkipCnt);
+    Proc.Struct := Struct;
+
+    // добовляем новую декларацию в структуру или глобольный список или к списку перегруженных процедур
+    if not Assigned(ForwardDecl) then
+    begin
+      Struct.Members.AddProcedure(Proc);
+    end else begin
+      ForwardDecl.NextOverload := Proc;
+      Struct.Members.ProcSpace.Add(Proc);
+    end;
+
+    case OperatorID of
+      opImplicit: begin
+      if ResultType = Struct then
+        Struct.OverloadImplicitFrom(Parameters.VarSpace.Last.DataType, Proc)
+      else
+        Struct.OverloadImplicitTo(ResultType, Proc);
+      end;
+      opExplicit: begin
+        if ResultType = Struct then
+          Struct.OverloadExplicitFrom(Parameters.VarSpace.Last.DataType, Proc)
+        else
+          Struct.OverloadExplicitTo(ResultType, Proc);
+      end;
+    else
+    if OperatorID < opIn then
+      Struct.OverloadUnarOperator(OperatorID, Proc)
+    else
+      Struct.OverloadBinarOperator(OperatorID, TIDOperator(Proc));
+    end;
+
+  end else begin
+    if Assigned(Proc.GenericDescriptor) then
+      Proc.GenericDescriptor.ImplSRCPosition := SRCProcPos;
+  end;
+
+  Result := parser_NextToken(Scope);
+  while True do begin
+    case Result of
+      token_forward: Result := ProcSpec_Forward(Scope, Proc, ProcFlags);
+      token_export: Result := ProcSpec_Export(Scope, Proc, ProcFlags);
+      token_inline: Result := ProcSpec_Inline(Scope, Proc, ProcFlags);
+      //token_noreturn: Result := ProcSpec_Import(Scope, Proc, ProcFlags);
+      token_external: Result := ProcSpec_Import(Scope, Proc, ProcFlags);
+      token_overload: Result := ProcSpec_Overload(Scope, Proc, ProcFlags);
+      //token_pure: Result := ProcSpec_Pure(Scope, Proc, ProcFlags);
+    else
+      if (Scope.ScopeClass = scInterface) or (pfImport in ProcFlags) then
+      begin
+        Proc.Flags := ProcFlags;
+        Break;
+      end;
+
+      // имена парметров реализации процедуры могут отличатся от ее определения
+      // копируем накопленный VarSpace в процедуру
+      Proc.VarSpace := Parameters.VarSpace^;
+      // Для Scope будут переопределены VarSpace и ProcSpace
+      Proc.EntryScope := Parameters;
+      if (FwdDeclState = dsDifferent) then
+      begin
+        if not Assigned(Proc.IL) then
+          ERROR_DECL_DIFF_WITH_PREV_DECL(ID);
+      end;
+      Result := ParseProcBody(Proc);
+      parser_MatchSemicolon(Result);
+      Result := parser_NextToken(Scope);
+      Break;
+    end;
+    //token_identifier: AbortWork(sKeywordExpected, parser_Position);
+  {else
+    if Scope.ScopeClass <> scInterface then
+      ERROR_PROC_NEED_BODY;
+    Break;}
+  end;
+end;
+
 function TASTDelphiUnit.ParseRaiseStatement(Scope: TScope; const SContext: TSContext): TTokenID;
 var
   EExcept: TIDExpression;
@@ -4006,6 +5768,38 @@ begin
   KW.Expression := ASTExpr;
 end;
 
+procedure TASTDelphiUnit.ParseRangeType(Scope: TScope; Expr: TIDExpression; Decl: TIDRangeType);
+var
+  LB, HB: Int64;
+  CRange: TIDRangeConstant;
+  BoundExpr: TIDExpression;
+  RDataTypeID: TDataTypeID;
+  RDataType: TIDType;
+begin
+  CRange := TIDRangeConstant(Expr.Declaration);
+  if (CRange.ItemType <> itConst) and (not (CRange is TIDRangeConstant)) then
+    AbortWork(sConstRangeRequired, parser_Position);
+
+  BoundExpr := CRange.Value.LBExpression;
+  CheckConstExpression(BoundExpr);
+  LB := TIDConstant(BoundExpr.Declaration).AsInt64;
+
+  BoundExpr := CRange.Value.HBExpression;
+  CheckConstExpression(BoundExpr);
+  HB := TIDConstant(BoundExpr.Declaration).AsInt64;
+
+  RDataTypeID := GetValueDataType(HB - LB);
+  RDataType := SYSUnit.DataTypes[RDataTypeID];
+
+  Decl.LowBound := LB;
+  Decl.HighBound := HB;
+
+  if Decl.Name = '' then
+   Decl.ID := Identifier(Format('Range %d..%d', [LB, HB]), Expr.TextPosition.Row, Expr.TextPosition.Col);
+
+  Decl.OverloadImplicitFrom(RDataType);
+end;
+
 function TASTDelphiUnit.ParseRecordInitValue(Scope: TRecordInitScope; var FirstField: TIDExpression): TTokenID;
 var
   FldValue: TIDExpression;
@@ -4014,6 +5808,239 @@ begin
   Result := ParseConstExpression(Scope, FldValue, ExprRValue);
   if Result = token_semicolon then
     Result := parser_NextToken(Scope);
+end;
+
+function TASTDelphiUnit.ParseRecordType(Scope: TScope; Decl: TIDStructure): TTokenID;
+var
+  Visibility: TVisibility;
+  //Expr: TIDExpression;
+  //Ancestor: TIDRecord;
+begin
+  Visibility := vPublic;
+  Result := parser_NextToken(Scope);
+  while True do begin
+    case Result of
+      token_case: Result := ParseCaseRecord(Decl.Members, Decl);
+      token_class: Result := parser_NextToken(scope);
+      token_procedure: Result := ParseProcedure(Decl.Members, ptProc, Decl);
+      token_function: Result := ParseProcedure(Decl.Members, ptFunc, Decl);
+      token_constructor: Result := ParseProcedure(Decl.Members, ptConstructor, Decl);
+      token_destructor: Result := ParseProcedure(Decl.Members, ptDestructor, Decl);
+      token_property: Result := ParseProperty(Decl);
+      token_operator: Result := ParseOperator(Decl.Members, Decl);
+      token_public: begin
+        Visibility := vPublic;
+        Result := parser_NextToken(Scope);
+      end;
+      token_private: begin
+        Visibility := vPrivate;
+        Result := parser_NextToken(Scope);
+      end;
+      token_strict: begin
+        Result := parser_NextToken(Scope);
+        case Result of
+          token_private: Visibility := vStrictPrivate;
+          token_protected: Visibility := vStrictProtected;
+        else
+          ERROR_EXPECTED_TOKEN(token_private);
+        end;
+        Result := parser_NextToken(Scope);
+      end;
+      token_var: begin
+        parser_NextToken(Scope);
+        Result := ParseVarSection(Decl.Members, Visibility, Decl);
+      end;
+      token_const: Result := ParseConstSection(Decl.Members);
+      token_type: Result := ParseNamedTypeDecl(Decl.Members);
+      token_identifier, token_name: Result := ParseVarSection(Decl.Members, Visibility, Decl); // необходимо оптимизировать парсинг ключевых слов как идентификаторов
+    else
+      break;
+    end;
+  end;
+  CheckIncompleteType(Decl.Members);
+  Decl.StructFlags := Decl.StructFlags + [StructCompleted];
+
+  parser_MatchToken(Result, token_end);
+  Result := parser_NextToken(Scope);
+  if Result = token_external then
+    Result := ParseImportStatement(Scope, Decl);
+
+  if Result = token_platform then
+    Result := parser_NextToken(Scope);
+
+  Result := CheckAndParseDeprecated(Scope, Result);
+end;
+
+function FindGenericInstance(const GenericInstances: TGenericInstanceList; const SpecializeArgs: TIDExpressions): TIDDeclaration;
+var
+  i, ac, ai: Integer;
+  Item: ^TGenericInstance;
+  SrcArg, DstArg: TIDExpression;
+begin
+  for i := 0 to Length(GenericInstances) - 1 do
+  begin
+    Item := @GenericInstances[i];
+    ac := Length(SpecializeArgs);
+    if ac <> Length(Item.Args) then
+      AbortWorkInternal('Wrong length generics arguments');
+    for ai := 0 to ac - 1 do
+    begin
+      DstArg := Item.Args[ai];
+      SrcArg := SpecializeArgs[ai];
+      // тут упрощенная проверка:
+      case SrcArg.ItemType of
+        itType: begin
+          if SrcArg.AsType.ActualDataType <> DstArg.AsType.ActualDataType then
+            continue;
+        end;
+        itConst, itVar: begin
+          if SrcArg.DataType.ActualDataType <> DstArg.AsType.ActualDataType then
+            continue;
+        end;
+        else
+          AbortWork(sFeatureNotSupported, SrcArg.TextPosition);
+      end;
+      Exit(Item.Instance);
+    end;
+  end;
+  Result := nil;
+end;
+
+function TASTDelphiUnit.SpecializeGenericProc(CallExpr: TIDCallExpression; const CallArgs: TIDExpressions): TASTDelphiProc;
+var
+  i, ai, ac, pc: Integer;
+  SrcArg: TIDExpression;
+  SpecializeArgs: TIDExpressions;
+  Proc: TASTDelphiProc;
+  GDescriptor: PGenericDescriptor;
+  Scope: TScope;
+  Param: TIDDeclaration;
+  ProcName: string;
+begin
+  Proc := CallExpr.AsProcedure as TASTDelphiProc;
+  GDescriptor := Proc.GenericDescriptor;
+
+  {подготавливаем списко обобщенных аргументов}
+  SpecializeArgs := CallExpr.GenericArgs;
+  if Length(SpecializeArgs) = 0 then
+  begin
+    ac := Length(GDescriptor.GenericParams);
+    pc := Length(Proc.ExplicitParams);
+    if pc <> ac then
+      AbortWork(sProcRequiresExplicitTypeArgumentFmt, [CallExpr.AsProcedure.ProcTypeName, CallExpr.DisplayName], CallExpr.TextPosition);
+    ai := 0;
+    SetLength(SpecializeArgs, ac);
+
+    for i := 0 to pc - 1 do
+    begin
+      Param := Proc.ExplicitParams[i];
+      if Param.DataTypeID = dtGeneric then
+      begin
+        if CallExpr.ArgumentsCount > i then
+          SrcArg := CallArgs[i]
+        else
+          SrcArg := TIDVariable(Param).DefaultValue;
+        SpecializeArgs[ai] := TIDExpression.Create(SrcArg.DataType, SrcArg.TextPosition);
+        Inc(ai);
+      end;
+    end;
+  end;
+
+  Result := TASTDelphiProc(FindGenericInstance(GDescriptor.GenericInstances, SpecializeArgs));
+  if Assigned(Result) then
+    Exit;
+
+  Scope := TScope.Create(Proc.Scope.ScopeType, Proc.EntryScope);
+  {$IFDEF DEBUG}Scope.Name := Proc.DisplayName + '.generic_alias_scope';{$ENDIF}
+  Proc.EntryScope.AddScope(Scope);
+
+  {формируем уникальное название процедуры}
+  for i := 0 to Length(SpecializeArgs) - 1 do
+  begin
+    SrcArg := SpecializeArgs[i];
+    ProcName := AddStringSegment(ProcName, SrcArg.DisplayName, ', ');
+    Param := TIDAlias.CreateAlias(Scope, GDescriptor.GenericParams[i].ID, SrcArg.Declaration);
+    Scope.InsertID(Param);
+  end;
+  ProcName := Proc.Name + '<' + ProcName + '>';
+  Result := TASTDelphiProc.Create(Proc.Scope, Identifier(ProcName, Proc.ID.TextPosition));
+
+  {добовляем специализацию в пул }
+  GDescriptor.AddGenericInstance(Result, SpecializeArgs);
+
+  try
+    ParseGenericProcRepeatedly(Scope, Proc, Result, Proc.Struct);
+  except
+    on e: ECompilerAbort do begin
+      PutMessage(cmtError, Format(IfThen(Assigned(CallExpr.AsProcedure.ResultType), msgGenericFuncInstanceErrorFmt, msgGenericProcInstanceErrorFmt), [ProcName]), CallExpr.TextPosition);
+      raise;
+    end;
+  end;
+end;
+
+function TASTDelphiUnit.SpecializeGenericType(GenericType: TIDType; const ID: TIdentifier; const SpecializeArgs: TIDExpressions): TIDType;
+var
+  i: Integer;
+  GAScope: TScope;  // специальный скоуп для алиасов-параметров параметрического типа
+  Param: TIDAlias;
+  NewID: TIdentifier;
+  TypeName: string;
+  SrcArg: TIDExpression;
+  ParserPos: TParserPosition;
+  GDescriptor: PGenericDescriptor;
+  GProc, SProc: TASTDelphiProc;
+  GMethods, SMethods: PProcSpace;
+begin
+  GDescriptor := GenericType.GenericDescriptor;
+  {поиск подходящей специализации в пуле}
+  Result := TIDType(FindGenericInstance(GDescriptor.GenericInstances, SpecializeArgs));
+  if Assigned(Result) then
+    Exit;
+
+  GAScope := TScope.Create(GenericType.Scope.ScopeType, GenericType.Scope);
+
+  {формируем название типа}
+  for i := 0 to Length(SpecializeArgs) - 1 do
+  begin
+    SrcArg := SpecializeArgs[i];
+    TypeName := AddStringSegment(TypeName, SrcArg.DisplayName, ', ');
+    Param := TIDAlias.CreateAlias(GAScope, GDescriptor.GenericParams[i].ID, SrcArg.Declaration);
+    GAScope.InsertID(Param);
+  end;
+
+  NewID.Name := GenericType.Name + '<' + TypeName + '>';
+  NewID.TextPosition := ID.TextPosition;
+  {$IFDEF DEBUG}GAScope.Name := NewID.Name + '.generic_alias_scope';{$ENDIF}
+
+  Parser.SaveState(ParserPos);
+  Parser.LoadState(GDescriptor.ImplSRCPosition);
+  parser_NextToken(GAScope);
+
+  {парсим заново generic-тип}
+  ParseTypeDecl(GenericType.Scope, GAScope, nil, NewID, Result);
+
+  {если есть методы, пытаемся их перекомпилировать}
+  if GenericType.InheritsFrom(TIDStructure) then
+  begin
+    GMethods := TIDStructure(GenericType).Methods;
+    SMethods := TIDStructure(Result).Methods;
+    GProc := GMethods.First as TASTDelphiProc;
+    SProc := SMethods.First as TASTDelphiProc;
+    while Assigned(GProc) do
+    begin
+      if Assigned(GProc.IL) and Assigned(GProc.GenericDescriptor) then
+        ParseGenericProcRepeatedly(ImplScope, GProc, SProc, TIDStructure(Result))
+      else
+        SProc.GenericPrototype := GProc;
+      GProc := TASTDelphiProc(GProc.NextItem);
+      SProc := TASTDelphiProc(SProc.NextItem);
+    end
+  end;
+
+  Parser.LoadState(ParserPos);
+
+  {добовляем специализацию в пул}
+  GDescriptor.AddGenericInstance(Result, SpecializeArgs);
 end;
 
 function TASTDelphiUnit.ParseRepeatStatement(Scope: TScope; const SContext: TSContext): TTokenID;
@@ -4056,7 +6083,171 @@ begin
     Result := ActualToken
 end;
 
-function TASTDelphiUnit.ParseIdentifier(Scope, SearchScope: TScope; out Expression: TIDExpression;  var EContext: TEContext;
+function TASTDelphiUnit.ProcSpec_Inline(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+begin
+  if pfImport in Flags then
+    ERROR_IMPORT_FUNCTION_CANNOT_BE_INLINE;
+  if pfInline in Flags then
+    ERROR_DUPLICATE_SPECIFICATION(PS_INLINE);
+  Include(Flags, pfInline);
+  parser_ReadSemicolon(Scope);
+  Result := parser_NextToken(Scope);
+end;
+
+function TASTDelphiUnit.ProcSpec_Export(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+var
+  ExportID: TIdentifier;
+begin
+  if pfExport in Flags then
+    ERROR_DUPLICATE_SPECIFICATION(PS_EXPORT);
+  Include(Flags, pfExport);
+  {if Scope.ScopeClass <> scInterface then
+    ERROR_EXPORT_ALLOWS_ONLY_IN_INTF_SECTION;}
+  Result := parser_NextToken(Scope);
+  if Result = token_identifier then begin
+    parser_ReadCurrIdentifier(ExportID);
+  Result := parser_NextToken(Scope);
+  end else
+    ExportID := Proc.ID;
+  Proc.Export := Package.GetStringConstant(ExportID.Name);
+  parser_MatchToken(Result, token_semicolon);
+  Result := parser_NextToken(Scope);
+end;
+
+function TASTDelphiUnit.ProcSpec_Forward(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+begin
+  if (pfForward in Flags) or (pfImport in Flags) then
+    ERROR_DUPLICATE_SPECIFICATION(PS_FORWARD);
+  Include(Flags, pfForward);
+  parser_ReadSemicolon(Scope);
+  Result := parser_NextToken(Scope);
+end;
+
+function TASTDelphiUnit.ProcSpec_Import(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+begin
+  if pfImport in Flags then
+    ERROR_DUPLICATE_SPECIFICATION(PS_IMPORT);
+  Include(Flags, pfImport);
+  ParseImportStatement(Scope, Proc);
+  Result := Parser.NextToken;
+end;
+
+function TASTDelphiUnit.ProcSpec_Overload(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+begin
+  if pfOveload in Flags then
+    ERROR_DUPLICATE_SPECIFICATION(PS_OVELOAD);
+  Include(Flags, pfOveload);
+  Result := parser_ReadSemicolonAndToken(Scope);
+end;
+
+function TASTDelphiUnit.ProcSpec_Reintroduce(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+begin
+  if pfReintroduce in Flags then
+    ERROR_DUPLICATE_SPECIFICATION(PS_REINTRODUCE);
+  Include(Flags, pfReintroduce);
+  parser_ReadSemicolon(Scope);
+  Result := parser_NextToken(Scope);
+end;
+
+function TASTDelphiUnit.ProcSpec_Virtual(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+begin
+  if pfVirtual in Flags then
+    ERROR_DUPLICATE_SPECIFICATION(PS_VIRTUAL);
+  Include(Flags, pfVirtual);
+
+  if not Assigned(Proc.Struct) then
+    ERROR_VIRTUAL_ALLOWED_ONLY_IN_CLASSES;
+
+  Proc.VirtualIndex := Proc.Struct.GetLastVirtualIndex + 1;
+
+  parser_ReadSemicolon(Scope);
+  Result := parser_NextToken(Scope);
+end;
+
+function TASTDelphiUnit.ProcSpec_Override(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+var
+  PrevProc: TIDProcedure;
+begin
+  if pfOverride in Proc.Flags then
+    ERROR_DUPLICATE_SPECIFICATION(PS_OVERRIDE);
+
+  if not Assigned(Proc.Struct) then
+    ERROR_STRUCT_TYPE_REQUIRED(parser_Position);
+
+  PrevProc := Proc.Struct.FindVirtualProcInAncestor(Proc);
+  if not Assigned(PrevProc) then
+    ERROR_NO_METHOD_IN_BASE_CLASS(Proc);
+
+  Proc.VirtualIndex := PrevProc.VirtualIndex;
+
+  Include(Flags, pfOverride);
+  Include(Flags, pfVirtual);
+  parser_ReadSemicolon(Scope);
+  Result := parser_NextToken(Scope);
+end;
+
+function TASTDelphiUnit.ProcSpec_Static(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+begin
+  if pfStatic in Proc.Flags then
+    ERROR_DUPLICATE_SPECIFICATION(PS_STATIC);
+  Include(Flags, pfStatic);
+  parser_ReadSemicolon(Scope);
+  Result := parser_NextToken(Scope);
+end;
+
+function TASTDelphiUnit.ProcSpec_StdCall(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
+begin
+  if CallConvention = ConvStdCall then
+    ERROR_DUPLICATE_SPECIFICATION(PS_STDCALL);
+  CallConvention := ConvStdCall;
+  parser_ReadSemicolon(Scope);
+  Result := parser_NextToken(Scope);
+end;
+
+function TASTDelphiUnit.ProcSpec_FastCall(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
+begin
+  if CallConvention = ConvFastCall then
+    ERROR_DUPLICATE_SPECIFICATION(PS_FASTCALL);
+  CallConvention := ConvFastCall;
+  parser_ReadSemicolon(Scope);
+  Result := parser_NextToken(Scope);
+end;
+
+function TASTDelphiUnit.ProcSpec_CDecl(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
+begin
+  if CallConvention = ConvCDecl then
+    ERROR_DUPLICATE_SPECIFICATION(PS_CDECL);
+  CallConvention := ConvCDecl;
+  parser_ReadSemicolon(Scope);
+  Result := parser_NextToken(Scope);
+end;
+
+function TASTDelphiUnit.ParseGenericMember(const PMContext: TPMContext; const SContext: TSContext; StrictSearch: Boolean; out Decl: TIDDeclaration; out WithExpression: TIDExpression): TTokenID;
+var
+  Scope: TScope;
+  GenericArgs: TIDExpressions;
+  ExprName: string;
+begin
+  Scope := PMContext.ItemScope;
+
+  Result := ParseGenericsArgs(Scope, SContext, GenericArgs);
+  ExprName := format('%s<%d>', [PMContext.ID.Name, Length(GenericArgs)]);
+
+
+  if not StrictSearch then
+    Decl := Scope.FindIDRecurcive(ExprName, WithExpression)
+  else
+    Decl := Scope.FindMembers(ExprName);
+  if not Assigned(Decl) then
+    ERROR_UNDECLARED_ID(ExprName, parser_PrevPosition);
+
+  if Decl.ItemType = itType then
+    Decl := SpecializeGenericType(TIDType(Decl), PMContext.ID, GenericArgs)
+  else
+    ERROR_FEATURE_NOT_SUPPORTED;
+end;
+
+function TASTDelphiUnit.ParseIdentifier(Scope, SearchScope: TScope; out Expression: TIDExpression; var EContext: TEContext;
                                         const ASTE: TASTExpression): TTokenID;
 var
   Decl: TIDDeclaration;
@@ -4086,7 +6277,7 @@ begin
     Result := parser_NextToken(Scope);
     if not Assigned(Decl) then begin
       if Result = token_less then
-        Result := ParseGenericMember(PMContext, {SContext}nil, StrictSearch, Decl, Expr);
+        Result := ParseGenericMember(PMContext, EContext.SContext, StrictSearch, Decl, Expr);
 
       if PMContext.ItemScope is TConditionalScope then
       begin
@@ -4318,6 +6509,55 @@ begin
     end;*)
 end;
 
+function TASTDelphiUnit.ParseNamedTypeDecl(Scope: TScope): TTokenID;
+var
+  ID: TIdentifier;
+  Decl: TIDType;
+  GenericParams: TIDTypeList;
+  ParserPos: TParserPosition;
+  GDescriptor: PGenericDescriptor;
+begin
+  Result := parser_NextToken(Scope);
+  parser_MatchIdentifier(Result);
+  repeat
+    parser_ReadCurrIdentifier(ID);
+
+    Result := parser_NextToken(Scope);
+
+    {если есть символ "<" - читаем обобщенные параметры}
+    if Result = token_less then begin
+      GDescriptor := TGenericDescriptor.Create(Scope);
+      Result := ParseGenericsHeader(GDescriptor.Scope, GenericParams);
+      GDescriptor.GenericParams := GenericParams;
+      GDescriptor.SearchName := format('%s<%d>', [ID.Name, Length(GenericParams)]);
+    end else
+      GDescriptor := nil;
+
+    parser_MatchToken(Result, token_equal);
+
+    if Assigned(GDescriptor) then
+    begin
+      Parser.SaveState(ParserPos);
+      GDescriptor.IntfSRCPosition := ParserPos;
+    end;
+
+    parser_NextToken(Scope);
+
+    Result := ParseTypeDecl(Scope, nil, GDescriptor, ID, Decl);
+    if not Assigned(Decl) then
+      ERROR_INVALID_TYPE_DECLARATION;
+
+    parser_MatchToken(Result, token_semicolon);
+
+    // check and parse procedural type call convention
+    if Decl is TIDProcType then
+      Result := CheckAndParseProcTypeCallConv(Scope, Decl)
+    else
+      Result := parser_NextToken(Scope);
+
+  until Result <> token_identifier;
+end;
+
 function TASTDelphiUnit.ParseIndexedPropertyArgs(Scope: TScope; out ArgumentsCount: Integer; var EContext: TEContext): TTokenID;
 var
   Expr: TIDExpression;
@@ -4457,6 +6697,110 @@ begin
   InitProc.LastBodyLine := parser_Line;
 end;
 
+function TASTDelphiUnit.ParseInterfaceType(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier;
+  out Decl: TIDInterface): TTokenID;
+var
+  FwdDecl: TIDDeclaration;
+  Expr: TIDExpression;
+  Ancestor: TIDInterface;
+  SearchName: string;
+begin
+  if not Assigned(GDescriptor) then
+    SearchName := ID.Name
+  else
+    SearchName := GDescriptor.SearchName;
+
+  FwdDecl := Scope.FindID(SearchName);
+  if not Assigned(FwdDecl) then
+  begin
+    Decl := TIDInterface.Create(Scope, ID);
+    if Assigned(GenericScope) then
+      Decl.Members.AddScope(GenericScope);
+    Decl.GenericDescriptor := GDescriptor;
+    if not Assigned(GDescriptor) then
+      InsertToScope(Scope, Decl)
+    else
+      InsertToScope(Scope, GDescriptor.SearchName, Decl);
+    //InsertToScope(Scope, Decl);
+  end else
+  begin
+    if (FwdDecl.ItemType = itType) and (TIDType(FwdDecl).DataTypeID = dtInterface) and TIDType(FwdDecl).NeedForward then
+      Decl := FwdDecl as TIDInterface
+    else begin
+      ERROR_ID_REDECLARATED(FwdDecl);
+    end;
+  end;
+
+  Result := parser_NextToken(Scope);
+  if Result = token_openround then
+  begin
+    parser_NextToken(Scope);
+    Result := ParseConstExpression(Scope, Expr, ExprNested);
+    CheckInterfaceType(Expr);
+    Ancestor := TIDInterface(Expr.Declaration);
+    if Ancestor = Decl then
+      AbortWork(sRecurciveTypeLinkIsNotAllowed, Expr.TextPosition);
+    parser_MatchToken(Result, token_closeround);
+    Decl.Ancestor := Ancestor;
+    Result := parser_NextToken(Scope);
+  end;
+
+  // если найден символ ; - то это forward-декларация
+  if Result = token_semicolon then
+  begin
+    if Decl.NeedForward then
+      ERROR_ID_REDECLARATED(ID);
+    Decl.NeedForward := True;
+    Exit;
+  end;
+
+  if Result = token_openblock then
+    Result := ParseIntfGUID(Scope, Decl);
+
+  while True do begin
+    case Result of
+      token_openblock: Result := ParseAttribute(Scope);
+      token_procedure: Result := ParseProcedure(Decl.Members, ptProc, Decl);
+      token_function: Result := ParseProcedure(Decl.Members, ptFunc, Decl);
+      token_property: Result := ParseProperty(Decl);
+    else
+      break;
+    end;
+  end;
+  CheckIncompleteType(Decl.Members);
+  Decl.StructFlags := Decl.StructFlags + [StructCompleted];
+  parser_MatchToken(Result, token_end);
+  Result := parser_NextToken(Scope);
+  if Result = token_external then
+    Result := ParseImportStatement(Scope, Decl);
+end;
+
+function TASTDelphiUnit.ParseIntfGUID(Scope: TScope; Decl: TIDInterface): TTokenID;
+var
+  UID: TIDExpression;
+  GUID: TGUID;
+begin
+  parser_NextToken(Scope);
+  if parser_IdentifireType = itString then
+  begin
+    Result := ParseConstExpression(Scope, UID, ExprNested);
+    CheckEmptyExpression(UID);
+    CheckStringExpression(UID);
+
+    try
+      GUID := StringToGUID(UID.AsStrConst.Value);
+    except
+      AbortWork('Invalid GUID', parser_Position);
+    end;
+
+    Decl.GUID := GUID;
+
+    parser_MatchToken(Result, token_closeblock);
+    Result := parser_NextToken(Scope);
+  end else
+    Result := ParseAttribute(Scope);
+end;
+
 function TASTDelphiUnit.ParseFinalSection: TTokenID;
 var
   SContext: TSContext;
@@ -4508,6 +6852,198 @@ begin
 
     if DefaultValue.IsAnonymous then
       DefaultValue.Declaration.DataType := DataType; // подгоняем фактичиский тип константы под необходимый
+  end;
+end;
+
+function TASTDelphiUnit.ParseVarInCaseRecord(Scope: TScope; Visibility: TVisibility; Struct: TIDStructure): TTokenID;
+var
+  i, c: Integer;
+  DataType: TIDType;
+  DefaultValue: TIDExpression;
+  Field: TIDVariable;
+  Names: TIdentifiersPool;
+  VarFlags: TVariableFlags;
+begin
+  c := 0;
+  Names := TIdentifiersPool.Create(2);
+  while True do begin
+    VarFlags := [];
+    Result := CheckAndParseAttribute(Scope);
+    parser_MatchIdentifier(Result);
+    Names.Add;
+    parser_ReadCurrIdentifier(Names.Items[c]);
+    Result := parser_NextToken(Scope);
+    if Result = token_Coma then begin
+      Inc(c);
+      parser_NextToken(Scope);
+      Continue;
+    end;
+    parser_MatchToken(Result, token_colon);
+    // парсим тип
+    Result := ParseTypeSpec(Scope, DataType);
+    DefaultValue := nil;
+    // спецификатор NOT NULL/NULLABLE
+    case Result of
+      token_exclamation: begin
+        Include(VarFlags, VarNotNull);
+        Result := parser_NextToken(Scope);
+      end;
+      token_question: begin
+        Exclude(VarFlags, VarNotNull);
+        Result := parser_NextToken(Scope);
+      end;
+    end;
+    case Result of
+      // значение по умолчанию
+      token_equal: Result := ParseVarDefaultValue(Scope, DataType, DefaultValue);
+    end;
+
+    for i := 0 to c do begin
+      if not Assigned(Struct) then
+        Field := TIDVariable.Create(Scope, Names.Items[i])
+      else
+        Field := TIDField.Create(Struct, Names.Items[i]);
+      Field.DataType := DataType;
+      Field.Visibility := Visibility;
+      Field.DefaultValue := DefaultValue;
+      Field.Flags := Field.Flags + VarFlags;
+      Scope.AddVariable(Field);
+    end;
+
+    if Result = token_semicolon then
+    begin
+      Result := parser_NextToken(Scope);
+      if TokenCanBeID(Result) then
+      begin
+        c := 0;
+        Continue;
+      end;
+    end;
+    Break;
+  end;
+end;
+
+function TASTDelphiUnit.ParseVarRecordDefaultValue(Scope: TScope; Struct: TIDStructure; out DefaultValue: TIDExpression): TTokenID;
+var
+  i: Integer;
+  ID: TIdentifier;
+  Expr: TIDExpression;
+  Decl: TIDDeclaration;
+  Expressions: TIDRecordConstantFields;
+begin
+  i := 0;
+  parser_MatchNextToken(Scope, token_openround);
+  SetLength(Expressions, Struct.FieldsCount);
+  while True do begin
+    parser_ReadNextIdentifier(Scope, ID);
+    parser_MatchNextToken(Scope, token_colon);
+    parser_NextToken(Scope);
+    Result := ParseConstExpression(Scope, Expr, ExprRValue);
+    Expressions[i].Field := Struct.FindField(ID.Name);
+    Expressions[i].Value := Expr;
+    Inc(i);
+    if Result = token_semicolon then
+      Continue;
+    Break;
+  end;
+  // create anonymous record constant
+  Decl := TIDRecordConstant.CreateAnonymous(Scope, Struct, Expressions);
+  DefaultValue := TIDExpression.Create(Decl, parser_Position);
+
+  parser_MatchToken(Result, token_closeround);
+  Result := parser_NextToken(Scope);
+end;
+
+function TASTDelphiUnit.ParseVarSection(Scope: TScope; Visibility: TVisibility; Struct: TIDStructure; IsWeak, isRef: Boolean): TTokenID;
+var
+  i, c: Integer;
+  DataType: TIDType;
+  DefaultValue: TIDExpression;
+  DeclAbsolute: TIDDeclaration;
+  ID: TIdentifier;
+  Field: TIDVariable;
+  Names: TIdentifiersPool;
+  VarFlags: TVariableFlags;
+  Deprecated: TIDExpression;
+begin
+  c := 0;
+  Names := TIdentifiersPool.Create(2);
+  while True do begin
+    VarFlags := [];
+    Result := CheckAndParseAttribute(Scope);
+    parser_MatchIdentifier(Result);
+    Names.Add;
+    parser_ReadCurrIdentifier(Names.Items[c]);
+    Result := parser_NextToken(Scope);
+    if Result = token_Coma then begin
+      Inc(c);
+      parser_NextToken(Scope);
+      Continue;
+    end;
+    parser_MatchToken(Result, token_colon);
+    // парсим тип
+    Result := ParseTypeSpec(Scope, DataType);
+    DeclAbsolute := nil;
+    DefaultValue := nil;
+
+    // platform declaration
+    if Result = token_platform then
+      Result := ParsePlatform(Scope);
+
+    case Result of
+      // значение по умолчанию
+      token_equal: Result := ParseVarDefaultValue(Scope, DataType, DefaultValue);
+      // absolute
+      token_absolute: begin
+        parser_ReadNextIdentifier(Scope, ID);
+        DeclAbsolute := Scope.FindID(ID.Name);
+        if not Assigned(DeclAbsolute) then
+          AbortWork(sUndeclaredIdentifier, [ID.Name], ID.TextPosition);
+        if DeclAbsolute.ItemType <> itVar then
+          AbortWork(sVariableRequired, parser_Position);
+        Result := parser_NextToken(Scope);
+      end;
+    end;
+
+    // deprecated
+    if Result = token_deprecated then
+      Result := ParseDeprecated(Scope, Deprecated);
+
+    parser_MatchToken(Result, token_semicolon);
+    // check and parse procedural type call convention
+    if DataType is TIDProcType then
+      Result := CheckAndParseProcTypeCallConv(Scope, DataType)
+    else
+      Result := parser_NextToken(Scope);
+
+    for i := 0 to c do begin
+      if not Assigned(Struct) then
+        Field := TIDVariable.Create(Scope, Names.Items[i])
+      else
+        Field := TIDField.Create(Struct, Names.Items[i]);
+      // если это слабая ссылка - получаем соответствующий тип
+      if IsWeak then
+        DataType := GetWeakRefType(Scope, DataType);
+      Field.DataType := DataType;
+      Field.Visibility := Visibility;
+
+      // if the init value for global var is not constant value
+//      if Assigned(DefaultValue) and DefaultValue.IsTMPVar then
+//      begin
+//        ILWrite(@fInitProcSConect, TIL.IL_Move(TIDExpression.Create(Field), DefaultValue));
+//      end else
+      Field.DefaultValue := DefaultValue;
+
+      Field.Absolute := TIDVariable(DeclAbsolute);
+      Field.Flags := Field.Flags + VarFlags;
+      if isRef then
+        Field.Flags := Field.Flags + [VarNotNull];
+      Scope.AddVariable(Field);
+    end;
+
+    if Result <> token_identifier then
+      Exit;
+    c := 0;
   end;
 end;
 

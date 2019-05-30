@@ -59,6 +59,7 @@ type
   TIDGenericType = class;
   TIDStringConstant = class;
   TIDProcType = class;
+  TASTDelphiProc = class;
 
   TScope = class;
   TStructScope = class;
@@ -1414,8 +1415,15 @@ type
     function CECalc(const Args: TIDExpressions): TIDConstant;
   end;
 
+  TASTDelphiProc = class(TIDProcedure)
+  private
+    fBody: TASTBlock;
+  public
+    property Body: TASTBlock read fBody write fBody;
+  end;
+
   {пользовательский перегруженный оператор}
-  TIDOperator = class(TIDProcedure)
+  TIDOperator = class(TASTDelphiProc)
   private
     FOperator: TOperatorID;
     function GetRightOperand: TIDType;
@@ -1553,13 +1561,6 @@ type
   end;
 
   TConditionalScope = class(TScope)
-  end;
-
-  TASTDelphiProc = class(TIDProcedure)
-  private
-    fBody: TASTBlock;
-  public
-    property Body: TASTBlock read fBody write fBody;
   end;
 
   TASTDelphiLabel = class(TIDDeclaration)
