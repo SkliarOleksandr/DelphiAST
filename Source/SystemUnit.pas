@@ -669,7 +669,7 @@ end;
 function TSYSTEMUnit.RegisterBuiltin(const BuiltinClass: TIDBuiltInFunctionClass): TIDBuiltInFunction;
 begin
   Result := BuiltinClass.CreateDecl(Self.IntfSection);
-  TNPUnit.InsertToScope(Self.IntfSection, Result);
+  InsertToScope(Self.IntfSection, Result);
 end;
 
 procedure TSYSTEMUnit.RegisterBuiltinFunctions;

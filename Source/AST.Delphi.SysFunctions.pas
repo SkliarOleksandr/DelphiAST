@@ -142,12 +142,14 @@ type
 
 implementation
 
+uses AST.Delphi.Errors;
+
 { TSF_Now }
 
 function TSF_Now.Process(var EContext: TEContext): TIDExpression;
 var
   ResVar: TIDVariable;
-  UN: TNPUnit;
+  UN: TASTDelphiUnit;
 begin
   UN := GetUnit(EContext);
   ResVar := EContext.SContext.Proc.GetTMPVar(SYSUnit._DateTime);
@@ -299,7 +301,7 @@ var
   Expr: TIDExpression;
   Decl: TIDDeclaration;
   DataType: TIDType;
-  UN: TNPUnit;
+  UN: TASTDelphiUnit;
 begin
   // читаем аргумент
   Expr := EContext.RPNPopExpression();
@@ -349,7 +351,7 @@ var
   Expr: TIDExpression;
   Decl: TIDDeclaration;
   DataType: TIDType;
-  UN: TNPUnit;
+  UN: TASTDelphiUnit;
 begin
   // читаем аргумент
   Expr := EContext.RPNPopExpression();
@@ -522,7 +524,7 @@ function TSF_Ord.Process(var EContext: TEContext): TIDExpression;
 var
   Expr: TIDExpression;
   CValue: Int64;
-  UN: TNPUnit;
+  UN: TASTDelphiUnit;
 begin
   UN := GetUnit(EContext);
   // read the argument
@@ -591,7 +593,7 @@ var
   Expr: TIDExpression;
 begin
   Expr := EContext.RPNPopExpression();
-  TNPUnit.CheckReferenceType(Expr);
+  TASTDelphiUnit.CheckReferenceType(Expr);
   Result := GetBoolResultExpr(EContext.SContext);
 end;
 

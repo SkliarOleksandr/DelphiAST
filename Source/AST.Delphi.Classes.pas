@@ -1603,6 +1603,7 @@ implementation
 uses SystemUnit,
      OPCompiler,
      AST.Parser.Errors,
+     AST.Delphi.Errors,
      AST.Delphi.Parser,
      AST.Delphi.SysOperators;
 
@@ -2097,9 +2098,9 @@ end;
 
 function TIDDeclaration.GetPackage: INPPackage;
 var
-  U: TNPUnit;
+  U: TASTDelphiUnit;
 begin
-  U := TNPUnit(DeclUnit);
+  U := TASTDelphiUnit(DeclUnit);
   Assert(Assigned(U));
   Result := U.Package;
 end;
@@ -4425,7 +4426,7 @@ begin
     if Assigned(Decl) and (Decl.ItemType = itType) then
       FReferenceType := TIDType(Decl)
     else
-      TNPUnit.ERROR_UNDECLARED_ID(ForwardID);
+      TASTDelphiUnit.ERROR_UNDECLARED_ID(ForwardID);
   end;
   Result := FReferenceType;
 end;

@@ -214,6 +214,8 @@ implementation
 
 uses NPCompiler.DataTypes,
      NPCompiler.Utils,
+     AST.Delphi.Parser,
+     AST.Delphi.Errors,
      OPCompiler,
      SystemUnit;
 
@@ -348,7 +350,7 @@ end;
 function TIDOpImplicitMetaClassToGUID.Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
   if Src.AsType.DataTypeID <> dtInterface then
-    TNPUnit.ERROR_INTF_TYPE_REQUIRED(Src);
+    TASTDelphiUnit.ERROR_INTF_TYPE_REQUIRED(Src);
 
   Result := Dst;
 end;
@@ -406,7 +408,7 @@ var
 begin
   if Src.IsDynArrayConst then
   begin
-    Expr := TNPUnit.ConstDynArrayToSet(Src, Dst as TIDSet);
+    Expr := TASTDelphiUnit.ConstDynArrayToSet(Src, Dst as TIDSet);
     Result := Expr.DataType;
   end else
     Result := nil;
@@ -416,7 +418,7 @@ function TIDOpImplicitDynArrayToSet.Match(const SContext: PSContext; const Src: 
 begin
   if Src.IsDynArrayConst then
   begin
-    Result := TNPUnit.ConstDynArrayToSet(Src, Dst as TIDSet);
+    Result := TASTDelphiUnit.ConstDynArrayToSet(Src, Dst as TIDSet);
   end else
     Result := nil;
 end;
@@ -469,7 +471,7 @@ begin
   begin
     var SrcProc := Src.AsProcedure;
     var DstProcType := Dst as TIDProcType;
-    if TNPUnit.StrictMatchProcSingnatures(SrcProc.ExplicitParams, DstProcType.Params, SrcProc.ResultType, DstProcType.ResultType) then
+    if TASTDelphiUnit.StrictMatchProcSingnatures(SrcProc.ExplicitParams, DstProcType.Params, SrcProc.ResultType, DstProcType.ResultType) then
       Exit(Src)
     else
       Exit(nil);

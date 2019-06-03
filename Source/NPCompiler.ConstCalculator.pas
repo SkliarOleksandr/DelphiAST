@@ -9,7 +9,12 @@ function ProcessConstOperation(const Left, Right: TIDConstant; Operation: TOpera
 
 implementation
 
-uses SystemUnit, OPCompiler, NPCompiler.DataTypes, NPCompiler.Utils;
+uses SystemUnit,
+     OPCompiler,
+     NPCompiler.DataTypes,
+     NPCompiler.Utils,
+     AST.Delphi.Parser,
+     AST.Delphi.Errors;
 
 function ProcessConstOperation(const Left, Right: TIDConstant; Operation: TOperatorID): TIDConstant; overload;
   //////////////////////////////////////////////////////////////
@@ -27,7 +32,7 @@ function ProcessConstOperation(const Left, Right: TIDConstant; Operation: TOpera
       opNegative: iValue := -RValue;
       opIntDiv, opDivide: begin
         if RValue = 0 then
-          TNPUnit.ERROR_DIVISION_BY_ZERO(SYSUnit._EmptyStrExpression);
+          TASTDelphiUnit.ERROR_DIVISION_BY_ZERO(SYSUnit._EmptyStrExpression);
         if Operation = opIntDiv then
           iValue := LValue div RValue
         else begin
@@ -77,7 +82,7 @@ function ProcessConstOperation(const Left, Right: TIDConstant; Operation: TOpera
       opMultiply: fValue := LValue * RValue;
       opDivide: begin
         if RValue = 0 then
-          TNPUnit.ERROR_DIVISION_BY_ZERO(SYSUnit._EmptyStrExpression);
+          TASTDelphiUnit.ERROR_DIVISION_BY_ZERO(SYSUnit._EmptyStrExpression);
         fValue := LValue / RValue;
       end;
       opNegative: begin
@@ -221,7 +226,7 @@ function ProcessConstOperation(Left, Right: TIDExpression; Operation: TOperatorI
       opNegative: iValue := -RValue;
       opIntDiv, opDivide: begin
         if RValue = 0 then
-          TNPUnit.ERROR_DIVISION_BY_ZERO(Right);
+          TASTDelphiUnit.ERROR_DIVISION_BY_ZERO(Right);
         if Operation = opIntDiv then
           iValue := LValue div RValue
         else begin
@@ -271,7 +276,7 @@ function ProcessConstOperation(Left, Right: TIDExpression; Operation: TOperatorI
       opMultiply: fValue := LValue * RValue;
       opDivide: begin
         if RValue = 0 then
-          TNPUnit.ERROR_DIVISION_BY_ZERO(Right);
+          TASTDelphiUnit.ERROR_DIVISION_BY_ZERO(Right);
         fValue := LValue / RValue;
       end;
       opNegative: begin
