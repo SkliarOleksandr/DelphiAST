@@ -193,6 +193,15 @@ type
     function parser_SkipBlock(StopToken: TTokenID): TTokenID;
     function parser_SkipTo(Scope: TScope; StopToken: TTokenID): TTokenID;
 
+    procedure PutMessage(Message: TCompilerMessage); overload;
+    procedure PutMessage(MessageType: TCompilerMessageType; const MessageText: string); overload;
+    procedure PutMessage(MessageType: TCompilerMessageType; const MessageText: string; const SourcePosition: TTextPosition); overload;
+    procedure Error(const Message: string; const Params: array of const; const TextPosition: TTextPosition);
+    procedure Warning(const Message: string; const Params: array of const; const TextPosition: TTextPosition);
+    procedure Hint(const Message: string; const Params: array of const; const TextPosition: TTextPosition); overload;
+    procedure Hint(const Message: string; const Params: array of const); overload;
+
+
     function FindID(Scope: TScope; const ID: TIdentifier): TIDDeclaration; overload; inline;
     function FindID(Scope: TScope; const ID: TIdentifier; out Expression: TIDExpression): TIDDeclaration; overload;
     function FindIDNoAbort(Scope: TScope; const ID: TIdentifier): TIDDeclaration; overload; inline;
@@ -258,7 +267,7 @@ type
     function ParseBuiltinCall(Scope: TScope; CallExpr: TIDExpression; var EContext: TEContext): TTokenID;
     function ParseExplicitCast(Scope: TScope; const SContext: TSContext; var DstExpression: TIDExpression): TTokenID;
     function ParseExitStatement(Scope: TScope; const SContext: TSContext): TTokenID; overload;
-    function ParseProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure = nil): TTokenID; override;
+    function ParseProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure = nil): TTokenID;
     function ParseProcName(var Scope: TScope; out Name: TIdentifier; var Struct: TIDStructure; out ProcScope: TProcScope; out GenericParams: TIDTypeList): TTokenID;
     function ParseProcBody(Proc: TASTDelphiProc): TTokenID;
     function ParseGenericProcRepeatedly(Scope: TScope; GenericProc, Proc: TASTDelphiProc; Struct: TIDStructure): TTokenID;
@@ -2712,6 +2721,58 @@ begin
     if (Result = StopToken) or (Result = token_eof) then
       Exit;
   end;
+end;
+
+procedure TASTDelphiUnit.PutMessage(MessageType: TCompilerMessageType; const MessageText: string);
+var
+  SourcePosition: TTextPosition;
+  Msg: TCompilerMessage;
+begin
+  SourcePosition.Row := -1;
+  SourcePosition.Col := -1;
+  Msg := TCompilerMessage.Create(Self, MessageType, MessageText, SourcePosition);
+  Msg.UnitName := _ID.Name;
+  Messages.Add(Msg);
+end;
+
+procedure TASTDelphiUnit.PutMessage(MessageType: TCompilerMessageType; const MessageText: string; const SourcePosition: TTextPosition);
+var
+  Msg: TCompilerMessage;
+begin
+  Msg := TCompilerMessage.Create(Self, MessageType, MessageText, SourcePosition);
+  Msg.UnitName := _ID.Name;
+  Messages.Add(Msg);
+end;
+
+procedure TASTDelphiUnit.PutMessage(Message: TCompilerMessage);
+begin
+  Message.UnitName := Self.Name;
+  if Message.Row <=0 then
+  begin
+    Message.Row := parser_Position.Row;
+    Message.Col := parser_Position.Col;
+  end;
+  Messages.Add(Message);
+end;
+
+procedure TASTDelphiUnit.Error(const Message: string; const Params: array of const; const TextPosition: TTextPosition);
+begin
+  PutMessage(cmtError, Format(Message, Params), TextPosition);
+end;
+
+procedure TASTDelphiUnit.Warning(const Message: string; const Params: array of const; const TextPosition: TTextPosition);
+begin
+  PutMessage(cmtWarning, Format(Message, Params), TextPosition);
+end;
+
+procedure TASTDelphiUnit.Hint(const Message: string; const Params: array of const; const TextPosition: TTextPosition);
+begin
+  PutMessage(cmtHint, Format(Message, Params), TextPosition);
+end;
+
+procedure TASTDelphiUnit.Hint(const Message: string; const Params: array of const);
+begin
+  PutMessage(cmtHint, Format(Message, Params));
 end;
 
 function TASTDelphiUnit.FindID(Scope: TScope; const ID: TIdentifier; out Expression: TIDExpression): TIDDeclaration;

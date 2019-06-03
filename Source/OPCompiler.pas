@@ -60,9 +60,7 @@ type
     TIdentifiersPool = TPool<TIdentifier>;
   private
     FID: Integer;                      // ID модуля в пакете
-
     FParser: TDelphiLexer;
-
     FIntfScope: TScope;                // interface scope
     FImplScope: TScope;                // implementation scope
     FIntfImportedUnits: TUnitList;
@@ -71,77 +69,25 @@ type
     FVarSpace: TVarSpace;
     FProcSpace: TProcSpace;
     FTypeSpace: TTypeSpace;
-
-
     FConsts: TConstSpace;              // список нетривиальных констант (массивы, структуры)
     FCompiled: Boolean;
-
-
     function GetMessagesText: string;
-    //========================================================================================================
-    // процедуры генерации ошибок компиляции
-  public
-
   protected
-
-    
-    
     FUnitName: TIdentifier;
-
-
-
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
     function GetSource: string;
     procedure SetUnitName(const Name: string);
   public
-
     class function IsConstValueInRange(Value: TIDExpression; RangeExpr: TIDRangeConstant): Boolean; static;
     class function IsConstRangesIntersect(const Left, Right: TIDRangeConstant): Boolean; static;
     class function IsConstEqual(const Left, Right: TIDExpression): Boolean; static;
     //======================================================================================================================================
-
     procedure AddType(const Decl: TIDType); inline;
     procedure AddConstant(const Decl: TIDConstant); inline;
   public
-    procedure PutMessage(Message: TCompilerMessage); overload;
-    procedure PutMessage(MessageType: TCompilerMessageType; const MessageText: string); overload;
-    procedure PutMessage(MessageType: TCompilerMessageType; const MessageText: string; const SourcePosition: TTextPosition); overload;
-    procedure Error(const Message: string; const Params: array of const; const TextPosition: TTextPosition);
-    procedure Warning(const Message: string; const Params: array of const; const TextPosition: TTextPosition);
-    procedure Hint(const Message: string; const Params: array of const; const TextPosition: TTextPosition); overload;
-    procedure Hint(const Message: string; const Params: array of const); overload;
-    //////////////////////////////////////////////////////////////////////////////////////////////////////
-    ///  функции работы с парсером
-    procedure parser_MatchSemicolon(const ActualToken: TTokenID); inline;
-    function parser_CurTokenID: TTokenID; inline;
-    function parser_Position: TTextPosition; inline;
-    function parser_PrevPosition: TTextPosition; inline;
-    function parser_IdentifireType: TIdentifierType; inline;
-    function parser_TokenLexem(const TokenID: TTokenID): string; inline;
-    function parser_Line: Integer; inline;
-    function parser_SkipBlock(StopToken: TTokenID): TTokenID;
-    //=======================================================================================================================
-
-    //=======================================================================================================================
-    /// условная компиляция
-    function ParseCondIf(Scope: TScope; out ExpressionResult: TCondIFValue): TTokenID;
-    function ParseCondOptSet(Scope: TScope): TTokenID;
-//    function ParseCondOptPush(Scope: TScope): TTokenID;
-    //function ParseCondOptPop(Scope: TScope): TTokenID;
-    procedure ParseCondDefine(Scope: TScope; add_define: Boolean);
-    //=======================================================================================================================
-    //=======================================================================================================================
-    /// парсинг выражений
-    function ParseExpression(Scope: TScope; var EContext: TEContext; SrartToken: TTokenID): TTokenID;
-    //=======================================================================================================================
-    function ParseProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure = nil): TTokenID; virtual;
 
     { функция пост-оброботки откомпилированного модуля}
     procedure PostCompileProcessUnit;
-
-    
-
-    
     property Parser: TDelphiLexer read FParser;
   public
     ////////////////////////////////////////////////////////////////////////////
@@ -153,9 +99,6 @@ type
     procedure SaveDeclToStream(Stream: TStream);   // сохраняет все декларации модуля
     procedure SaveBodyToStream(Stream: TStream);   // сохраняет тела всех глобальных процедур модуля
     procedure SaveTypesToStream(Stream: TStream);  // сохраняет все типы модуля
-    {возвращает список доступных в данном участке исходного кода обьявлений}
-//    procedure GetSRCDeclarations(const SrcPos: TTextPosition; Items: TIDDeclarationList);
-//    procedure GetINFDeclarations(Items: TIDDeclarationList);
 
     function Compile(RunPostCompile: Boolean = True): TCompilerResult; virtual;
 
@@ -187,47 +130,6 @@ implementation
 { TCompiler }
 
 uses SystemUnit, NPCompiler.Messages, AST.Parser.Errors, NPCompiler.ConstCalculator;
-
-
-
-procedure TNPUnit.Error(const Message: string; const Params: array of const; const TextPosition: TTextPosition);
-begin
-  PutMessage(cmtError, Format(Message, Params), TextPosition);
-end;
-
-function TNPUnit.parser_CurTokenID: TTokenID;
-begin
-  Result := TTokenID(FParser.CurrentTokenID);
-end;
-
-function TNPUnit.parser_Position: TTextPosition;
-begin
-  Result := FParser.Position;
-end;
-
-function TNPUnit.parser_PrevPosition: TTextPosition;
-begin
-  Result := FParser.PrevPosition;
-end;
-
-function TNPUnit.parser_IdentifireType: TIdentifierType;
-begin
-  Result := FParser.IdentifireType;
-end;
-
-function TNPUnit.parser_Line: Integer;
-begin
-  Result := FParser.Position.Row;
-end;
-
-function TNPUnit.parser_TokenLexem(const TokenID: TTokenID): string;
-begin
-  Result := FParser.TokenLexem(TokenID);
-end;
-
-procedure TNPUnit.parser_MatchSemicolon(const ActualToken: TTokenID);
-begin
-end;
 
 
 procedure TNPUnit.SetUnitName(const Name: string);
@@ -331,15 +233,6 @@ begin
   end;
 end;
 
-procedure TNPUnit.ParseCondDefine(Scope: TScope; add_define: Boolean);
-begin
-end;
-
-function TNPUnit.ParseCondIf(Scope: TScope; out ExpressionResult: TCondIFValue): TTokenID;
-begin
-end;
-
-
 //function TNPUnit.ParseCondOptPop(Scope: TScope): TTokenID;
 //var
 //  ID: TIdentifier;
@@ -362,73 +255,8 @@ end;
 //  Result := FParser.NextToken;
 //end;
 
-function TNPUnit.ParseCondOptSet(Scope: TScope): TTokenID;
-begin
-end;
-
-
-function TNPUnit.parser_SkipBlock(StopToken: TTokenID): TTokenID;
-var
-  ECnt: Integer;
-begin
-  ECnt := 0;
-  while True do begin
-    Result := FParser.NextToken;
-    case Result of
-      token_begin, token_try, token_case: Inc(ECnt);
-      token_end: begin
-        if (StopToken = token_end) and (ECnt = 0) then
-          Exit;
-        Dec(ECnt);
-        if (StopToken = token_end) and (ECnt = 0) then
-          Exit;
-      end;
-      token_eof: Exit(token_eof);
-    end;
-  end;
-end;
-
-procedure TNPUnit.PutMessage(MessageType: TCompilerMessageType; const MessageText: string);
-var
-  SourcePosition: TTextPosition;
-  Msg: TCompilerMessage;
-begin
-  SourcePosition.Row := -1;
-  SourcePosition.Col := -1;
-  Msg := TCompilerMessage.Create(Self, MessageType, MessageText, SourcePosition);
-  Msg.UnitName := _ID.Name;
-  FMessages.Add(Msg);
-end;
-
-procedure TNPUnit.PutMessage(MessageType: TCompilerMessageType; const MessageText: string; const SourcePosition: TTextPosition);
-var
-  Msg: TCompilerMessage;
-begin
-  Msg := TCompilerMessage.Create(Self, MessageType, MessageText, SourcePosition);
-  Msg.UnitName := _ID.Name;
-  FMessages.Add(Msg);
-end;
-
-procedure TNPUnit.PutMessage(Message: TCompilerMessage);
-begin
-  Message.UnitName := Self.Name;
-  if Message.Row <=0 then
-  begin
-    Message.Row := parser_Position.Row;
-    Message.Col := parser_Position.Col;
-  end;
-  FMessages.Add(Message);
-end;
-
-function TNPUnit.ParseExpression(Scope: TScope; var EContext: TEContext; SrartToken: TTokenID): TTokenID;
-begin
-  Assert(False);
-  Result := token_unknown;
-end;
-
 procedure TNPUnit.PostCompileProcessUnit;
 begin
-
 end;
 
 procedure TNPUnit.AddConstant(const Decl: TIDConstant);
@@ -445,12 +273,6 @@ begin
     Item := TIDConstant(Item.NextItem);
   end;
   FConsts.Add(Decl);
-end;
-
-function TNPUnit.ParseProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure): TTokenID;
-begin
-  Assert(False);
-  Result := token_unknown;
 end;
 
 procedure TNPUnit.AddType(const Decl: TIDType);
@@ -507,21 +329,6 @@ end;
 procedure TNPUnit.SaveBodyToStream(Stream: TStream);
 begin
   Assert(False);
-end;
-
-procedure TNPUnit.Warning(const Message: string; const Params: array of const; const TextPosition: TTextPosition);
-begin
-  PutMessage(cmtWarning, Format(Message, Params), TextPosition);
-end;
-
-procedure TNPUnit.Hint(const Message: string; const Params: array of const; const TextPosition: TTextPosition);
-begin
-  PutMessage(cmtHint, Format(Message, Params), TextPosition);
-end;
-
-procedure TNPUnit.Hint(const Message: string; const Params: array of const);
-begin
-  PutMessage(cmtHint, Format(Message, Params));
 end;
 
 { TPMContext }

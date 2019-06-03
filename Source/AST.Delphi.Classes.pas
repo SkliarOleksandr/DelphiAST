@@ -2367,7 +2367,7 @@ end;
 
 procedure TIDProcedure.Warning(const Message: string; const Params: array of const; const TextPosition: TTextPosition);
 begin
-  TNPUnit(DeclUnit).Warning(Message, Params, TextPosition);
+  TASTDelphiUnit(DeclUnit).Warning(Message, Params, TextPosition);
 end;
 
 function TIDProcedure.GetDebugIL: string;
@@ -2505,7 +2505,7 @@ end;
 
 procedure TIDProcedure.Hint(const Message: string; const Params: array of const; const TextPosition: TTextPosition);
 begin
-  TNPUnit(DeclUnit).Hint(Message, Params, TextPosition);
+  TASTDelphiUnit(DeclUnit).Hint(Message, Params, TextPosition);
 end;
 
 function TIDProcedure.GetMethodIndex: Integer;
