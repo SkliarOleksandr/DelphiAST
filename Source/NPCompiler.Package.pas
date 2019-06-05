@@ -10,7 +10,7 @@ uses System.SysUtils, System.Classes, System.Types, Generics.Collections, System
      NPLCompiler.Targets,
      NPCompiler.Intf,
      NPCompiler.Utils,
-     OPCompiler,
+     AST.Pascal.Parser,
      SystemUnit,
      AST.Classes;
 

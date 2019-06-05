@@ -1,4 +1,4 @@
-﻿unit NPCompiler.Operators;
+﻿unit AST.Delphi.Operators;
 
 interface
 
@@ -27,8 +27,6 @@ type
     opExplicit,
     opNegative,
     opPositive,
-    opPostInc,
-    opPostDec,
     opNot,
     // binar:
     opIn,
@@ -127,8 +125,6 @@ const
   {opExplicit}            -1,
   {opNegative}             8,
   {opPositive}             2,
-  {opPostInc}              7,
-  {opPostDec}              7,
   {opLogicalNot}           8,
 
   {opIn}                   1,
@@ -171,8 +167,6 @@ const
   {opExplicit}            opSpecial,
   {opNegative}            opUnarPrefix,
   {opPositive}            opUnarPrefix,
-  {opPostInc}             opUnarSufix,
-  {opPostDec}             opUnarSufix,
   {opLogicalNot}          opUnarPrefix,
 
   {opIn}                   opBinary,
@@ -221,8 +215,6 @@ const
   {opExplicit}        'Explicit',
   {opNegative}        'Negative',
   {opPositive}        'Positive',
-  {opPostInc}         'PostInc',
-  {opPostDec}         'PostDec',
   {opLogicalNot}      'Not',
 
   {opIn}              'In',
@@ -263,8 +255,6 @@ const
   {opExplicit}        'Explicit',
   {opNegative}        'Negative',
   {opPositive}        'Positive',
-  {opPostInc}         '++',
-  {opPostDec}         '--',
   {opLogicalNot}      'not',
 
   {opIn}              'in',
@@ -290,7 +280,7 @@ const
 
 function NeedRValue(Op: TOperatorID): Boolean; inline;
 begin
-  Result := (Op >= opPeriod) and (Op <> opPostInc) and (Op <> opPostDec);
+  Result := (Op >= opPeriod);
 end;
 
 

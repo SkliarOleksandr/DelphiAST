@@ -112,16 +112,15 @@
         <DCCReference Include="..\Source\NPCompiler.Errors.pas"/>
         <DCCReference Include="..\Source\NPCompiler.Intf.pas"/>
         <DCCReference Include="..\Source\NPCompiler.Messages.pas"/>
-        <DCCReference Include="..\Source\NPCompiler.Operators.pas"/>
+        <DCCReference Include="..\Source\AST.Delphi.Operators.pas"/>
         <DCCReference Include="..\Source\NPCompiler.Options.pas"/>
         <DCCReference Include="..\Source\NPCompiler.Package.pas"/>
         <DCCReference Include="..\Source\AST.Delphi.SysFunctions.pas"/>
         <DCCReference Include="..\Source\NPCompiler.Utils.pas"/>
         <DCCReference Include="..\Source\NPLCompiler.Targets.pas"/>
-        <DCCReference Include="..\Source\OPCompiler.pas"/>
+        <DCCReference Include="..\Source\AST.Pascal.Parser.pas"/>
         <DCCReference Include="..\Source\SystemUnit.pas"/>
-        <DCCReference Include="..\Source\Parser\iDStringParser.pas"/>
-        <DCCReference Include="..\Source\Parser\OPCompiler.Parser.pas"/>
+        <DCCReference Include="..\Source\Lexers\AST.Lexer.Delphi.pas"/>
         <DCCReference Include="..\Source\AST.Classes.pas"/>
         <DCCReference Include="..\Source\AST.Delphi.Parser.pas"/>
         <DCCReference Include="..\Source\AST.Project.pas"/>
@@ -132,6 +131,7 @@
         <DCCReference Include="..\Source\AST.Delphi.Contexts.pas"/>
         <DCCReference Include="..\Source\AST.Delphi.Errors.pas"/>
         <DCCReference Include="..\Source\AST.Parser.Errors.pas"/>
+        <DCCReference Include="..\Source\Lexers\AST.Lexer.pas"/>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
             <CfgParent>Base</CfgParent>

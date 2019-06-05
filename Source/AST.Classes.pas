@@ -2,7 +2,7 @@ unit AST.Classes;
 
 interface
 
-uses iDStringParser, AST.Project, NPCompiler.Utils;
+uses AST.Lexer, AST.Project, NPCompiler.Utils;
 
 type
   TASTItemTypeID = Integer;
@@ -67,6 +67,7 @@ type
     fFileName: string;
   protected
     function GetModuleName: string; virtual; abstract;
+    function GetSource: string; virtual; abstract;
   public
     property Name: string read GetModuleName;
     property FileName: string read fFileName;
@@ -75,7 +76,6 @@ type
     function GetFirstVar: TASTDeclaration; virtual; abstract;
     function GetFirstType: TASTDeclaration; virtual; abstract;
     function GetFirstConst: TASTDeclaration; virtual; abstract;
-
     constructor Create(const Project: IASTProject; const FileName: string; const Source: string = ''); virtual;
   end;
 

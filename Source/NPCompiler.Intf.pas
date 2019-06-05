@@ -4,7 +4,7 @@ interface
 
 {$I compilers.inc}
 
-uses SysUtils, Generics.Collections, idStringParser;
+uses SysUtils, Generics.Collections, AST.Lexer;
 
 type
 
@@ -75,7 +75,7 @@ type
 
 implementation
 
-uses OPCompiler, NPCompiler.Messages, NPCompiler.Utils;
+uses AST.Pascal.Parser, NPCompiler.Messages, NPCompiler.Utils;
 
 
 

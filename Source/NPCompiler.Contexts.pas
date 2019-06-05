@@ -2,7 +2,7 @@ unit NPCompiler.Contexts;
 
 interface
 
-uses System.SysUtils, AST.Delphi.Classes, iDStringParser;
+uses System.SysUtils, AST.Delphi.Classes, AST.Lexer;
 
 type
   TILInstruction = TObject;

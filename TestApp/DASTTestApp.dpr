@@ -11,16 +11,15 @@ uses
   NPCompiler.Errors in '..\Source\NPCompiler.Errors.pas',
   NPCompiler.Intf in '..\Source\NPCompiler.Intf.pas',
   NPCompiler.Messages in '..\Source\NPCompiler.Messages.pas',
-  NPCompiler.Operators in '..\Source\NPCompiler.Operators.pas',
+  AST.Delphi.Operators in '..\Source\AST.Delphi.Operators.pas',
   NPCompiler.Options in '..\Source\NPCompiler.Options.pas',
   NPCompiler.Package in '..\Source\NPCompiler.Package.pas',
   AST.Delphi.SysFunctions in '..\Source\AST.Delphi.SysFunctions.pas',
   NPCompiler.Utils in '..\Source\NPCompiler.Utils.pas',
   NPLCompiler.Targets in '..\Source\NPLCompiler.Targets.pas',
-  OPCompiler in '..\Source\OPCompiler.pas',
+  AST.Pascal.Parser in '..\Source\AST.Pascal.Parser.pas',
   SystemUnit in '..\Source\SystemUnit.pas',
-  iDStringParser in '..\Source\Parser\iDStringParser.pas',
-  OPCompiler.Parser in '..\Source\Parser\OPCompiler.Parser.pas',
+  AST.Lexer.Delphi in '..\Source\Lexers\AST.Lexer.Delphi.pas',
   AST.Classes in '..\Source\AST.Classes.pas',
   AST.Delphi.Parser in '..\Source\AST.Delphi.Parser.pas',
   AST.Project in '..\Source\AST.Project.pas',
@@ -30,7 +29,8 @@ uses
   AST.Delphi.SysOperators in '..\Source\AST.Delphi.SysOperators.pas',
   AST.Delphi.Contexts in '..\Source\AST.Delphi.Contexts.pas',
   AST.Delphi.Errors in '..\Source\AST.Delphi.Errors.pas',
-  AST.Parser.Errors in '..\Source\AST.Parser.Errors.pas';
+  AST.Parser.Errors in '..\Source\AST.Parser.Errors.pas',
+  AST.Lexer in '..\Source\Lexers\AST.Lexer.pas';
 
 {$R *.res}
 

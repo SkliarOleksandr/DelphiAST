@@ -5,10 +5,10 @@ interface
 {$i compilers.inc}
 
 uses Classes, SysUtils,
-     OPCompiler,
+     AST.Pascal.Parser,
      AST.Delphi.Classes,
      NPCompiler.DataTypes,
-     NPCompiler.Operators,
+     AST.Delphi.Operators,
      NPCompiler.Utils,
      NPCompiler.Intf,
      AST.Classes,
@@ -449,15 +449,6 @@ begin
   AddBinarOperator(opSubtract, _Float64, [_Int8, _UInt8, _Int16, _UInt16, _Int32, _UInt32, _Int64, _UInt64, _Float32, _Float64], _Float64);
 
   AddBinarOperator(opSubtract, _Variant, _Variant, _Variant);
-
-  AddUnarOperator(opPostDec, _Int8, _Int8);
-  AddUnarOperator(opPostDec, _Int16, _Int16);
-  AddUnarOperator(opPostDec, _Int32, _Int32);
-  AddUnarOperator(opPostDec, _Int64, _Int64);
-  AddUnarOperator(opPostDec, _UInt8, _UInt8);
-  AddUnarOperator(opPostDec, _UInt16, _UInt16);
-  AddUnarOperator(opPostDec, _UInt32, _UInt32);
-  AddUnarOperator(opPostDec, _UInt64, _UInt64);
 end;
 
 procedure TSYSTEMUnit.AddAddOperators;
@@ -488,15 +479,6 @@ begin
   AddBinarOperator(opAdd, _AnsiChar, _AnsiChar, _AnsiChar);
 
   AddBinarOperator(opAdd, _Variant, _Variant, _Variant);
-
-  AddUnarOperator(opPostInc, _Int8, _Int8);
-  AddUnarOperator(opPostInc, _Int16, _Int16);
-  AddUnarOperator(opPostInc, _Int32, _Int32);
-  AddUnarOperator(opPostInc, _Int64, _Int64);
-  AddUnarOperator(opPostInc, _UInt8, _UInt8);
-  AddUnarOperator(opPostInc, _UInt16, _UInt16);
-  AddUnarOperator(opPostInc, _UInt32, _UInt32);
-  AddUnarOperator(opPostInc, _UInt64, _UInt64);
 end;
 
 procedure TSYSTEMUnit.AddDivOperators;
@@ -623,7 +605,7 @@ end;
 
 function TSYSTEMUnit.RegisterType(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
 begin
-  Result := TypeClass.Create(IntfSection, Identifier(TypeName));
+  Result := TypeClass.Create(IntfScope, Identifier(TypeName));
   Result.Elementary := True;
   Result.DataTypeID := DataType;
   Result.ItemType := itType;
@@ -635,7 +617,7 @@ end;
 function TSYSTEMUnit.RegisterTypeCustom(const TypeName: string; TypeClass: TIDTypeClass;
   DataType: TDataTypeID): TIDType;
 begin
-  Result := TypeClass.Create(IntfSection, Identifier(TypeName));
+  Result := TypeClass.Create(IntfScope, Identifier(TypeName));
   Result.Elementary := True;
   Result.DataTypeID := DataType;
   Result.ItemType := itType;
@@ -660,7 +642,7 @@ end;
 
 function TSYSTEMUnit.RegisterBuiltin(const Name: string; MacroID: TBuiltInFunctionID; ResultDataType: TIDType; Flags: TProcFlags = []): TIDBuiltInFunction;
 begin
-  Result := TIDBuiltInFunction.Create(Self.IntfSection, Name, ResultDataType);
+  Result := TIDBuiltInFunction.Create(Self.IntfScope, Name, ResultDataType);
   Result.ResultType := ResultDataType;
   Result.Flags := Flags;
   InsertToScope(Result);
@@ -668,8 +650,8 @@ end;
 
 function TSYSTEMUnit.RegisterBuiltin(const BuiltinClass: TIDBuiltInFunctionClass): TIDBuiltInFunction;
 begin
-  Result := BuiltinClass.CreateDecl(Self.IntfSection);
-  InsertToScope(Self.IntfSection, Result);
+  Result := BuiltinClass.CreateDecl(Self.IntfScope);
+  InsertToScope(Self.IntfScope, Result);
 end;
 
 procedure TSYSTEMUnit.RegisterBuiltinFunctions;
@@ -698,7 +680,7 @@ begin
   RegisterBuiltin(TSF_FillChar);
   RegisterBuiltin(TSF_Assigned);
 
-  RegisterVariable(ImplSection, 'ReturnAddress', _Pointer);
+  RegisterVariable(ImplScope, 'ReturnAddress', _Pointer);
 end;
 
 function TSYSTEMUnit.RegisterOrdinal(const TypeName: string; DataType: TDataTypeID; LowBound: Int64; HighBound: UInt64): TIDType;
@@ -718,7 +700,6 @@ begin
     if Result = CompileSuccess then
     begin
       SearchSystemTypes;
-      PostCompileProcessUnit;
     end;
   except
     on e: ECompilerStop do Exit;
@@ -736,13 +717,13 @@ begin
   {$ENDIF}
 
   // nil constant
-  FNullPtrType := TIDNullPointerType.CreateAsSystem(IntfSection, 'null ptr');
-  FNullPtrConstatnt := TIDIntConstant.Create(IntfSection, Identifier('nil'), FNullPtrType, 0);
+  FNullPtrType := TIDNullPointerType.CreateAsSystem(IntfScope, 'null ptr');
+  FNullPtrConstatnt := TIDIntConstant.Create(IntfScope, Identifier('nil'), FNullPtrType, 0);
   FNullPtrExpression := TIDExpression.Create(FNullPtrConstatnt);
-  IntfSection.InsertID(FNullPtrConstatnt);
+  IntfScope.InsertID(FNullPtrConstatnt);
 
-  FUntypedReferenceType := TIDPointer.CreateAsSystem(IntfSection, 'Untyped reference');
-  IntfSection.InsertID(FUntypedReferenceType);
+  FUntypedReferenceType := TIDPointer.CreateAsSystem(IntfScope, 'Untyped reference');
+  IntfScope.InsertID(FUntypedReferenceType);
   FUntypedReferenceType.OverloadImplicitFromAny(TIDOpImplicitAnyToUntyped.CreateAsIntOp);
 
   FOrdinalType := TIDOrdinal.CreateAsSystem(nil, 'ordinal');
@@ -797,7 +778,7 @@ begin
   FTObject.NeedForward := True; // forward declaration
   InsertToScope(FTObject);}
   // TGUID ========================================================
-  FGuidType := TIDStructure.CreateAsSystem(IntfSection, '_TGUID');
+  FGuidType := TIDStructure.CreateAsSystem(IntfScope, '_TGUID');
   FGuidType.DataTypeID := dtGuid;
   FGuidType.AddField('LoDWord', _Int64);
   FGuidType.AddField('HiDWord', _Int64);
@@ -807,9 +788,9 @@ begin
   InsertToScope(FGuidType);
   AddType(FGuidType);
   //===============================================================
-  FDateTimeType := TIDAliasType.CreateAliasAsSystem(IntfSection, 'DateTime', _Float64);
-  FDateType := TIDAliasType.CreateAliasAsSystem(IntfSection, 'Date', _Float64);
-  FTimeType := TIDAliasType.CreateAliasAsSystem(IntfSection, 'Time', _Float64);
+  FDateTimeType := TIDAliasType.CreateAliasAsSystem(IntfScope, 'DateTime', _Float64);
+  FDateType := TIDAliasType.CreateAliasAsSystem(IntfScope, 'Date', _Float64);
+  FTimeType := TIDAliasType.CreateAliasAsSystem(IntfScope, 'Time', _Float64);
 
   InsertToScope(FDateTimeType);
   InsertToScope(FDateType);
@@ -854,27 +835,27 @@ begin
   RegisterConstInt('MaxInt', _Int32, MaxInt32);
 
   // constant "True"
-  FTrueConstant := TIDBooleanConstant.Create(IntfSection, Identifier('TRUE'), _Boolean, True);
+  FTrueConstant := TIDBooleanConstant.Create(IntfScope, Identifier('TRUE'), _Boolean, True);
   FTrueExpression := TIDExpression.Create(FTrueConstant);
-  IntfSection.InsertID(FTrueConstant);
+  IntfScope.InsertID(FTrueConstant);
   // constant "False"
-  FFalseConstant := TIDBooleanConstant.Create(IntfSection, Identifier('FALSE'), _Boolean, False);
+  FFalseConstant := TIDBooleanConstant.Create(IntfScope, Identifier('FALSE'), _Boolean, False);
   FFalseExpression := TIDExpression.Create(FFalseConstant);
-  IntfSection.InsertID(FFalseConstant);
+  IntfScope.InsertID(FFalseConstant);
   // constant "0"
-  FZeroConstant := TIDIntConstant.CreateAnonymous(IntfSection, _UInt8, 0);
+  FZeroConstant := TIDIntConstant.CreateAnonymous(IntfScope, _UInt8, 0);
   FZeroExpression := TIDExpression.Create(FZeroConstant);
   // constant "1"
-  FOneConstant := TIDIntConstant.CreateAnonymous(IntfSection, _UInt8, 1);
+  FOneConstant := TIDIntConstant.CreateAnonymous(IntfScope, _UInt8, 1);
   FOneExpression := TIDExpression.Create(FOneConstant);
   // constant "-1"
-  FMinusOneConstant := TIDIntConstant.CreateAnonymous(IntfSection, _Int32, -1);
+  FMinusOneConstant := TIDIntConstant.CreateAnonymous(IntfScope, _Int32, -1);
   FMinusOneExpression := TIDExpression.Create(FMinusOneConstant);
   // constant ""
-  FEmptyStrConstant := TIDStringConstant.CreateAnonymous(IntfSection, _String, '');
+  FEmptyStrConstant := TIDStringConstant.CreateAnonymous(IntfScope, _String, '');
   FEmptyStrExpression := TIDExpression.Create(FEmptyStrConstant);
   // constant for deprecated
-  fDeprecatedDefaultStr := TIDStringConstant.CreateAsSystem(IntfSection, 'The declaration is deprecated');
+  fDeprecatedDefaultStr := TIDStringConstant.CreateAsSystem(IntfScope, 'The declaration is deprecated');
 
   AddImplicists;
   AddExplicists;
@@ -893,7 +874,7 @@ end;
 
 procedure TSYSTEMUnit.InsertToScope(Declaration: TIDDeclaration);
 begin
-  if Assigned(IntfSection.InsertNode(Declaration.Name, Declaration)) then
+  if Assigned(IntfScope.InsertNode(Declaration.Name, Declaration)) then
     raise Exception.CreateFmt('Unit SYSTEM: ' + msgIdentifierRedeclaredFmt, [Declaration.Name]);
 end;
 
@@ -904,7 +885,7 @@ end;
 
 function TSYSTEMUnit.RegisterTypeAlias(const TypeName: string; OriginalType: TIDType): TIDAliasType;
 begin
-  Result := TIDAliasType.CreateAliasAsSystem(IntfSection, TypeName, OriginalType);
+  Result := TIDAliasType.CreateAliasAsSystem(IntfScope, TypeName, OriginalType);
   Result.Elementary := True;
   InsertToScope(Result);
   AddType(Result);
@@ -912,7 +893,7 @@ end;
 
 function TSYSTEMUnit.RegisterConstInt(const Name: string; DataType: TIDType; Value: Int64): TIDIntConstant;
 begin
-  Result := TIDIntConstant.CreateAsSystem(IntfSection, Name);
+  Result := TIDIntConstant.CreateAsSystem(IntfScope, Name);
   Result.DataType := DataType;
   Result.Value := Value;
   InsertToScope(Result);
@@ -920,7 +901,7 @@ end;
 
 function TSYSTEMUnit.RegisterPointer(const TypeName: string; TargetType: TIDType): TIDPointer;
 begin
-  Result := TIDPointer.CreateAsSystem(IntfSection, TypeName);
+  Result := TIDPointer.CreateAsSystem(IntfScope, TypeName);
   Result.ReferenceType := TargetType;
   InsertToScope(Result);
   AddType(Result);

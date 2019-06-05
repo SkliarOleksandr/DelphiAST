@@ -7,9 +7,9 @@ interface
 uses System.SysUtils, System.Classes, System.StrUtils, System.Math, System.Generics.Collections,
      NPCompiler.DataTypes,
      NPCompiler.Messages,
-     iDStringParser,
+     AST.Lexer,
      System.Variants,
-     NPCompiler.Operators,
+     AST.Delphi.Operators,
      AVL,
      NPCompiler.Utils,
      NPCompiler.Errors,
@@ -427,6 +427,7 @@ type
     procedure OverloadBinarOperator2(Op: TOperatorID; Right: TIDType; Result: TIDDeclaration); overload;
     procedure OverloadBinarOperatorFor(Op: TOperatorID; const Left: TIDType; const Result: TIDDeclaration);
     procedure OverloadBinarOperator(Op: TOperatorID; Declaration: TIDOperator); overload; inline;
+    procedure AddBinarySysOperator(Op: TOperatorID; Decl: TIDOperator);
     procedure CreateStandardOperators; virtual;
 
 
@@ -1601,7 +1602,7 @@ type
 implementation
 
 uses SystemUnit,
-     OPCompiler,
+     AST.Pascal.Parser,
      AST.Parser.Errors,
      AST.Delphi.Errors,
      AST.Delphi.Parser,
@@ -3122,6 +3123,21 @@ end;
 function TIDType.UnarOperator(Op: TOperatorID; Right: TIDType): TIDType;
 begin
   Result := TIDType(FUnarOperators[Op]);
+end;
+
+procedure TIDType.AddBinarySysOperator(Op: TOperatorID; Decl: TIDOperator);
+var
+  List: TIDPairList;
+  ExistKey: TIDPairList.PAVLNode;
+begin
+  List := FBinarOperators[Op];
+  if not Assigned(List) then begin
+    List := TIDPairList.Create;
+    FBinarOperators[Op] := List;
+  end;
+  ExistKey := List.InsertNode(nil, Decl);
+  if Assigned(ExistKey) and (TIDDeclaration(ExistKey.Data) <> SYSUnit._Boolean) then
+    ERROR_OPERATOR_ALREADY_OVERLOADED(Op, Self, nil, TTextPosition.Empty);
 end;
 
 function TIDType.BinarOperator(Op: TOperatorID; Right: TIDType): TIDType;
@@ -5792,7 +5808,7 @@ begin
   FScope := Scope;
   FID := TNPUnit(AUnit)._ID;
   FUnit := AUnit;
-  FMembers := TNPUnit(AUnit).IntfSection;
+  FMembers := TNPUnit(AUnit).IntfScope;
   ItemType := itUnit;
 end;
 

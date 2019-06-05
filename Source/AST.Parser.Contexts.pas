@@ -3,7 +3,7 @@
 interface
 
 uses System.SysUtils,
-     NPCompiler.Operators,
+     AST.Delphi.Operators,
      AST.Delphi.Classes,
      AST.Classes;
 
@@ -77,7 +77,7 @@ implementation
 
 uses
   AST.Parser.Errors,
-  OPCompiler,
+  AST.Pascal.Parser,
   NPCompiler.Errors;
 
 { TRPN }

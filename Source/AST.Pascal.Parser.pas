@@ -1,19 +1,18 @@
 ﻿//====================================================================================================================//
-//=========================================== THE OBJECT PASCAL COMPILER =============================================//
+//======================================= THE COMMON PASCAL AST PARSER CLASS =========================================//
 //====================================================================================================================//
-unit OPCompiler;
+unit AST.Pascal.Parser;
 
 interface
 
 {$I compilers.inc}
 
 uses SysUtils, Math, Classes, StrUtils, Types, IOUtils, Generics.Collections,
-     OPCompiler.Parser,
+     AST.Lexer.Delphi,
      AST.Delphi.Classes,
      NPCompiler.DataTypes,
-     iDStringParser,
-     NPCompiler.Operators,
-     NPCompiler.Errors,
+     AST.Lexer,
+     AST.Delphi.Operators,
      NPCompiler.Utils,
      NPCompiler.Intf,
      NPCompiler.Contexts,
@@ -21,7 +20,6 @@ uses SysUtils, Math, Classes, StrUtils, Types, IOUtils, Generics.Collections,
      AST.Delphi.Contexts,
      AST.Classes,
      NPCompiler.Options,
-
      AST.Project;
 
 type
@@ -60,7 +58,7 @@ type
     TIdentifiersPool = TPool<TIdentifier>;
   private
     FID: Integer;                      // ID модуля в пакете
-    FParser: TDelphiLexer;
+    fLexer: TDelphiLexer;
     FIntfScope: TScope;                // interface scope
     FImplScope: TScope;                // implementation scope
     FIntfImportedUnits: TUnitList;
@@ -73,9 +71,9 @@ type
     FCompiled: Boolean;
     function GetMessagesText: string;
   protected
-    FUnitName: TIdentifier;
+    fUnitName: TIdentifier;            // the Unit declaration name
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
-    function GetSource: string;
+    function GetModuleName: string; override;
     procedure SetUnitName(const Name: string);
   public
     class function IsConstValueInRange(Value: TIDExpression; RangeExpr: TIDRangeConstant): Boolean; static;
@@ -85,10 +83,7 @@ type
     procedure AddType(const Decl: TIDType); inline;
     procedure AddConstant(const Decl: TIDConstant); inline;
   public
-
-    { функция пост-оброботки откомпилированного модуля}
-    procedure PostCompileProcessUnit;
-    property Parser: TDelphiLexer read FParser;
+    property Lexer: TDelphiLexer read fLexer;
   public
     ////////////////////////////////////////////////////////////////////////////
     constructor Create(const Project: IASTProject; const FileName: string; const Source: string = ''); override;
@@ -111,15 +106,12 @@ type
     property Name: string read FUnitName.Name;
     property Messages: ICompilerMessages read FMessages;
     property MessagesText: string read GetMessagesText;
-    property IntfSection: TScope read FIntfScope;
-    property ImplSection: TScope read FImplScope;
-    property IntfScope: TScope read FIntfScope;
-    property ImplScope: TScope read FImplScope;
-    property IntfImportedUnits: TUnitList read FIntfImportedUnits;
+    property IntfScope: TScope read FIntfScope;    // Interface section scope
+    property ImplScope: TScope read FImplScope;    // Implementation section scope
+    property IntfImportedUnits: TUnitList read fIntfImportedUnits;
+    property ImplImportedUnits: TUnitList read fImplImportedUnits;
 
     property Compiled: Boolean read FCompiled;
-
-    property Source: string read GetSource;
     property TypeSpace: TTypeSpace read FTypeSpace;
     property VarSpace: TVarSpace read FVarSpace;
     property ProcSpace: TProcSpace read FProcSpace;
@@ -150,7 +142,7 @@ end;
 constructor TNPUnit.Create(const Project: IASTProject; const FileName: string; const Source: string = '');
 begin
   inherited Create(Project, FileName, Source);
-  FParser := TDelphiLexer.Create(Source);
+  fLexer := TDelphiLexer.Create(Source);
   FMessages := TCompilerMessages.Create;
   //FVisibility := vPublic;
   FIntfScope := TScope.Create(stGlobal, @FVarSpace, @FProcSpace, nil, Self);
@@ -176,7 +168,7 @@ destructor TNPUnit.Destroy;
 begin
   FIntfScope.Free;
   FImplScope.Free;
-  FParser.Free;
+  fLexer.Free;
   FIntfImportedUnits.Free;
   FImplImportedUnits.Free;
   inherited;
@@ -233,32 +225,6 @@ begin
   end;
 end;
 
-//function TNPUnit.ParseCondOptPop(Scope: TScope): TTokenID;
-//var
-//  ID: TIdentifier;
-//begin
-//  parser_ReadNextIdentifier(Scope, ID);
-//  if not FOptions.OptPop(ID.Name) then
-//    ERROR_UNKNOWN_OPTION(ID);
-//  parser_ReadSemicolon(Scope);
-//  Result := FParser.NextToken;
-//end;
-
-//function TNPUnit.ParseCondOptPush(Scope: TScope): TTokenID;
-//var
-//  ID: TIdentifier;
-//begin
-//  parser_ReadNextIdentifier(Scope, ID);
-//  if not FOptions.OptPush(ID.Name) then
-//    ERROR_UNKNOWN_OPTION(ID);
-//  parser_ReadSemicolon(Scope);
-//  Result := FParser.NextToken;
-//end;
-
-procedure TNPUnit.PostCompileProcessUnit;
-begin
-end;
-
 procedure TNPUnit.AddConstant(const Decl: TIDConstant);
 var
   Item: TIDConstant;
@@ -289,9 +255,9 @@ begin
   Result := FMessages.GetAsString;
 end;
 
-function TNPUnit.GetSource: string;
+function TNPUnit.GetModuleName: string;
 begin
-  Result := FParser.Source;
+  Result := fUnitName.Name;
 end;
 
 class function TNPUnit.IsConstEqual(const Left, Right: TIDExpression): Boolean;

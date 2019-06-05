@@ -2,7 +2,7 @@
 
 interface
 
-uses OPCompiler,
+uses AST.Pascal.Parser,
      AST.Delphi.Classes,
      NPCompiler.DataTypes,
      NPCompiler.Errors,
@@ -153,7 +153,7 @@ var
 begin
   UN := GetUnit(EContext);
   ResVar := EContext.SContext.Proc.GetTMPVar(SYSUnit._DateTime);
-  Result := TIDExpression.Create(ResVar, UN.parser_Position);
+  Result := TIDExpression.Create(ResVar, UN.Lexer_Position);
 end;
 
 class function TSF_Now.CreateDecl(Scope: TScope): TIDBuiltInFunction;
@@ -335,7 +335,7 @@ begin
   end else
     UN.ERROR_ORDINAL_TYPE_REQUIRED(Expr.TextPosition);
 
-  Result := TIDExpression.Create(Decl, UN.parser_Position);
+  Result := TIDExpression.Create(Decl, UN.Lexer_Position);
 end;
 
 class function TSF_LoBound.CreateDecl(Scope: TScope): TIDBuiltInFunction;
@@ -385,7 +385,7 @@ begin
   end else
     UN.ERROR_ORDINAL_TYPE_REQUIRED(Expr.TextPosition);
 
-  Result := TIDExpression.Create(Decl, UN.parser_Position);
+  Result := TIDExpression.Create(Decl, UN.Lexer_Position);
 end;
 
 class function TSF_HiBound.CreateDecl(Scope: TScope): TIDBuiltInFunction;
@@ -535,7 +535,7 @@ begin
     CValue := Expr.AsConst.AsInt64;
     Result := TIDExpression.Create(TIDIntConstant.CreateAnonymous(nil, SYSUnit._Int32, CValue), Expr.TextPosition)
   end else
-    Result := TIDCastExpression.Create(Expr.Declaration, SYSUnit._Int32, UN.parser_PrevPosition);
+    Result := TIDCastExpression.Create(Expr.Declaration, SYSUnit._Int32, UN.Lexer_PrevPosition);
 end;
 
 class function TSF_Ord.CreateDecl(Scope: TScope): TIDBuiltInFunction;

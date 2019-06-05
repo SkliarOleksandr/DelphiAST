@@ -1,10 +1,10 @@
-﻿unit OPCompiler.Parser;
+﻿unit AST.Lexer.Delphi;
 
 interface
 
 {$i compilers.inc}
 
-uses iDStringParser, SysUtils, StrUtils, Types, Classes, AST.Parser.Errors, NPCompiler.Errors;
+uses AST.Lexer, SysUtils, StrUtils, Types, Classes, AST.Parser.Errors, NPCompiler.Errors;
 
 type
 

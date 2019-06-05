@@ -2,7 +2,12 @@
 
 interface
 
-uses SysUtils, iDStringParser, OPCompiler.Parser, NPCompiler.Operators, AST.Delphi.Classes, AST.Delphi.Parser;
+uses SysUtils,
+     AST.Lexer,
+     AST.Lexer.Delphi,
+     AST.Delphi.Operators,
+     AST.Delphi.Classes,
+     AST.Delphi.Parser;
 
 type
   TASTDelphiErrors = class helper for TASTDelphiUnit
@@ -127,17 +132,17 @@ uses NPCompiler.Utils,
 
 procedure TASTDelphiErrors.ERROR_INCOMPLETE_STATEMENT;
 begin
-  AbortWork(sIncompleteStatement, Parser.Position);
+  AbortWork(sIncompleteStatement, Lexer.Position);
 end;
 
 procedure TASTDelphiErrors.ERROR_INHERITED_ALLOWED_ONLY_IN_OVERRIDE_METHODS;
 begin
-  AbortWork('INHERITED calls allowed only in OVERRIDE methods', Parser.PrevPosition);
+  AbortWork('INHERITED calls allowed only in OVERRIDE methods', Lexer.PrevPosition);
 end;
 
 procedure TASTDelphiErrors.ERROR_INIT_SECTION_ALREADY_DEFINED;
 begin
-  AbortWork('INITIALIZATION section is already defined', Parser.Position);
+  AbortWork('INITIALIZATION section is already defined', Lexer.Position);
 end;
 
 class procedure TASTDelphiErrors.ERROR_INPLACEVAR_ALLOWED_ONLY_FOR_OUT_PARAMS(Variable: TIDVariable);
@@ -197,12 +202,12 @@ end;
 
 procedure TASTDelphiErrors.ERROR_VIRTUAL_ALLOWED_ONLY_IN_CLASSES;
 begin
-  AbortWork('VIRTUAL allowed only for class methods', parser_PrevPosition);
+  AbortWork('VIRTUAL allowed only for class methods', Lexer_PrevPosition);
 end;
 
 procedure TASTDelphiErrors.ERROR_WEAKREF_CANNOT_BE_DECLARED_FOR_TYPE(TypeDecl: TIDType);
 begin
-  AbortWork('The WEAK reference can not be declared for type: %s', [TypeDecl.DisplayName], parser_PrevPosition);
+  AbortWork('The WEAK reference can not be declared for type: %s', [TypeDecl.DisplayName], Lexer_PrevPosition);
 end;
 
 class procedure TASTDelphiErrors.ERROR_ARG_VAR_REQUIRED(Expr: TIDExpression);
@@ -222,7 +227,7 @@ end;
 
 procedure TASTDelphiErrors.ERROR_BEGIN_KEYWORD_EXPECTED;
 begin
-  AbortWork('BEGIN expected', parser_PrevPosition);
+  AbortWork('BEGIN expected', Lexer_PrevPosition);
 end;
 
 class procedure TASTDelphiErrors.ERROR_BOOLEAN_EXPRESSION_REQUIRED(Expr: TIDExpression);
@@ -247,17 +252,17 @@ end;
 
 procedure TASTDelphiErrors.ERROR_DEFAULT_PROP_ALREADY_EXIST(Prop: TIDProperty);
 begin
-  AbortWork(errorDefaultPropertyAlreadyExistsFmt, [Prop.Name], Parser.Position);
+  AbortWork(errorDefaultPropertyAlreadyExistsFmt, [Prop.Name], Lexer.Position);
 end;
 
 procedure TASTDelphiErrors.ERROR_DEFAULT_PROP_MUST_BE_ARRAY_PROP;
 begin
-  AbortWork(errorDefaultPropertyMustBeAnArrayProperty, Parser.Position);
+  AbortWork(errorDefaultPropertyMustBeAnArrayProperty, Lexer.Position);
 end;
 
 procedure TASTDelphiErrors.ERROR_DESTRUCTOR_CANNOT_BE_CALL_DIRECTLY;
 begin
-  AbortWork('DESTRUCTOR cannot be call directly', Parser.PrevPosition);
+  AbortWork('DESTRUCTOR cannot be call directly', Lexer.PrevPosition);
 end;
 
 class procedure TASTDelphiErrors.ERROR_DIVISION_BY_ZERO(Expr: TIDExpression);
@@ -272,71 +277,71 @@ end;
 
 procedure TASTDelphiErrors.ERROR_SEMICOLON_EXPECTED;
 begin
-  AbortWork(sSemicolonExpected, Parser.PrevPosition);
+  AbortWork(sSemicolonExpected, Lexer.PrevPosition);
 end;
 
 procedure TASTDelphiErrors.ERROR_EXPECTED_KEYWORD_OR_ID;
 begin
-  AbortWork(sExpectedButFoundFmt, ['Identifier or keyword', Parser.TokenName], parser_Position);
+  AbortWork(sExpectedButFoundFmt, ['Identifier or keyword', Lexer.TokenName], Lexer_Position);
 end;
 
 procedure TASTDelphiErrors.ERROR_EXPECTED_TOKEN(Token: TTokenID; ActulToken: TTokenID = token_unknown);
 begin
   if ActulToken = token_unknown then
-    AbortWork(sExpected, ['Token "' + UpperCase(Parser.TokenLexem(Token)) + '"'], Parser.PrevPosition)
+    AbortWork(sExpected, ['Token "' + UpperCase(Lexer.TokenLexem(Token)) + '"'], Lexer.PrevPosition)
   else
-    AbortWork(sExpectedButFoundFmt, ['Token "' + UpperCase(Parser.TokenLexem(Token)) + '"',
-                                                 UpperCase(Parser.TokenLexem(ActulToken))], Parser.PrevPosition);
+    AbortWork(sExpectedButFoundFmt, ['Token "' + UpperCase(Lexer.TokenLexem(Token)) + '"',
+                                                 UpperCase(Lexer.TokenLexem(ActulToken))], Lexer.PrevPosition);
 end;
 
 procedure TASTDelphiErrors.ERROR_IDENTIFIER_EXPECTED(ActualToken: TTokenID);
 begin
-  AbortWork(sIdExpectedButFoundFmt, [Parser.TokenLexem(ActualToken)], Parser.PrevPosition);
+  AbortWork(sIdExpectedButFoundFmt, [Lexer.TokenLexem(ActualToken)], Lexer.PrevPosition);
 end;
 
 procedure TASTDelphiErrors.ERROR_PARAM_NAME_ID_EXPECTED(ActualToken: TTokenID);
 begin
-  AbortWork(sIdExpectedButFoundFmt, [Parser.TokenLexem(ActualToken)], Parser.PrevPosition);
+  AbortWork(sIdExpectedButFoundFmt, [Lexer.TokenLexem(ActualToken)], Lexer.PrevPosition);
 end;
 
 procedure TASTDelphiErrors.ERROR_PARAM_TYPE_REQUIRED;
 begin
-  AbortWork(errParameterTypeRequred, Parser.PrevPosition);
+  AbortWork(errParameterTypeRequred, Lexer.PrevPosition);
 end;
 
 procedure TASTDelphiErrors.ERROR_IDENTIFIER_EXPECTED;
 begin
-  AbortWork(sIdentifierExpected, Parser.PrevPosition);
+  AbortWork(sIdentifierExpected, Lexer.PrevPosition);
 end;
 
 procedure TASTDelphiErrors.ERROR_EMPTY_EXPRESSION;
 begin
-  AbortWork(sEmptyExpression, Parser.PrevPosition);
+  AbortWork(sEmptyExpression, Lexer.PrevPosition);
 end;
 
 procedure TASTDelphiErrors.ERROR_EXPRESSION_EXPECTED;
 begin
-  AbortWork(sExpressionExpected, Parser.PrevPosition);
+  AbortWork(sExpressionExpected, Lexer.PrevPosition);
 end;
 
 procedure TASTDelphiErrors.ERROR_END_OF_FILE;
 begin
-  AbortWork(sUnexpectedEndOfFile, Parser.PrevPosition);
+  AbortWork(sUnexpectedEndOfFile, Lexer.PrevPosition);
 end;
 
 procedure TASTDelphiErrors.ERROR_FEATURE_NOT_SUPPORTED;
 begin
-  AbortWork(sFeatureNotSupported, Parser.Position);
+  AbortWork(sFeatureNotSupported, Lexer.Position);
 end;
 
 procedure TASTDelphiErrors.ERROR_FINAL_SECTION_ALREADY_DEFINED;
 begin
-  AbortWork('FINALIZATION section is already defined', Parser.Position);
+  AbortWork('FINALIZATION section is already defined', Lexer.Position);
 end;
 
 procedure TASTDelphiErrors.ERROR_INTERNAL(const Message: string);
 begin
-  raise ECompilerInternalError.Create('Internal error: ' + Message, parser_Position);
+  raise ECompilerInternalError.Create('Internal error: ' + Message, Lexer_Position);
 end;
 
 class procedure TASTDelphiErrors.ERROR_INTF_ALREADY_IMPLEMENTED(Expr: TIDExpression);
@@ -351,7 +356,7 @@ end;
 
 procedure TASTDelphiErrors.ERROR_INTF_SECTION_MISSING;
 begin
-  AbortWork(sIntfSectionMissing, Parser.Position);
+  AbortWork(sIntfSectionMissing, Lexer.Position);
 end;
 
 class procedure TASTDelphiErrors.ERROR_INTF_TYPE_REQUIRED(Expr: TIDExpression);
@@ -361,17 +366,17 @@ end;
 
 procedure TASTDelphiErrors.ERROR_INVALID_BIN_CONSTANT;
 begin
-  AbortWork('Invalid BIN constant', parser_Position);
+  AbortWork('Invalid BIN constant', Lexer_Position);
 end;
 
 procedure TASTDelphiErrors.ERROR_INVALID_COND_DIRECTIVE;
 begin
-  AbortWork(sInvalidConditionalStatement, parser_Position);
+  AbortWork(sInvalidConditionalStatement, Lexer_Position);
 end;
 
 procedure TASTDelphiErrors.ERROR_INVALID_HEX_CONSTANT;
 begin
-  AbortWork('Invalid HEX constant', parser_Position);
+  AbortWork('Invalid HEX constant', Lexer_Position);
 end;
 
 class procedure TASTDelphiErrors.ERROR_INVALID_EXPLICIT_TYPECAST(const Src: TIDExpression; Dst: TIDType);
@@ -381,7 +386,7 @@ end;
 
 procedure TASTDelphiErrors.ERROR_INVALID_TYPE_DECLARATION;
 begin
-  AbortWork(errInvalidTypeDeclaration, Parser.PrevPosition);
+  AbortWork(errInvalidTypeDeclaration, Lexer.PrevPosition);
 end;
 
 class procedure TASTDelphiErrors.ERROR_ID_REDECLARATED(Decl: TIDDeclaration);
@@ -396,12 +401,12 @@ end;
 
 procedure TASTDelphiErrors.ERROR_IMPORT_FUNCTION_CANNOT_BE_INLINE;
 begin
-  AbortWork(sImportFuncCannotBeInline, parser_Position);
+  AbortWork(sImportFuncCannotBeInline, Lexer_Position);
 end;
 
 procedure TASTDelphiErrors.ERROR_UNCLOSED_OPEN_BLOCK;
 begin
-  AbortWork(sUnclosedOpenBlock, Parser.PrevPosition);
+  AbortWork(sUnclosedOpenBlock, Lexer.PrevPosition);
 end;
 
 class procedure TASTDelphiErrors.ERROR_UNDECLARED_ID(const ID: TIdentifier);
@@ -430,12 +435,12 @@ end;
 
 procedure TASTDelphiErrors.ERROR_UNNECESSARY_CLOSED_BLOCK;
 begin
-  AbortWork(sUnnecessaryClosedBlock, parser_Position);
+  AbortWork(sUnnecessaryClosedBlock, Lexer_Position);
 end;
 
 procedure TASTDelphiErrors.ERROR_UNNECESSARY_CLOSED_ROUND;
 begin
-  AbortWork(sUnnecessaryClosedBracket, parser_Position);
+  AbortWork(sUnnecessaryClosedBracket, Lexer_Position);
 end;
 
 class procedure TASTDelphiErrors.ERROR_UNIT_NOT_FOUND(const ID: TIdentifier);
@@ -455,7 +460,7 @@ end;
 
 procedure TASTDelphiErrors.ERROR_KEYWORD_EXPECTED;
 begin
-  AbortWork(sKeywordExpected, [Parser.OriginalToken], Parser.Position);
+  AbortWork(sKeywordExpected, [Lexer.OriginalToken], Lexer.Position);
 end;
 
 class procedure TASTDelphiErrors.ERROR_METHOD_NOT_DECLARED_IN_CLASS(const ID: TIdentifier; Struct: TIDStructure);
@@ -486,22 +491,22 @@ begin
   else
     SpecName := '<UNKNOWN>';
   end;
-  AbortWork(sDuplicateSpecificationFmt, [SpecName], Parser.Position);
+  AbortWork(sDuplicateSpecificationFmt, [SpecName], Lexer.Position);
 end;
 
 procedure TASTDelphiErrors.ERROR_UNSUPPORTED_OPERATOR(Op: TOperatorID);
 begin
-  AbortWork('Unsupported operator "%s"', [OperatorFullName(Op)], Parser.Position);
+  AbortWork('Unsupported operator "%s"', [OperatorFullName(Op)], Lexer.Position);
 end;
 
 procedure TASTDelphiErrors.ERROR_TRY_KEYWORD_MISSED;
 begin
-  AbortWork(sTryKeywordMissed, Parser.Position);
+  AbortWork(sTryKeywordMissed, Lexer.Position);
 end;
 
 procedure TASTDelphiErrors.ERROR_TYPE_IS_NOT_AN_ANCESTOR_FOR_THIS_TYPE(TypeDecl, ChildType: TIDType);
 begin
-  AbortWork('The type "%s" is not an ancestor of type "%s"', [TypeDecl.DisplayName, ChildType.DisplayName], Parser.Position);
+  AbortWork('The type "%s" is not an ancestor of type "%s"', [TypeDecl.DisplayName, ChildType.DisplayName], Lexer.Position);
 end;
 
 class procedure TASTDelphiErrors.ERROR_TYPE_REQUIRED(const TextPosition: TTextPosition);
@@ -521,7 +526,7 @@ end;
 
 procedure TASTDelphiErrors.ERROR_EXPORT_ALLOWS_ONLY_IN_INTF_SECTION;
 begin
-  AbortWork(sExportAllowsOnlyInIntfSection, Parser.Position);
+  AbortWork(sExportAllowsOnlyInIntfSection, Lexer.Position);
 end;
 
 class procedure TASTDelphiErrors.ERROR_STRING_CONST_IS_NOT_ANSI(const Src: TIDExpression);
@@ -546,7 +551,7 @@ end;
 
 procedure TASTDelphiErrors.ERROR_ORDINAL_CONST_OR_TYPE_REQURED;
 begin
-  AbortWork(sOrdinalConstOrTypeRequred, parser_PrevPosition);
+  AbortWork(sOrdinalConstOrTypeRequred, Lexer_PrevPosition);
 end;
 
 class procedure TASTDelphiErrors.ERROR_ORDINAL_OR_SET_REQUIRED(const Src: TIDExpression);
@@ -576,7 +581,7 @@ end;
 
 procedure TASTDelphiErrors.ERROR_PROC_OR_PROP_OR_VAR_REQUIRED;
 begin
-  AbortWork('PROCEDURE or FUNCTION or PROPERTY or VAR required', [], Parser.PrevPosition);
+  AbortWork('PROCEDURE or FUNCTION or PROPERTY or VAR required', [], Lexer.PrevPosition);
 end;
 
 class procedure TASTDelphiErrors.ERROR_PROC_OR_TYPE_REQUIRED(const ID: TIdentifier);
@@ -654,12 +659,12 @@ var
   ADataType: TIDArray;
 begin
   ADataType := TIDArray(Decl.DataType);
-  AbortWork(sNeedSpecifyNIndexesFmt, [Decl.DisplayName, ADataType.DisplayName, ADataType.DimensionsCount], parser_PrevPosition);
+  AbortWork(sNeedSpecifyNIndexesFmt, [Decl.DisplayName, ADataType.DisplayName, ADataType.DimensionsCount], Lexer_PrevPosition);
 end;
 
 procedure TASTDelphiErrors.ERROR_IDENTIFIER_HAS_NO_MEMBERS(const Decl: TIDDeclaration);
 begin
-  AbortWork(sIdentifierHasNoMembersFmt, [Decl.DisplayName], Parser.PrevPosition);
+  AbortWork(sIdentifierHasNoMembersFmt, [Decl.DisplayName], Lexer.PrevPosition);
 end;
 
 class procedure TASTDelphiErrors.ERROR_OVERLOAD(CallExpr: TIDExpression);
@@ -694,12 +699,12 @@ end;
 
 procedure TASTDelphiErrors.ERROR_NO_METHOD_IN_BASE_CLASS(Proc: TIDProcedure);
 begin
-  AbortWork('Method %s is not found in base classes', [Proc.DisplayName], Parser.Position);
+  AbortWork('Method %s is not found in base classes', [Proc.DisplayName], Lexer.Position);
 end;
 
 procedure TASTDelphiErrors.HINT_TEXT_AFTER_END;
 begin
-  PutMessage(cmtHint, 'Text after final END. - ignored by compiler', parser_PrevPosition);
+  PutMessage(cmtHint, 'Text after final END. - ignored by compiler', Lexer_PrevPosition);
 end;
 
 procedure TASTDelphiErrors.HINT_RESULT_EXPR_IS_NOT_USED(const Expr: TIDExpression);

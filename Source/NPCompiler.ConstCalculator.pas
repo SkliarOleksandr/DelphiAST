@@ -2,7 +2,10 @@ unit NPCompiler.ConstCalculator;
 
 interface
 
-uses System.SysUtils, AST.Delphi.Classes, AST.Parser.Errors, NPCompiler.Operators;
+uses System.SysUtils,
+     AST.Delphi.Classes,
+     AST.Parser.Errors,
+     AST.Delphi.Operators;
 
 function ProcessConstOperation(Left, Right: TIDExpression; Operation: TOperatorID): TIDExpression; overload;
 function ProcessConstOperation(const Left, Right: TIDConstant; Operation: TOperatorID): TIDConstant; overload;
@@ -10,7 +13,7 @@ function ProcessConstOperation(const Left, Right: TIDConstant; Operation: TOpera
 implementation
 
 uses SystemUnit,
-     OPCompiler,
+     AST.Pascal.Parser,
      NPCompiler.DataTypes,
      NPCompiler.Utils,
      AST.Delphi.Parser,

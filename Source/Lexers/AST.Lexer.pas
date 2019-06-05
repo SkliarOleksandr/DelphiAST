@@ -1,4 +1,4 @@
-﻿unit iDStringParser;
+﻿unit AST.Lexer;
 
 interface
 
@@ -67,6 +67,7 @@ type
     Col: Integer;
     constructor Create(Row: Integer); overload;
     constructor Create(Row, Col: Integer); overload;
+    class function Empty: TTextPosition; static;
   end;
 
   TIdentifier = record
@@ -875,6 +876,12 @@ constructor TTextPosition.Create(Row, Col: Integer);
 begin
   Self.Row := Row;
   Self.Col := Col;
+end;
+
+class function TTextPosition.Empty: TTextPosition;
+begin
+  Result.Row := 0;
+  Result.Col := 0;
 end;
 
 end.

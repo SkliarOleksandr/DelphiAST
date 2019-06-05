@@ -216,7 +216,7 @@ uses NPCompiler.DataTypes,
      NPCompiler.Utils,
      AST.Delphi.Parser,
      AST.Delphi.Errors,
-     OPCompiler,
+     AST.Pascal.Parser,
      SystemUnit;
 
 { TIDInternalOperator }

@@ -2,7 +2,7 @@ unit AST.Parser.Errors;
 
 interface
 
-uses SysUtils, NPCompiler.Errors, NPCompiler.Intf, iDStringParser;
+uses SysUtils, NPCompiler.Errors, NPCompiler.Intf, AST.Lexer;
 
 type
 
