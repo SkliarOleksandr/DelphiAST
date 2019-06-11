@@ -107,7 +107,6 @@
         <DCCReference Include="..\Source\AVL.pas"/>
         <DCCReference Include="..\Source\AST.Delphi.Classes.pas"/>
         <DCCReference Include="..\Source\AST.Pascal.ConstCalculator.pas"/>
-        <DCCReference Include="..\Source\NPCompiler.Contexts.pas"/>
         <DCCReference Include="..\Source\NPCompiler.DataTypes.pas"/>
         <DCCReference Include="..\Source\NPCompiler.Errors.pas"/>
         <DCCReference Include="..\Source\NPCompiler.Intf.pas"/>

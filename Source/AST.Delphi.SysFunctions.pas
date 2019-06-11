@@ -7,7 +7,6 @@ uses AST.Pascal.Parser,
      NPCompiler.DataTypes,
      NPCompiler.Errors,
      AST.Delphi.System,
-     NPCompiler.Contexts,
      AST.Parser.Errors,
      AST.Delphi.Parser,
      AST.Delphi.Contexts;

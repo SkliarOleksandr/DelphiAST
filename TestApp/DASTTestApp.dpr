@@ -6,7 +6,6 @@ uses
   AVL in '..\Source\AVL.pas',
   AST.Delphi.Classes in '..\Source\AST.Delphi.Classes.pas',
   AST.Pascal.ConstCalculator in '..\Source\AST.Pascal.ConstCalculator.pas',
-  NPCompiler.Contexts in '..\Source\NPCompiler.Contexts.pas',
   NPCompiler.DataTypes in '..\Source\NPCompiler.DataTypes.pas',
   NPCompiler.Errors in '..\Source\NPCompiler.Errors.pas',
   NPCompiler.Intf in '..\Source\NPCompiler.Intf.pas',
