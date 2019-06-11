@@ -11,7 +11,7 @@ uses System.SysUtils, System.Classes, System.Types, Generics.Collections, System
      NPCompiler.Intf,
      NPCompiler.Utils,
      AST.Pascal.Parser,
-     SystemUnit,
+     AST.Delphi.System,
      AST.Classes;
 
 type

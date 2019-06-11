@@ -386,8 +386,8 @@ uses
      AST.Parser.Errors,
      AST.Delphi.Errors,
      NPCompiler.DataTypes,
-     NPCompiler.ConstCalculator,
-     SystemUnit;
+     AST.Pascal.ConstCalculator,
+     AST.Delphi.System;
 
 type
   TSContextHelper = record helper for TSContext
@@ -1939,8 +1939,13 @@ begin
         Result := ProcessConstOperation(Left, Right, OpID);
         Exit;
       end else begin
-        TmpVar := GetTMPVar(EContext, TIDType(Op));
-        Result := TIDExpression.Create(TmpVar, Left.TextPosition);
+        if Op is TSysOpBinary then
+        begin
+          Result := TSysOpBinary(Op).Match(EContext.SContext, Left, Right)
+        end else begin
+          TmpVar := GetTMPVar(EContext, TIDType(Op));
+          Result := TIDExpression.Create(TmpVar, Left.TextPosition);
+        end;
       end;
 
       if Op.ItemType = itType then
@@ -3158,9 +3163,9 @@ begin
 
   // ищем явно определенный implicit у источника
   Decl := SDataType.GetImplicitOperatorTo(Dest);
-  if Decl is TSysImplicit then
+  if Decl is TSysOpImplicit then
   begin
-    Decl := TSysImplicit(Decl).Check(Source, Dest);
+    Decl := TSysOpImplicit(Decl).Check(Source, Dest);
     if Assigned(Decl) then
       Exit(Source);
     Decl := nil;
@@ -3248,9 +3253,9 @@ begin
         end;
       end;
     end else
-    if Decl is TSysImplicit then
+    if Decl is TSysOpImplicit then
     begin
-      Result := TSysImplicit(Decl).Match(@SContext, Source, Dest);
+      Result := TSysOpImplicit(Decl).Match(@SContext, Source, Dest);
       if Assigned(Result) then
         Exit;
     end;
@@ -3264,7 +3269,7 @@ begin
 
   if Assigned(SDataType.SysImplicitToAny) then
   begin
-    Decl := TSysImplicit(SDataType.SysImplicitToAny).Check(Source, Dest);
+    Decl := TSysOpImplicit(SDataType.SysImplicitToAny).Check(Source, Dest);
     if Assigned(Decl) then
       Exit(Source);
     Decl := nil;
@@ -3274,7 +3279,7 @@ begin
   begin
     if Assigned(Dest.SysExplicitFromAny) then
     begin
-      Decl := TSysImplicit(Dest.SysExplicitFromAny).Check(Source, Dest);
+      Decl := TSysOpImplicit(Dest.SysExplicitFromAny).Check(Source, Dest);
       if Assigned(Decl) then
         Exit(Source);
     end;
@@ -3716,9 +3721,9 @@ begin
   Result := SrcDataType.GetExplicitOperatorTo(DstDataType);
   if Assigned(Result) then
   begin
-    if Result is TSysImplicit then
+    if Result is TSysOpImplicit then
     begin
-      Result := TSysImplicit(Result).Check(Source, DstDataType);
+      Result := TSysOpImplicit(Result).Check(Source, DstDataType);
       if Assigned(Result) then
         Exit;
     end else
@@ -3730,9 +3735,9 @@ begin
     Result := DstDataType.GetExplicitOperatorFrom(SrcDataType);
     if Assigned(Result) then
     begin
-      if Result is TSysImplicit then
+      if Result is TSysOpImplicit then
       begin
-        if TSysImplicit(Result).Check(DstDataType, SrcDataType) then
+        if TSysOpImplicit(Result).Check(DstDataType, SrcDataType) then
           Exit(SrcDataType);
       end;
     end;
@@ -3753,9 +3758,9 @@ begin
   ExplicitOp := SrcDataType.GetExplicitOperatorTo(DstDataType);
   if Assigned(ExplicitOp) then
   begin
-    if ExplicitOp is TSysImplicit then
+    if ExplicitOp is TSysOpImplicit then
     begin
-      if TSysImplicit(ExplicitOp).Check(SrcDataType, DstDataType) then
+      if TSysOpImplicit(ExplicitOp).Check(SrcDataType, DstDataType) then
         Exit(True);
     end else
       Exit(True);
@@ -3766,9 +3771,9 @@ begin
     ExplicitOp := DstDataType.GetExplicitOperatorFrom(SrcDataType);
     if Assigned(ExplicitOp) then
     begin
-      if ExplicitOp is TSysImplicit then
+      if ExplicitOp is TSysOpImplicit then
       begin
-        if TSysImplicit(ExplicitOp).Check(DstDataType, SrcDataType) then
+        if TSysOpImplicit(ExplicitOp).Check(DstDataType, SrcDataType) then
           Exit(True);
       end else
         Exit(True);
@@ -3925,8 +3930,8 @@ begin
 
   // ищем явно определенный implicit у источника
   Result := SDataType.GetImplicitOperatorTo(Dest);
-  if Result is TSysImplicit then
-    Result := TSysImplicit(Result).Check(Source, Dest);
+  if Result is TSysOpImplicit then
+    Result := TSysOpImplicit(Result).Check(Source, Dest);
 
   if Assigned(Result) then
     Exit;

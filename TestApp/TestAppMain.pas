@@ -46,7 +46,7 @@ var
 implementation
 
 uses
-  System.IOUtils, IdCTypes, System.Types, SystemUnit, AST.Delphi.Parser, AST.Classes, AST.Writer;
+  System.IOUtils, IdCTypes, System.Types, AST.Delphi.System, AST.Delphi.Parser, AST.Classes, AST.Writer;
 
 {$R *.dfm}
 
@@ -180,7 +180,7 @@ begin
   Prj.Defines.Add('CPU386');
   Prj.Defines.Add('MSWINDOWS');
 
-  Prj.AddUnit(SystemUnit.SYSUnit, nil);
+  Prj.AddUnit(AST.Delphi.System.SYSUnit, nil);
 
   UN := TASTDelphiUnit.Create(Prj, 'RTLParseTest', cRTLUsesSource);
   Prj.AddUnit(UN, nil);

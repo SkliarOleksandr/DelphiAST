@@ -1601,7 +1601,7 @@ type
 
 implementation
 
-uses SystemUnit,
+uses AST.Delphi.System,
      AST.Pascal.Parser,
      AST.Parser.Errors,
      AST.Delphi.Errors,
@@ -3148,6 +3148,11 @@ begin
   List := FBinarOperators[Op];
   if Assigned(List) then begin
     Node := List.Find(Right);
+    if Assigned(Node) then
+      Exit(TIDType(Node.Data));
+
+    // sys operator
+    Node := List.Find(nil);
     if Assigned(Node) then
       Exit(TIDType(Node.Data));
   end;

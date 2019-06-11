@@ -1,4 +1,4 @@
-﻿unit SystemUnit;
+﻿unit AST.Delphi.System;
 
 interface
 
@@ -57,20 +57,16 @@ type
     FDateType: TIDType;
     FTimeType: TIDType;
     FTypeIDType: TIDType;
-    FImplicitAnyToVariant: TSysImplicit;
-    FImplicitVariantToAny: TSysImplicit;
-    FExplicitEnumFromAny: TSysImplicit;
-    fExplicitTProcFromAny: TSysImplicit;
+    FImplicitAnyToVariant: TSysOpImplicit;
+    FImplicitVariantToAny: TSysOpImplicit;
+    FExplicitEnumFromAny: TSysOpImplicit;
+    fExplicitTProcFromAny: TSysOpImplicit;
     FCopyArrayOfObjProc: TIDProcedure;
     FCopyArrayOfStrProc: TIDProcedure;
     FFinalArrayOfObjProc: TIDProcedure;
     FFinalArrayOfStrProc: TIDProcedure;
     FFinalArrayOfVarProc: TIDProcedure;
     FAsserProc: TIDProcedure;
-//    FSysTStrDynArray: TIDDynArray;
-//    FSysTObjDynArray: TIDDynArray;
-//    FSysTVarDynArray: TIDDynArray;
-//    fExtended: TIDAliasType;
     fWideString: TIDType;
     fShortString: TIDType;
     fOpenString: TIDType;
@@ -89,6 +85,7 @@ type
     procedure AddCompareOperators;
     procedure AddArithmeticOperators;
     procedure RegisterBuiltinFunctions;
+    procedure AddSystemOperators;
     procedure InsertToScope(Declaration: TIDDeclaration); overload;
     function RegisterBuiltin(const Name: string; MacroID: TBuiltInFunctionID; ResultDataType: TIDType; Flags: TProcFlags = []): TIDBuiltInFunction; overload;
     function RegisterType(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
@@ -156,8 +153,8 @@ type
     property _FinalArrayOfObjProc: TIDProcedure read FFinalArrayOfObjProc;
     property _FinalArrayOfStrProc: TIDProcedure read FFinalArrayOfStrProc;
     property _FinalArrayOfVarProc: TIDProcedure read FFinalArrayOfVarProc;
-    property _ExplicitEnumFromAny: TSysImplicit read FExplicitEnumFromAny;
-    property _ExplicitTProcFromAny: TSysImplicit read fExplicitTProcFromAny;
+    property _ExplicitEnumFromAny: TSysOpImplicit read FExplicitEnumFromAny;
+    property _ExplicitTProcFromAny: TSysOpImplicit read fExplicitTProcFromAny;
     property _AssertProc: TIDProcedure read FAsserProc;
     property _TypeID: TIDType read FTypeIDType;
     property _DeprecatedDefaultStr: TIDStringConstant read fDeprecatedDefaultStr;
@@ -449,6 +446,11 @@ begin
   AddBinarOperator(opSubtract, _Float64, [_Int8, _UInt8, _Int16, _UInt16, _Int32, _UInt32, _Int64, _UInt64, _Float32, _Float64], _Float64);
 
   AddBinarOperator(opSubtract, _Variant, _Variant, _Variant);
+end;
+
+procedure TSYSTEMUnit.AddSystemOperators;
+begin
+  _AnsiChar.AddBinarySysOperator(opIn, TSysAnsiChar_In.CreateAsIntOp);
 end;
 
 procedure TSYSTEMUnit.AddAddOperators;
@@ -863,6 +865,7 @@ begin
   AddLogicalOperators;
   AddBitwiseOperators;
   AddCompareOperators;
+  AddSystemOperators;
 end;
 
 procedure TSYSTEMUnit.InitSystemUnit;

@@ -121,7 +121,7 @@ implementation
 
 { TCompiler }
 
-uses SystemUnit, NPCompiler.Messages, AST.Parser.Errors, NPCompiler.ConstCalculator;
+uses AST.Delphi.System, NPCompiler.Messages, AST.Parser.Errors, AST.Pascal.ConstCalculator;
 
 
 procedure TNPUnit.SetUnitName(const Name: string);

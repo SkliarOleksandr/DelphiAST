@@ -1,8 +1,9 @@
-unit NPCompiler.ConstCalculator;
+unit AST.Pascal.ConstCalculator;
 
 interface
 
 uses System.SysUtils,
+     System.Math,
      AST.Delphi.Classes,
      AST.Parser.Errors,
      AST.Delphi.Operators;
@@ -12,7 +13,7 @@ function ProcessConstOperation(const Left, Right: TIDConstant; Operation: TOpera
 
 implementation
 
-uses SystemUnit,
+uses AST.Delphi.System,
      AST.Pascal.Parser,
      NPCompiler.DataTypes,
      NPCompiler.Utils,
@@ -228,8 +229,8 @@ function ProcessConstOperation(Left, Right: TIDExpression; Operation: TOperatorI
       opMultiply: iValue := LValue * RValue;
       opNegative: iValue := -RValue;
       opIntDiv, opDivide: begin
-        if RValue = 0 then
-          TASTDelphiUnit.ERROR_DIVISION_BY_ZERO(Right);
+        {if RValue = 0 then
+          TASTDelphiUnit.ERROR_DIVISION_BY_ZERO(Right);}
         if Operation = opIntDiv then
           iValue := LValue div RValue
         else begin
@@ -279,8 +280,16 @@ function ProcessConstOperation(Left, Right: TIDExpression; Operation: TOperatorI
       opMultiply: fValue := LValue * RValue;
       opDivide: begin
         if RValue = 0 then
-          TASTDelphiUnit.ERROR_DIVISION_BY_ZERO(Right);
-        fValue := LValue / RValue;
+        begin
+          if LValue = 0 then
+            fValue := System.Math.NaN
+          else
+          if fValue < 0 then
+            fValue := System.Math.NegInfinity
+          else
+            fValue := System.Math.Infinity;
+        end else
+          fValue := LValue / RValue;
       end;
       opNegative: begin
         fValue := -RValue;
