@@ -139,6 +139,21 @@ type
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {function: TSF_Get8087CW}
+  TSF_Get8087CW = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
+  {function: TSF_Set8087CW}
+  TSF_Set8087CW = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
+
 implementation
 
 uses AST.Delphi.Errors;
@@ -614,6 +629,31 @@ begin
   LExpr := EContext.RPNPopExpression();
   BExpr := EContext.RPNPopExpression();
   SExpr := EContext.RPNPopExpression();
+  Result := nil;
+end;
+
+{ TSF_Get8087CW }
+
+class function TSF_Get8087CW.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Get8087CW', SYSUnit._UInt16);
+end;
+
+function TSF_Get8087CW.Process(var EContext: TEContext): TIDExpression;
+begin
+  Result := TASTDelphiUnit.GetTMPVarExpr(EContext, SYSUnit._UInt16, TextPosition.Empty);
+end;
+
+{ TSF_Set8087CW }
+
+class function TSF_Set8087CW.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Set8087CW', _Void);
+  Result.AddParam('Val', SYSUnit._UInt16);
+end;
+
+function TSF_Set8087CW.Process(var EContext: TEContext): TIDExpression;
+begin
   Result := nil;
 end;
 

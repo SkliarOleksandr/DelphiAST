@@ -27,22 +27,19 @@ type
 
   TASTDelphiUnit = class(TNPUnit)
 
-
-  private
-    procedure AddType(const Decl: TIDType);
   type
     TVarModifyPlace = (vmpAssignment, vmpPassArgument);
   var
-    FRCPathCount: UInt32;              // кол-во проходов increfcount/decrefcount для деклараций
-    FInitProcExplicit: Boolean;        // определена ли явно секция init
-    FFinalProcExplicit: Boolean;       // определена ли явно секция final
-    FInitProc: TIDProcedure;
-    FFinalProc: TIDProcedure;
-    FSystemExplicitUse: Boolean;
+    fRCPathCount: UInt32;              // кол-во проходов increfcount/decrefcount для деклараций
+    fInitProcExplicit: Boolean;        // определена ли явно секция init
+    fFinalProcExplicit: Boolean;       // определена ли явно секция final
+    fInitProc: TIDProcedure;
+    fFinalProc: TIDProcedure;
+    fSystemExplicitUse: Boolean;
     fCondStack: TSimpleStack<Boolean>;
-    FPackage: INPPackage;
-    FDefines: TDefines;
-    FOptions: TCompilerOptions;
+    fPackage: INPPackage;
+    fDefines: TDefines;
+    fOptions: TCompilerOptions;
 
     procedure CheckLeftOperand(const Status: TRPNStatus);
     class procedure CheckAndCallFuncImplicit(const EContext: TEContext); overload; static;
@@ -51,7 +48,7 @@ type
     function CreateAnonymousConstant(Scope: TScope; var EContext: TEContext;
       const ID: TIdentifier; IdentifierType: TIdentifierType): TIDExpression;
     procedure InitEContext(var EContext: TEContext; const SContext: TSContext; EPosition: TExpessionPosition); overload; inline;
-
+    procedure AddType(const Decl: TIDType);
     class function CheckExplicit(const Source, Destination: TIDType; out ExplicitOp: TIDDeclaration): Boolean; overload; static;
     class function MatchExplicit(const Source: TIDExpression; Destination: TIDType): TIDDeclaration; overload; static;
     class function MatchExplicit2(const Scontext: TSContext; const Source: TIDExpression; Destination: TIDType; out Explicit: TIDDeclaration): TIDExpression; overload; static;
@@ -59,7 +56,6 @@ type
     class function MatchArrayImplicitToRecord(Source: TIDExpression; Destination: TIDStructure): TIDExpression; static;
 
     function Lexer_MatchSemicolonAndNext(Scope: TScope; ActualToken: TTokenID): TTokenID;
-
     //========================================================================================================
     function ProcSpec_Inline(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
     function ProcSpec_Export(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
@@ -81,8 +77,16 @@ type
     class procedure AddSelfParameter(Params: TScope; Struct: TIDStructure; ClassMethod: Boolean); static; inline;
     class function AddResultParameter(Params: TScope): TIDVariable; static; inline;
   public
-   property Package: INPPackage read FPackage;
+    property Package: INPPackage read FPackage;
     property Options: TCompilerOptions read FOptions;
+    class function GetTMPVar(const SContext: TSContext; DataType: TIDType): TIDVariable; overload; static;
+    class function GetTMPVar(const EContext: TEContext; DataType: TIDType): TIDVariable; overload; static;
+    class function GetTMPRef(const SContext: TSContext; DataType: TIDType): TIDVariable; static;
+    class function GetTMPVarExpr(const SContext: TSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline; static;
+    class function GetTMPVarExpr(const EContext: TEContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline; static;
+    class function GetTMPRefExpr(const SContext: TSContext; DataType: TIDType): TIDExpression; overload; inline; static;
+    class function GetTMPRefExpr(const SContext: TSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline; static;
+    class function GetStaticTMPVar(DataType: TIDType; VarFlags: TVariableFlags = []): TIDVariable; static;
   protected
     function GetSource: string; override;
     procedure CheckLabelExpression(const Expr: TIDExpression); overload;
@@ -101,14 +105,6 @@ type
     function Process_operator_As(var EContext: TEContext): TIDExpression;
     function Process_operator_Period(var EContext: TEContext): TIDExpression;
     function Process_operator_dot(var EContext: TEContext): TIDExpression;
-    class function GetTMPVar(const SContext: TSContext; DataType: TIDType): TIDVariable; overload; static;
-    class function GetTMPVar(const EContext: TEContext; DataType: TIDType): TIDVariable; overload; static;
-    class function GetTMPRef(const SContext: TSContext; DataType: TIDType): TIDVariable; static;
-    class function GetTMPVarExpr(const SContext: TSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline; static;
-    class function GetTMPVarExpr(const EContext: TEContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline; static;
-    class function GetTMPRefExpr(const SContext: TSContext; DataType: TIDType): TIDExpression; overload; inline; static;
-    class function GetTMPRefExpr(const SContext: TSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline; static;
-    class function GetStaticTMPVar(DataType: TIDType; VarFlags: TVariableFlags = []): TIDVariable; static;
     function MatchImplicit3(const SContext: TSContext; Source: TIDExpression; Dest: TIDType): TIDExpression;
     function MatchImplicitOrNil(const SContext: TSContext; Source: TIDExpression; Dest: TIDType): TIDExpression;
     function MatchArrayImplicit(const SContext: TSContext; Source: TIDExpression; DstArray: TIDArray): TIDExpression;
@@ -2106,6 +2102,7 @@ end;
 function TASTDelphiUnit.Process_operator_not(var EContext: TEContext): TIDExpression;
 var
   Right, OperatorItem: TIDExpression;
+  DataType: TIDType;
 begin
   // Читаем операнд
   Right := EContext.RPNPopExpression();
@@ -2117,21 +2114,16 @@ begin
   if (Right.ItemType = itConst) and (Right.ClassType <> TIDSizeofConstant) then
     Result := ProcessConstOperation(Right, Right, opNot)
   else begin
+    var WasCall := False;
+    Right := CheckAndCallFuncImplicit(EContext.SContext, Right, WasCall);
+
     // если это просто выражение (not Bool_Value)
-    if (Right.DataTypeID = dtBoolean) and not (Right is TIDBoolResultExpression) then
+    if (Right.DataTypeID = dtBoolean) then
     begin
-       //Bool_AddExprNode(EContext, EContext.SContext.ILLast, cNonZero);
-    end;
-    {if not Assigned(EContext.LastBoolNode) then
-    begin
-      // т.к. это не логичиское отрицание
-      // генерируем код бинарного отрицания
-      Result := GetTMPVarExpr(EContext.SContext, OperatorItem, Right.TextPosition);
-      ILWrite(EContext.SContext, TIL.IL_Not(Result, Right));
-    end else} begin
       var TmpVar := GetTMPVar(EContext, SYSUnit._Boolean);
       Result := TIDBoolResultExpression.Create(TmpVar, Lexer_Position);
-    end;
+    end else
+      Result:=  GetTMPVarExpr(EContext, Right.DataType, Lexer_Position);
   end;
 end;
 
@@ -5395,28 +5387,6 @@ begin
             Result := ParseRecordInitValue(TRecordInitScope(Scope), Expr);
             Continue;
           end;
-
-          //if Expr.ExpressionType = etDeclaration then
-          //  ASTE.AddDeclItem(Expr.Declaration, Expr.TextPosition);
-
-//          case Expr.ItemType of
-//            {именованная константа}
-//            //itConst: status := rpOperand;
-//            {переменная}
-//            //itVar: Status := rpOperand;
-//            {тип}
-//            itType: begin
-//              case Result of
-//                {явное преобразование типов}
-//                token_openround: begin
-//                  Result := ParseExplicitCast(Scope, SContext, Expr);
-//                  //Status := rpOperand;
-//                end;
-//              else
-//                //Status := rpOperand;
-//              end;
-//            end;
-//          end;
         end else begin
           {анонимная константа}
           Lexer_ReadCurrIdentifier(ID);
