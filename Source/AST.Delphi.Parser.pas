@@ -17,7 +17,7 @@ uses System.SysUtils,
      AST.Parser.Contexts,
      AST.Delphi.SysOperators,
      AST.Delphi.Contexts,
-     NPCompiler.Options,
+     AST.Parser.Options,
      AST.Project;
      // system
 

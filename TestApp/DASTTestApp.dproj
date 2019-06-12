@@ -110,8 +110,8 @@
         <DCCReference Include="..\Source\AST.Delphi.DataTypes.pas"/>
         <DCCReference Include="..\Source\AST.Parser.Messages.pas"/>
         <DCCReference Include="..\Source\AST.Delphi.Operators.pas"/>
-        <DCCReference Include="..\Source\NPCompiler.Options.pas"/>
-        <DCCReference Include="..\Source\NPCompiler.Package.pas"/>
+        <DCCReference Include="..\Source\AST.Parser.Options.pas"/>
+        <DCCReference Include="..\Source\AST.Pascal.Project.pas"/>
         <DCCReference Include="..\Source\AST.Delphi.SysFunctions.pas"/>
         <DCCReference Include="..\Source\AST.Parser.Utils.pas"/>
         <DCCReference Include="..\Source\AST.Targets.pas"/>

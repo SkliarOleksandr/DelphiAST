@@ -12,7 +12,7 @@ uses System.SysUtils, System.Classes, System.StrUtils, System.Math, System.Gener
      AVL,
      AST.Parser.Utils,
      AST.Parser.Messages,
-     NPCompiler.Options,
+     AST.Parser.Options,
      AST.Classes,
      AST.Project;
 type

@@ -2,7 +2,10 @@ unit AST.Delphi.Project;
 
 interface
 
-uses AST.Classes, NPCompiler.Package, AST.Delphi.Parser, AST.Delphi.Classes;
+uses AST.Classes,
+     AST.Pascal.Project,
+     AST.Delphi.Parser,
+     AST.Delphi.Classes;
 
 type
   TASTDelphiProject = class(TNPPackage)

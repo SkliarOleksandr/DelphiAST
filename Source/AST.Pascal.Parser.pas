@@ -18,7 +18,7 @@ uses SysUtils, Math, Classes, StrUtils, Types, IOUtils, Generics.Collections,
      AST.Parser.Contexts,
      AST.Delphi.Contexts,
      AST.Classes,
-     NPCompiler.Options,
+     AST.Parser.Options,
      AST.Project;
 
 type

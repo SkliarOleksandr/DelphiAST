@@ -1,4 +1,4 @@
-﻿unit NPCompiler.Package;
+﻿unit AST.Pascal.Project;
 
 interface
 
@@ -6,7 +6,7 @@ uses System.SysUtils, System.Classes, System.Types, Generics.Collections, System
      AVL,
      AST.Delphi.DataTypes,
      AST.Delphi.Classes,
-     NPCompiler.Options,
+     AST.Parser.Options,
      AST.Targets,
      AST.Parser.Messages,
      AST.Parser.Utils,
