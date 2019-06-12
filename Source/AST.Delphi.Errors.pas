@@ -9,7 +9,7 @@ uses SysUtils,
      AST.Delphi.Classes,
      AST.Delphi.Parser;
 
-const
+resourcestring
  // internal errors
   sUnitAlreadyExistFmt =  'Unit ''%s'' already exist';
 
@@ -47,7 +47,7 @@ const
   sStatementExpectedButExpFoundFmt = 'Statement expected, but expression "%s" found';
   sExpressionExpectedButStmntFoundFmt = 'Expression expected, but statement "%s" found';
   sExpressionExpected = 'Expression expected';
-  sIncompleteStatement = 'Incomplete statement';
+
   sUnnecessaryClosedBracket = 'Unnecessary closed bracket';
   sUnnecessaryClosedBlock = 'Unnecessary closed block';
   sUnnecessaryEndClause = 'Unnecessary end clause';
@@ -59,9 +59,6 @@ const
   sDuplicateSpecificationFmt = 'Duplicate "%s" specification';
   sReturnValueNotAllowedForProc = 'Return value is not allowed for procedure';
   sParameterTypeRequred = 'Parameter type required';
-
-    // pure
-  sObjectCannotBeUsedOnPureProc = 'Object "%s" can not be used in PURE function';
 
 
     // Assignment
@@ -205,9 +202,7 @@ const
   sProcRequiresExplicitTypeArgumentFmt = 'The %s "%s" requires explicit type argument(s)';
   sTooManyActualTypeParameters = 'Too many actual type arguments';
 
-
-
-    // conditional statements
+  // conditional statements
   sInvalidConditionalStatement = 'Invalid conditional statement';
 
 
@@ -237,7 +232,6 @@ type
     class procedure ERROR_ARRAY_TYPE_REQUIRED(const ID: TIdentifier; const TextPosition: TTextPosition); static;
     class procedure ERROR_INTEGER_TYPE_REQUIRED(const Pos: TTextPosition); static;
     class procedure ERROR_ORDINAL_TYPE_REQUIRED(const Pos: TTextPosition); static;
-    class procedure ERROR_OBJECT_CANNOT_BE_USED_ON_PURE_PROC(const Expr: TIDExpression); static;
     class procedure ERROR_PROC_OR_PROCVAR_REQUIRED(const ID: TIdentifier); static;
     class procedure ERROR_PROC_REQUIRED(const Position: TTextPosition); static;
     class procedure ERROR_PROC_OR_TYPE_REQUIRED(const ID: TIdentifier); static;
@@ -290,7 +284,7 @@ type
     procedure ERROR_EMPTY_EXPRESSION;
     procedure ERROR_END_OF_FILE;
     procedure ERROR_EXPRESSION_EXPECTED;
-    procedure ERROR_FEATURE_NOT_SUPPORTED;
+    procedure ERROR_FEATURE_NOT_SUPPORTED(const UnsupportedKeyword: string = '');
     procedure ERROR_INTF_SECTION_MISSING;
     procedure ERROR_KEYWORD_EXPECTED;
     procedure ERROR_BEGIN_KEYWORD_EXPECTED;
@@ -301,7 +295,7 @@ type
     procedure ERROR_NEED_SPECIFY_NINDEXES(const Decl: TIDDeclaration);
     procedure ERROR_IDENTIFIER_HAS_NO_MEMBERS(const Decl: TIDDeclaration);
     procedure ERROR_INVALID_COND_DIRECTIVE;
-    procedure ERROR_INCOMPLETE_STATEMENT;
+    procedure ERROR_INCOMPLETE_STATEMENT(const Statement: string = '');
     procedure ERROR_PROC_OR_PROP_OR_VAR_REQUIRED;
     procedure HINT_TEXT_AFTER_END;
     procedure ERROR_PARAM_TYPE_REQUIRED;
@@ -330,9 +324,15 @@ uses AST.Parser.Utils,
      AST.Parser.Errors,
      AST.Parser.Messages;
 
-procedure TASTDelphiErrors.ERROR_INCOMPLETE_STATEMENT;
+resourcestring
+  sIncompleteStatement = 'Incomplete statement';
+
+procedure TASTDelphiErrors.ERROR_INCOMPLETE_STATEMENT(const Statement: string);
 begin
-  AbortWork(sIncompleteStatement, Lexer.Position);
+  if Statement <> '' then
+    AbortWork(sIncompleteStatement + ': ' + Statement, Lexer.Position)
+  else
+    AbortWork(sIncompleteStatement, Lexer.Position);
 end;
 
 procedure TASTDelphiErrors.ERROR_INHERITED_ALLOWED_ONLY_IN_OVERRIDE_METHODS;
@@ -529,9 +529,12 @@ begin
   AbortWork(sUnexpectedEndOfFile, Lexer.PrevPosition);
 end;
 
-procedure TASTDelphiErrors.ERROR_FEATURE_NOT_SUPPORTED;
+procedure TASTDelphiErrors.ERROR_FEATURE_NOT_SUPPORTED(const UnsupportedKeyword: string);
 begin
-  AbortWork(sFeatureNotSupported, Lexer.Position);
+  if UnsupportedKeyword <> '' then
+    AbortWork(sFeatureNotSupported + ': ' + UnsupportedKeyword, Lexer.Position)
+  else
+    AbortWork(sFeatureNotSupported + UnsupportedKeyword, Lexer.Position);
 end;
 
 procedure TASTDelphiErrors.ERROR_FINAL_SECTION_ALREADY_DEFINED;
@@ -767,11 +770,6 @@ end;
 class procedure TASTDelphiErrors.ERROR_ORDINAL_TYPE_REQUIRED(const Pos: TTextPosition);
 begin
   AbortWork(sOrdinalTypeRequired, Pos);
-end;
-
-class procedure TASTDelphiErrors.ERROR_OBJECT_CANNOT_BE_USED_ON_PURE_PROC(const Expr: TIDExpression);
-begin
-  AbortWork(sObjectCannotBeUsedOnPureProc, [Expr.DisplayName], Expr.TextPosition);
 end;
 
 class procedure TASTDelphiErrors.ERROR_PROC_OR_PROCVAR_REQUIRED(const ID: TIdentifier);

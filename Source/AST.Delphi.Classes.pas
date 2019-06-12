@@ -1335,6 +1335,7 @@ type
     function GetSelfParamExpression: TIDExpression;
     function GetResultParamExpression: TIDExpression;
     function GetProcSpace: PProcSpace; inline;
+    function GetIsGeneric: Boolean; inline;
   protected
     function GetDisplayName: string; override;
     function GetIndex: Integer; override;
@@ -1404,6 +1405,7 @@ type
     property GenericDescriptor: PGenericDescriptor read FGenericDescriptor;
     property GenericPrototype: TIDProcedure read FGenericPrototype write FGenericPrototype;
     property CallConvention: TCallConvention read FCallConv write FCallConv;
+    property IsGeneric: Boolean read GetIsGeneric;
 
     property FirstBodyLine: Integer read FFirstBodyLine write FFirstBodyLine;
     property LastBodyLine: Integer read FLastBodyLine write FLastBodyLine;
@@ -2435,6 +2437,11 @@ end;
 function TIDProcedure.GetIsCompleted: Boolean;
 begin
   Result := pfCompleted in FProcFlags;
+end;
+
+function TIDProcedure.GetIsGeneric: Boolean;
+begin
+  Result := Assigned(FGenericDescriptor);
 end;
 
 function TIDProcedure.GetIsStatic: Boolean;

@@ -496,10 +496,10 @@ begin
       {ASM}
       token_asm: Result := ParseASMStatement(Scope, SContext);
       {INHERITED}
-      (*token_inherited: begin
-        InitEContext(EContext, SContext, ExprLValue);
-        Result := ParseInheritedStatement(Scope, EContext);
-      end;*)
+      token_inherited: begin
+        InitEContext(LEContext, SContext, ExprLValue);
+        Result := ParseInheritedStatement(Scope, LEContext);
+      end;
       {TRY}
       token_try: Result := ParseTrySection(Scope, SContext);
       {EXCEPT/FINALLY}
@@ -1130,7 +1130,7 @@ begin
         Break;
       end;
     else
-      ERROR_INCOMPLETE_STATEMENT;
+      ERROR_INCOMPLETE_STATEMENT('call');
     end;
   end;
 
@@ -1246,7 +1246,7 @@ begin
           Break;
         end;
       else
-        ERROR_INCOMPLETE_STATEMENT;
+        ERROR_INCOMPLETE_STATEMENT('call 2');
       end;
     end;
   end else begin
@@ -2225,10 +2225,6 @@ begin
           CheckIntfSectionMissing(Scope);
           Token := ParseProcedure(Scope, ptDestructor);
         end;
-        token_operator: begin
-          CheckIntfSectionMissing(Scope);
-          Token := ParseOperator(Scope, nil);
-        end;
         token_const: begin
           CheckIntfSectionMissing(Scope);
           Token := ParseConstSection(Scope);
@@ -2241,8 +2237,9 @@ begin
             token_procedure: Token := ParseProcedure(Scope, ptClassProc);
             token_constructor: Token := ParseProcedure(Scope, ptClassConstructor);
             token_destructor: Token := ParseProcedure(Scope, ptClassDestructor);
+            token_operator: Token := ParseOperator(Scope, nil);
           else
-            ERROR_FEATURE_NOT_SUPPORTED;
+            ERROR_FEATURE_NOT_SUPPORTED(Lexer_TokenLexem(Token));
           end;
         end;
         token_weak: begin
@@ -4810,6 +4807,10 @@ begin
   KW.Expression := ASTExpr;
   SExpression := EContext.RPNPopExpression();
   CheckEmptyExpression(SExpression);
+
+  var WasCall := False;
+  SExpression := CheckAndCallFuncImplicit(SContext, SExpression, WasCall);
+
   {if Assigned(EContext.LastBoolNode) then
     Bool_CompleteImmediateExpression(EContext, SExpression);}
   SEConst := SExpression.IsConstant;
@@ -5117,7 +5118,7 @@ begin
   SrcExpr := EContext.RPNPopExpression();
 
   if Result <> token_closeround then
-    ERROR_INCOMPLETE_STATEMENT;
+    ERROR_INCOMPLETE_STATEMENT('explicit cast');
 
   TargetType := DstExpression.AsType;
   ResExpr := MatchExplicit2(SContext, SrcExpr, TargetType, OperatorDecl);
@@ -5346,8 +5347,8 @@ begin
         continue;
       end;
       token_inherited: begin
-        //CheckLeftOperand(Status);
-        //Result := ParseInheritedStatement(Scope, EContext);
+        CheckLeftOperand(Status);
+        Result := ParseInheritedStatement(Scope, EContext);
         Status := rpOperand;
         continue;
       end;
@@ -5738,8 +5739,8 @@ begin
         Result := Lexer_NextToken(Scope);
         Break;
       end;
-      else
-        AbortWork(sIncompleteStatement, Lexer_PrevPosition);
+    else
+      ERROR_INCOMPLETE_STATEMENT('generics args');
     end;
   end;
 
@@ -7465,7 +7466,7 @@ begin
       itProcedure: begin
         Expression := TIDCallExpression.Create(Decl, PMContext.ID.TextPosition);
         // если есть открытая угловая скобка, - значит generic-вызов
-        if Result = token_less then
+        if (Result = token_less) and TIDProcedure(Decl).IsGeneric then
         begin
           Result := ParseGenericsArgs(Scope, EContext.SContext, GenericArgs);
           SetProcGenericArgs(TIDCallExpression(Expression), GenericArgs);
@@ -7748,8 +7749,8 @@ begin
         Result := Lexer_NextToken(Scope);
         Break;
       end;
-      else
-        AbortWork(sIncompleteStatement, Lexer_PrevPosition);
+    else
+      ERROR_INCOMPLETE_STATEMENT('indexed args');
     end;
   end;
 end;
@@ -7767,9 +7768,6 @@ var
   KW: TASTKWInheritedCall;
 begin
   Proc := EContext.SContext.Proc;
-  if not (pfOverride in Proc.Flags) then
-    ERROR_INHERITED_ALLOWED_ONLY_IN_OVERRIDE_METHODS;
-
   KW := EContext.SContext.Add<TASTKWInheritedCall>;
 
   Result := Lexer_NextToken(Scope);

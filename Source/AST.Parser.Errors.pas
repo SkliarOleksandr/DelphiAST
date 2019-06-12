@@ -85,6 +85,11 @@ begin
   raise ECompilerAbort.Create(Message, SourcePosition);
 end;
 
+procedure AbortWork(const MessageFmt: string; const  Params: array of const; const SourcePosition: TTextPosition);
+begin
+  AbortWork(Format(MessageFmt, Params), SourcePosition);
+end;
+
 procedure AbortWorkInternal(const Message: string);
 var
   POS: TTextPosition;
@@ -112,11 +117,5 @@ procedure AbortWorkInternal(const Message: string; const Params: array of const;
 begin
   raise ECompilerAbort.CreateAsInteranl(Format(Message, Params), SourcePosition);
 end;
-
-procedure AbortWork(const MessageFmt: string; const  Params: array of const; const SourcePosition: TTextPosition);
-begin
-  AbortWork(Format(MessageFmt, Params), SourcePosition);
-end;
-
 
 end.
