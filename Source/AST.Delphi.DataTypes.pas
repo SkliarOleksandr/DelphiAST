@@ -1,10 +1,6 @@
-﻿unit NPCompiler.DataTypes;
+﻿unit AST.Delphi.DataTypes;
 
 interface
-
-uses SysUtils, classes;
-
-type
 
 {
 
@@ -35,8 +31,6 @@ type
        |--Interface
 
 }
-
-  TCastResolution = (crDenied, crImplicit, crExplicit);
 
 type
 
@@ -119,54 +113,7 @@ const
     {dtInterface}   True
   );
 
-
-type
-  TManagedDataTypeFlag = (
-    mtNeedClear,             // необходимо занулить переменную
-    mtNeedIncRef,            // тип использует ARC
-    dtNeedFinal,             // нужно финализировать (но только для не анонимных переменных) ???
-    dtNeedAlwaysFinal        // нужно финализировать (для всех переменных) ??? todo: надо обьединить
-  );
-
-  TManagedDataTypeFlags = set of TManagedDataTypeFlag;
-
 const
-  cDataTypeManagedFlags: array [TDataTypeID] of TManagedDataTypeFlags =
-  (
-    {dtInt8}        [],
-    {dtInt16}       [],
-    {dtInt32}       [],
-    {dtInt64}       [],
-    {dtUint8}       [],
-    {dtUint16}      [],
-    {dtUint32}      [],
-    {dtUint64}      [],
-    {dtNativeInt}   [],
-    {dtNativeUInt}  [],
-    {dtFloat32}     [],
-    {dtFloat64}     [],
-    {dtBoolean}     [],
-    {dtAnsiChar}    [],
-    {dtChar}        [],
-    {dtAnsiString}  [mtNeedClear, dtNeedFinal, mtNeedIncRef, dtNeedAlwaysFinal],
-    {dtString}      [mtNeedClear, dtNeedFinal, mtNeedIncRef, dtNeedAlwaysFinal],
-    {dtVariant}     [mtNeedClear, dtNeedFinal, dtNeedAlwaysFinal],
-    {dtGuid}        [],
-    {dtPointer}     [],
-    {dtWeakRef}     [mtNeedClear, dtNeedFinal, mtNeedIncRef, dtNeedAlwaysFinal],
-    {dtGeneric}     [],
-    {dtRange}       [],
-    {dtEnum}        [],
-    {dtSet}         [],
-    {dtArray}       [],
-    {dtDynArray}    [mtNeedClear, dtNeedFinal, mtNeedIncRef, dtNeedAlwaysFinal],
-    {dtOpenArray}   [],
-    {dtProcType}    [],
-    {dtRecord}      [],
-    {dtClass}       [mtNeedClear, dtNeedFinal, mtNeedIncRef],
-    {dtClassOf}     [],
-    {dtInterface}   [mtNeedClear, dtNeedFinal, mtNeedIncRef]
-  );
 
   // Таблица совместимости типов, Строка описывает тип [SOURCE], колонка [DESTINATION]
   _ImplicitFactors: array [dtInt8..dtVariant, dtInt8..dtVariant] of integer = (

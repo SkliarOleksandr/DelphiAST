@@ -4,7 +4,7 @@ interface
 
 {$i compilers.inc}
 
-uses AST.Lexer, SysUtils, StrUtils, Types, Classes, AST.Parser.Errors, NPCompiler.Errors;
+uses AST.Lexer, SysUtils, StrUtils, Types, Classes, AST.Parser.Errors;
 
 type
 
@@ -197,8 +197,9 @@ var
 
 implementation
 
-{ TDelphiParser }
+uses AST.Delphi.Errors;
 
+{ TDelphiParser }
 
 function TokenCanBeID(TokenID: TTokenID): Boolean;
 begin

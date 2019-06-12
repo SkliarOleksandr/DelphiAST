@@ -1,10 +1,10 @@
-﻿unit NPCompiler.Utils;
+﻿unit AST.Parser.Utils;
 
 {$I compilers.inc}
 
 interface
 
-uses SysUtils, StrUtils, DateUtils, Classes, Math, NPCompiler.DataTypes, Types, AVL, TypInfo, AnsiStrings,
+uses SysUtils, StrUtils, DateUtils, Classes, Math, AST.Delphi.DataTypes, Types, AVL, TypInfo, AnsiStrings,
      {$IFNDEF FPC}IOUtils{$ELSE}FileUtil{$ENDIF};
 
 const

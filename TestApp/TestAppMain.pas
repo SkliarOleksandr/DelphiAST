@@ -5,7 +5,7 @@ interface
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, System.Generics.Collections, NPCompiler.Package,
-  NPCompiler.Intf, AST.Pascal.Parser, AST.Delphi.Classes, SynEdit, SynEditHighlighter, SynEditCodeFolding, SynHighlighterPas, AST.Delphi.Project,
+  AST.Pascal.Parser, AST.Delphi.Classes, SynEdit, SynEditHighlighter, SynEditCodeFolding, SynHighlighterPas, AST.Delphi.Project,
   Vcl.ComCtrls, Vcl.ExtCtrls;
 
 type
@@ -46,7 +46,12 @@ var
 implementation
 
 uses
-  System.IOUtils, IdCTypes, System.Types, AST.Delphi.System, AST.Delphi.Parser, AST.Classes, AST.Writer;
+  System.IOUtils, System.Types,
+  AST.Delphi.System,
+  AST.Delphi.Parser,
+  AST.Classes,
+  AST.Parser.Messages,
+  AST.Writer;
 
 {$R *.dfm}
 

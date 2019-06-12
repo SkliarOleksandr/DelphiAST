@@ -78,7 +78,8 @@ implementation
 uses
   AST.Parser.Errors,
   AST.Pascal.Parser,
-  NPCompiler.Errors;
+  AST.Lexer,
+  AST.Delphi.Errors;
 
 { TRPN }
 
@@ -104,8 +105,8 @@ end;
 procedure TASTEContext<TProc>.RPNError(Status: TRPNError);
 begin
   case Status of
-    reUnclosedOpenBracket: AbortWork(sUnclosedOpenBracket);
-    reDublicateOperation: AbortWork(sDublicateOperationFmt);
+    reUnclosedOpenBracket: AbortWork(sUnclosedOpenBracket, TTextPosition.Empty);
+    reDublicateOperation: AbortWork(sDublicateOperationFmt, TTextPosition.Empty);
   end;
 end;
 

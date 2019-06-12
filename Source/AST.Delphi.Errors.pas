@@ -9,6 +9,208 @@ uses SysUtils,
      AST.Delphi.Classes,
      AST.Delphi.Parser;
 
+const
+ // internal errors
+  sUnitAlreadyExistFmt =  'Unit ''%s'' already exist';
+
+  sIntfSectionMissing = 'INTERFACE section are missing';
+  sKeywordExpected = 'KEYWORD expected but %s found';
+  sInternalErrorWord = 'Internal error';
+  sErrorWord = 'Error';
+  sWarningWord = 'Warning';
+  sHintWord = 'Hint';
+  sExpected = '%s expected';
+  sExpectedButFoundFmt = '%s expected but "%s" found';
+  sIdentifierExpected = 'Identifier expected';
+  sIdExpectedButFoundFmt = 'Identifier expected but "%s" found';
+  sParamNameExpectedButFoundFmt = 'Param name expected but "%s" found';
+  sTypeIdExpectedButFoundFmt = 'Type identifier expected but "%s" found';
+  sIdentifierRedeclaredFmt = 'Identifier redeclared: "%s"';
+  sUndeclaredIdentifier = 'Undeclared identifier: "%s"';
+  sDeclDifWithPrevDecl = 'Declaration of "%s" differs from previous declaration';
+  sBeginEndCountAreDiffers = 'Count of BEGIN/END clauses does not equals';
+  sDevisionByZero = 'Devision by zero';
+  sVariableRequired = 'Variable required';
+  sVariableOrTypeRequired = 'VARIABLE or TYPE required';
+  sCannotModifyObjectPassedAsConstParam = 'Cannot modify object passed as CONST parameter';
+  sConstCannotBePassedAsVarParam = 'Constant cannot be passed as VAR parameter';
+  sIncompleteProcFmt = 'Incomplete forward declaration ''%s''';
+  sVariableIsDeclaredButNeverUsedInFmt =  'Variable "%s" is declared but never used';
+    // overload:
+  sOverloadedMustBeMarked = 'Overloaded entry "%s" must be marked with the "overload" directive';
+  sErrorOverload = 'There isn''t function with such parameters';
+  sAmbiguousOverloadedCallFmt = 'Ambiguous overloaded call to "%s"';
+  sInvalidIndex = 'Index is out of bounds';
+  sNotAllowedHere = 'Not allowed here: "%s"';
+  sUnexpectedEndOfFile = 'Unexpected end of file';
+  sUnknownLanguageExpression = 'Unknown language expression: "%s"';
+  sStatementExpectedButExpFoundFmt = 'Statement expected, but expression "%s" found';
+  sExpressionExpectedButStmntFoundFmt = 'Expression expected, but statement "%s" found';
+  sExpressionExpected = 'Expression expected';
+  sIncompleteStatement = 'Incomplete statement';
+  sUnnecessaryClosedBracket = 'Unnecessary closed bracket';
+  sUnnecessaryClosedBlock = 'Unnecessary closed block';
+  sUnnecessaryEndClause = 'Unnecessary end clause';
+  sUnclosedOpenBracket = 'Unclosed open bracket';
+  sUnclosedOpenBlock = 'Unclosed open block';
+  sMissingOperatorOrSemicolon = 'Missing operator or semicolon';
+  sSemicolonExpected = 'SEMICOLON expected';
+  sDublicateOperationFmt = 'Dublicate operation "%s"';
+  sDuplicateSpecificationFmt = 'Duplicate "%s" specification';
+  sReturnValueNotAllowedForProc = 'Return value is not allowed for procedure';
+  sParameterTypeRequred = 'Parameter type required';
+
+    // pure
+  sObjectCannotBeUsedOnPureProc = 'Object "%s" can not be used in PURE function';
+
+
+    // Assignment
+  sAssignmentIsImpossible = 'The assignment is impossible, "%s" is not a variable';
+  sRightExpressionHasNoResult = 'Right expression has no result';
+    // parameters
+  sNotEnoughActualParametersFmt = 'Not enough actual parameters for "%s"';
+  sTooManyActualParameters = 'Too many actual parameters';
+  sCannotPassConstAsVarParamFmt = 'Can not pass const as var parameter "%s"';
+    // Types
+  sNoOverloadOperatorForTypesFmt = 'No overload operator "%s" for types "%s" and "%s"';
+  sNoOverloadOperatorForTypeFmt = 'No overload operator "%s" for type "%s"';
+  sUnknownOperatorFmt = 'Unknown operator "%s"';
+  sOperatorNeedNCountOfParameters = 'Operator "%s" need %d explicit parameters';
+  sIncompatibleTypesFmt = 'Incompatible types: "%s" and "%s"';
+  sInvalidTypecastFmt = 'Can not explicitly convert type "%s" into "%s"';
+  sEmptyExpression = 'Empty expression';
+  sExpressionMustBeBoolean = 'Type of expression must be BOOLEAN';
+  sExpressionMustBeConstant = 'Expression must be a CONSTANT';
+  sDeclarationHasNoDataTypeFmt = 'Declaration "%s" has no data type';
+  sInvalidTypeDeclaration = 'Invalid type declaration';
+  sTypeKeywordRequred = 'The TYPE keyword required';
+  sConstValueOverflowFmt = 'CONST value "%s" exceeds values range for "%s" data type';
+
+  // uses
+  sUnitNotFoundFmt = 'Unit not found: %s';
+  sUnitRecursivelyUsesItselfFmt = 'Program or unit ''%s'' recursively uses itself';
+
+  // loops
+  sContinueAllowedOnlyInLoop = 'continue allowed only in loop';
+  sBreakOrContinueAreAllowedOnlyInALoops = 'BREAK and CONTINUE are allowed only in a loops';
+  sLoopLevelExprected = 'Loop level exprected';
+  sLoopLevelGreaterThenPossibleFmt = 'The loop level is greater than possible, max level is %d';
+  sForLoopIndexVarsMastBeSimpleIntVar = 'For loop index variable must be local integer variable';
+  sKeywordToOrDowntoExpected = 'Кeyword TO or DOWNTO are expected';
+  sForOrWhileLoopExecutesZeroTimes = 'FOR or WHILE-loop executes zero times - deleted';
+  sZeroDeltaInForLoop = 'Zero delta in FOR-loop, infinity loop';
+  sCannotModifyForLoopIndexVarFmt = 'Cannot modify FOR-loop index variable %s';
+
+    // records
+  sIdentifierHasNoMembersFmt = 'Identifier "%s" has no members';
+  sRecordTypeRequired = 'Record type is required';
+  sStructTypeRequired = 'Structured type is required';
+  sRecurciveTypeLinkIsNotAllowed = 'Recurcive link is not allowed';
+  sFieldConstOrFuncRequiredForGetter = 'The field, constant or function are required for a getter';
+  sFieldOrProcRequiredForSetter = 'The field or procedure are required for a setter';
+  sCannotModifyReadOnlyProperty = 'Cannot modify the read-only property';
+  sCannotAccessToWriteOnlyProperty = 'Cannot access to write-only property';
+  sSetterMustBeMethodWithSignFmt = 'Setter must be a method with signature: procedure(const Value: %s);';
+  sDefaultPropertyMustBeAnArrayProperty =  'Default property must be an array property';
+  sDefaultPropertyAlreadyExistsFmt = 'Default property already exist: "%s"';
+
+
+    // classes
+  sClassTypeCannotBeAnonimous = 'CLASS type cannot be anonimous';
+  sClassTypeRequired = 'CLASS type required';
+
+
+    // interfaces
+  sInterfacedTypeCannotBeAnonimous = 'Interfaced type cannot be anonimous';
+  sInterfaceTypeRequired = 'Interface type required';
+
+
+    // arrays
+  sOrdinalTypeRequired = 'ORDINAL type required';
+  sOrdinalConstOrTypeRequred = 'ORDINAL constant or type required';
+  sArrayTypeRequired = 'Array type required';
+  sArrayOrStringTypeRequired = 'ARRAY or STRING type required';
+  sNeedSpecifyNIndexesFmt = 'For access to array ''%s: %s'' need specify %d indexes';
+  sConstExprOutOfRangeFmt = 'Const expression ''%d'' out of range [%d..%d]';
+  sOpenArrayAllowedOnlyAsTypeOfParam = 'Open array allowed only as type of parameter';
+
+    // New/Free
+  sPointerTypeRequired = 'POINTER type required';
+  sReferenceTypeRequired = 'REFERENCE type required';
+
+
+    // Ranges
+  sLowerBoundExceedsHigherBound = 'Lower bound exceeds higher bound';
+  sNumericTypeRequired = 'Numeric type required';
+  sConstRangeRequired = 'Const range required';
+
+
+    // Enums
+  sComaOrCloseRoundExpected = ''','' or '')'' expected';
+
+    // Expressions
+  sSingleExpressionRequired = 'Single expression required';
+  sStringExpressionRequired = 'STRING expression required';
+
+    // Import/Export
+  sImportFuncCannotBeInline = 'Import function can not be INLINE';
+  sExportAllowsOnlyInIntfSection = 'Export allows only in INTERFACE section';
+
+    // Interanl errors
+  sOperatorForTypesAlreadyOverloadedFmt = 'Operator ''%s'' for types ''%s'' and ''%s'' already overloaded';
+  sFeatureNotSupported = 'Feature is not supported';
+
+    // Platform/ASM
+  sInstructionAlreadyDeclaredFmt = 'Instruction "%s" already declared';
+  sRegisterAlreadyDeclaredFmt = 'Register "%s" already declared';
+  sUnknownInstructionFmt = 'Unknown instruction "%s"';
+  sUnknownPlatformFmt = 'Unknown platform "%s"';
+  sProcedureOrFunctionKeywordAreExpected = 'PROCEDURE or FUNCTION keyword are expected';
+    //sProcOrFuncRequired = 'Procedure or function required';
+  sDuplicateOpenBlock = 'Duplicate open block';
+  sASMSyntaxError = 'Assembler syntax error';
+  sDestArgCannotBeConst = 'Destination argument cannot be a constant';
+  sEmptyArgument = 'Empty argument';
+  sInvalidArgument = 'Invalid argument';
+  sLabelRedeclaretedFmt = 'Label "%s" redeclareted';
+  sImmediateOffsetIsOutOfRangeFmt = 'Immediate offset is out of range (%d..%d)';
+
+    // IIF
+  sTypesMustBeIdentical = 'Types must be identical';
+  sThenAndElseSectionAreIdentical = 'THEN and ELSE sections are identical';
+
+    // Try/Except/Finally
+  sTryKeywordMissed = 'TRY keyword missed';
+  sExceptOrFinallySectionWasMissed = 'EXCEPT or FINALLY section was missed';
+  sSectionFinallyAlreadyDefined = 'Section FINALLY already defined';
+  sSectionExceptAlreadyDefined = 'Section EXCEPT already defined';
+  sExceptSectionMustBeDeclareBeforeFinally = 'EXCEPT section must be declared before FINALLY section';
+  sBreakContinueExitAreNotAllowedInFinallyClause = 'BREAK, CONTINUE or EXIT are not allowed in FINALLY clause';
+
+    // case
+  sCaseStmtRequireAtLeastOneMatchExpr = 'CASE statement require at least one match expression';
+  sMatchExprTypeMustBeIdenticalToCaseExprFmt = 'Match expression type [%s] must be identical to CASE expression type [%s]';
+  sDuplicateMatchExpression = 'Duplicate match expression';
+
+    // addr
+  sVarOrProcRequired = 'Variable or procedure required';
+
+  sProcOrProcVarRequired = 'Procedure or variable of procedure type is required';
+
+    // generics
+  sNoOneTypeParamsWasFound = 'No one type parameters was found';
+  sGenericProcInstanceErrorFmt = 'Generic procedure %s specialization ERROR:';
+  sGenericFuncInstanceErrorFmt = 'Generic function %s specialization ERROR:';
+  sProcHasNoGenericParams = 'The %s "%s" has no generic parameters';
+  sProcRequiresExplicitTypeArgumentFmt = 'The %s "%s" requires explicit type argument(s)';
+  sTooManyActualTypeParameters = 'Too many actual type arguments';
+
+
+
+    // conditional statements
+  sInvalidConditionalStatement = 'Invalid conditional statement';
+
+
 type
   TASTDelphiErrors = class helper for TASTDelphiUnit
     class procedure ERROR_ARG_VAR_REQUIRED(Expr: TIDExpression); static;
@@ -117,18 +319,16 @@ type
     procedure ERROR_INVALID_HEX_CONSTANT;
     procedure ERROR_INVALID_BIN_CONSTANT;
     procedure ERROR_INTERNAL(const Message: string = 'GENERAL ERROR');
-    procedure HINT_RESULT_EXPR_IS_NOT_USED(const Expr: TIDExpression);
+    //procedure HINT_RESULT_EXPR_IS_NOT_USED(const Expr: TIDExpression);
     //procedure HINT_TYPE_DELETE_UNUSED(Decl: TIDDeclaration);
     //procedure HINT_PROC_DELETE_UNUSED(Decl: TIDDeclaration);
   end;
 
 implementation
 
-uses NPCompiler.Utils,
+uses AST.Parser.Utils,
      AST.Parser.Errors,
-     NPCompiler.Messages,
-     NPCompiler.Intf,
-     NPCompiler.Errors;
+     AST.Parser.Messages;
 
 procedure TASTDelphiErrors.ERROR_INCOMPLETE_STATEMENT;
 begin
@@ -171,7 +371,7 @@ end;
 
 class procedure TASTDelphiErrors.ERROR_CONST_VALUE_OVERFLOW(Expr: TIDExpression; DstDataType: TIDType);
 begin
-  AbortWork(errConstValueOverflow, [Expr.DisplayName, DstDataType.DisplayName], Expr.TextPosition);
+  AbortWork(sConstValueOverflowFmt, [Expr.DisplayName, DstDataType.DisplayName], Expr.TextPosition);
 end;
 
 class procedure TASTDelphiErrors.ERROR_CTOR_DTOR_MUST_BE_DECLARED_IN_STRUCT(const Position: TTextPosition);
@@ -252,12 +452,12 @@ end;
 
 procedure TASTDelphiErrors.ERROR_DEFAULT_PROP_ALREADY_EXIST(Prop: TIDProperty);
 begin
-  AbortWork(errorDefaultPropertyAlreadyExistsFmt, [Prop.Name], Lexer.Position);
+  AbortWork(sDefaultPropertyAlreadyExistsFmt, [Prop.Name], Lexer.Position);
 end;
 
 procedure TASTDelphiErrors.ERROR_DEFAULT_PROP_MUST_BE_ARRAY_PROP;
 begin
-  AbortWork(errorDefaultPropertyMustBeAnArrayProperty, Lexer.Position);
+  AbortWork(sDefaultPropertyMustBeAnArrayProperty, Lexer.Position);
 end;
 
 procedure TASTDelphiErrors.ERROR_DESTRUCTOR_CANNOT_BE_CALL_DIRECTLY;
@@ -306,7 +506,7 @@ end;
 
 procedure TASTDelphiErrors.ERROR_PARAM_TYPE_REQUIRED;
 begin
-  AbortWork(errParameterTypeRequred, Lexer.PrevPosition);
+  AbortWork(sParameterTypeRequred, Lexer.PrevPosition);
 end;
 
 procedure TASTDelphiErrors.ERROR_IDENTIFIER_EXPECTED;
@@ -381,22 +581,22 @@ end;
 
 class procedure TASTDelphiErrors.ERROR_INVALID_EXPLICIT_TYPECAST(const Src: TIDExpression; Dst: TIDType);
 begin
-  AbortWork(sInvalidTypecast, [Src.DataTypeName, Dst.DisplayName], Src.TextPosition);
+  AbortWork(sInvalidTypecastFmt, [Src.DataTypeName, Dst.DisplayName], Src.TextPosition);
 end;
 
 procedure TASTDelphiErrors.ERROR_INVALID_TYPE_DECLARATION;
 begin
-  AbortWork(errInvalidTypeDeclaration, Lexer.PrevPosition);
+  AbortWork(sInvalidTypeDeclaration, Lexer.PrevPosition);
 end;
 
 class procedure TASTDelphiErrors.ERROR_ID_REDECLARATED(Decl: TIDDeclaration);
 begin
-  AbortWork(sIdentifierRedeclared, [Decl.DisplayName], Decl.SourcePosition);
+  AbortWork(sIdentifierRedeclaredFmt, [Decl.DisplayName], Decl.SourcePosition);
 end;
 
 class procedure TASTDelphiErrors.ERROR_ID_REDECLARATED(const ID: TIdentifier);
 begin
-  AbortWork(sIdentifierRedeclared, [ID.Name], ID.TextPosition);
+  AbortWork(sIdentifierRedeclaredFmt, [ID.Name], ID.TextPosition);
 end;
 
 procedure TASTDelphiErrors.ERROR_IMPORT_FUNCTION_CANNOT_BE_INLINE;
@@ -445,12 +645,12 @@ end;
 
 class procedure TASTDelphiErrors.ERROR_UNIT_NOT_FOUND(const ID: TIdentifier);
 begin
-  AbortWork(errUnitNotFoundFmt, [ID.Name], ID.TextPosition);
+  AbortWork(sUnitNotFoundFmt, [ID.Name], ID.TextPosition);
 end;
 
 class procedure TASTDelphiErrors.ERROR_UNIT_RECURSIVELY_USES_ITSELF(const ID: TIdentifier);
 begin
-  AbortWork(errUnitRecursivelyUsesItselfFmt, [ID.Name], ID.TextPosition);
+  AbortWork(sUnitRecursivelyUsesItselfFmt, [ID.Name], ID.TextPosition);
 end;
 
 class procedure TASTDelphiErrors.ERROR_UNKNOWN_OPTION(const ID: TIdentifier);
@@ -631,7 +831,7 @@ end;
 
 class procedure TASTDelphiErrors.ERROR_CLASS_TYPE_REQUIRED(const TextPosition: TTextPosition);
 begin
-  AbortWork(errCLASSTypeRequired, TextPosition);
+  AbortWork(sCLASSTypeRequired, TextPosition);
 end;
 
 class procedure TASTDelphiErrors.ERROR_CANNOT_ACCESS_PRIVATE_MEMBER(const ID: TIdentifier);
@@ -707,13 +907,13 @@ begin
   PutMessage(cmtHint, 'Text after final END. - ignored by compiler', Lexer_PrevPosition);
 end;
 
-procedure TASTDelphiErrors.HINT_RESULT_EXPR_IS_NOT_USED(const Expr: TIDExpression);
-begin
-  if Assigned(Expr.DataType) then
-    PutMessage(cmtHint, 'Expression result (type: ' + Expr.DataType.DisplayName + ') is not used', Expr.TextPosition)
-  else
-    PutMessage(cmtHint, 'Expression result is not used', Expr.TextPosition);
-end;
+//procedure TASTDelphiErrors.HINT_RESULT_EXPR_IS_NOT_USED(const Expr: TIDExpression);
+//begin
+//  if Assigned(Expr.DataType) then
+//    PutMessage(cmtHint, 'Expression result (type: ' + Expr.DataType.DisplayName + ') is not used', Expr.TextPosition)
+//  else
+//    PutMessage(cmtHint, 'Expression result is not used', Expr.TextPosition);
+//end;
 
 
 end.

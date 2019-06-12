@@ -15,8 +15,8 @@ implementation
 
 uses AST.Delphi.System,
      AST.Pascal.Parser,
-     NPCompiler.DataTypes,
-     NPCompiler.Utils,
+     AST.Delphi.DataTypes,
+     AST.Parser.Utils,
      AST.Delphi.Parser,
      AST.Delphi.Errors;
 

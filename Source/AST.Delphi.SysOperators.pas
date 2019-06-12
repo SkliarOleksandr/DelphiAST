@@ -225,8 +225,8 @@ type
 
 implementation
 
-uses NPCompiler.DataTypes,
-     NPCompiler.Utils,
+uses AST.Delphi.DataTypes,
+     AST.Parser.Utils,
      AST.Delphi.Parser,
      AST.Delphi.Errors,
      AST.Pascal.Parser,

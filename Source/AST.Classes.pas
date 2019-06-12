@@ -2,7 +2,7 @@ unit AST.Classes;
 
 interface
 
-uses AST.Lexer, AST.Project, NPCompiler.Utils;
+uses AST.Lexer, AST.Project, AST.Parser.Utils;
 
 type
   TASTItemTypeID = Integer;

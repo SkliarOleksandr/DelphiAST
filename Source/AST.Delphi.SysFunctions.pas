@@ -4,8 +4,7 @@ interface
 
 uses AST.Pascal.Parser,
      AST.Delphi.Classes,
-     NPCompiler.DataTypes,
-     NPCompiler.Errors,
+     AST.Delphi.DataTypes,
      AST.Delphi.System,
      AST.Parser.Errors,
      AST.Delphi.Parser,

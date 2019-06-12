@@ -1,4 +1,4 @@
-﻿unit NPCompiler.Intf;
+﻿unit AST.Parser.Messages;
 
 interface
 
@@ -75,9 +75,9 @@ type
 
 implementation
 
-uses AST.Pascal.Parser, NPCompiler.Messages, NPCompiler.Utils;
-
-
+uses AST.Pascal.Parser,
+     AST.Delphi.Errors,
+     AST.Parser.Utils;
 
 { TCompilerMessage }
 
@@ -105,10 +105,10 @@ end;
 function TCompilerMessage.GetMessageTypeName: string;
 begin
   case FMessageType of
-    cmtHint: Result := msgHintWord;
-    cmtWarning: Result := msgWarningWord;
-    cmtError: Result := msgErrorWord;
-    cmtInteranlError: Result := msgInternalErrorWord;
+    cmtHint: Result := sHintWord;
+    cmtWarning: Result := sWarningWord;
+    cmtError: Result := sErrorWord;
+    cmtInteranlError: Result := sInternalErrorWord;
   end;
 end;
 

@@ -2,7 +2,7 @@ unit AST.Parser.Errors;
 
 interface
 
-uses SysUtils, NPCompiler.Errors, NPCompiler.Intf, AST.Lexer;
+uses SysUtils, AST.Parser.Messages, AST.Lexer;
 
 type
 
@@ -31,9 +31,9 @@ type
     constructor Create();
   end;
 
-  procedure AbortWork(Error: TCompilerError); overload;
-  procedure AbortWork(Error: TCompilerError; const SourcePosition: TTextPosition); overload;
-  procedure AbortWork(Error: TCompilerError; const Params: array of const; const SourcePosition: TTextPosition); overload;
+//  procedure AbortWork(Error: TCompilerError); overload;
+//  procedure AbortWork(Error: TCompilerError; const SourcePosition: TTextPosition); overload;
+//  procedure AbortWork(Error: TCompilerError; const Params: array of const; const SourcePosition: TTextPosition); overload;
 
 
   procedure AbortWork(const Message: string; const SourcePosition: TTextPosition); overload;
@@ -118,30 +118,30 @@ begin
   raise ECompilerAbort.CreateAsInteranl(Format(Message, Params), SourcePosition);
 end;
 
-procedure AbortWork(Error: TCompilerError);
-var
-  ErrorStr: string;
-begin
-  ErrorStr := GetErrorText(Error);
-  raise ECompilerAbort.Create(ErrorStr);
-end;
-
-procedure AbortWork(Error: TCompilerError; const SourcePosition: TTextPosition); overload;
-var
-  ErrorStr: string;
-begin
-  ErrorStr := GetErrorText(Error);
-  raise ECompilerAbort.Create(ErrorStr, SourcePosition);
-end;
-
-procedure AbortWork(Error: TCompilerError; const Params: array of const; const SourcePosition: TTextPosition); overload;
-var
-  ErrorStr: string;
-begin
-  ErrorStr := GetErrorText(Error);
-  ErrorStr := Format(ErrorStr, Params);
-  raise ECompilerAbort.Create(ErrorStr, SourcePosition);
-end;
+//procedure AbortWork(Error: TCompilerError);
+//var
+//  ErrorStr: string;
+//begin
+//  ErrorStr := GetErrorText(Error);
+//  raise ECompilerAbort.Create(ErrorStr);
+//end;
+//
+//procedure AbortWork(Error: TCompilerError; const SourcePosition: TTextPosition); overload;
+//var
+//  ErrorStr: string;
+//begin
+//  ErrorStr := GetErrorText(Error);
+//  raise ECompilerAbort.Create(ErrorStr, SourcePosition);
+//end;
+//
+//procedure AbortWork(Error: TCompilerError; const Params: array of const; const SourcePosition: TTextPosition); overload;
+//var
+//  ErrorStr: string;
+//begin
+//  ErrorStr := GetErrorText(Error);
+//  ErrorStr := Format(ErrorStr, Params);
+//  raise ECompilerAbort.Create(ErrorStr, SourcePosition);
+//end;
 
 procedure AbortWork(const MessageFmt: string; const  Params: array of const; const SourcePosition: TTextPosition);
 begin

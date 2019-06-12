@@ -5,15 +5,13 @@ interface
 {$I compilers.inc}
 
 uses System.SysUtils, System.Classes, System.StrUtils, System.Math, System.Generics.Collections,
-     NPCompiler.DataTypes,
-     NPCompiler.Messages,
+     AST.Delphi.DataTypes,
      AST.Lexer,
      System.Variants,
      AST.Delphi.Operators,
      AVL,
-     NPCompiler.Utils,
-     NPCompiler.Errors,
-     NPCompiler.Intf,
+     AST.Parser.Utils,
+     AST.Parser.Messages,
      NPCompiler.Options,
      AST.Classes,
      AST.Project;
@@ -354,7 +352,7 @@ type
     function GetOrdinal: Boolean; virtual;
     function GetDisplayName: string; override;
     function GetIsManaged: Boolean; virtual;
-    function GetManagedFlags: TManagedDataTypeFlags; virtual;
+//    function GetManagedFlags: TManagedDataTypeFlags; virtual;
     function GetActualDataType: TIDType; virtual;
     function GetParent: TIDType;
     procedure SetGenericDescriptor(const Value: PGenericDescriptor); virtual;
@@ -395,7 +393,7 @@ type
     property TypeKind: TTypeKind read FTypeKind write FTypeKind;
     property DataSize: Integer read GetDataSize;
     property Managed: Boolean read GetIsManaged;
-    property ManagedFlags: TManagedDataTypeFlags read GetManagedFlags;
+//    property ManagedFlags: TManagedDataTypeFlags read GetManagedFlags;
     property IsPooled: Boolean read FIsPooled write FIsPooled;
     property NeedForward: Boolean read FNeedForward write FNeedForward;
     property ForwardID: TIdentifier read FForwardID write FForwardID;
@@ -683,7 +681,7 @@ type
     FCapturedVars: TCapturedVars;
   protected
     function GetDisplayName: string; override;
-    function GetManagedFlags: TManagedDataTypeFlags; override;
+//    function GetManagedFlags: TManagedDataTypeFlags; override;
   public
     constructor CreateClosure(const DeclProc, RunProc: TIDProcedure);
     destructor Destroy; override;
@@ -718,7 +716,7 @@ type
     function GetDimension(Index: Integer): TIDOrdinal; virtual;
   protected
     function GetDisplayName: string; override;
-    function GetManagedFlags: TManagedDataTypeFlags; override;
+//    function GetManagedFlags: TManagedDataTypeFlags; override;
     function GetDataSize: Integer; override;
   public
     constructor Create(Scope: TScope; const Name: TIdentifier); override;
@@ -758,7 +756,7 @@ type
   private
     function GetDimension(Index: Integer): TIDOrdinal; override;
   protected
-    function GetManagedFlags: TManagedDataTypeFlags; override;
+//    function GetManagedFlags: TManagedDataTypeFlags; override;
   public
     constructor Create(Scope: TScope; const Name: TIdentifier); override;
     constructor CreateAsAnonymous(Scope: TScope); override;
@@ -783,7 +781,7 @@ type
     constructor Create(Scope: TScope; const Name: TIdentifier); override; deprecated 'Only CreateAnonymous constructor allowed for this type';
     {$HINTS ON}
   protected
-    function GetManagedFlags: TManagedDataTypeFlags; override;
+//    function GetManagedFlags: TManagedDataTypeFlags; override;
   public
     constructor CreateAsAnonymous(Scope: TScope); override;
     ////////////////////////////////////////////////////////////////////////////
@@ -1901,20 +1899,20 @@ end;
 procedure TScope.AddProcedure(Declaration: TIDProcedure);
 begin
   if not InsertID(Declaration) then
-    AbortWork(sIdentifierRedeclared, [Declaration.Name], Declaration.SourcePosition);
+    AbortWork(sIdentifierRedeclaredFmt, [Declaration.Name], Declaration.SourcePosition);
   FProcSpace.Add(Declaration);
 end;
 
 procedure TScope.AddProperty(Declaration: TIDProperty);
 begin
   if not InsertID(Declaration) then
-    AbortWork(sIdentifierRedeclared, [Declaration.Name], Declaration.SourcePosition);
+    AbortWork(sIdentifierRedeclaredFmt, [Declaration.Name], Declaration.SourcePosition);
 end;
 
 procedure TScope.AddVariable(Declaration: TIDVariable);
 begin
   if not InsertID(Declaration) then
-    AbortWork(sIdentifierRedeclared, [Declaration.Name], Declaration.SourcePosition);
+    AbortWork(sIdentifierRedeclaredFmt, [Declaration.Name], Declaration.SourcePosition);
   FVarSpace.Add(Declaration);
 end;
 
@@ -2897,10 +2895,10 @@ begin
   Result := IsDataTypeReferenced(FDataTypeID);
 end;
 
-function TIDType.GetManagedFlags: TManagedDataTypeFlags;
-begin
-  Result := cDataTypeManagedFlags[DataTypeID];
-end;
+//function TIDType.GetManagedFlags: TManagedDataTypeFlags;
+//begin
+//  Result := cDataTypeManagedFlags[DataTypeID];
+//end;
 
 function TIDType.GetIsManaged: Boolean;
 begin
@@ -2932,13 +2930,13 @@ end;
 
 procedure ERROR_OPERATOR_ALREADY_OVERLOADED(Op: TOperatorID; Type1, Type2: TIDDeclaration; const Position: TTextPosition); overload;
 begin
-  AbortWorkInternal(msgOperatorForTypesAlreadyOverloadedFmt,
+  AbortWorkInternal(sOperatorForTypesAlreadyOverloadedFmt,
                     [OperatorFullName(Op), Type1.DisplayName, Type2.DisplayName], Position);
 end;
 
 procedure ERROR_OPERATOR_ALREADY_OVERLOADED(Op: TOperatorID; Type1: TDataTypeID; Type2: TIDDeclaration; const Position: TTextPosition); overload;
 begin
-  AbortWorkInternal(msgOperatorForTypesAlreadyOverloadedFmt,
+  AbortWorkInternal(sOperatorForTypesAlreadyOverloadedFmt,
                     [OperatorFullName(Op), GetDataTypeName(Type1), Type2.DisplayName], Position);
 end;
 
@@ -3086,7 +3084,7 @@ begin
 
   Node := FImplicitsIDTo.InsertNode(TIDDeclaration(DestinationID), IntOp);
   if Assigned(Node) then
-    AbortWorkInternal(msgOperatorForTypesAlreadyOverloadedFmt, [OperatorFullName(opImplicit), DisplayName, GetDataTypeName(DestinationID)]);
+    AbortWorkInternal(sOperatorForTypesAlreadyOverloadedFmt, [OperatorFullName(opImplicit), DisplayName, GetDataTypeName(DestinationID)]);
 end;
 
 procedure TIDType.OverloadImplicitToAny(const Op: TIDOperator);
@@ -4354,10 +4352,10 @@ begin
   end;
 end;
 
-function TIDArray.GetManagedFlags: TManagedDataTypeFlags;
-begin
-  Result := cDataTypeManagedFlags[DataTypeID];
-end;
+//function TIDArray.GetManagedFlags: TManagedDataTypeFlags;
+//begin
+//  Result := cDataTypeManagedFlags[DataTypeID];
+//end;
 
 procedure TIDArray.IncRefCount(RCPath: UInt32);
 var
@@ -4672,10 +4670,10 @@ begin
   Result := TIDOrdinal(SYSUnit._UInt32);
 end;
 
-function TIDDynArray.GetManagedFlags: TManagedDataTypeFlags;
-begin
-  Result := [mtNeedClear, dtNeedFinal, dtNeedAlwaysFinal, mtNeedIncRef];
-end;
+//function TIDDynArray.GetManagedFlags: TManagedDataTypeFlags;
+//begin
+//  Result := [mtNeedClear, dtNeedFinal, dtNeedAlwaysFinal, mtNeedIncRef];
+//end;
 
 { TIDSetType }
 
@@ -5253,10 +5251,10 @@ begin
   FDimensionsCount := 1;
 end;
 
-function TIDOpenArray.GetManagedFlags: TManagedDataTypeFlags;
-begin
-  Result := [];
-end;
+//function TIDOpenArray.GetManagedFlags: TManagedDataTypeFlags;
+//begin
+//  Result := [];
+//end;
 
 procedure TIDOpenArray.SaveDeclToStream(Stream: TStream; const Package: INPPackage);
 begin
@@ -6097,10 +6095,10 @@ begin
   Result := FDeclProc.Name + '$Closure' + IntToStr(Index);
 end;
 
-function TIDClosure.GetManagedFlags: TManagedDataTypeFlags;
-begin
-  Result := [mtNeedIncRef, dtNeedFinal, dtNeedAlwaysFinal];
-end;
+//function TIDClosure.GetManagedFlags: TManagedDataTypeFlags;
+//begin
+//  Result := [mtNeedIncRef, dtNeedFinal, dtNeedAlwaysFinal];
+//end;
 
 { TIDString }
 

@@ -9,13 +9,11 @@ uses System.SysUtils,
      AST.Pascal.Parser,
      AST.Lexer,
      AST.Classes,
-     NPCompiler.Intf,
+     AST.Parser.Messages,
      AST.Delphi.Operators,
      AST.Lexer.Delphi,
-     NPCompiler.Messages,
-     NPCompiler.Errors,
      AST.Delphi.Classes,
-     NPCompiler.Utils,
+     AST.Parser.Utils,
      AST.Parser.Contexts,
      AST.Delphi.SysOperators,
      AST.Delphi.Contexts,
@@ -381,7 +379,7 @@ uses
      System.Math,
      AST.Parser.Errors,
      AST.Delphi.Errors,
-     NPCompiler.DataTypes,
+     AST.Delphi.DataTypes,
      AST.Pascal.ConstCalculator,
      AST.Delphi.System;
 
@@ -1494,7 +1492,7 @@ begin
     ProcResult := TIDProcType(Decl).ResultType;
     MatchProc(EContext.SContext, PExpr, ProcParams, UserArguments);
   end else begin
-    AbortWorkInternal(msgProcOrProcVarRequired, Lexer_Position);
+    AbortWorkInternal(sProcOrProcVarRequired, Lexer_Position);
     ProcResult := nil;
   end;
 
@@ -2923,7 +2921,7 @@ begin
       if (SrcDecl = DstDecl) or  TIDStructure(SrcDecl).IsInheritsForm(DstDecl) then
         Exit(Destination);
     end else
-      AbortWork(errCLASSTypeRequired, Source.TextPosition);
+      AbortWork(sCLASSTypeRequired, Source.TextPosition);
   end else
   // если источник - переменная
   if SrcDecl.ItemType = itVar then begin
@@ -5693,7 +5691,7 @@ begin
     WriteIL := ((JMPCondition = cGreater) and (StartExpr.AsIntConst.Value <= StopExpr.AsIntConst.Value)) or
                ((JMPCondition = cLess) and (StartExpr.AsIntConst.Value >= StopExpr.AsIntConst.Value));
     if not WriteIL then
-      Warning(msgForOrWhileLoopExecutesZeroTimes, [], LoopVar.SourcePosition);
+      Warning(sForOrWhileLoopExecutesZeroTimes, [], LoopVar.SourcePosition);
   end;
 
   // тело цикла
@@ -7062,7 +7060,7 @@ begin
     ParseGenericProcRepeatedly(Scope, Proc, Result, Proc.Struct);
   except
     on e: ECompilerAbort do begin
-      PutMessage(cmtError, Format(IfThen(Assigned(CallExpr.AsProcedure.ResultType), msgGenericFuncInstanceErrorFmt, msgGenericProcInstanceErrorFmt), [ProcName]), CallExpr.TextPosition);
+      PutMessage(cmtError, Format(IfThen(Assigned(CallExpr.AsProcedure.ResultType), sGenericFuncInstanceErrorFmt, sGenericProcInstanceErrorFmt), [ProcName]), CallExpr.TextPosition);
       raise;
     end;
   end;
@@ -8592,7 +8590,7 @@ end;
 class procedure TASTDelphiUnit.CheckStringExpression(Expression: TIDExpression);
 begin
   if MatchImplicit(Expression.DataType, SYSUnit._String) = nil then
-    AbortWork(errStringExpressionRequired, Expression.TextPosition);
+    AbortWork(sStringExpressionRequired, Expression.TextPosition);
 end;
 
 class procedure TASTDelphiUnit.CheckStructType(Expression: TIDExpression);

@@ -7,10 +7,10 @@ interface
 uses Classes, SysUtils,
      AST.Pascal.Parser,
      AST.Delphi.Classes,
-     NPCompiler.DataTypes,
+     AST.Delphi.DataTypes,
      AST.Delphi.Operators,
-     NPCompiler.Utils,
-     NPCompiler.Intf,
+     AST.Parser.Utils,
+     AST.Parser.Messages,
      AST.Classes,
      AST.Project,
      AST.Delphi.SysOperators,
@@ -172,7 +172,9 @@ var
 
 implementation
 
-uses AST.Parser.Errors, NPCompiler.Messages, AST.Delphi.SysFunctions;
+uses AST.Parser.Errors,
+     AST.Delphi.Errors,
+     AST.Delphi.SysFunctions;
 
 procedure AddUnarOperator(Op: TOperatorID; Source, Destination: TIDType); inline;
 begin
@@ -880,7 +882,7 @@ end;
 procedure TSYSTEMUnit.InsertToScope(Declaration: TIDDeclaration);
 begin
   if Assigned(IntfScope.InsertNode(Declaration.Name, Declaration)) then
-    raise Exception.CreateFmt('Unit SYSTEM: ' + msgIdentifierRedeclaredFmt, [Declaration.Name]);
+    raise Exception.CreateFmt('Unit SYSTEM: ' + sIdentifierRedeclaredFmt, [Declaration.Name]);
 end;
 
 function TSYSTEMUnit.CompileIntfOnly: TCompilerResult;

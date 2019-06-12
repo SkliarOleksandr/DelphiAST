@@ -4,12 +4,12 @@ interface
 
 uses System.SysUtils, System.Classes, System.Types, Generics.Collections, System.IOUtils,
      AVL,
-     NPCompiler.DataTypes,
+     AST.Delphi.DataTypes,
      AST.Delphi.Classes,
      NPCompiler.Options,
-     NPLCompiler.Targets,
-     NPCompiler.Intf,
-     NPCompiler.Utils,
+     AST.Targets,
+     AST.Parser.Messages,
+     AST.Parser.Utils,
      AST.Pascal.Parser,
      AST.Delphi.System,
      AST.Classes;
@@ -86,7 +86,8 @@ type
 
 implementation
 
-uses NPCompiler.Messages, AST.Parser.Errors;
+uses AST.Parser.Errors,
+     AST.Delphi.Errors;
 
 function TNPPackage.GetOptions: TPackageOptions;
 begin
@@ -250,7 +251,7 @@ var
   i: Integer;
 begin
   if FUnits.IndexOf(aUnit) > -1 then
-    raise ECompilerInternalError.CreateFmt(msgUnitAlreadyExistFmt, [AnsiUpperCase(TNPUnit(aUnit).Name)]);
+    raise ECompilerInternalError.CreateFmt(sUnitAlreadyExistFmt, [AnsiUpperCase(TNPUnit(aUnit).Name)]);
 
   TNPUnit(aUnit).UnitID := FUnits.Count;
 

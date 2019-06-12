@@ -10,11 +10,11 @@ interface
 uses SysUtils, Math, Classes, StrUtils, Types, IOUtils, Generics.Collections,
      AST.Lexer.Delphi,
      AST.Delphi.Classes,
-     NPCompiler.DataTypes,
+     AST.Delphi.DataTypes,
      AST.Lexer,
      AST.Delphi.Operators,
-     NPCompiler.Utils,
-     NPCompiler.Intf,
+     AST.Parser.Utils,
+     AST.Parser.Messages,
      AST.Parser.Contexts,
      AST.Delphi.Contexts,
      AST.Classes,
@@ -120,7 +120,9 @@ implementation
 
 { TCompiler }
 
-uses AST.Delphi.System, NPCompiler.Messages, AST.Parser.Errors, AST.Pascal.ConstCalculator;
+uses AST.Delphi.System,
+     AST.Parser.Errors,
+     AST.Pascal.ConstCalculator;
 
 
 procedure TNPUnit.SetUnitName(const Name: string);
