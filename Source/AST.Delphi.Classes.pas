@@ -1164,11 +1164,13 @@ type
   TIDArrayExpression = class(TIDExpression)
   private
     fIndexes: TIDExpressions;
+    fDataType: TIDType;        // casted data type (optional)
   protected
     function GetDataType: TIDType; override;
     function GetDisplayName: string; override;
   public
     property Indexes: TIDExpressions read fIndexes write fIndexes;
+    property DataType: TIDType read GetDataType write FDataType;
   end;
 
   {result of logical boolean expression lile: a < b, x = y, ... }
@@ -6127,6 +6129,9 @@ function TIDArrayExpression.GetDataType: TIDType;
 var
   dataType: TIDType;
 begin
+  if Assigned(fDataType) then
+    Exit(fDataType);
+
   if FDeclaration.DataTypeID = dtPointer then
     dataType := TIDPointer(FDeclaration.DataType).ReferenceType
   else

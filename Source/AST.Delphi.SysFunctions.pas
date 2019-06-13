@@ -152,6 +152,13 @@ type
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {function: Trunc}
+  TSF_Trunc = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
 
 implementation
 
@@ -654,6 +661,23 @@ end;
 function TSF_Set8087CW.Process(var EContext: TEContext): TIDExpression;
 begin
   Result := nil;
+end;
+
+{ TSF_Trunc }
+
+class function TSF_Trunc.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Trunc', SYSUnit._Float64);
+  Result.AddParam('Val', SYSUnit._Float64);
+end;
+
+function TSF_Trunc.Process(var EContext: TEContext): TIDExpression;
+var
+  Arg: TIDExpression;
+begin
+  // read argument
+  Arg := EContext.RPNPopExpression();
+  Result := Arg;
 end;
 
 end.

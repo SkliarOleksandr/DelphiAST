@@ -4169,6 +4169,7 @@ begin
     ERROR_NEED_SPECIFY_NINDEXES(ArrDecl);
 
   var AExpr := TIDArrayExpression.Create(ArrDecl, ArrExpr.TextPosition);
+  AExpr.DataType := DataType;
   AExpr.Indexes := Indexes;
   EContext.RPNPushExpression(AExpr);
 end;

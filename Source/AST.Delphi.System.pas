@@ -685,6 +685,7 @@ begin
   RegisterBuiltin(TSF_Assigned);
   RegisterBuiltin(TSF_Get8087CW);
   RegisterBuiltin(TSF_Set8087CW);
+  RegisterBuiltin(TSF_Trunc);
 
   RegisterVariable(ImplScope, 'ReturnAddress', _Pointer);
 end;
