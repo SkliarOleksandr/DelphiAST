@@ -6,7 +6,7 @@ uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, System.Generics.Collections, AST.Pascal.Project,
   AST.Pascal.Parser, AST.Delphi.Classes, SynEdit, SynEditHighlighter, SynEditCodeFolding, SynHighlighterPas, AST.Delphi.Project,
-  Vcl.ComCtrls, Vcl.ExtCtrls;
+  Vcl.ComCtrls, Vcl.ExtCtrls;   // system
 
 type
   TSourceFileInfo = record
@@ -134,6 +134,7 @@ begin
   Prj.Target := 'WIN-X86';
   Prj.Defines.Add('CPUX86');
   Prj.Defines.Add('MSWINDOWS');
+ // Prj.Defines.Add('ASSEMBLER');
 
   //Prj.AddUnit(SystemUnit.SYSUnit, nil);
 

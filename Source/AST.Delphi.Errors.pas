@@ -809,7 +809,7 @@ end;
 
 class procedure TASTDelphiErrors.ERROR_REF_PARAM_MUST_BE_IDENTICAL(Expr: TIDExpression);
 begin
-  AbortWork('Types of actual and formal VAR parameters must be identical', Expr.TextPosition);
+  AbortWork('Types of actual and formal VAR parameters must be identical: ' + Expr.DisplayName, Expr.TextPosition);
 end;
 
 class procedure TASTDelphiErrors.ERROR_CANNOT_MODIFY_READONLY_PROPERTY(const Expr: TIDExpression);

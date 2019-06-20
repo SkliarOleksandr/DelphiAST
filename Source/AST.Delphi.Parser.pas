@@ -290,7 +290,6 @@ type
     function ParseConstSection(Scope: TScope): TTokenID;
     function ParseVarSection(Scope: TScope; Visibility: TVisibility; Struct: TIDStructure; IsWeak: Boolean = False; isRef: Boolean = False): TTokenID;
     function ParseVarInCaseRecord(Scope: TScope; Visibility: TVisibility; Struct: TIDStructure): TTokenID;
-    function ParseCondInclude(Scope: TScope): TTokenID;
     function ParseParameters(Scope: TScope; InMacro: Boolean = False): TTokenID;
     function ParseAnonymousProc(Scope: TScope; var EContext: TEContext; const SContext: TSContext; ProcType: TTokenID): TTokenID;
     function ParseInitSection: TTokenID;
@@ -308,7 +307,9 @@ type
     property InitProc: TIDProcedure read FInitProc;
     property FinalProc: TIDProcedure read FFinalProc;
 
-    /// условная компиляция
+    /// condition compilation
+    function ParseCondStatements(Scope: TScope; Token: TTokenID): TTokenID;
+    function ParseCondInclude(Scope: TScope): TTokenID;
     function ParseCondIfDef(Scope: TScope): Boolean;
     function ParseCondHint(Scope: TScope): TTokenID;
     function ParseCondWarn(Scope: TScope): TTokenID;
@@ -316,7 +317,6 @@ type
     function ParseCondMessage(Scope: TScope): TTokenID;
     function ParseDelphiCondIfDef(Scope: TScope): Boolean;
     function Defined(const Name: string): Boolean;
-    function ParseCondStatements(Scope: TScope; Token: TTokenID): TTokenID;
     function ParseCondIf(Scope: TScope; out ExpressionResult: TCondIFValue): TTokenID;
     function ParseCondOptSet(Scope: TScope): TTokenID;
     procedure ParseCondDefine(Scope: TScope; add_define: Boolean);
@@ -1536,6 +1536,9 @@ begin
         {проверка на строгость соответствия типов}
         if Param.DataType.ActualDataType <> AExpr.DataType.ActualDataType then
         begin
+          if Param.DataType = SYSUnit._UntypedReference then
+            continue;
+
           if not ((Param.DataType.DataTypeID = dtPointer) and
              (AExpr.DataType.DataTypeID = dtPointer) {and
              (TIDPointer(Param.DataType).ReferenceType = TIDPointer(AExpr.DataType).ReferenceType) !!!!!! }) then

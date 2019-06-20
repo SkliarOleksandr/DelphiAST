@@ -26,47 +26,45 @@ type
     SystemTypesCount = Ord(dtPointer) + 1;
   private
   var
-    FDataTypes: TDataTypes;
-    FTrueConstant: TIDBooleanConstant;
-    FFalseConstant: TIDBooleanConstant;
-    FFalseExpression: TIDExpression;
-    FTrueExpression: TIDExpression;
-    FZeroConstant: TIDIntConstant;
-    FZeroExpression: TIDExpression;
-    FMinusOneConstant: TIDIntConstant;
-    FMinusOneExpression: TIDExpression;
-    FOneConstant: TIDIntConstant;
-    FOneExpression: TIDExpression;
-    FNullPtrType: TIDType;
-    FNullPtrConstatnt: TIDIntConstant;
-    FNullPtrExpression: TIDExpression;
-    FEmptyStrConstant: TIDStringConstant;
-    FEmptyStrExpression: TIDExpression;
-    FPointerType: TIDPointer;
-    FUntypedReferenceType: TIDPointer;
-    FArrayType: TIDArray; // служебный тип для функций Length/SetLength
-    FRefType: TIDType; // служебный тип для функций SizeOf
-    FGuidType: TIDStructure;
+    fDataTypes: TDataTypes;
+    fTrueConstant: TIDBooleanConstant;
+    fFalseConstant: TIDBooleanConstant;
+    fFalseExpression: TIDExpression;
+    fTrueExpression: TIDExpression;
+    fZeroConstant: TIDIntConstant;
+    fZeroExpression: TIDExpression;
+    fOneConstant: TIDIntConstant;
+    fOneExpression: TIDExpression;
+    fNullPtrType: TIDType;
+    fNullPtrConstatnt: TIDIntConstant;
+    fNullPtrExpression: TIDExpression;
+    fEmptyStrConstant: TIDStringConstant;
+    fEmptyStrExpression: TIDExpression;
+    fPointerType: TIDPointer;
+    fUntypedReferenceType: TIDPointer;
+    fArrayType: TIDArray; // служебный тип для функций Length/SetLength
+    fRefType: TIDType; // служебный тип для функций SizeOf
+    fGuidType: TIDStructure;
     fPAnsiChar: TIDType;
     fPChar: TIDType;
-    FOrdinalType: TIDType;
-    FTObject: TIDClass;
-    FException: TIDClass;
-    FEAssertClass: TIDClass;
-    FDateTimeType: TIDType;
-    FDateType: TIDType;
-    FTimeType: TIDType;
-    FTypeIDType: TIDType;
-    FImplicitAnyToVariant: TSysOpImplicit;
-    FImplicitVariantToAny: TSysOpImplicit;
-    FExplicitEnumFromAny: TSysOpImplicit;
+    fOrdinalType: TIDType;
+    fTObject: TIDClass;
+    fException: TIDClass;
+    fEAssertClass: TIDClass;
+    fDateTimeType: TIDType;
+    fDateType: TIDType;
+    fTimeType: TIDType;
+    fTypeIDType: TIDType;
+    fImplicitAnyToVariant: TSysOpImplicit;
+    fImplicitVariantToAny: TSysOpImplicit;
+    fExplicitEnumFromAny: TSysOpImplicit;
     fExplicitTProcFromAny: TSysOpImplicit;
-    FCopyArrayOfObjProc: TIDProcedure;
-    FCopyArrayOfStrProc: TIDProcedure;
-    FFinalArrayOfObjProc: TIDProcedure;
-    FFinalArrayOfStrProc: TIDProcedure;
-    FFinalArrayOfVarProc: TIDProcedure;
-    FAsserProc: TIDProcedure;
+    fCopyArrayOfObjProc: TIDProcedure;
+    fCopyArrayOfStrProc: TIDProcedure;
+    fFinalArrayOfObjProc: TIDProcedure;
+    fFinalArrayOfStrProc: TIDProcedure;
+    fFinalArrayOfVarProc: TIDProcedure;
+    fAsserProc: TIDProcedure;
     fWideString: TIDType;
     fShortString: TIDType;
     fOpenString: TIDType;
@@ -94,6 +92,7 @@ type
     function RegisterTypeAlias(const TypeName: string; OriginalType: TIDType): TIDAliasType;
     function RegisterPointer(const TypeName: string; TargetType: TIDType): TIDPointer;
     function RegisterConstInt(const Name: string; DataType: TIDType; Value: Int64): TIDIntConstant;
+    function RegisterConstStr(Scope: TScope; const Name: string; const Value: string ): TIDStringConstant;
     function RegisterVariable(Scope: TScope; const Name: string; DataType: TIDType): TIDVariable;
     function RegisterBuiltin(const BuiltinClass: TIDBuiltInFunctionClass): TIDBuiltInFunction; overload;
   private
@@ -107,61 +106,60 @@ type
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     procedure InitSystemUnit;
     //procedure RegisterExternalProc
-    property DataTypes: TDataTypes read FDataTypes;
-    property _Int8: TIDType read FDataTypes[dtInt8] write FDataTypes[dtInt8];
-    property _Int16: TIDType read FDataTypes[dtInt16] write FDataTypes[dtInt16];
-    property _Int32: TIDType read FDataTypes[dtInt32] write FDataTypes[dtInt32];
-    property _Int64: TIDType read FDataTypes[dtInt64] write FDataTypes[dtInt64];
-    property _UInt8: TIDType read FDataTypes[dtUInt8] write FDataTypes[dtUInt8];
-    property _UInt16: TIDType read FDataTypes[dtUInt16] write FDataTypes[dtUInt16];
-    property _UInt32: TIDType read FDataTypes[dtUInt32] write FDataTypes[dtUInt32];
-    property _UInt64: TIDType read FDataTypes[dtUInt64] write FDataTypes[dtUInt64];
-    property _NativeInt: TIDType read FDataTypes[dtNativeInt] write FDataTypes[dtNativeInt];
-    property _NativeUInt: TIDType read FDataTypes[dtNativeUInt] write FDataTypes[dtNativeUInt];
-    property _Float32: TIDType read FDataTypes[dtFloat32] write FDataTypes[dtFloat32];
-    property _Float64: TIDType read FDataTypes[dtFloat64] write FDataTypes[dtFloat64];
-    property _Boolean: TIDType read FDataTypes[dtBoolean] write FDataTypes[dtBoolean];
-    property _AnsiChar: TIDType read FDataTypes[dtAnsiChar] write FDataTypes[dtAnsiChar];
-    property _Char: TIDType read FDataTypes[dtChar] write FDataTypes[dtChar];
-    property _AnsiString: TIDType read FDataTypes[dtAnsiString] write FDataTypes[dtAnsiString];
-    property _String: TIDType read FDataTypes[dtString] write FDataTypes[dtString];
-    property _Variant: TIDType read FDataTypes[dtVariant] write FDataTypes[dtVariant];
-    property _NilPointer: TIDType read FNullPtrType;
-    property _TGuid: TIDStructure read FGuidType;
-    property _True: TIDBooleanConstant read FTrueConstant;
-    property _False: TIDBooleanConstant read FFalseConstant;
-    property _TrueExpression: TIDExpression read FTrueExpression;
-    property _FalseExpression: TIDExpression read FFalseExpression;
-    property _ZeroConstant: TIDIntConstant read FZeroConstant;
-    property _ZeroExpression: TIDExpression read FZeroExpression;
-    property _MinusOneExpression: TIDExpression read FMinusOneExpression;
-    property _OneConstant: TIDIntConstant read FOneConstant;
-    property _OneExpression: TIDExpression read FOneExpression;
-    property _NullPtrConstant: TIDIntConstant read FNullPtrConstatnt;
-    property _NullPtrExpression: TIDExpression read FNullPtrExpression;
-    property _EmptyStrExpression: TIDExpression read FEmptyStrExpression;
-    property _Pointer: TIDPointer read FPointerType;
-    property _UntypedReference: TIDPointer read FUntypedReferenceType;
-    property _TObject: TIDClass read FTObject;
-    property _Exception: TIDClass read FException;
-    property _EAssert: TIDClass read FEAssertClass;
-    property _DateTime: TIDType read FDateTimeType;
-    property _Date: TIDType read FDateType;
-    property _Time: TIDType read FTimeType;
-    property _CopyArrayOfObjProc: TIDProcedure read FCopyArrayOfObjProc;
-    property _CopyArrayOfStrProc: TIDProcedure read FCopyArrayOfStrProc;
-    property _FinalArrayOfObjProc: TIDProcedure read FFinalArrayOfObjProc;
-    property _FinalArrayOfStrProc: TIDProcedure read FFinalArrayOfStrProc;
-    property _FinalArrayOfVarProc: TIDProcedure read FFinalArrayOfVarProc;
-    property _ExplicitEnumFromAny: TSysOpImplicit read FExplicitEnumFromAny;
+    property DataTypes: TDataTypes read fDataTypes;
+    property _Int8: TIDType read fDataTypes[dtInt8] write FDataTypes[dtInt8];
+    property _Int16: TIDType read fDataTypes[dtInt16] write FDataTypes[dtInt16];
+    property _Int32: TIDType read fDataTypes[dtInt32] write FDataTypes[dtInt32];
+    property _Int64: TIDType read fDataTypes[dtInt64] write FDataTypes[dtInt64];
+    property _UInt8: TIDType read fDataTypes[dtUInt8] write FDataTypes[dtUInt8];
+    property _UInt16: TIDType read fDataTypes[dtUInt16] write FDataTypes[dtUInt16];
+    property _UInt32: TIDType read fDataTypes[dtUInt32] write FDataTypes[dtUInt32];
+    property _UInt64: TIDType read fDataTypes[dtUInt64] write FDataTypes[dtUInt64];
+    property _NativeInt: TIDType read fDataTypes[dtNativeInt] write FDataTypes[dtNativeInt];
+    property _NativeUInt: TIDType read fDataTypes[dtNativeUInt] write FDataTypes[dtNativeUInt];
+    property _Float32: TIDType read fDataTypes[dtFloat32] write FDataTypes[dtFloat32];
+    property _Float64: TIDType read fDataTypes[dtFloat64] write FDataTypes[dtFloat64];
+    property _Boolean: TIDType read fDataTypes[dtBoolean] write FDataTypes[dtBoolean];
+    property _AnsiChar: TIDType read fDataTypes[dtAnsiChar] write FDataTypes[dtAnsiChar];
+    property _Char: TIDType read fDataTypes[dtChar] write FDataTypes[dtChar];
+    property _AnsiString: TIDType read fDataTypes[dtAnsiString] write FDataTypes[dtAnsiString];
+    property _String: TIDType read fDataTypes[dtString] write FDataTypes[dtString];
+    property _Variant: TIDType read fDataTypes[dtVariant] write FDataTypes[dtVariant];
+    property _NilPointer: TIDType read fNullPtrType;
+    property _TGuid: TIDStructure read fGuidType;
+    property _True: TIDBooleanConstant read fTrueConstant;
+    property _False: TIDBooleanConstant read fFalseConstant;
+    property _TrueExpression: TIDExpression read fTrueExpression;
+    property _FalseExpression: TIDExpression read fFalseExpression;
+    property _ZeroConstant: TIDIntConstant read fZeroConstant;
+    property _ZeroExpression: TIDExpression read fZeroExpression;
+    property _OneConstant: TIDIntConstant read fOneConstant;
+    property _OneExpression: TIDExpression read fOneExpression;
+    property _NullPtrConstant: TIDIntConstant read fNullPtrConstatnt;
+    property _NullPtrExpression: TIDExpression read fNullPtrExpression;
+    property _EmptyStrExpression: TIDExpression read fEmptyStrExpression;
+    property _Pointer: TIDPointer read fPointerType;
+    property _UntypedReference: TIDPointer read fUntypedReferenceType;
+    property _TObject: TIDClass read fTObject;
+    property _Exception: TIDClass read fException;
+    property _EAssert: TIDClass read fEAssertClass;
+    property _DateTime: TIDType read fDateTimeType;
+    property _Date: TIDType read fDateType;
+    property _Time: TIDType read fTimeType;
+    property _CopyArrayOfObjProc: TIDProcedure read fCopyArrayOfObjProc;
+    property _CopyArrayOfStrProc: TIDProcedure read fCopyArrayOfStrProc;
+    property _FinalArrayOfObjProc: TIDProcedure read fFinalArrayOfObjProc;
+    property _FinalArrayOfStrProc: TIDProcedure read fFinalArrayOfStrProc;
+    property _FinalArrayOfVarProc: TIDProcedure read fFinalArrayOfVarProc;
+    property _ExplicitEnumFromAny: TSysOpImplicit read fExplicitEnumFromAny;
     property _ExplicitTProcFromAny: TSysOpImplicit read fExplicitTProcFromAny;
-    property _AssertProc: TIDProcedure read FAsserProc;
-    property _TypeID: TIDType read FTypeIDType;
+    property _AssertProc: TIDProcedure read fAsserProc;
+    property _TypeID: TIDType read fTypeIDType;
     property _DeprecatedDefaultStr: TIDStringConstant read fDeprecatedDefaultStr;
-    property _OrdinalType: TIDType read FOrdinalType;
+    property _OrdinalType: TIDType read fOrdinalType;
     property _PAnsiCharType: TIDType read fPAnsiChar;
     property _PCharType: TIDType read fPChar;
-    property _AnyArrayType: TIDArray read FArrayType;
+    property _AnyArrayType: TIDArray read fArrayType;
   end;
 
 var
@@ -680,6 +678,7 @@ begin
   RegisterBuiltin(TSF_SetLength);
   RegisterBuiltin(TSF_SetString);
   RegisterBuiltin(TSF_Ord);
+  RegisterBuiltin(TSF_Odd);
   RegisterBuiltin(TSF_Chr);
   RegisterBuiltin(TSF_FillChar);
   RegisterBuiltin(TSF_Assigned);
@@ -688,6 +687,7 @@ begin
   RegisterBuiltin(TSF_Trunc);
 
   RegisterVariable(ImplScope, 'ReturnAddress', _Pointer);
+  RegisterConstStr(ImplScope, 'libmmodulename', '');
 end;
 
 function TSYSTEMUnit.RegisterOrdinal(const TypeName: string; DataType: TDataTypeID; LowBound: Int64; HighBound: UInt64): TIDType;
@@ -855,9 +855,6 @@ begin
   // constant "1"
   FOneConstant := TIDIntConstant.CreateAnonymous(IntfScope, _UInt8, 1);
   FOneExpression := TIDExpression.Create(FOneConstant);
-  // constant "-1"
-  FMinusOneConstant := TIDIntConstant.CreateAnonymous(IntfScope, _Int32, -1);
-  FMinusOneExpression := TIDExpression.Create(FMinusOneConstant);
   // constant ""
   FEmptyStrConstant := TIDStringConstant.CreateAnonymous(IntfScope, _String, '');
   FEmptyStrExpression := TIDExpression.Create(FEmptyStrConstant);
@@ -903,6 +900,14 @@ function TSYSTEMUnit.RegisterConstInt(const Name: string; DataType: TIDType; Val
 begin
   Result := TIDIntConstant.CreateAsSystem(IntfScope, Name);
   Result.DataType := DataType;
+  Result.Value := Value;
+  InsertToScope(Result);
+end;
+
+function TSYSTEMUnit.RegisterConstStr(Scope: TScope; const Name, Value: string): TIDStringConstant;
+begin
+  Result := TIDStringConstant.CreateAsSystem(Scope, Name);
+  Result.DataType := _String;
   Result.Value := Value;
   InsertToScope(Result);
 end;

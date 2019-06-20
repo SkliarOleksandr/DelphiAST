@@ -117,6 +117,13 @@ type
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {function: Odd}
+  TSF_Odd = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
   {function: Chr}
   TSF_Chr = class(TIDSysRuntimeFunction)
   public
@@ -678,6 +685,23 @@ begin
   // read argument
   Arg := EContext.RPNPopExpression();
   Result := Arg;
+end;
+
+{ TSF_Odd }
+
+class function TSF_Odd.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Odd', SYSUnit._Boolean);
+  Result.AddParam('X', SYSUnit._Int32, [VarConst]);
+end;
+
+function TSF_Odd.Process(var EContext: TEContext): TIDExpression;
+var
+  Arg: TIDExpression;
+begin
+  // read argument
+  Arg := EContext.RPNPopExpression();
+  Result := SYSUnit._TrueExpression;
 end;
 
 end.
