@@ -75,13 +75,11 @@ type
     token_var,                      // keyword: var
     token_out,                      // keyword: out
     token_const,                    // keyword: const
-    token_constref,                 // keyword: constref
     token_procedure,                // keyword: procedure
     token_function,                 // keyword: function
     token_overload,                 // keyword: overload
     token_override,                 // keyword: override
     token_type,                     // keyword: type
-    token_token,                    // keyword: #token
     token_class,                    // keyword: class
     token_record,                   // keyword: record
     token_packed,                   // keyword: packed
@@ -124,7 +122,6 @@ type
     token_repeat,                   // keyword: repeat
     token_reintroduce,              // keyword: reintroduce
     token_until,                    // keyword: until
-    token_unsafe,                   // keyword: unsafe
     token_with,                     // keyword: until
     token_case,                     // keyword: case
     token_of,                       // keyword: of
@@ -136,7 +133,6 @@ type
     token_except,                   // keyword: except
     token_raise,                    // keyword: raise
     token_strict,                   // keyword: strict
-    token_step,                     // keyword: step
     token_property,                 // keyword: property
     token_private,                  // keyword: private
     token_protected,                // keyword: protected
@@ -176,6 +172,7 @@ type
     fOriginalToken: string;
   protected
     procedure ParseChainedString;
+    procedure ParseCharCodeSymbol;
   public
     function NextToken: TTokenID;
     function TokenLexem(TokenID: TTokenID): string;
@@ -197,7 +194,7 @@ var
 
 implementation
 
-uses AST.Delphi.Errors;
+uses AST.Delphi.Errors, AST.Parser.Utils;
 
 { TDelphiParser }
 
@@ -262,8 +259,7 @@ begin
   else
   if CurToken.TokenID = ord(token_numbersign) then
   begin
-    fOriginalToken := CharsToStr(fOriginalToken);
-    ParseChainedString();
+    ParseCharCodeSymbol();
   end;
 end;
 
@@ -285,6 +281,26 @@ begin
       fOriginalToken := fOriginalToken + CurrentToken;
     end else
       break;
+  end;
+end;
+
+procedure TDelphiLexer.ParseCharCodeSymbol;
+var
+  Token: PCharToken;
+  HexStr: string;
+begin
+  if Length(fOriginalToken) > 1 then
+  begin
+    fOriginalToken := CharsToStr(fOriginalToken);
+    ParseChainedString();
+  end else begin
+    if GetNextChar() = '$' then
+    begin
+      NextTokenID();
+      SetIdentifireType(TIdentifierType.itCharCodes);
+      HexStr := IntToStr(HexToInt32(CurrentToken));
+      fCurrentToken := fOriginalToken + HexStr;
+    end;
   end;
 end;
 
@@ -361,7 +377,6 @@ begin
   RegisterToken('case', token_case);
   RegisterToken('cdecl', token_cdecl, True);
   RegisterToken('const', token_const);
-  RegisterToken('constref', token_constref);
   RegisterToken('constructor', token_constructor);
   RegisterToken('continue', token_continue);
   RegisterToken('class', token_class);
@@ -433,7 +448,6 @@ begin
   RegisterToken('shr', token_shr);
   RegisterToken('static', token_static);
   RegisterToken('strict', token_strict);
-  RegisterToken('step', token_step);
   RegisterToken('stdcall', token_stdcall);
   RegisterToken('then', token_then);
   RegisterToken('to', token_to);
@@ -443,7 +457,6 @@ begin
   RegisterToken('helper', token_helper);
   RegisterToken('until', token_until);
   RegisterToken('unit', token_unit);
-  RegisterToken('unsafe', token_unsafe);
   RegisterToken('uses', token_uses);
   RegisterToken('var', token_var);
   RegisterToken('varargs', token_varargs);

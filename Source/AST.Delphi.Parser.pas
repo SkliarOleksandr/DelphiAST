@@ -6030,10 +6030,10 @@ begin
         Include(VarFlags, VarConst);
         Result := Lexer_NextToken(Scope);
       end;
-      token_constref: begin
+      {token_constref: begin
         Include(VarFlags, VarConstRef);
         Result := Lexer_NextToken(Scope);
-      end;
+      end;}
       token_var: begin
         Include(VarFlags, VarInOut);
         Result := Lexer_NextToken(Scope);

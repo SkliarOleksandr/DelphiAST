@@ -90,24 +90,24 @@ type
 
   TGenericLexer = class
   strict private
-    FTokens: TParseTokens;
-    FSource: string;                   // Текст
-    FLength: integer;                  // Предвычесленная длинна текста
-    FSrcPos: integer;                  // Текущая позиция парсера в тексте
-    FCurrentToken: string;
-    FCurrentTokenID: Integer;
-    FRow: Integer;                     // Номер строки текущей позиции (начинается с единицы)
-    FLastEnterPos: Integer;            // Позиция последнего переноса строки (необходим для определения позиции формата (row,col))
-    FPrevPostion: TTextPosition;       // Позиция предыдущего токена формата (row,col)
-    FUpCase: array [#0..#127] of AnsiChar; // символы в UpCase
-    FIdentifireType: TIdentifierType;  // Тип идентификатора (литерал/строка/число/символ)
-    FIdentifireID: Integer;            // TokenID если идентификатор
-    FEofID: Integer;                   // TokenID если конец файла
-    FTokenCaptions: TStrings;          // Название токоенов
-    FSeparators: string;
-    FErrorState: TParserErrorState;
-    FOmitted: string;
-    FTokenIDGenerator: Integer;
+    fTokens: TParseTokens;
+    fSource: string;                   // Текст
+    fLength: integer;                  // Предвычесленная длинна текста
+    fSrcPos: integer;                  // Текущая позиция парсера в тексте
+
+    fCurrentTokenID: Integer;
+    fRow: Integer;                     // Номер строки текущей позиции (начинается с единицы)
+    fLastEnterPos: Integer;            // Позиция последнего переноса строки (необходим для определения позиции формата (row,col))
+    fPrevPostion: TTextPosition;       // Позиция предыдущего токена формата (row,col)
+    fUpCase: array [#0..#127] of AnsiChar; // символы в UpCase
+    fIdentifireType: TIdentifierType;  // Тип идентификатора (литерал/строка/число/символ)
+    fIdentifireID: Integer;            // TokenID если идентификатор
+    fEofID: Integer;                   // TokenID если конец файла
+    fTokenCaptions: TStrings;          // Название токоенов
+    fSeparators: string;
+    fErrorState: TParserErrorState;
+    fOmitted: string;
+    fTokenIDGenerator: Integer;
     fCutToken: PCharToken;
   private
     function GetPosition: TTextPosition; inline;
@@ -117,6 +117,7 @@ type
     procedure SetOmitted(const Value: string);
     function GetTokenName: string;
   protected
+    fCurrentToken: string;
     procedure RegisterToken(const Token: string; aTokenID: Integer; aTokenType: TTokenType; const TokenCaption: string = '');
     //procedure RegisterRemToken(const BeginToken, EndToken: string);
 
@@ -131,7 +132,7 @@ type
     procedure ParseUnicodeChars(SPos: Integer);
     procedure ParseBinPrefix(SPos: Integer);
     procedure ParseHexPrefix(SPos: Integer);
-
+    procedure SetIdentifireType(const Value: TIdentifierType);
     property TokenCaptions: TStrings read FTokenCaptions;
     property EofID: Integer read FEofID write FEofID;
     property IdentifireID: Integer read FIdentifireID write FIdentifireID;
@@ -142,6 +143,8 @@ type
     property CurrentToken: string read FCurrentToken;            // Для не идентификаторов равен пустой строке
     function NextTokenID: Integer;
     function GetNextToken: PCharToken;
+    function GetNextChar: Char;
+
   public
     constructor Create(const Source: string); virtual;
     destructor Destroy; override;
@@ -154,7 +157,7 @@ type
     property TokenName: string read GetTokenName;                 // Строковое представление токена
     property Position: TTextPosition read GetPosition;            // Позиция текущего токена формата (row,col)
     property LinePosition: TTextPosition read GetLinePosition;
-    property IdentifireType: TIdentifierType read FIdentifireType;
+    property IdentifireType: TIdentifierType read fIdentifireType;
     function TokenLexem(TokenID: Integer): string;
     function GetSubString(StartPos, EndPos: Integer): string;
     procedure GetIdentifier(var ID: TIdentifier);
@@ -168,6 +171,11 @@ type
 implementation
 
 { TStringParser }
+
+function TGenericLexer.GetNextChar: Char;
+begin
+  Result := fSource[FSrcPos];
+end;
 
 function TGenericLexer.GetNextToken: PCharToken;
 var
@@ -714,6 +722,11 @@ begin
   FLastEnterPos := State.LastEnterPos;
   FCurrentTokenID := State.TokenID;
   FCurrentToken := State.OriginalToken;
+end;
+
+procedure TGenericLexer.SetIdentifireType(const Value: TIdentifierType);
+begin
+  fIdentifireType := Value;
 end;
 
 procedure TGenericLexer.SetOmitted(const Value: string);
