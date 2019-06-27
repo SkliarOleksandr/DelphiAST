@@ -4307,7 +4307,7 @@ begin
   OverloadImplicitTo(Self);
   OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
   OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
-  OverloadImplicitToAny(TIDOpImplicitArrayToAny.CreateAsIntOp);
+  OverloadImplicitToAny(TSysImplicitArrayToAny.Instance);
 end;
 
 constructor TIDArray.CreateAnonymousStatic1Dim(Scope: TScope; ElementDataType: TIDType; Length: Integer; out BoundType: TIDOrdinal);
@@ -4578,8 +4578,8 @@ begin
 
   OverloadImplicitToAny(TIDOpImplicitPointerToAny.Instance);
 
-  OverloadExplicitToAny(TIDOpExplictPointerToAny.Instance);
-  OverloadExplicitFromAny(TIDOpExplictPointerFromAny.Instance);
+  OverloadExplicitToAny(TSysExplictPointerToAny.Instance);
+  OverloadExplicitFromAny(TSysExplictPointerFromAny.Instance);
 end;
 
 { TIDRecordType }
@@ -5852,8 +5852,8 @@ begin
   if not Assigned(SYSUnit) then
     Exit;
   inherited CreateStandardOperators;
-  OverloadExplicitToAny(TIDOpExplicitClassOfToAny.CreateAsIntOp);
-  OverloadExplicitFromAny(TIDOpExplicitClassOfFromAny.CreateAsIntOp);
+  OverloadExplicitToAny(TIDOpExplicitClassOfToAny.Instance);
+  OverloadExplicitFromAny(TSysExplicitClassOfFromAny.Instance);
 end;
 
 function TIDClassOf.GetDisplayName: string;
@@ -6073,7 +6073,7 @@ begin
   FDeclProc := DeclProc;
   FCapturedVars := TCapturedVars.Create(IDVarCompare);
   AddMethod(RunProc);
-  OverloadImplicitTo(dtProcType, TIDOpImplicitClosureToTMethod.CreateAsIntOp);
+  OverloadImplicitTo(dtProcType, TIDOpImplicitClosureToTMethod.Instance);
 end;
 
 destructor TIDClosure.Destroy;

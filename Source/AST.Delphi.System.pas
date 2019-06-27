@@ -263,7 +263,7 @@ begin
 
   // AnsiString
   _AnsiString.OverloadImplicitTo(_Variant, FImplicitAnyToVariant);
-  _AnsiString.OverloadExplicitFromAny(TSysExplicitAnsiStringFromAny.CreateAsIntOp);
+  _AnsiString.OverloadExplicitFromAny(TSysExplicitAnsiStringFromAny.Instance);
 
 
   _String.OverloadImplicitTo(_AnsiString, TIDOpImplicitStringToAnsiString.CreateInternal(_AnsiString));
@@ -450,7 +450,7 @@ end;
 
 procedure TSYSTEMUnit.AddSystemOperators;
 begin
-  _AnsiChar.AddBinarySysOperator(opIn, TSysAnsiChar_In.CreateAsIntOp);
+  _AnsiChar.AddBinarySysOperator(opIn, TSysAnsiChar_In.Instance);
 end;
 
 procedure TSYSTEMUnit.AddAddOperators;
@@ -731,11 +731,11 @@ begin
 
   FUntypedReferenceType := TIDPointer.CreateAsSystem(IntfScope, 'Untyped reference');
   IntfScope.InsertID(FUntypedReferenceType);
-  FUntypedReferenceType.OverloadImplicitFromAny(TIDOpImplicitAnyToUntyped.CreateAsIntOp);
+  FUntypedReferenceType.OverloadImplicitFromAny(TIDOpImplicitAnyToUntyped.Instance);
 
   FOrdinalType := TIDOrdinal.CreateAsSystem(nil, 'ordinal');
-  FExplicitEnumFromAny := TIDOpExplicitIntToEnum.CreateAsIntOp;
-  fExplicitTProcFromAny := TIDOpExplicitTProcFromAny.CreateAsIntOp;
+  FExplicitEnumFromAny := TIDOpExplicitIntToEnum.Instance;
+  fExplicitTProcFromAny := TIDOpExplicitTProcFromAny.Instance;
 
   {!!! Ïîðÿäîê ðåãèñòðàöèè òèïîâ ñîîòâåòñòâóåò ïîðÿäêîâîìó íîìåðó êîíñòàíòû DataTypeID !!!}
   //===============================================================
