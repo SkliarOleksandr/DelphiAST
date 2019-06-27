@@ -160,6 +160,7 @@ type
     property _PAnsiCharType: TIDType read fPAnsiChar;
     property _PCharType: TIDType read fPChar;
     property _AnyArrayType: TIDArray read fArrayType;
+    property _WideString: TIDType read fWideString;
   end;
 
 var
@@ -260,24 +261,24 @@ begin
 
   // string
   _String.OverloadImplicitTo(_Variant, FImplicitAnyToVariant);
+  _String.OverloadImplicitTo(_AnsiString, TIDOpImplicitStringToAnsiString.CreateInternal(_AnsiString));
+  _String.OverloadImplicitTo(_TGuid, TIDOpImplicitStringToGUID.CreateInternal(_TGuid));
+  _String.OverloadImplicitTo(_PCharType, TIDOpImplicitStringToPChar.CreateInternal(_PCharType));
+  _String.OverloadImplicitTo(_PAnsiCharType, TIDOpImplicitStringToPChar.CreateInternal(_PAnsiCharType));
+  _String.OverloadExplicitFromAny(TSysExplicitStringFromAny.Instance);
+  _String.OverloadImplicitFrom(_PCharType);
 
   // AnsiString
   _AnsiString.OverloadImplicitTo(_Variant, FImplicitAnyToVariant);
-  _AnsiString.OverloadExplicitFromAny(TSysExplicitAnsiStringFromAny.Instance);
-
-
-  _String.OverloadImplicitTo(_AnsiString, TIDOpImplicitStringToAnsiString.CreateInternal(_AnsiString));
-  _String.OverloadImplicitTo(_TGuid, TIDOpImplicitStringToGUID.CreateInternal(_TGuid));
-
-  _String.OverloadImplicitTo(_PCharType, TIDOpImplicitStringToPChar.CreateInternal(_PCharType));
-  _String.OverloadImplicitTo(_PAnsiCharType, TIDOpImplicitStringToPChar.CreateInternal(_PAnsiCharType));
-
   _AnsiString.OverloadImplicitTo(_PCharType, TIDOpImplicitStringToPChar.CreateInternal(_PCharType));
   _AnsiString.OverloadImplicitTo(_PAnsiCharType, TIDOpImplicitStringToPChar.CreateInternal(_PAnsiCharType));
-
-
   _AnsiString.OverloadImplicitTo(_String, TIDOpImplicitAnsiStringToString.CreateInternal(_String));
   _AnsiString.OverloadImplicitTo(_TGuid, TIDOpImplicitStringToGUID.CreateInternal(_TGuid));
+  _AnsiString.OverloadExplicitFromAny(TSysExplicitAnsiStringFromAny.Instance);
+  _AnsiString.OverloadImplicitFrom(_PAnsiCharType);
+
+  // WideString
+  _WideString.OverloadExplicitFrom(_String);
 
   _Char.OverloadImplicitTo(_String, TIDOpImplicitCharToString.CreateInternal(_String));
   _Char.OverloadImplicitTo(_AnsiString, TIDOpImplicitCharToAnsiString.CreateInternal(_AnsiString));
@@ -451,6 +452,16 @@ end;
 procedure TSYSTEMUnit.AddSystemOperators;
 begin
   _AnsiChar.AddBinarySysOperator(opIn, TSysAnsiChar_In.Instance);
+  _Char.AddBinarySysOperator(opIn, TSysAnsiChar_In.Instance);
+
+  // system IN operator for ordinal types
+  _Int8.AddBinarySysOperator(opIn, TSysOrdinal_In.Instance);
+  _Int16.AddBinarySysOperator(opIn, TSysOrdinal_In.Instance);
+  _Int32.AddBinarySysOperator(opIn, TSysOrdinal_In.Instance);
+  _UInt8.AddBinarySysOperator(opIn, TSysOrdinal_In.Instance);
+  _UInt16.AddBinarySysOperator(opIn, TSysOrdinal_In.Instance);
+  _UInt32.AddBinarySysOperator(opIn, TSysOrdinal_In.Instance);
+  _Boolean.AddBinarySysOperator(opIn, TSysOrdinal_In.Instance);
 end;
 
 procedure TSYSTEMUnit.AddAddOperators;
@@ -685,6 +696,7 @@ begin
   RegisterBuiltin(TSF_Get8087CW);
   RegisterBuiltin(TSF_Set8087CW);
   RegisterBuiltin(TSF_Trunc);
+  RegisterBuiltin(TSF_Val);
 
   RegisterVariable(ImplScope, 'ReturnAddress', _Pointer);
   RegisterConstStr(ImplScope, 'libmmodulename', '');

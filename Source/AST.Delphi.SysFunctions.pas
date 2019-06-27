@@ -166,6 +166,13 @@ type
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {function: Val}
+  TSF_Val = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
 
 implementation
 
@@ -702,6 +709,26 @@ begin
   // read argument
   Arg := EContext.RPNPopExpression();
   Result := SYSUnit._TrueExpression;
+end;
+
+{ TSF_Val }
+
+class function TSF_Val.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Val', _Void);
+  Result.AddParam('S', SYSUnit._String, [VarConst]);
+  Result.AddParam('V', SYSUnit._UntypedReference, [VarInOut]);
+  Result.AddParam('Code', SYSUnit._Int32, []);
+end;
+
+function TSF_Val.Process(var EContext: TEContext): TIDExpression;
+var
+  ArgS, ArgV, ArgCnt: TIDExpression;
+begin
+  // read arguments
+  ArgCnt := EContext.RPNPopExpression();
+  ArgV := EContext.RPNPopExpression();
+  ArgS := EContext.RPNPopExpression();
 end;
 
 end.

@@ -3761,9 +3761,9 @@ begin
     ExplicitOp := DstDataType.GetExplicitOperatorFrom(SrcDataType);
     if Assigned(ExplicitOp) then
     begin
-      if ExplicitOp is TSysOpImplicit then
+      if ExplicitOp is TSysOpExplisit then
       begin
-        if TSysOpImplicit(ExplicitOp).Check(DstDataType, SrcDataType) then
+        if TSysOpExplisit(ExplicitOp).Check(SrcDataType, DstDataType) then
           Exit(True);
       end else
         Exit(True);

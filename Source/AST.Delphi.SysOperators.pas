@@ -110,6 +110,12 @@ type
     function Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; override;
   end;
 
+  {implicit String <- PChar}
+  TIDOpImplicitStringFromPChar = class(TSysOpImplicit<TIDOpImplicitStringToPChar>)
+  public
+    function Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
+  end;
+
   {implicit MetaClass -> TGUID}
   TIDOpImplicitMetaClassToGUID = class(TSysOpImplicit<TIDOpImplicitMetaClassToGUID>)
   public
@@ -207,7 +213,14 @@ type
   {explicit AnsiString <- Any}
   TSysExplicitAnsiStringFromAny = class(TSysOpExplisit<TSysExplicitAnsiStringFromAny>)
   public
+    function Check(const Src: TIDType; const Dst: TIDType): Boolean; override;
     function Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; override;
+  end;
+
+  {explicit String <- Any}
+  TSysExplicitStringFromAny = class(TSysOpExplisit<TSysExplicitStringFromAny>)
+  public
+    function Check(const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
   {explicit Pointer -> Any}
@@ -226,8 +239,14 @@ type
   /// BINARY
   ///////////////////////////////////////////////////////////////////////////////////////////
 
-  {explicit Pointer <- Any}
+  {operator Char IN Any}
   TSysAnsiChar_In = class(TSysOpBinary<TSysAnsiChar_In>)
+  public
+    function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; override;
+  end;
+
+  {operator Ordinal IN any}
+  TSysOrdinal_In = class(TSysOpBinary<TSysOrdinal_In>)
   public
     function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; override;
   end;
@@ -628,12 +647,24 @@ end;
 
 { TSysExplicitAnsiStringFromAny }
 
+function TSysExplicitAnsiStringFromAny.Check(const Src, Dst: TIDType): Boolean;
+begin
+  Result := SYSUnit._PAnsiCharType = Src;
+end;
+
 function TSysExplicitAnsiStringFromAny.Match(const SContext: PSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
 begin
   if Src.IsConstant and Src.DataType.Ordinal then
     Result := Src
   else
-    Result := nil;
+    Result := inherited;
+end;
+
+{ TSysExplicitStringFromAny }
+
+function TSysExplicitStringFromAny.Check(const Src, Dst: TIDType): Boolean;
+begin
+  Result := Src.DataTypeID = dtAnsiString;
 end;
 
 { TSysExplictPointerToAny }
@@ -648,6 +679,25 @@ end;
 function TSysAnsiChar_In.Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression;
 begin
   Result := SYSUnit._TrueExpression; // tmp
+end;
+
+{ TSysOrdinal_In }
+
+function TSysOrdinal_In.Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression;
+begin
+  if Right.DataType is TIDArray then
+  begin
+    Result := SYSUnit._TrueExpression; // tmp
+  end else
+    Result := nil;
+end;
+
+
+{ TIDOpImplicitStringFromPChar }
+
+function TIDOpImplicitStringFromPChar.Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+begin
+  Result := Src.DataType;
 end;
 
 end.
