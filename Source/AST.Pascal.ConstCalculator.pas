@@ -355,6 +355,38 @@ function ProcessConstOperation(Left, Right: TIDExpression; Operation: TOperatorI
       else Exit(nil);
     end;
   end;
+  //////////////////////////////////////////////////////////////
+  function CalcChar(const LValue, RValue: Char): TIDConstant;
+  var
+    sValue: string;
+    bValue: Boolean;
+  begin
+    case Operation of
+      opAdd: begin
+        sValue := LValue + RValue;
+        Result := TIDStringConstant.CreateAnonymous(nil, SYSUnit._String, sValue);
+      end;
+      opEqual,
+      opNotEqual,
+      opGreater,
+      opGreaterOrEqual,
+      opLess,
+      opLessOrEqual: begin
+        case Operation of
+          opEqual: bValue := (LValue = RValue);
+          opNotEqual: bValue := (LValue <> RValue);
+          opGreater: bValue := (LValue > RValue);
+          opGreaterOrEqual: bValue := (LValue >= RValue);
+          opLess: bValue := (LValue < RValue);
+          opLessOrEqual: bValue := (LValue <= RValue);
+          else bValue := False;
+        end;
+        Exit(TIDBooleanConstant.CreateAnonymous(nil, SYSUnit._Boolean, bValue));
+      end;
+    else
+      Exit(nil);
+    end;
+  end;
   ///////////////////////////////////////////////////////////////
   function CalcIn(const Left: TIDConstant; const Right: TIDRangeConstant): TIDConstant;
   var
@@ -403,7 +435,7 @@ begin
   end else
   if LeftType = TIDCharConstant then begin
     if RightType = TIDCharConstant then
-      Constant := CalcString(TIDCharConstant(L).Value, TIDCharConstant(R).Value)
+      Constant := CalcChar(TIDCharConstant(L).Value, TIDCharConstant(R).Value)
     else
       Constant := CalcString(TIDCharConstant(L).Value, TIDStringConstant(R).Value)
   end else

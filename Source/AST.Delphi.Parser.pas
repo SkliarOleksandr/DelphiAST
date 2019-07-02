@@ -1938,7 +1938,10 @@ begin
       end else begin
         if Op is TSysOpBinary then
         begin
-          Result := TSysOpBinary(Op).Match(EContext.SContext, Left, Right)
+          Result := TSysOpBinary(Op).Match(EContext.SContext, Left, Right);
+          if Result = nil then
+            ERROR_NO_OVERLOAD_OPERATOR_FOR_TYPES(OpID, Left, Right);
+
         end else begin
           TmpVar := GetTMPVar(EContext, TIDType(Op));
           Result := TIDExpression.Create(TmpVar, Left.TextPosition);
@@ -8517,7 +8520,7 @@ end;
 
 class procedure TASTDelphiUnit.CheckOrdinalExpression(Expression: TIDExpression);
 begin
-  if not Expression.Declaration.DataType.Ordinal then
+  if not Expression.DataType.Ordinal then
     ERROR_ORDINAL_TYPE_REQUIRED(Expression.TextPosition);
 end;
 

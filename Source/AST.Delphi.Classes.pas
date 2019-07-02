@@ -425,7 +425,10 @@ type
     procedure OverloadBinarOperator2(Op: TOperatorID; Right: TIDType; Result: TIDDeclaration); overload;
     procedure OverloadBinarOperatorFor(Op: TOperatorID; const Left: TIDType; const Result: TIDDeclaration);
     procedure OverloadBinarOperator(Op: TOperatorID; Declaration: TIDOperator); overload; inline;
+
     procedure AddBinarySysOperator(Op: TOperatorID; Decl: TIDOperator);
+    procedure AddBinarySysOperatorFor(Op: TOperatorID; Decl: TIDOperator);
+
     procedure CreateStandardOperators; virtual;
 
 
@@ -2608,6 +2611,11 @@ begin
     Node := List.Find(Left);
     if Assigned(Node) then
       Exit(TIDType(Node.Data));
+
+    // sys operator
+    Node := List.Find(nil);
+    if Assigned(Node) then
+      Exit(TIDType(Node.Data));
   end;
   Result := nil;
 end;
@@ -3147,6 +3155,21 @@ begin
     ERROR_OPERATOR_ALREADY_OVERLOADED(Op, Self, nil, TTextPosition.Empty);
 end;
 
+procedure TIDType.AddBinarySysOperatorFor(Op: TOperatorID; Decl: TIDOperator);
+var
+  List: TIDPairList;
+  ExistKey: TIDPairList.PAVLNode;
+begin
+  List := FBinarOperatorsFor[Op];
+  if not Assigned(List) then begin
+    List := TIDPairList.Create;
+    FBinarOperatorsFor[Op] := List;
+  end;
+  ExistKey := List.InsertNode(nil, Decl);
+  if Assigned(ExistKey) and (TIDDeclaration(ExistKey.Data) <> SYSUnit._Boolean) then
+    ERROR_OPERATOR_ALREADY_OVERLOADED(Op, Self, nil, TTextPosition.Empty);
+end;
+
 function TIDType.BinarOperator(Op: TOperatorID; Right: TIDType): TIDType;
 var
   List: TIDPairList;
@@ -3562,8 +3585,14 @@ begin
 end;
 
 function TIDExpression.GetDataTypeName: string;
+var
+  Dt: TIDType;
 begin
-  Result := GetDataType.DisplayName
+  Dt := GetDataType();
+  if Assigned(Dt) then
+    Result := Dt.DisplayName
+  else
+    Result := '<NULL>';
 end;
 
 function TIDExpression.GetDisplayName: string;

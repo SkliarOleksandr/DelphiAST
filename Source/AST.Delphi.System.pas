@@ -361,6 +361,9 @@ begin
 
   AddBinarOperator(opIntDiv, _Int64, [_Int8, _UInt8, _Int16, _UInt16, _Int32, _UInt32, _Int64, _UInt64], _Int64);
   AddBinarOperator(opIntDiv, _UInt64, [_UInt8, _UInt16, _UInt32, _UInt64], _UInt64);
+
+  AddBinarOperator(opIntDiv, _NativeInt, [_Int8, _UInt8, _Int16, _UInt16, _Int32, _UInt32, _Int64, _UInt64], _Int64);
+  AddBinarOperator(opIntDiv, _NativeUInt, [_UInt8, _UInt16, _UInt32, _UInt64], _UInt64);
 end;
 
 procedure TSYSTEMUnit.AddLogicalOperators;
@@ -451,6 +454,7 @@ end;
 
 procedure TSYSTEMUnit.AddSystemOperators;
 begin
+  // IN operator
   _AnsiChar.AddBinarySysOperator(opIn, TSysAnsiChar_In.Instance);
   _Char.AddBinarySysOperator(opIn, TSysAnsiChar_In.Instance);
 
@@ -462,6 +466,14 @@ begin
   _UInt16.AddBinarySysOperator(opIn, TSysOrdinal_In.Instance);
   _UInt32.AddBinarySysOperator(opIn, TSysOrdinal_In.Instance);
   _Boolean.AddBinarySysOperator(opIn, TSysOrdinal_In.Instance);
+
+  // IntDiv
+  _Int8.AddBinarySysOperatorFor(opIntDiv, TSys_Ptr_IntDiv_Int.Instance);
+  _Int16.AddBinarySysOperatorFor(opIntDiv, TSys_Ptr_IntDiv_Int.Instance);
+  _Int32.AddBinarySysOperatorFor(opIntDiv, TSys_Ptr_IntDiv_Int.Instance);
+  _UInt8.AddBinarySysOperatorFor(opIntDiv, TSys_Ptr_IntDiv_Int.Instance);
+  _UInt16.AddBinarySysOperatorFor(opIntDiv, TSys_Ptr_IntDiv_Int.Instance);
+  _UInt32.AddBinarySysOperatorFor(opIntDiv, TSys_Ptr_IntDiv_Int.Instance);
 end;
 
 procedure TSYSTEMUnit.AddAddOperators;
@@ -697,6 +709,7 @@ begin
   RegisterBuiltin(TSF_Set8087CW);
   RegisterBuiltin(TSF_Trunc);
   RegisterBuiltin(TSF_Val);
+  RegisterBuiltin(TSF_Abs);
 
   RegisterVariable(ImplScope, 'ReturnAddress', _Pointer);
   RegisterConstStr(ImplScope, 'libmmodulename', '');

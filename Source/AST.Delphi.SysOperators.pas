@@ -251,6 +251,12 @@ type
     function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; override;
   end;
 
+
+  TSys_Ptr_IntDiv_Int = class(TSysOpBinary<TSys_Ptr_IntDiv_Int>)
+  public
+    function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; override;
+  end;
+
 implementation
 
 uses AST.Delphi.DataTypes,
@@ -698,6 +704,16 @@ end;
 function TIDOpImplicitStringFromPChar.Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
   Result := Src.DataType;
+end;
+
+{ TSys_Ptr_IntDiv_Int }
+
+function TSys_Ptr_IntDiv_Int.Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression;
+begin
+  if Left.DataTypeID = dtPointer then
+    Result := SYSUnit._ZeroExpression // tmp
+  else
+    Result := nil;
 end;
 
 end.
