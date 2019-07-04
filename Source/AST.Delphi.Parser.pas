@@ -138,7 +138,7 @@ type
     procedure CheckIncompleteFwdTypes;
     procedure CheckEndOfFile(Token: TTokenID);
     procedure CheckProcedureType(DeclType: TIDType); inline;
-    procedure CheckStingOrAnsyStringType(DataType: TIDType); inline;
+    procedure CheckStingType(DataType: TIDType); inline;
     class procedure CheckDestructorSignature(const DProc: TIDProcedure); static;
     class procedure CheckStaticRecordConstructorSign(const CProc: TIDProcedure); static;
     class procedure CheckConstValueOverflow(Src: TIDExpression; DstDataType: TIDType); static;
@@ -977,11 +977,12 @@ begin
           end else
           if Result = token_openblock then
           begin
-            CheckStingOrAnsyStringType(DataType);
-            var Expr: TIDExpression := nil;
+            CheckStingType(DataType);
             Lexer_NextToken(Scope);
+            var Expr: TIDExpression := nil;
             Result := ParseConstExpression(Scope, Expr, ExprNested);
             Lexer_MatchToken(Result, token_closeblock);
+            DataType := SYSUnit._ShortString;
             Result := Lexer_NextToken(Scope);
           end;
           Exit;
@@ -3258,7 +3259,7 @@ begin
     end else
     if Decl is TSysOpImplicit then
     begin
-      Result := TSysOpImplicit(Decl).Match(@SContext, Source, Dest);
+      Result := TSysOpImplicit(Decl).Match(SContext, Source, Dest);
       if Assigned(Result) then
         Exit;
     end;
@@ -3761,9 +3762,9 @@ begin
   ExplicitOp := SrcDataType.GetExplicitOperatorTo(DstDataType);
   if Assigned(ExplicitOp) then
   begin
-    if ExplicitOp is TSysOpImplicit then
+    if ExplicitOp is TSysOpExplisit then
     begin
-      if TSysOpImplicit(ExplicitOp).Check(SrcDataType, DstDataType) then
+      if TSysOpExplisit(ExplicitOp).Check(SrcDataType, DstDataType) then
         Exit(True);
     end else
       Exit(True);
@@ -4720,7 +4721,7 @@ begin
   while Result <> token_eof do
   begin
     // parse case lable const expression: (example: ... 1: (a: integer; b: integer ...
-    Result := ParseConstExpression(Scope, Expr, ExprNested);
+    Result := ParseConstExpression(Scope, Expr, ExprLValue);
     Lexer_MatchToken(Result, token_colon);
     Lexer_ReadToken(Scope, token_openround);
     Result := Lexer_NextToken(Scope);
@@ -5157,7 +5158,6 @@ begin
         DstExpression := TIDExpression.Create(SrcExpr.Declaration);
       end else
         DstExpression := TIDCastExpression.Create(SrcExpr.Declaration, TIDType(DstExpression.Declaration), DstExpression.TextPosition);
-
     end else
     if OperatorDecl.ItemType = itProcedure then
     begin
@@ -5165,6 +5165,10 @@ begin
       CallExpr := TIDCallExpression.Create(OperatorDecl, DstExpression.TextPosition);
       CallExpr.ArgumentsCount := 1;
       DstExpression := Process_CALL_direct(SContext, CallExpr, TIDExpressions.Create(SrcExpr));
+    end else
+    if OperatorDecl.ItemType = itSysOperator then
+    begin
+      // todo: ERROR_INVALID_EXPLICIT_TYPECAST(SrcExpr, TargetType);
     end;
   end else
     ERROR_INVALID_EXPLICIT_TYPECAST(SrcExpr, TargetType);
@@ -5249,12 +5253,12 @@ begin
         Status := EContext.RPNPushOperator(opEqual);
         ASTE.AddSubItem(TASTOpEqual);
       end;
-      token_var: begin
-        //Result := ParseInplaceVarDecl(Scope, Expr);
-        //SContext.IL.AddVariable(Expr.AsVariable);
-        //EContext.RPNPushExpression(Expr);
-        Status := rpOperand;
-        continue;
+      token_colon: begin
+        // for now just skip
+        if EContext.EPosition <> ExprNested then
+          break;
+        // todo: add parsiong args for Str() like: Val:X:Y
+        Status := rpOperation;
       end;
       token_notequal: begin
         CheckLeftOperand(Status);
@@ -5309,7 +5313,6 @@ begin
       end;
       token_period: begin
         CheckLeftOperand(Status);
-        //Bool_AddExprNode(EContext, GetILLast(SContext), cGreaterOrEqual); // ???????????????? зачем?
         Status := EContext.RPNPushOperator(opPeriod);
       end;
       token_address: begin
@@ -8602,9 +8605,9 @@ begin
 
 end;
 
-procedure TASTDelphiUnit.CheckStingOrAnsyStringType(DataType: TIDType);
+procedure TASTDelphiUnit.CheckStingType(DataType: TIDType);
 begin
-  if not (DataType.DataTypeID in [dtString, dtAnsiString]) then
+  if DataType.DataTypeID <> dtString then
     AbortWork(sStringExpressionRequired, Lexer_Position);
 end;
 

@@ -266,7 +266,7 @@ begin
   _String.OverloadImplicitTo(_TGuid, TIDOpImplicitStringToGUID.CreateInternal(_TGuid));
   _String.OverloadImplicitTo(_PCharType, TIDOpImplicitStringToPChar.CreateInternal(_PCharType));
   _String.OverloadImplicitTo(_PAnsiCharType, TIDOpImplicitStringToPChar.CreateInternal(_PAnsiCharType));
-  _String.OverloadExplicitFromAny(TSysExplicitStringFromAny.Instance);
+  _String.OverloadImplicitTo(_WideString);
   _String.OverloadImplicitFrom(_PCharType);
 
   // AnsiString
@@ -276,19 +276,20 @@ begin
   _AnsiString.OverloadImplicitTo(_String, TIDOpImplicitAnsiStringToString.CreateInternal(_String));
   _AnsiString.OverloadImplicitTo(_TGuid, TIDOpImplicitStringToGUID.CreateInternal(_TGuid));
   _AnsiString.OverloadImplicitTo(_ShortString);
-  _AnsiString.OverloadExplicitFromAny(TSysExplicitAnsiStringFromAny.Instance);
   _AnsiString.OverloadImplicitFrom(_PAnsiCharType);
 
   // WideString
-  _WideString.OverloadExplicitFrom(_String);
-
+  _WideString.OverloadImplicitTo(_String);
+ 
   // ShortString
   _ShortString.OverloadImplicitTo(_AnsiString);
 
+  // Char
   _Char.OverloadImplicitTo(_String, TIDOpImplicitCharToString.CreateInternal(_String));
   _Char.OverloadImplicitTo(_AnsiString, TIDOpImplicitCharToAnsiString.CreateInternal(_AnsiString));
   _Char.OverloadImplicitTo(_AnsiChar, TIDOpImplicitCharToAnsiChar.CreateInternal(_AnsiChar));
 
+  // AnsiChar
   _AnsiChar.OverloadImplicitTo(_AnsiString, TIDOpImplicitAnsiCharToAnsiString.CreateInternal(_AnsiString));
   _AnsiChar.OverloadImplicitTo(_String, TIDOpImplicitAnsiCharToString.CreateInternal(_String));
   _AnsiChar.OverloadImplicitTo(_Char, TIDOpImplicitAnsiCharToChar.CreateInternal(_Char));
@@ -298,6 +299,7 @@ begin
   // Boolean
   _Boolean.OverloadImplicitTo(_Boolean);
   _Boolean.OverloadImplicitTo(_Variant, FImplicitAnyToVariant);
+
 end;
 
 procedure TSYSTEMUnit.AddCustomExplicits(const Sources: array of TDataTypeID; Dest: TIDType);
@@ -342,12 +344,32 @@ begin
   AddExplicits(_Float32, dtFloat32, dtFloat64);
   AddExplicits(_Float64, dtFloat32, dtFloat64);
 
+  // String
   _String.OverloadExplicitTo(_Pointer);
   _String.OverloadExplicitTo(_PCharType);
+  _String.OverloadExplicitTo(_WideString);
+  _String.OverloadExplicitTo(_ShortString);
+  _String.OverloadExplicitFromAny(TSysExplicitStringFromAny.Instance);
+
+  // AnsiString
   _AnsiString.OverloadExplicitTo(_Pointer);
   _AnsiString.OverloadExplicitTo(_PAnsiCharType);
+  _AnsiString.OverloadExplicitTo(_ShortString);
+  _AnsiString.OverloadExplicitFromAny(TSysExplicitAnsiStringFromAny.Instance);
 
+  // WideString
+  _WideString.OverloadExplicitTo(_String);
+
+  // AnsiChar
   _AnsiChar.OverloadExplicitTo(_Char);
+
+  // ShortString
+  _ShortString.OverloadExplicitTo(_AnsiString);
+
+  // Char
+  _Char.OverloadExplicitTo(_String);
+
+  _PCharType.OverloadExplicitTo(_String);
 
   AddCustomExplicits([dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean], _Char);
   AddCustomExplicits([dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean], _AnsiChar);
@@ -716,6 +738,9 @@ begin
   RegisterBuiltin(TSF_Val);
   RegisterBuiltin(TSF_Abs);
   RegisterBuiltin(TSF_Str);
+  RegisterBuiltin(TSF_Round);
+  RegisterBuiltin(TSF_Pred);
+  RegisterBuiltin(TSF_Succ);
 
   RegisterVariable(ImplScope, 'ReturnAddress', _Pointer);
   RegisterConstStr(ImplScope, 'libmmodulename', '');

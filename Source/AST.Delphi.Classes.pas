@@ -88,6 +88,7 @@ type
     itVar,             // переменная
     itConst,           // константа
     itProcedure,       // процедуры/функция
+    itSysOperator,     // system operator
     itMacroFunction,   // функция времени компиляции
     itProperty,        // свойство
     itAlias,           // алиас

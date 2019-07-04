@@ -442,7 +442,7 @@ begin
   end;
   // read identifier:
   FCurrentToken := Copy(FSource, SPos - ReadedChars, ReadedChars);
-  if nsPoint in NumberSymbols then
+  if (nsPoint in NumberSymbols) or (nsExponent in NumberSymbols) then
     FIdentifireType := itFloat
   else
     FIdentifireType := itInteger;

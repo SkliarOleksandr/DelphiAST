@@ -187,6 +187,28 @@ type
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {Round}
+  TSF_Round = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
+  {Pred}
+  TSF_Pred = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
+  {Succ}
+  TSF_Succ = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
+
 
 implementation
 
@@ -775,6 +797,57 @@ begin
   ArgX := EContext.RPNPopExpression();
   ArgS := EContext.RPNPopExpression();
   Result := nil;
+end;
+
+{ TSF_Round }
+
+class function TSF_Round.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Round', SYSUnit._Float64);
+  Result.AddParam('X', SYSUnit._Float64, [VarConst]);
+end;
+
+function TSF_Round.Process(var EContext: TEContext): TIDExpression;
+var
+  Arg: TIDExpression;
+begin
+  // read argument
+  Arg := EContext.RPNPopExpression();
+  Result := Arg;
+end;
+
+{ TSF_Pred }
+
+class function TSF_Pred.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Pred', SYSUnit._OrdinalType);
+  Result.AddParam('X', SYSUnit._OrdinalType, [VarConst]);
+end;
+
+function TSF_Pred.Process(var EContext: TEContext): TIDExpression;
+var
+  Arg: TIDExpression;
+begin
+  // read argument
+  Arg := EContext.RPNPopExpression();
+  Result := Arg;
+end;
+
+{ TSF_Succ }
+
+class function TSF_Succ.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Succ', SYSUnit._OrdinalType);
+  Result.AddParam('X', SYSUnit._OrdinalType, [VarConst]);
+end;
+
+function TSF_Succ.Process(var EContext: TEContext): TIDExpression;
+var
+  Arg: TIDExpression;
+begin
+  // read argument
+  Arg := EContext.RPNPopExpression();
+  Result := Arg;
 end;
 
 end.
