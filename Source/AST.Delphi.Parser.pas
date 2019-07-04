@@ -138,6 +138,7 @@ type
     procedure CheckIncompleteFwdTypes;
     procedure CheckEndOfFile(Token: TTokenID);
     procedure CheckProcedureType(DeclType: TIDType); inline;
+    procedure CheckStingOrAnsyStringType(DataType: TIDType); inline;
     class procedure CheckDestructorSignature(const DProc: TIDProcedure); static;
     class procedure CheckStaticRecordConstructorSign(const CProc: TIDProcedure); static;
     class procedure CheckConstValueOverflow(Src: TIDExpression; DstDataType: TIDType); static;
@@ -973,6 +974,15 @@ begin
             SearchScope := TIDStructure(DataType).Members;
             Lexer_NextToken(Scope);
             continue;
+          end else
+          if Result = token_openblock then
+          begin
+            CheckStingOrAnsyStringType(DataType);
+            var Expr: TIDExpression := nil;
+            Lexer_NextToken(Scope);
+            Result := ParseConstExpression(Scope, Expr, ExprNested);
+            Lexer_MatchToken(Result, token_closeblock);
+            Result := Lexer_NextToken(Scope);
           end;
           Exit;
         end;
@@ -8590,6 +8600,12 @@ end;
 class procedure TASTDelphiUnit.CheckStaticRecordConstructorSign(const CProc: TIDProcedure);
 begin
 
+end;
+
+procedure TASTDelphiUnit.CheckStingOrAnsyStringType(DataType: TIDType);
+begin
+  if not (DataType.DataTypeID in [dtString, dtAnsiString]) then
+    AbortWork(sStringExpressionRequired, Lexer_Position);
 end;
 
 class procedure TASTDelphiUnit.CheckStringExpression(Expression: TIDExpression);

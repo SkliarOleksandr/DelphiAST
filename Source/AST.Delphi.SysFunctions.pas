@@ -180,6 +180,13 @@ type
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {Str}
+  TSF_Str = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
 
 implementation
 
@@ -750,6 +757,24 @@ begin
   // read argument
   Arg := EContext.RPNPopExpression();
   Result := Arg;
+end;
+
+{ TSF_Str }
+
+class function TSF_Str.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Str', _Void);
+  Result.AddParam('X', _Void, [VarConst]);
+  Result.AddParam('S', SYSUnit._String, [VarInOut]);
+end;
+
+function TSF_Str.Process(var EContext: TEContext): TIDExpression;
+var
+  ArgX, ArgS: TIDExpression;
+begin
+  ArgX := EContext.RPNPopExpression();
+  ArgS := EContext.RPNPopExpression();
+  Result := nil;
 end;
 
 end.

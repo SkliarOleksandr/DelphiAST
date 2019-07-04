@@ -107,24 +107,25 @@ type
     procedure InitSystemUnit;
     //procedure RegisterExternalProc
     property DataTypes: TDataTypes read fDataTypes;
-    property _Int8: TIDType read fDataTypes[dtInt8] write FDataTypes[dtInt8];
-    property _Int16: TIDType read fDataTypes[dtInt16] write FDataTypes[dtInt16];
-    property _Int32: TIDType read fDataTypes[dtInt32] write FDataTypes[dtInt32];
-    property _Int64: TIDType read fDataTypes[dtInt64] write FDataTypes[dtInt64];
-    property _UInt8: TIDType read fDataTypes[dtUInt8] write FDataTypes[dtUInt8];
-    property _UInt16: TIDType read fDataTypes[dtUInt16] write FDataTypes[dtUInt16];
-    property _UInt32: TIDType read fDataTypes[dtUInt32] write FDataTypes[dtUInt32];
-    property _UInt64: TIDType read fDataTypes[dtUInt64] write FDataTypes[dtUInt64];
-    property _NativeInt: TIDType read fDataTypes[dtNativeInt] write FDataTypes[dtNativeInt];
-    property _NativeUInt: TIDType read fDataTypes[dtNativeUInt] write FDataTypes[dtNativeUInt];
-    property _Float32: TIDType read fDataTypes[dtFloat32] write FDataTypes[dtFloat32];
-    property _Float64: TIDType read fDataTypes[dtFloat64] write FDataTypes[dtFloat64];
-    property _Boolean: TIDType read fDataTypes[dtBoolean] write FDataTypes[dtBoolean];
-    property _AnsiChar: TIDType read fDataTypes[dtAnsiChar] write FDataTypes[dtAnsiChar];
-    property _Char: TIDType read fDataTypes[dtChar] write FDataTypes[dtChar];
-    property _AnsiString: TIDType read fDataTypes[dtAnsiString] write FDataTypes[dtAnsiString];
-    property _String: TIDType read fDataTypes[dtString] write FDataTypes[dtString];
-    property _Variant: TIDType read fDataTypes[dtVariant] write FDataTypes[dtVariant];
+    property _Int8: TIDType read fDataTypes[dtInt8] write fDataTypes[dtInt8];
+    property _Int16: TIDType read fDataTypes[dtInt16] write fDataTypes[dtInt16];
+    property _Int32: TIDType read fDataTypes[dtInt32] write fDataTypes[dtInt32];
+    property _Int64: TIDType read fDataTypes[dtInt64] write fDataTypes[dtInt64];
+    property _UInt8: TIDType read fDataTypes[dtUInt8] write fDataTypes[dtUInt8];
+    property _UInt16: TIDType read fDataTypes[dtUInt16] write fDataTypes[dtUInt16];
+    property _UInt32: TIDType read fDataTypes[dtUInt32] write fDataTypes[dtUInt32];
+    property _UInt64: TIDType read fDataTypes[dtUInt64] write fDataTypes[dtUInt64];
+    property _NativeInt: TIDType read fDataTypes[dtNativeInt] write fDataTypes[dtNativeInt];
+    property _NativeUInt: TIDType read fDataTypes[dtNativeUInt] write fDataTypes[dtNativeUInt];
+    property _Float32: TIDType read fDataTypes[dtFloat32] write fDataTypes[dtFloat32];
+    property _Float64: TIDType read fDataTypes[dtFloat64] write fDataTypes[dtFloat64];
+    property _Boolean: TIDType read fDataTypes[dtBoolean] write fDataTypes[dtBoolean];
+    property _AnsiChar: TIDType read fDataTypes[dtAnsiChar] write fDataTypes[dtAnsiChar];
+    property _Char: TIDType read fDataTypes[dtChar] write fDataTypes[dtChar];
+    property _AnsiString: TIDType read fDataTypes[dtAnsiString] write fDataTypes[dtAnsiString];
+    property _String: TIDType read fDataTypes[dtString] write fDataTypes[dtString];
+    property _ShortString: TIDType read fShortString write fShortString;
+    property _Variant: TIDType read fDataTypes[dtVariant] write fDataTypes[dtVariant];
     property _NilPointer: TIDType read fNullPtrType;
     property _TGuid: TIDStructure read fGuidType;
     property _True: TIDBooleanConstant read fTrueConstant;
@@ -274,11 +275,15 @@ begin
   _AnsiString.OverloadImplicitTo(_PAnsiCharType, TIDOpImplicitStringToPChar.CreateInternal(_PAnsiCharType));
   _AnsiString.OverloadImplicitTo(_String, TIDOpImplicitAnsiStringToString.CreateInternal(_String));
   _AnsiString.OverloadImplicitTo(_TGuid, TIDOpImplicitStringToGUID.CreateInternal(_TGuid));
+  _AnsiString.OverloadImplicitTo(_ShortString);
   _AnsiString.OverloadExplicitFromAny(TSysExplicitAnsiStringFromAny.Instance);
   _AnsiString.OverloadImplicitFrom(_PAnsiCharType);
 
   // WideString
   _WideString.OverloadExplicitFrom(_String);
+
+  // ShortString
+  _ShortString.OverloadImplicitTo(_AnsiString);
 
   _Char.OverloadImplicitTo(_String, TIDOpImplicitCharToString.CreateInternal(_String));
   _Char.OverloadImplicitTo(_AnsiString, TIDOpImplicitCharToAnsiString.CreateInternal(_AnsiString));
@@ -710,6 +715,7 @@ begin
   RegisterBuiltin(TSF_Trunc);
   RegisterBuiltin(TSF_Val);
   RegisterBuiltin(TSF_Abs);
+  RegisterBuiltin(TSF_Str);
 
   RegisterVariable(ImplScope, 'ReturnAddress', _Pointer);
   RegisterConstStr(ImplScope, 'libmmodulename', '');
