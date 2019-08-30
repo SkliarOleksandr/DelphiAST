@@ -17,6 +17,7 @@ uses System.SysUtils, System.Classes, System.Types, Generics.Collections, System
 type
   TUnits = TList<TASTModule>;
   TTypes = TList<TIDType>;
+  TEnumDeclProc = procedure (Module: TASTModule; Decl: TASTDeclaration);
 
   TNPPackage = class(TASTProject, INPPackage)
   type
@@ -82,6 +83,7 @@ type
     function GetMessages: ICompilerMessages;
     function Compile: TCompilerResult; virtual;
     function CompileInterfacesOnly: TCompilerResult; virtual;
+    procedure EnumIntfDeclarations(const EnumProc: TEnumASTDeclProc);
   end;
 
 implementation
@@ -359,6 +361,18 @@ begin
   FUnitSearchPathes.Free;
   FOptions.Free;
   inherited;
+end;
+
+procedure TNPPackage.EnumIntfDeclarations(const EnumProc: TEnumASTDeclProc);
+var
+  i: Integer;
+  Module: TASTModule;
+begin
+  for i := 0 to FUnits.Count - 1 do
+  begin
+    Module := FUnits[i];
+    Module.EnumIntfDeclarations(EnumProc);
+  end;
 end;
 
 function TNPPackage.OpenUnit(const UnitName: string): TASTModule;

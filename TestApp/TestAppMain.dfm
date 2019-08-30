@@ -20,7 +20,7 @@ object frmTestAppMain: TfrmTestAppMain
     Top = 172
     Width = 629
     Height = 468
-    ActivePage = tsSource
+    ActivePage = tsNameSpace
     Align = alClient
     TabOrder = 0
     object tsSource: TTabSheet
@@ -337,6 +337,39 @@ object frmTestAppMain: TfrmTestAppMain
         Align = alClient
         Indent = 19
         TabOrder = 0
+      end
+    end
+    object tsNameSpace: TTabSheet
+      Caption = 'NameSpace'
+      ImageIndex = 2
+      object edAllItems: TSynEdit
+        Left = 0
+        Top = 0
+        Width = 621
+        Height = 440
+        Align = alClient
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -13
+        Font.Name = 'Courier New'
+        Font.Style = []
+        TabOrder = 0
+        CodeFolding.GutterShapeSize = 11
+        CodeFolding.CollapsedLineColor = clGrayText
+        CodeFolding.FolderBarLinesColor = clGrayText
+        CodeFolding.IndentGuidesColor = clGray
+        CodeFolding.IndentGuides = True
+        CodeFolding.ShowCollapsedLine = False
+        CodeFolding.ShowHintMark = True
+        UseCodeFolding = False
+        Gutter.Font.Charset = DEFAULT_CHARSET
+        Gutter.Font.Color = clWindowText
+        Gutter.Font.Height = -11
+        Gutter.Font.Name = 'Courier New'
+        Gutter.Font.Style = []
+        Gutter.ShowLineNumbers = True
+        Highlighter = SynPasSyn1
+        FontSmoothing = fsmNone
       end
     end
   end

@@ -176,6 +176,7 @@ type
     procedure Lexer_ReadCurrIdentifier(var Identifier: TIdentifier); inline;
     procedure Lexer_ReadTokenAsID(var Identifier: TIdentifier);
     procedure Lexer_ReadNextIdentifier(Scope: TScope; var Identifier: TIdentifier); inline;
+    procedure Lexer_ReadNextIFDEFLiteral(Scope: TScope; var Identifier: TIdentifier); inline;
     procedure Lexer_MatchParamNameIdentifier(ActualToken: TTokenID); inline;
     function Lexer_CurTokenID: TTokenID; inline;
     function Lexer_ReadSemicolonAndToken(Scope: TScope): TTokenID; inline;
@@ -316,11 +317,11 @@ type
     function ParseCondWarn(Scope: TScope): TTokenID;
     function ParseCondError(Scope: TScope): TTokenID;
     function ParseCondMessage(Scope: TScope): TTokenID;
-    function ParseDelphiCondIfDef(Scope: TScope): Boolean;
     function Defined(const Name: string): Boolean;
     function ParseCondIf(Scope: TScope; out ExpressionResult: TCondIFValue): TTokenID;
     function ParseCondOptSet(Scope: TScope): TTokenID;
     procedure ParseCondDefine(Scope: TScope; add_define: Boolean);
+    procedure EnumIntfDeclarations(const Proc: TEnumASTDeclProc); override;
 
     property Source: string read GetSource;
     function Compile(RunPostCompile: Boolean = True): TCompilerResult; override;
@@ -2019,11 +2020,6 @@ var
   DataType: TIDType;
 begin
   Expr := EContext.RPNPopExpression();
-  if (Expr.ItemType <> itVar) and
-     ((Expr.ItemType = itConst) and not (Expr.DataType.DataTypeID in [dtRecord, dtStaticArray, dtGuid])) and
-     (Expr.ItemType <> itProcedure) then
-    ERROR_VAR_OR_PROC_EXPRESSION_REQUIRED(Expr);
-
   DataType := Expr.DataType.DefaultReference;
   if DataType = nil then
   begin
@@ -2510,6 +2506,52 @@ begin
   Result := VarSpace.First;
 end;
 
+procedure TASTDelphiUnit.EnumIntfDeclarations(const Proc: TEnumASTDeclProc);
+var
+  Decl: TIDDeclaration;
+begin
+  {константы}
+  Decl := ConstSpace.First;
+  while Assigned(Decl) do
+  begin
+    if Decl.Scope = IntfScope then
+      Proc(Self, Decl)
+    else
+      break;
+    Decl := Decl.NextItem;
+  end;
+  {глобальные переменные}
+  Decl := VarSpace.First;
+  while Assigned(Decl) do
+  begin
+    if Decl.Scope = IntfScope then
+      Proc(Self, Decl)
+    else
+      break;
+    Decl := Decl.NextItem;
+  end;
+  {типы}
+  Decl := TypeSpace.First;
+  while Assigned(Decl) do
+  begin
+    if Decl.Scope = IntfScope then
+      Proc(Self, Decl)
+    else
+      break;
+    Decl := Decl.NextItem;
+  end;
+  {процедуры}
+  Decl := ProcSpace.First;
+  while Assigned(Decl) do
+  begin
+    if Decl.Scope = IntfScope then
+      Proc(Self, Decl)
+    else
+      break;
+    Decl := Decl.NextItem;
+  end;
+end;
+
 class function TASTDelphiUnit.GetTMPVar(const EContext: TEContext; DataType: TIDType): TIDVariable;
 begin
   Result := TIDProcedure(EContext.Proc).GetTMPVar(DataType);
@@ -2601,6 +2643,20 @@ begin
     Lexer.GetIdentifier(Identifier)
   else
     Lexer_ReadTokenAsID(Identifier);
+end;
+
+procedure TASTDelphiUnit.Lexer_ReadNextIFDEFLiteral(Scope: TScope; var Identifier: TIdentifier);
+var
+  Token: TTokenID;
+begin
+  Lexer_ReadNextIdentifier(Scope, Identifier);
+  Token := Lexer.NextToken;
+  while (Token <> token_closefigure) and (Token <> token_eof) do
+  begin
+    Identifier.Name := Identifier.Name + Lexer.OriginalToken;
+    Token := Lexer.NextToken;
+  end;
+  Lexer_MatchToken(Token, token_closefigure);
 end;
 
 procedure TASTDelphiUnit.Lexer_ReadSemicolon(Scope: TScope);
@@ -4327,7 +4383,7 @@ var
   ID: TIdentifier;
   idx: Integer;
 begin
-  Lexer_ReadNextIdentifier(Scope, ID);
+  Lexer_ReadNextIFDEFLiteral(Scope, ID);
   idx := FDefines.IndexOf(ID.Name);
   if add_define then begin
     if idx = -1 then
@@ -4372,14 +4428,6 @@ begin
     ExpressionResult := condIFUnknown;
 end;
 
-function TASTDelphiUnit.ParseCondIfDef(Scope: TScope): Boolean;
-var
-  ID: TIdentifier;
-begin
-  Lexer_ReadNextIdentifier(Scope, ID);
-  Result := Defined(ID.Name);
-end;
-
 function TASTDelphiUnit.ParseCondInclude(Scope: TScope): TTokenID;
 var
   FileName: string;
@@ -4407,6 +4455,14 @@ begin
   end;
 end;
 
+function TASTDelphiUnit.ParseCondIfDef(Scope: TScope): Boolean;
+var
+  ID: TIdentifier;
+begin
+  Lexer_ReadNextIFDEFLiteral(Scope, ID);
+  Result := Defined(ID.Name);
+end;
+
 function TASTDelphiUnit.ParseCondMessage(Scope: TScope): TTokenID;
 var
   ID: TIdentifier;
@@ -4416,7 +4472,7 @@ begin
   MsgType := UpperCase(ID.Name);
   Lexer_ReadNextIdentifier(Scope, ID);
   if MsgType = 'ERROR' then
-    AbortWork(ID.Name, ID.TextPosition);
+    PutMessage(TCompilerMessageType.cmtWarning, 'message error: ' + ID.Name, ID.TextPosition);
   // todo:
   Result := Lexer.NextToken;
 end;
@@ -4488,8 +4544,6 @@ begin
       // {$DEFINE ...}
       token_cond_define: begin
         ParseCondDefine(Scope, True);
-        Result := Lexer.NextToken;
-        Lexer_MatchToken(Result, token_closefigure);
         Result := Lexer_NextToken(Scope);
       end;
       //////////////////////////////////////////
@@ -4540,7 +4594,7 @@ begin
       //////////////////////////////////////////
       // {$IFDEF ...}
       token_cond_ifdef: begin
-        CondResult := ParseDelphiCondIfDef(Scope);
+        CondResult := ParseCondIfDef(Scope);
         fCondStack.Push(CondResult);
         if not CondResult then
           Result := SkipToElseOrEnd(False)
@@ -4550,7 +4604,7 @@ begin
       //////////////////////////////////////////
       // {$IFNDEF ...}
       token_cond_ifndef: begin
-        CondResult := ParseDelphiCondIfDef(Scope);
+        CondResult := ParseCondIfDef(Scope);
         fCondStack.Push(not CondResult);
         if CondResult then
           Result := SkipToElseOrEnd(False)
@@ -4688,15 +4742,6 @@ begin
 
   SContext.Add<TASTKWContinue>;
   Result := Lexer_NextToken(Scope);
-end;
-
-function TASTDelphiUnit.ParseDelphiCondIfDef(Scope: TScope): Boolean;
-var
-  ID: TIdentifier;
-begin
-  Lexer_ReadNextIdentifier(Scope, ID);
-  Result := Defined(ID.Name);
-  Lexer_MatchToken(Lexer.NextToken, token_closefigure);
 end;
 
 function TASTDelphiUnit.ParseDeprecated(Scope: TScope; out Deprecated: TIDExpression): TTokenID;

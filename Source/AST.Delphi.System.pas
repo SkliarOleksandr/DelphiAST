@@ -732,8 +732,6 @@ begin
   RegisterBuiltin(TSF_Chr);
   RegisterBuiltin(TSF_FillChar);
   RegisterBuiltin(TSF_Assigned);
-  RegisterBuiltin(TSF_Get8087CW);
-  RegisterBuiltin(TSF_Set8087CW);
   RegisterBuiltin(TSF_Trunc);
   RegisterBuiltin(TSF_Val);
   RegisterBuiltin(TSF_Abs);
@@ -741,6 +739,7 @@ begin
   RegisterBuiltin(TSF_Round);
   RegisterBuiltin(TSF_Pred);
   RegisterBuiltin(TSF_Succ);
+  RegisterBuiltin(TSF_FreeMem);
 
   RegisterVariable(ImplScope, 'ReturnAddress', _Pointer);
   RegisterConstStr(ImplScope, 'libmmodulename', '');

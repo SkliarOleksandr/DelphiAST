@@ -30,6 +30,8 @@ type
     Button1: TButton;
     Button2: TButton;
     Memo1: TMemo;
+    tsNameSpace: TTabSheet;
+    edAllItems: TSynEdit;
     procedure Button2Click(Sender: TObject);
     procedure Button1Click(Sender: TObject);
   private
@@ -134,7 +136,7 @@ begin
   Prj.Target := 'WIN-X86';
   Prj.Defines.Add('CPUX86');
   Prj.Defines.Add('MSWINDOWS');
- // Prj.Defines.Add('ASSEMBLER');
+
 
   //Prj.AddUnit(SystemUnit.SYSUnit, nil);
 
@@ -167,6 +169,14 @@ const cRTLUsesSource =
 'implementation'#10#13 +
 'end.';
 
+function GetDeclName(const Decl: TASTDeclaration): string;
+begin
+  if Decl.Name <> '' then
+    Result := Decl.DisplayName
+  else
+    Result := '[Anonymous]' + Decl.DisplayName;
+end;
+
 procedure TfrmTestAppMain.Button2Click(Sender: TObject);
 var
   UN: TASTDelphiUnit;
@@ -185,6 +195,7 @@ begin
   Prj.Defines.Add('CPUX86');
   Prj.Defines.Add('CPU386');
   Prj.Defines.Add('MSWINDOWS');
+  Prj.Defines.Add('ASSEMBLER');
 
   Prj.AddUnit(AST.Delphi.System.SYSUnit, nil);
 
@@ -201,6 +212,18 @@ begin
       Msg.Add('compile fail');
 
     ASTToTreeView2(UN, tvAST);
+
+    edAllItems.BeginUpdate;
+    try
+      edAllItems.Clear;
+      Prj.EnumIntfDeclarations(
+        procedure(const Module: TASTModule; const Decl: TASTDeclaration)
+        begin
+          edAllItems.Lines.Add(format('%s - %s.%s', [GetItemTypeName(TIDDeclaration(Decl).ItemType), Module.Name, GetDeclName(Decl)]));
+        end);
+    finally
+      edAllItems.EndUpdate;
+    end;
 
     CompilerMessagesToStrings(Prj.Messages, Msg);
 

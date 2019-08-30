@@ -136,6 +136,7 @@ type
     procedure AddUnitSearchPath(const Path: string; IncludeSubDirectories: Boolean = True);
     procedure Clear;
     procedure InitUnits;
+    procedure EnumIntfDeclarations(const EnumProc: TEnumASTDeclProc);
     function GetMessages: ICompilerMessages;
     function GetRTTICharset: TRTTICharset;
     function RefCount: Integer;
@@ -164,7 +165,6 @@ type
   TIDDeclaration = class(TASTDeclaration)
   private
     FItemType: TIDItemType;
-    //FID: TIdentifier;                // Идентификатор
     FScope: TScope;                  // Обл. видимости где объявлена декларация
     FDataType: TIDType;              // Тип декларации (равен nil для процедур)
     FVisibility: TVisibility;        // Уровень видимости декларации
@@ -1604,6 +1604,7 @@ type
   procedure WriteConstToStream(Stream: TStream; Decl: TIDConstant; DataType: TIDType);
 
   function GetBoolResultExpr(ExistExpr: TIDExpression): TIDBoolResultExpression;
+  function GetItemTypeName(ItemType: TIDItemType): string;
 
 implementation
 
@@ -1613,6 +1614,24 @@ uses AST.Delphi.System,
      AST.Delphi.Errors,
      AST.Delphi.Parser,
      AST.Delphi.SysOperators;
+
+function GetItemTypeName(ItemType: TIDItemType): string;
+begin
+  case ItemType of
+    itUnknown: Result := 'Unknown';
+    itVar: Result := 'Var';
+    itConst: Result := 'Const';
+    itProcedure: Result := 'Procedure';
+    itSysOperator: Result := 'SysOperator';
+    itMacroFunction: Result := 'MacroFunction';
+    itProperty: Result := 'Property';
+    itAlias: Result := 'Alias';
+    itType: Result := 'Type';
+    itNameSpace: Result := 'NameSpace';
+    itUnit: Result := 'Unit';
+    itLabel: Result := 'Label';
+  end;
+end;
 
 
 function GetBoolResultExpr(ExistExpr: TIDExpression): TIDBoolResultExpression;
@@ -5447,8 +5466,7 @@ end;
 
 function TIDRangeConstant.AsString: string;
 begin
-  Result := '';
-  AbortWorkInternal('Not supported', []);
+  Result := DisplayName;
 end;
 
 function TIDRangeConstant.AsVariant: Variant;

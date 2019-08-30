@@ -39,6 +39,7 @@ type
   TASTProject = class(TInterfacedObject, IASTProject)
   protected
     function GetUnitClass: TASTUnitClass; virtual; abstract;
+  public
   end;
 
   TASTParentItem = class(TASTItem)
@@ -62,6 +63,8 @@ type
     property IsTryBlock: Boolean read GetIsTryBlock;
   end;
 
+  TEnumASTDeclProc = reference to procedure (const Module: TASTModule; const Decl: TASTDeclaration);
+
   TASTModule = class
   private
     fFileName: string;
@@ -77,6 +80,7 @@ type
     function GetFirstType: TASTDeclaration; virtual; abstract;
     function GetFirstConst: TASTDeclaration; virtual; abstract;
     constructor Create(const Project: IASTProject; const FileName: string; const Source: string = ''); virtual;
+    procedure EnumIntfDeclarations(const Proc: TEnumASTDeclProc); virtual; abstract;
   end;
 
   TASTDeclaration = class(TASTItem)

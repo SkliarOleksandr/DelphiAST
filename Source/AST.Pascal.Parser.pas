@@ -114,6 +114,7 @@ type
     property TypeSpace: TTypeSpace read FTypeSpace;
     property VarSpace: TVarSpace read FVarSpace;
     property ProcSpace: TProcSpace read FProcSpace;
+    property ConstSpace: TConstSpace read FConsts;
   end;
 
 implementation
