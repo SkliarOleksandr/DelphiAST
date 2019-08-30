@@ -53,7 +53,7 @@ uses
   AST.Delphi.Parser,
   AST.Classes,
   AST.Parser.Messages,
-  AST.Writer;
+  AST.Writer, AST.Targets;
 
 {$R *.dfm}
 
@@ -191,7 +191,7 @@ begin
   Prj := TASTDelphiProject.Create('test');
   Prj.AddUnitSearchPath(Edit1.Text);
   Prj.InitUnits;
-  Prj.Target := 'WIN-X86';
+  Prj.Target := TWINX86_Target.TargetName;
   Prj.Defines.Add('CPUX86');
   Prj.Defines.Add('CPU386');
   Prj.Defines.Add('MSWINDOWS');

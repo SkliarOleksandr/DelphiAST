@@ -73,6 +73,7 @@ type
   TIdentifier = record
     Name: string;
     TextPosition: TTextPosition;
+    class function Make(const Name: string): TIdentifier; static;
   end;
 
   TParserPosition = record
@@ -895,6 +896,14 @@ class function TTextPosition.Empty: TTextPosition;
 begin
   Result.Row := 0;
   Result.Col := 0;
+end;
+
+{ TIdentifier }
+
+class function TIdentifier.Make(const Name: string): TIdentifier;
+begin
+  Result.Name := Name;
+  Result.TextPosition := TTextPosition.Empty;
 end;
 
 end.

@@ -83,6 +83,7 @@ type
     procedure AddCompareOperators;
     procedure AddArithmeticOperators;
     procedure RegisterBuiltinFunctions;
+    procedure SystemFixup;
     procedure AddSystemOperators;
     procedure InsertToScope(Declaration: TIDDeclaration); overload;
     function RegisterBuiltin(const Name: string; MacroID: TBuiltInFunctionID; ResultDataType: TIDType; Flags: TProcFlags = []): TIDBuiltInFunction; overload;
@@ -174,7 +175,7 @@ implementation
 
 uses AST.Parser.Errors,
      AST.Delphi.Errors,
-     AST.Delphi.SysFunctions;
+     AST.Delphi.SysFunctions, AST.Targets, AST.Lexer;
 
 procedure AddUnarOperator(Op: TOperatorID; Source, Destination: TIDType); inline;
 begin
@@ -692,6 +693,25 @@ begin
   FTypeIDType := GetPublicType('TDataTypeID');}
 end;
 
+procedure TSYSTEMUnit.SystemFixup;
+begin
+  if Package.Target = TWINX86_Target.TargetName then
+  begin
+    var coeffTypeType: TIDEnum := RegisterType('coeffType', TIDEnum, dtEnum) as TIDEnum;
+    coeffTypeType.Items := TScope.Create(stLocal, ImplScope);
+    var Item := TIDIntConstant.Create(coeffTypeType.Items, TIdentifier.Make('cHi'));
+    Item.DataType := coeffTypeType;
+    Item.Value := 0;
+    InsertToScope(coeffTypeType.Items, Item);
+    Item := TIDIntConstant.Create(coeffTypeType.Items, TIdentifier.Make('cLo'));
+    Item.DataType := coeffTypeType;
+    Item.Value := 1;
+    InsertToScope(coeffTypeType.Items, Item);
+    coeffTypeType.LowBound := 0;
+    coeffTypeType.HighBound := 1;
+  end;
+end;
+
 function TSYSTEMUnit.RegisterBuiltin(const Name: string; MacroID: TBuiltInFunctionID; ResultDataType: TIDType; Flags: TProcFlags = []): TIDBuiltInFunction;
 begin
   Result := TIDBuiltInFunction.Create(Self.IntfScope, Name, ResultDataType);
@@ -758,6 +778,7 @@ begin
   Result := CompileFail;
   try
     RegisterBuiltinFunctions;
+    SystemFixup;
     Result := inherited Compile(False);
     if Result = CompileSuccess then
     begin
