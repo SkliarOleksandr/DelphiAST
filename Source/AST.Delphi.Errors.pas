@@ -544,7 +544,7 @@ end;
 
 procedure TASTDelphiErrors.ERROR_INTERNAL(const Message: string);
 begin
-  raise ECompilerInternalError.Create('Internal error: ' + Message, Lexer_Position);
+  AbortWorkInternal('Internal error: ' + Message, Lexer_Position);
 end;
 
 class procedure TASTDelphiErrors.ERROR_INTF_ALREADY_IMPLEMENTED(Expr: TIDExpression);

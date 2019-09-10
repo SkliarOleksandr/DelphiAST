@@ -101,7 +101,7 @@ end;
 
 procedure AbortWorkInternal(const Message: string; const SourcePosition: TTextPosition);
 begin
-  raise ECompilerAbort.CreateAsInteranl(Message, SourcePosition);
+  raise ECompilerInternalError.CreateAsInteranl(Message, SourcePosition);
 end;
 
 procedure AbortWorkInternal(const Message: string; const Params: array of const);
@@ -110,12 +110,12 @@ var
 begin
   POS.Row := 0;
   POS.Col := 0;
-  raise ECompilerAbort.CreateAsInteranl(Format(Message, Params), POS);
+  raise ECompilerInternalError.CreateAsInteranl(Format(Message, Params), POS);
 end;
 
 procedure AbortWorkInternal(const Message: string; const Params: array of const; const SourcePosition: TTextPosition);
 begin
-  raise ECompilerAbort.CreateAsInteranl(Format(Message, Params), SourcePosition);
+  raise ECompilerInternalError.CreateAsInteranl(Format(Message, Params), SourcePosition);
 end;
 
 end.

@@ -1464,15 +1464,15 @@ type
 
   TScope = class(TIDList)
   private
-    FUnit: TObject;             // модуль (индекс модуля в пакете)
-    FParent: TScope;            // Parent scope
-    FScopeType: TScopeType;     // Тип scope
-    FVarSpace: PVarSpace;       // ссылка на список переменных
-    FProcSpace: PProcSpace;     // ссылка на список процедур
-    FAdditionalScopes: TScopes; // список дополнительных (присоедененных) областей
-    FChilds: TList<TScope>;     // вложенные области (необходимо для корректного удаления)
+    fUnit: TObject;             // модуль (индекс модуля в пакете)
+    fParent: TScope;            // Parent scope
+    fScopeType: TScopeType;     // Тип scope
+    fVarSpace: PVarSpace;       // ссылка на список переменных
+    fProcSpace: PProcSpace;     // ссылка на список процедур
+    fAdditionalScopes: TScopes; // список дополнительных (присоедененных) областей
+    fChilds: TList<TScope>;     // вложенные области (необходимо для корректного удаления)
     {$IFDEF DEBUG}
-    FName: string;
+    fName: string;
    {$ENDIF}
     procedure SetParent(const Value: TScope);
   protected

@@ -178,9 +178,10 @@ type
     procedure Lexer_ReadNextIdentifier(Scope: TScope; var Identifier: TIdentifier); inline;
     procedure Lexer_ReadNextIFDEFLiteral(Scope: TScope; var Identifier: TIdentifier); inline;
     procedure Lexer_MatchParamNameIdentifier(ActualToken: TTokenID); inline;
-    function Lexer_CurTokenID: TTokenID; inline;
+    function Lexer_CurTokenID: TTokenID; overload; inline;
+    function Lexer_AmbiguousId: TTokenID; overload; inline;
     function Lexer_ReadSemicolonAndToken(Scope: TScope): TTokenID; inline;
-    function Lexer_NextToken(Scope: TScope): TTokenID; inline;
+    function Lexer_NextToken(Scope: TScope): TTokenID; overload; inline;
     function Lexer_Position: TTextPosition; inline;
     function Lexer_PrevPosition: TTextPosition; inline;
     function Lexer_IdentifireType: TIdentifierType; inline;
@@ -2687,7 +2688,7 @@ end;
 procedure TASTDelphiUnit.Lexer_MatchIdentifier(const ActualToken: TTokenID);
 begin
   if ActualToken <> token_Identifier then
-    if not TokenCanBeID(ActualToken) then
+    if not Lexer.TokenCanBeID(ActualToken) then
       ERROR_IDENTIFIER_EXPECTED(ActualToken);
 end;
 
@@ -2722,6 +2723,11 @@ begin
   Result := TTokenID(Lexer.NextToken);
   if Result >= token_cond_define then
     Result := ParseCondStatements(Scope, Result);
+end;
+
+function TASTDelphiUnit.Lexer_AmbiguousId: TTokenID;
+begin
+  Result := TTokenID(Lexer.AmbiguousTokenID);
 end;
 
 function TASTDelphiUnit.Lexer_CurTokenID: TTokenID;
@@ -6019,7 +6025,7 @@ begin
 
     Decl.ImportLib := TIDConstant(LibExpr.Declaration).Index;
 
-    if Result = token_name then
+    if (Result = token_identifier) and (Lexer_AmbiguousId = token_name) then
     begin
       // читаем имя декларации
       Lexer_NextToken(Scope);
@@ -8130,7 +8136,7 @@ begin
     if Result = token_semicolon then
     begin
       Result := Lexer_NextToken(Scope);
-      if TokenCanBeID(Result) then
+      if Lexer.TokenCanBeID(Result) then
       begin
         c := 0;
         Continue;

@@ -12,6 +12,7 @@ type
     token_unknown {= -1},           // unknown token
     token_eof {= 0},                // end of file
     token_identifier,               // some id
+    token_ambiguous,                // ambiguous token: id or keyword
 
     token_numbersign,               // #
     token_semicolon,                // ;
@@ -167,6 +168,7 @@ type
     token_cond_message              // {$MESSAGE...
   );
 
+
   TDelphiLexer = class(TGenericLexer)
   private
     fOriginalToken: string;
@@ -174,22 +176,20 @@ type
     procedure ParseChainedString;
     procedure ParseCharCodeSymbol;
   public
+    constructor Create(const Source: string); override;
     function NextToken: TTokenID;
     function TokenLexem(TokenID: TTokenID): string;
-    constructor Create(const Source: string); override;
-    procedure RegisterToken(const Token: string; TokenID: TTokenID; const TokenCaption: string; TokenType: TTokenType = ttToken); overload;
-    procedure RegisterToken(const Token: string; TokenID: TTokenID; CanBeID: Boolean = False); overload;
+    procedure RegisterToken(const Token: string; TokenID: TTokenID; const TokenCaption:
+                            string; TokenType: TTokenType = ttToken); overload;
+    procedure RegisterToken(const Token: string; TokenID: TTokenID;
+                            Priority: TTokenClass = TTokenClass.StrongKeyword); overload;
     procedure ReadCurrIdentifier(var Identifier: TIdentifier); inline;
     procedure ReadNextIdentifier(var Identifier: TIdentifier); inline;
     procedure MatchToken(ActualToken, ExpectedToken: TTokenID); inline;
     procedure MatchNextToken(ExpectedToken: TTokenID); inline;
+    function TokenCanBeID(TokenID: TTokenID): Boolean; inline;
     property OriginalToken: string read fOriginalToken;
   end;
-
-  function TokenCanBeID(TokenID: TTokenID): Boolean; inline;
-
-var
-  FTokensAttr: array [TTokenID] of Boolean;
 
 
 implementation
@@ -198,9 +198,9 @@ uses AST.Delphi.Errors, AST.Parser.Utils;
 
 { TDelphiParser }
 
-function TokenCanBeID(TokenID: TTokenID): Boolean;
+function TDelphiLexer.TokenCanBeID(TokenID: TTokenID): Boolean;
 begin
-  Result := (TokenID = token_identifier) or FTokensAttr[TokenID];
+  Result := (TokenID = token_identifier) or (CurToken.TokenClass <> TTokenClass.StrongKeyword);
 end;
 
 procedure TDelphiLexer.ReadCurrIdentifier(var Identifier: TIdentifier);
@@ -226,7 +226,7 @@ end;
 
 procedure TDelphiLexer.MatchNextToken(ExpectedToken: TTokenID);
 begin
-  if TTokenID(NextTokenID) <> ExpectedToken then
+  if TTokenID(GetNextTokenId()) <> ExpectedToken then
     AbortWork(sExpected, [UpperCase(TokenLexem(ExpectedToken))], PrevPosition);
 end;
 
@@ -250,7 +250,7 @@ end;
 
 function TDelphiLexer.NextToken: TTokenID;
 begin
-  Result := TTokenID(NextTokenID);
+  Result := TTokenID(GetNextTokenId());
   if Result = token_identifier then
     fOriginalToken := CurrentToken;
 
@@ -272,12 +272,12 @@ begin
     Token := GetNextToken();
     if Token.TokenID = ord(token_numbersign) then
     begin
-      NextTokenID();
+      GetNextTokenId();
       fOriginalToken := fOriginalToken + CharsToStr(CurrentToken);
     end else
     if Token.TokenID = ord(token_quote) then
     begin
-      NextTokenID();
+      GetNextTokenId();
       fOriginalToken := fOriginalToken + CurrentToken;
     end else
       break;
@@ -296,7 +296,7 @@ begin
   end else begin
     if GetNextChar() = '$' then
     begin
-      NextTokenID();
+      GetNextTokenId();
       SetIdentifireType(TIdentifierType.itCharCodes);
       HexStr := IntToStr(HexToInt32(CurrentToken));
       fCurrentToken := fOriginalToken + HexStr;
@@ -306,14 +306,12 @@ end;
 
 procedure TDelphiLexer.RegisterToken(const Token: string; TokenID: TTokenID; const TokenCaption: string; TokenType: TTokenType);
 begin
-  inherited RegisterToken(Token, Integer(TokenID), TokenType, TokenCaption);
-  FTokensAttr[TokenID] := False;
+  inherited RegisterToken(Token, Integer(TokenID), TokenType, TTokenClass.StrongKeyword, TokenCaption);
 end;
 
-procedure TDelphiLexer.RegisterToken(const Token: string; TokenID: TTokenID; CanBeID: Boolean);
+procedure TDelphiLexer.RegisterToken(const Token: string; TokenID: TTokenID; Priority: TTokenClass);
 begin
-  inherited RegisterToken(Token, Integer(TokenID), ttToken, Token);
-  FTokensAttr[TokenID] := CanBeID;
+  inherited RegisterToken(Token, Integer(TokenID), ttToken, Priority, Token);
 end;
 
 function TDelphiLexer.TokenLexem(TokenID: TTokenID): string;
@@ -324,8 +322,9 @@ end;
 constructor TDelphiLexer.Create(const Source: string);
 begin
   inherited Create(Source);
-  IdentifireID := integer(token_identifier);
-  EofID := integer(token_eof);
+  IdentifireID := ord(token_identifier);
+  EofID := ord(token_eof);
+  AmbiguousId := ord(token_ambiguous);
   TokenCaptions.AddObject('end of file', TObject(token_eof));
   TokenCaptions.AddObject('identifier', TObject(token_identifier));
   SeparatorChars := '#$ '''#9#10#13'%^&*@()+-{}[]\/,.;:<>=~!?';
@@ -372,10 +371,10 @@ begin
   RegisterToken('asm', token_asm);
   RegisterToken('and', token_and);
   RegisterToken('array', token_array);
-  RegisterToken('begin', token_begin, True);
+  RegisterToken('begin', token_begin);
   RegisterToken('break', token_break);
   RegisterToken('case', token_case);
-  RegisterToken('cdecl', token_cdecl, True);
+  RegisterToken('cdecl', token_cdecl);
   RegisterToken('const', token_const);
   RegisterToken('constructor', token_constructor);
   RegisterToken('continue', token_continue);
@@ -385,12 +384,12 @@ begin
   RegisterToken('div', token_div);
   RegisterToken('destructor', token_destructor);
   RegisterToken('deprecated', token_deprecated);
-  RegisterToken('default', token_default, True);
+  RegisterToken('default', token_default);
   RegisterToken('dynamic', token_dynamic);
-  RegisterToken('delayed', token_delayed, True);
+  RegisterToken('delayed', token_delayed);
   RegisterToken('end', token_end);
   RegisterToken('else', token_else);
-  RegisterToken('exit', token_exit, True);
+  RegisterToken('exit', token_exit, TTokenClass.AmbiguousPriorityKeyword);
   RegisterToken('except', token_except);
   RegisterToken('export', token_export);
   RegisterToken('exports', token_exports);
@@ -416,8 +415,8 @@ begin
   RegisterToken('label', token_label);
   RegisterToken('mod', token_mod);
   RegisterToken('not', token_not);
-  RegisterToken('name', token_name, true);
-  RegisterToken('object', token_object, True);
+  RegisterToken('name', token_name, TTokenClass.AmbiguousPriorityIdentifier);
+  RegisterToken('object', token_object);
   RegisterToken('of', token_of);
   RegisterToken('on', token_on);
   RegisterToken('or', token_or);
@@ -437,7 +436,7 @@ begin
   RegisterToken('packed', token_packed);
   RegisterToken('platform', token_platform);
   RegisterToken('raise', token_raise);
-  RegisterToken('read', token_read, True);
+  RegisterToken('read', token_read);
   RegisterToken('record', token_record);
   RegisterToken('repeat', token_repeat);
   RegisterToken('reintroduce', token_reintroduce);
@@ -464,7 +463,7 @@ begin
   RegisterToken('weak', token_weak);
   RegisterToken('with', token_with);
   RegisterToken('while', token_while);
-  RegisterToken('write', token_write, True);
+  RegisterToken('write', token_write);
   RegisterToken('xor', token_xor);
   RegisterRemToken('{', '}', ord(token_openfigure), Ord(token_closefigure));
   RegisterRemToken('(*', '*)', ord(token_openround_asteriks), Ord(token_closeround_asteriks));
