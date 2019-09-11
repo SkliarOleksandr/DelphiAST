@@ -235,6 +235,18 @@ type
     function Check(const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
+  {explicit Untyped -> Any}
+  TSysExplicitUntypedToAny = class(TSysOpExplisit<TSysExplicitUntypedToAny>)
+  public
+    function Check(const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
+  {explicit Char -> Any}
+  TSysExplicitCharToAny = class(TSysOpExplisit<TSysExplicitCharToAny>)
+  public
+    function Check(const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
   ///////////////////////////////////////////////////////////////////////////////////////////
   /// BINARY
   ///////////////////////////////////////////////////////////////////////////////////////////
@@ -716,6 +728,21 @@ begin
     Result := SYSUnit._ZeroExpression // tmp
   else
     Result := nil;
+end;
+
+{ TSysExplicitUntypedToAny }
+
+function TSysExplicitUntypedToAny.Check(const Src: TIDType; const Dst: TIDType): Boolean;
+begin
+  Result := (Dst.DataTypeID in [dtPointer, dtClass, dtInterface]);
+end;
+
+
+{ TSysExplicitCharToAny }
+
+function TSysExplicitCharToAny.Check(const Src, Dst: TIDType): Boolean;
+begin
+  Result := True;
 end;
 
 end.

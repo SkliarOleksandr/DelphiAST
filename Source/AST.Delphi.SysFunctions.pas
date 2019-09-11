@@ -201,6 +201,12 @@ type
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {Copy}
+  TSF_Copy = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
 
 
 
@@ -836,6 +842,27 @@ begin
   ArgS := EContext.RPNPopExpression();
   ArgP := EContext.RPNPopExpression();
   Result := nil;
+end;
+
+{ TSF_Copy }
+
+class function TSF_Copy.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Copy', _Void);
+  Result.AddParam('Source', SYSUnit._Pointer, [VarConst]);
+  Result.AddParam('StartChar', SYSUnit._Int32, [VarConst]);
+  Result.AddParam('Count ', SYSUnit._Int32, [VarConst]);
+end;
+
+function TSF_Copy.Process(var EContext: TEContext): TIDExpression;
+var
+  ArgSrc, ArgIdx, ArgCnt: TIDExpression;
+begin
+  // read arguments
+  ArgCnt := EContext.RPNPopExpression();
+  ArgIdx := EContext.RPNPopExpression();
+  ArgSrc := EContext.RPNPopExpression();
+  Result := ArgSrc;
 end;
 
 end.

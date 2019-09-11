@@ -369,6 +369,7 @@ begin
 
   // Char
   _Char.OverloadExplicitTo(_String);
+  _Char.OverloadExplicitToAny(TSysExplicitCharToAny.Instance);
 
   _PCharType.OverloadExplicitTo(_String);
 
@@ -760,6 +761,7 @@ begin
   RegisterBuiltin(TSF_Pred);
   RegisterBuiltin(TSF_Succ);
   RegisterBuiltin(TSF_FreeMem);
+  RegisterBuiltin(TSF_Copy);
 
   RegisterVariable(ImplScope, 'ReturnAddress', _Pointer);
   RegisterConstStr(ImplScope, 'libmmodulename', '');
@@ -805,12 +807,14 @@ begin
   FNullPtrExpression := TIDExpression.Create(FNullPtrConstatnt);
   IntfScope.InsertID(FNullPtrConstatnt);
 
-  FUntypedReferenceType := TIDPointer.CreateAsSystem(IntfScope, 'Untyped reference');
-  IntfScope.InsertID(FUntypedReferenceType);
-  FUntypedReferenceType.OverloadImplicitFromAny(TIDOpImplicitAnyToUntyped.Instance);
+  // Untyped reference
+  fUntypedReferenceType := TIDPointer.CreateAsSystem(IntfScope, 'Untyped reference');
+  IntfScope.InsertID(fUntypedReferenceType);
+  fUntypedReferenceType.OverloadImplicitFromAny(TIDOpImplicitAnyToUntyped.Instance);
+  fUntypedReferenceType.OverloadExplicitToAny(TSysExplicitUntypedToAny.Instance);
 
-  FOrdinalType := TIDOrdinal.CreateAsSystem(nil, 'ordinal');
-  FExplicitEnumFromAny := TIDOpExplicitIntToEnum.Instance;
+  fOrdinalType := TIDOrdinal.CreateAsSystem(nil, 'ordinal');
+  fExplicitEnumFromAny := TIDOpExplicitIntToEnum.Instance;
   fExplicitTProcFromAny := TIDOpExplicitTProcFromAny.Instance;
 
   {!!! Ïîðÿäîê ðåãèñòðàöèè òèïîâ ñîîòâåòñòâóåò ïîðÿäêîâîìó íîìåðó êîíñòàíòû DataTypeID !!!}

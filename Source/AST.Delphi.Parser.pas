@@ -157,6 +157,7 @@ type
     class procedure CheckClassExpression(Expression: TIDExpression); static; inline;
     class procedure CheckSetType(Expression: TIDExpression); static; inline;
     class procedure CheckClassOrIntfType(Expression: TIDExpression); overload; static;
+    class procedure CheckClassOrClassOfOrIntfType(Expression: TIDExpression); overload; static;
     class procedure CheckClassOrIntfType(DataType: TIDType; const TextPosition: TTextPosition); overload; static;
     class procedure CheckInterfaceType(Expression: TIDExpression); static; inline;
     class procedure CheckIncompleteType(Fields: TScope); static;
@@ -1666,17 +1667,16 @@ begin
 end;
 
 function TASTDelphiUnit.Process_CALL_direct(const SContext: TSContext; PExpr: TIDCallExpression; CallArguments: TIDExpressions): TIDExpression;
-//var
-//  AIndex, ArgsCount: Integer;
-//  ProcDecl: TIDProcedure;
-//  ProcParams: TVariableList;
-//  ResVar: TIDVariable;
-//  ProcResult: TIDType;
-//  Param: TIDVariable;
-//  AExpr: TIDExpression;
+var
+  AIndex, ArgsCount: Integer;
+  ProcDecl: TIDProcedure;
+  ProcParams: TVariableList;
+  ResVar: TIDVariable;
+  ProcResult: TIDType;
+  Param: TIDVariable;
+  AExpr: TIDExpression;
 begin
-  Result := nil;
-(*  ArgsCount := Length(CallArguments);
+  ArgsCount := Length(CallArguments);
 
   ProcDecl := PExpr.AsProcedure;
   ProcParams := ProcDecl.ExplicitParams;
@@ -1695,8 +1695,8 @@ begin
     AExpr := CallArguments[AIndex];
 
     {если аргумент константый дин. массив то делаем доп. проверку}
-    if AExpr.Declaration is TIDDynArrayConstant then
-      AExpr := CheckConstDynArray(SContext, Param.DataType, AExpr);
+//    if AExpr.Declaration is TIDDynArrayConstant then
+//      AExpr := CheckConstDynArray(SContext, Param.DataType, AExpr);
 
     {проверка диаппазона для константных аргументов}
     if AExpr.IsConstant then
@@ -1706,13 +1706,13 @@ begin
     AExpr := MatchImplicit3(SContext, AExpr, Param.DataType);
 
     {если параметр - constref и аргумент - константа, то создаем временную переменную}
-    if (VarConstRef in Param.Flags) and (AExpr.ItemType = itConst) then
-      AExpr := GenConstToVar(AExpr, Param.DataType);
+//    if (VarConstRef in Param.Flags) and (AExpr.ItemType = itConst) then
+//      AExpr := GenConstToVar(AExpr, Param.DataType);
 
     CallArguments[AIndex] := AExpr;
 
-    if Param.Reference then
-      CheckVarExpression(AExpr, vmpPassArgument);
+//    if Param.Reference then
+//      CheckVarExpression(AExpr, vmpPassArgument);
   end;
 
   {результат функции}
@@ -1724,20 +1724,6 @@ begin
   end else
     Result := nil;
 
-  {INLINE подстановка (пока только если инлайн процедура готова)}
-  if (pfInline in ProcDecl.Flags) and
-     (ProcDecl.IsCompleted) and
-     (ProcDecl <> SContext.Proc) then
-  begin
-    SContext.IL.InlineProc(SContext.Proc, ProcDecl, nil, PExpr.Instance, Result, CallArguments);
-  end else begin
-    if Assigned(PExpr.Instance) and (ProcDecl.Struct <> PExpr.Instance.DataType) then
-      CallInstruction := TIL.IL_InheritedCall(PExpr, Result, PExpr.Instance, CallArguments)
-    else
-      CallInstruction := TIL.IL_ProcCall(PExpr, Result, PExpr.Instance, CallArguments);
-    ILWrite(SContext, CallInstruction);
-  end;
-  ProcDecl.IncRefCount(1);     *)
 end;
 
 function GetOperatorInstance(Op: TOperatorID; Left, Right: TIDExpression): TIDExpression;
@@ -2046,7 +2032,7 @@ begin
   Dst := EContext.RPNPopExpression();
   Src := EContext.RPNPopExpression();
   CheckClassOrIntfType(Src.DataType, Src.TextPosition);
-  CheckClassOrIntfType(Dst);
+  CheckClassOrClassOfOrIntfType(Dst);
   Result := GetTMPVarExpr(EContext, Dst.AsType, Dst.TextPosition);
 end;
 
@@ -2088,7 +2074,7 @@ begin
   Dst := EContext.RPNPopExpression();
   Src := EContext.RPNPopExpression();
   CheckClassOrIntfType(Src.DataType, Src.TextPosition);
-  CheckClassOrIntfType(Dst);
+  CheckClassOrClassOfOrIntfType(Dst);
   Result := GetTMPVarExpr(EContext, SYSUnit._Boolean, Dst.TextPosition);
 end;
 
@@ -8695,6 +8681,21 @@ begin
   if (Decl.ItemType = itType) and
      ((TIDType(Decl).DataTypeID = dtClass) or
       (TIDType(Decl).DataTypeID = dtInterface)) then Exit;
+  ERROR_CLASS_OR_INTF_TYPE_REQUIRED(Expression.TextPosition);
+end;
+
+class procedure TASTDelphiUnit.CheckClassOrClassOfOrIntfType(Expression: TIDExpression);
+var
+  Decl: TIDDeclaration;
+begin
+  Decl := Expression.Declaration;
+  if (Decl.ItemType = itType) and
+     ((TIDType(Decl).DataTypeID = dtClass) or
+      (TIDType(Decl).DataTypeID = dtInterface)) then Exit;
+
+  if (Decl.ItemType = itVar) and
+     (TIDVariable(Decl).DataTypeID = dtClassOf) then Exit;
+
   ERROR_CLASS_OR_INTF_TYPE_REQUIRED(Expression.TextPosition);
 end;
 

@@ -357,7 +357,6 @@ type
     function GetActualDataType: TIDType; virtual;
     function GetParent: TIDType;
     procedure SetGenericDescriptor(const Value: PGenericDescriptor); virtual;
-
     procedure CheckCreateSysExplicitsToID;
     procedure CheckCreateSysExplicitsFromID;
   public
@@ -669,6 +668,7 @@ type
     property Interfaces[Index: Integer]: TIDInterface read GetInterface;
     procedure IncRefCount(RCPath: UInt32); override;
     procedure DecRefCount(RCPath: UInt32); override;
+    procedure CreateStandardOperators; override;
   end;
 
   {тип - замыкание}
@@ -5586,24 +5586,28 @@ constructor TIDClass.Create(Scope: TScope; const Name: TIdentifier);
 begin
   inherited;
   FDataTypeID := dtClass;
-  OverloadImplicitTo(Self);
-  if Assigned(SYSUnit) then begin
-    OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
-    OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
-    OverloadBinarOperator2(opEqual, SYSUnit._NilPointer, SYSUnit._Boolean);
-    OverloadBinarOperator2(opNotEqual, SYSUnit._NilPointer, SYSUnit._Boolean);
-  end;
+  CreateStandardOperators;
 end;
 
 constructor TIDClass.CreateAsSystem(Scope: TScope; const Name: string);
 begin
   inherited;
   FDataTypeID := dtClass;
+  CreateStandardOperators;
+end;
+
+procedure TIDClass.CreateStandardOperators;
+begin
+  OverloadImplicitTo(Self);
   if Assigned(SYSUnit) then begin
     OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
     OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
     OverloadBinarOperator2(opEqual, SYSUnit._NilPointer, SYSUnit._Boolean);
     OverloadBinarOperator2(opNotEqual, SYSUnit._NilPointer, SYSUnit._Boolean);
+    OverloadExplicitTo(SYSUnit._NativeInt);
+    OverloadExplicitTo(SYSUnit._NativeUInt);
+    OverloadExplicitFrom(SYSUnit._NativeUInt);
+    OverloadExplicitFrom(SYSUnit._NativeInt);
   end;
 end;
 

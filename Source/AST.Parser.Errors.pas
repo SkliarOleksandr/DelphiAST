@@ -90,32 +90,25 @@ begin
   AbortWork(Format(MessageFmt, Params), SourcePosition);
 end;
 
-procedure AbortWorkInternal(const Message: string);
-var
-  POS: TTextPosition;
-begin
-  POS.Row := 0;
-  POS.Col := 0;
-  raise ECompilerAbort.CreateAsInteranl(Message, POS);
-end;
-
-procedure AbortWorkInternal(const Message: string; const SourcePosition: TTextPosition);
-begin
-  raise ECompilerInternalError.CreateAsInteranl(Message, SourcePosition);
-end;
-
-procedure AbortWorkInternal(const Message: string; const Params: array of const);
-var
-  POS: TTextPosition;
-begin
-  POS.Row := 0;
-  POS.Col := 0;
-  raise ECompilerInternalError.CreateAsInteranl(Format(Message, Params), POS);
-end;
-
 procedure AbortWorkInternal(const Message: string; const Params: array of const; const SourcePosition: TTextPosition);
 begin
   raise ECompilerInternalError.CreateAsInteranl(Format(Message, Params), SourcePosition);
 end;
+
+procedure AbortWorkInternal(const Message: string);
+begin
+  AbortWorkInternal(Message, [], TTextPosition.Empty);
+end;
+
+procedure AbortWorkInternal(const Message: string; const SourcePosition: TTextPosition);
+begin
+  AbortWorkInternal(Message, [], SourcePosition);
+end;
+
+procedure AbortWorkInternal(const Message: string; const Params: array of const);
+begin
+  AbortWorkInternal(Message, Params, TTextPosition.Empty);
+end;
+
 
 end.
