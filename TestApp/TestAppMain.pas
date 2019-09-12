@@ -53,7 +53,7 @@ uses
   AST.Delphi.Parser,
   AST.Classes,
   AST.Parser.Messages,
-  AST.Writer, AST.Targets;
+  AST.Writer, AST.Targets, AST.Delphi.DataTypes;
 
 {$R *.dfm}
 
@@ -175,6 +175,12 @@ begin
     Result := Decl.DisplayName
   else
     Result := '[Anonymous]' + Decl.DisplayName;
+
+  var CastedDecl := (Decl as TIDDeclaration);
+  case CastedDecl.ItemType of
+    itVar, itConst: Result := Result + ' : '  + CastedDecl.DataType.DisplayName;
+    itType: Result := Result + ' ['  + GetDataTypeName(TIDType(CastedDecl).DataTypeID) + ']';
+  end;
 end;
 
 procedure TfrmTestAppMain.Button2Click(Sender: TObject);

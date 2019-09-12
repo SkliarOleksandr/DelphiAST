@@ -93,6 +93,8 @@ type
     function Process_operators(var EContext: TEContext; OpID: TOperatorID): TIDExpression;
     function Process_CALL(var EContext: TEContext): TIDExpression;
     function Process_CALL_direct(const SContext: TSContext; PExpr: TIDCallExpression; CallArguments: TIDExpressions): TIDExpression;
+    function process_CALL_constructor(const SContext: TSContext; CallExpression: TIDCallExpression;
+                                      const CallArguments: TIDExpressions): TIDExpression;
     procedure Process_operator_Assign(var EContext: TEContext);
     function Process_operator_neg(var EContext: TEContext): TIDExpression;
     function Process_operator_not(var EContext: TEContext): TIDExpression;
@@ -1633,8 +1635,7 @@ begin
   {конструирование обьекта}
   if (Assigned(ProcDecl) and (pfConstructor in ProcDecl.Flags)) then
   begin
-    //Result := process_CALL_constructor(SContext, PExpr, CallArguments);
-    ERROR_FEATURE_NOT_SUPPORTED;
+    Result := process_CALL_constructor(EContext.SContext, PExpr, CallArguments);
     Exit;
   end;
 
@@ -1724,6 +1725,17 @@ begin
   end else
     Result := nil;
 
+end;
+
+function TASTDelphiUnit.process_CALL_constructor(const SContext: TSContext; CallExpression: TIDCallExpression;
+                                                 const CallArguments: TIDExpressions): TIDExpression;
+var
+  Proc: TIDProcedure;
+  ResVar: TIDVariable;
+begin
+  Proc := CallExpression.AsProcedure;
+  ResVar := GetTMPVar(SContext, Proc.Struct);
+  Result := TIDExpression.Create(ResVar, CallExpression.TextPosition);
 end;
 
 function GetOperatorInstance(Op: TOperatorID; Left, Right: TIDExpression): TIDExpression;
@@ -3805,6 +3817,9 @@ begin
   SrcDataType := Source.ActualDataType;
   DstDataType := Destination.ActualDataType;
   if SrcDataType = DstDataType then
+    Exit(True);
+
+  if (SrcDataType.DataTypeID = dtClass) and (DstDataType.DataTypeID = dtClass) then
     Exit(True);
 
   ExplicitOp := SrcDataType.GetExplicitOperatorTo(DstDataType);
