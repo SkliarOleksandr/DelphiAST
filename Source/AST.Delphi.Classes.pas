@@ -2875,6 +2875,7 @@ const
     {dtChar}        2,
     {dtAnsiString} -1,
     {dtString}     -1,
+    {dtWideString} -1,
     {dtVariant}    16,
     {dtGeneric}     0,
     {dtPointer}    -1,

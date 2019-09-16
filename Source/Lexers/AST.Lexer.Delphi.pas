@@ -65,7 +65,6 @@ type
     token_exports,                  // keyword: exports
     token_external,                 // keyword: extern
     token_name,                     // keyword: name
-    token_exit,                     // keyword: exit
     token_interface,                // keyword: interface
     token_implementation,           // keyword: implementation
     token_implement,                // keyword: implementation
@@ -389,7 +388,6 @@ begin
   RegisterToken('delayed', token_delayed);
   RegisterToken('end', token_end);
   RegisterToken('else', token_else);
-  RegisterToken('exit', token_exit, TTokenClass.AmbiguousPriorityKeyword);
   RegisterToken('except', token_except);
   RegisterToken('export', token_export);
   RegisterToken('exports', token_exports);

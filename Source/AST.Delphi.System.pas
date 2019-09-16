@@ -579,7 +579,7 @@ procedure TSYSTEMUnit.AddBitwiseOperators;
   var
     i, j: TDataTypeID;
   begin
-    for i := dtInt8 to dtUInt64 do
+    for i := dtInt8 to dtNativeUInt do
        for j := dtInt8 to dtUInt64 do
          AddBinarOperator(Op, DataTypes[i], DataTypes[j], GetMaxBitwiceOpType(DataTypes[i], DataTypes[j]));
   end;
@@ -734,34 +734,35 @@ begin
   FArrayType := TIDArray.Create(nil, Identifier('<array type or string>'));
   FRefType := TIDType.Create(nil, Identifier(''));
 
-  RegisterBuiltin(TSF_Now);
+  RegisterBuiltin(TSF_Abs);
+  RegisterBuiltin(TSF_Assigned);
   RegisterBuiltin(TSF_AtomicExchange);
   RegisterBuiltin(TSF_AtomicCmpExchange);
-  RegisterBuiltin(TSF_RunError);
+  RegisterBuiltin(TSF_Copy);
+  RegisterBuiltin(TSF_Chr);
+  RegisterBuiltin(TCT_Dec);
   RegisterBuiltin(TSCTF_Defined);
   RegisterBuiltin(TSCTF_Declared);
-  RegisterBuiltin(TCT_SizeOf);
-  RegisterBuiltin(TSF_LoBound);
+  RegisterBuiltin(TSF_Exit);
+  RegisterBuiltin(TSF_FreeMem);
+  RegisterBuiltin(TSF_FillChar);
   RegisterBuiltin(TSF_HiBound);
   RegisterBuiltin(TSF_Inc);
-  RegisterBuiltin(TCT_Dec);
+  RegisterBuiltin(TSF_LoBound);
   RegisterBuiltin(TSF_Length);
-  RegisterBuiltin(TSF_SetLength);
-  RegisterBuiltin(TSF_SetString);
+  RegisterBuiltin(TSF_Now);
   RegisterBuiltin(TSF_Ord);
   RegisterBuiltin(TSF_Odd);
-  RegisterBuiltin(TSF_Chr);
-  RegisterBuiltin(TSF_FillChar);
-  RegisterBuiltin(TSF_Assigned);
+  RegisterBuiltin(TSF_Pred);
+  RegisterBuiltin(TSF_Round);
+  RegisterBuiltin(TSF_RunError);
+  RegisterBuiltin(TSF_Str);
+  RegisterBuiltin(TCT_SizeOf);
+  RegisterBuiltin(TSF_Succ);
+  RegisterBuiltin(TSF_SetLength);
+  RegisterBuiltin(TSF_SetString);
   RegisterBuiltin(TSF_Trunc);
   RegisterBuiltin(TSF_Val);
-  RegisterBuiltin(TSF_Abs);
-  RegisterBuiltin(TSF_Str);
-  RegisterBuiltin(TSF_Round);
-  RegisterBuiltin(TSF_Pred);
-  RegisterBuiltin(TSF_Succ);
-  RegisterBuiltin(TSF_FreeMem);
-  RegisterBuiltin(TSF_Copy);
 
   RegisterVariable(ImplScope, 'ReturnAddress', _Pointer);
   RegisterConstStr(ImplScope, 'libmmodulename', '');
@@ -848,7 +849,7 @@ begin
   FImplicitAnyToVariant := TIDOpImplicitAnyToVariant.CreateInternal(_Variant);
   FImplicitVariantToAny := TIDOpImplicitVariantToAny.CreateInternal(nil);
   //===============================================================
-  fWideString := RegisterTypeCustom('WideString', TIDString, dtString);
+  fWideString := RegisterTypeCustom('WideString', TIDString, dtWideString);
   TIDString(fWideString).ElementDataType := _Char;
   TIDString(fWideString).AddBound(TIDOrdinal(_NativeUInt));
   //===============================================================

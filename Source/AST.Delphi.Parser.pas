@@ -264,7 +264,6 @@ type
     function ParseEntryCall(Scope: TScope; CallExpr: TIDCallExpression; var EContext: TEContext; const ASTE: TASTExpression): TTokenID;
     function ParseBuiltinCall(Scope: TScope; CallExpr: TIDExpression; var EContext: TEContext): TTokenID;
     function ParseExplicitCast(Scope: TScope; const SContext: TSContext; var DstExpression: TIDExpression): TTokenID;
-    function ParseExitStatement(Scope: TScope; const SContext: TSContext): TTokenID; overload;
     function ParseProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure = nil): TTokenID;
     function ParseProcName(var Scope: TScope; out Name: TIdentifier; var Struct: TIDStructure; out ProcScope: TProcScope; out GenericParams: TIDTypeList): TTokenID;
     function ParseProcBody(Proc: TASTDelphiProc): TTokenID;
@@ -483,8 +482,6 @@ begin
       end;
       {UNTIL}
       token_until: Break;
-      {EXIT}
-      token_exit: Result := ParseExitStatement(Scope, SContext);
       {IF}
       token_if: Result := ParseIfThenStatement(Scope, SContext);
       {WHILE}
@@ -5142,14 +5139,13 @@ begin
     Result := ParseImportStatement(Scope, Decl);
 end;
 
-function TASTDelphiUnit.ParseExitStatement(Scope: TScope; const SContext: TSContext): TTokenID;
+{function TASTDelphiUnit.ParseExitStatement(Scope: TScope; const SContext: TSContext): TTokenID;
 var
   ExitExpr: TASTExpression;
   EContext: TEContext;
   KW: TASTKWExit;
 begin
   KW := SContext.Add<TASTKWExit>;
-
   Result := Lexer_NextToken(Scope);
   if Result = token_openround then
   begin
@@ -5163,8 +5159,7 @@ begin
     Lexer_MatchToken(Result, token_closeround);
     Result := Lexer_NextToken(Scope);
   end;
-
-end;
+end;}
 
 procedure TASTDelphiUnit.CheckLeftOperand(const Status: TRPNStatus);
 begin
@@ -6507,12 +6502,14 @@ begin
 end;
 
 function TASTDelphiUnit.ParseProcName(var Scope: TScope; out Name: TIdentifier; var Struct: TIDStructure; out ProcScope: TProcScope;
-  out GenericParams: TIDTypeList): TTokenID;
+                                      out GenericParams: TIDTypeList): TTokenID;
 var
   Decl: TIDDeclaration;
   SearchName: string;
+  SearchScope: TScope;
 begin
   ProcScope := nil;
+  SearchScope := Scope;
   while True do begin
     Lexer_ReadNextIdentifier(Scope, Name);
     Result := Lexer_NextToken(Scope);
@@ -6529,13 +6526,14 @@ begin
 
     if Result = token_dot then
     begin
-      Decl := Scope.FindID(SearchName);
+      Decl := SearchScope.FindID(SearchName);
       if not Assigned(Decl) then
         ERROR_UNDECLARED_ID(Name, GenericParams);
 
       if Decl is TIDStructure then
       begin
         Struct := TIDStructure(Decl);
+        SearchScope := Struct.Members;
         {т.к это имплементация обобщенного метода, то очищаем дупликатные обобщенные параметры}
         if Assigned(ProcScope) then begin
           ProcScope.OuterScope := Scope;
