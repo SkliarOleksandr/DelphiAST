@@ -1415,10 +1415,8 @@ begin
     // создаем специальный "WITH Scope"
     WNextScope := TWithScope.Create(Scope, Expression);
     Scope.AddScope(WNextScope);
-    with WNextScope do begin
-      OuterScope := WPrevScope;
-      InnerScope := TIDStructure(Decl.DataType).Members;
-    end;
+    WNextScope.OuterScope := WPrevScope;
+    WNextScope.InnerScope := TIDStructure(Expression.DataType).Members;
 
     case Result of
       token_coma: begin
@@ -7668,7 +7666,7 @@ begin
     SearchScope := TIDNameSpace(Decl).Members
   else begin
     if Decl.ItemType <> itType then
-      DataType := Left.DataType
+      DataType := Left.DataType.ActualDataType
     else
       DataType := TIDType(Decl);
 
@@ -7679,7 +7677,7 @@ begin
       DataType := TIDArray(DataType).ElementDataType;
 
     if DataType.DataTypeID in [dtPointer, dtClassOf] then
-      DataType := TIDPointer(DataType).ReferenceType;
+      DataType := TIDPointer(DataType).ReferenceType.ActualDataType;
 
     if DataType is TIDStructure then
       SearchScope := TIDStructure(DataType).Members
