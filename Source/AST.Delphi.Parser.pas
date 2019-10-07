@@ -55,15 +55,15 @@ type
 
     function Lexer_MatchSemicolonAndNext(Scope: TScope; ActualToken: TTokenID): TTokenID;
     //========================================================================================================
-    function ProcSpec_Inline(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
-    function ProcSpec_Export(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
-    function ProcSpec_Forward(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
-    function ProcSpec_Import(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
-    function ProcSpec_Overload(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
-    function ProcSpec_Virtual(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
-    function ProcSpec_Override(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
-    function ProcSpec_Reintroduce(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
-    function ProcSpec_Static(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+    function ProcSpec_Inline(Scope: TScope; var Flags: TProcFlags): TTokenID;
+    function ProcSpec_Export(Scope: TScope; var Flags: TProcFlags): TTokenID;
+    function ProcSpec_Forward(Scope: TScope; var Flags: TProcFlags): TTokenID;
+    function ProcSpec_External(Scope: TScope; out ImportLib, ImportName: TIDDeclaration; var Flags: TProcFlags): TTokenID;
+    function ProcSpec_Overload(Scope: TScope; var Flags: TProcFlags): TTokenID;
+    function ProcSpec_Virtual(Scope: TScope; Struct: TIDStructure; var Flags: TProcFlags): TTokenID;
+    function ProcSpec_Override(Scope: TScope; Struct: TIDStructure; var Flags: TProcFlags): TTokenID;
+    function ProcSpec_Reintroduce(Scope: TScope; var Flags: TProcFlags): TTokenID;
+    function ProcSpec_Static(Scope: TScope; var Flags: TProcFlags; var ProcType: TProcType): TTokenID;
     function ProcSpec_FastCall(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
     function ProcSpec_StdCall(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
     function ProcSpec_CDecl(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
@@ -224,7 +224,7 @@ type
     ///  Парсинг типов
     procedure ParseEnumType(Scope: TScope; Decl: TIDEnum);
     procedure ParseRangeType(Scope: TScope; Expr: TIDExpression; Decl: TIDRangeType);
-    function ParseImportStatement(Scope: TScope; Decl: TIDDeclaration): TTokenID;
+    function ParseImportStatement(Scope: TScope; out ImportLib, ImportName: TIDDeclaration): TTokenID;
     function ParseStaticArrayType(Scope: TScope; Decl: TIDArray): TTokenID;
     function ParseSetType(Scope: TScope; Decl: TIDSet): TTokenID;
     function ParseProcType(Scope: TScope; const ID: TIdentifier; ProcType: TProcType; out Decl: TIDProcType): TTokenID;
@@ -301,7 +301,6 @@ type
     function ParseFinalSection: TTokenID;
     function ParsePlatform(Scope: TScope): TTokenID;
     function ParseDeprecated(Scope: TScope; out &Deprecated: TIDExpression): TTokenID;
-
     function CheckAndMakeClosure(const SContext: TSContext; const ProcDecl: TIDProcedure): TIDClosure;
     function EmitCreateClosure(const SContext: TSContext; Closure: TIDClosure): TIDExpression;
     function CheckAndParseDeprecated(Scope: TScope; CurrToken: TTokenID): TTokenID;
@@ -5135,8 +5134,6 @@ begin
   Decl.StructFlags := Decl.StructFlags + [StructCompleted];
   Lexer_MatchToken(Result, token_end);
   Result := Lexer_NextToken(Scope);
-  if Result = token_external then
-    Result := ParseImportStatement(Scope, Decl);
 end;
 
 {function TASTDelphiUnit.ParseExitStatement(Scope: TScope; const SContext: TSContext): TTokenID;
@@ -6007,19 +6004,18 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.ParseImportStatement(Scope: TScope; Decl: TIDDeclaration): TTokenID;
+function TASTDelphiUnit.ParseImportStatement(Scope: TScope; out ImportLib, ImportName: TIDDeclaration): TTokenID;
 var
   LibExpr, NameExpr: TIDExpression;
 begin
   // читаем имя библиотеки
   Lexer_NextToken(Scope);
   Result := ParseConstExpression(Scope, LibExpr, ExprRValue);
-
   if Assigned(LibExpr) then
   begin
     CheckStringExpression(LibExpr);
 
-    Decl.ImportLib := TIDConstant(LibExpr.Declaration).Index;
+    ImportLib := LibExpr.Declaration;
 
     if (Result = token_identifier) and (Lexer_AmbiguousId = token_name) then
     begin
@@ -6030,9 +6026,9 @@ begin
       CheckEmptyExpression(NameExpr);
       CheckStringExpression(NameExpr);
 
-      Decl.ImportName := TIDConstant(NameExpr.Declaration).Index;
+      ImportName := NameExpr.Declaration;
     end else
-      Decl.ImportName := Package.GetStringConstant(Decl.Name);
+      ImportName := nil;
   end; // else todo:
 
   // delayed
@@ -6273,6 +6269,7 @@ var
   CallConv: TCallConvention;
   ProcFlags: TProcFlags;
   ForwardScope: TScope;
+  ImportLib, ImportName: TIDDeclaration;
 begin
   ForwardScope := Scope;
   Result := ParseProcName(ForwardScope, ID, Struct, Parameters, GenericsParams);
@@ -6314,6 +6311,58 @@ begin
     ResultType := nil;
 
   Lexer_MatchToken(Result, token_semicolon);
+  Result := Lexer_NextToken(Scope);
+
+  case ProcType of
+    ptClassFunc,
+    ptClassProc: ProcFlags := [pfClass];
+    ptStaticFunc,
+    ptStaticProc: ProcFlags := [pfStatic];
+    ptConstructor: begin
+      if not Assigned(Struct) then
+        ERROR_CTOR_DTOR_MUST_BE_DECLARED_IN_STRUCT(Lexer_PrevPosition);
+      ProcFlags := [pfConstructor];
+    end;
+    ptDestructor: begin
+      if not Assigned(Struct) then
+        ERROR_CTOR_DTOR_MUST_BE_DECLARED_IN_STRUCT(Lexer_PrevPosition);
+      ProcFlags := [pfDestructor];
+    end
+  else
+    ProcFlags := [];
+  end;
+
+  // parse proc specifiers
+  while True do begin
+    case Result of
+      token_forward: Result := ProcSpec_Forward(Scope, ProcFlags);
+      token_export: Result := ProcSpec_Export(Scope, ProcFlags);
+      token_inline: Result := ProcSpec_Inline(Scope, ProcFlags);
+      token_external: Result := ProcSpec_External(Scope, ImportLib, ImportName, ProcFlags);
+      token_overload: Result := ProcSpec_Overload(Scope, ProcFlags);
+      token_virtual: Result := ProcSpec_Virtual(Scope, Struct, ProcFlags);
+      token_override: Result := ProcSpec_Override(Scope, Struct, ProcFlags);
+      token_reintroduce: Result := ProcSpec_Reintroduce(Scope, ProcFlags);
+      token_static: Result := ProcSpec_Static(Scope, ProcFlags, ProcType);
+      token_stdcall: Result := ProcSpec_StdCall(Scope, CallConv);
+      token_fastcall: Result := ProcSpec_FastCall(Scope, CallConv);
+      token_cdecl: Result := ProcSpec_CDecl(Scope, CallConv);
+      token_varargs: begin
+        Lexer_ReadSemicolon(Scope);
+        Result := Lexer_NextToken(Scope);
+      end;
+      token_deprecated: begin
+        Result := CheckAndParseDeprecated(Scope, token_deprecated);
+        Result := Lexer_NextToken(Scope);
+      end;
+      token_platform: begin
+        Result := ParsePlatform(Scope);
+        Result := Lexer_NextToken(Scope);
+      end;
+    else
+      break;
+    end;
+  end;
 
   // ищем ранее обьявленную декларацию с таким же именем
   if Assigned(Struct) then
@@ -6373,25 +6422,6 @@ begin
       Inc(FirstSkipCnt);
     Proc.ExplicitParams := ScopeToVarList(Parameters, FirstSkipCnt);
 
-    case ProcType of
-      ptClassFunc,
-      ptClassProc: ProcFlags := [pfClass];
-      ptStaticFunc,
-      ptStaticProc: ProcFlags := [pfStatic];
-      ptConstructor: begin
-        if not Assigned(Struct) then
-          ERROR_CTOR_DTOR_MUST_BE_DECLARED_IN_STRUCT(Lexer_PrevPosition);
-        ProcFlags := [pfConstructor];
-      end;
-      ptDestructor: begin
-        if not Assigned(Struct) then
-          ERROR_CTOR_DTOR_MUST_BE_DECLARED_IN_STRUCT(Lexer_PrevPosition);
-        ProcFlags := [pfDestructor];
-      end
-    else
-      ProcFlags := [];
-    end;
-
     // добовляем новую декларацию в структуру или глобольный список или к списку перегруженных процедур
     if not Assigned(ForwardDecl) then
     begin
@@ -6432,69 +6462,37 @@ begin
   end else begin
     if Assigned(Proc.GenericDescriptor) then
       Proc.GenericDescriptor.ImplSRCPosition := SRCProcPos;
-    ProcFlags := [];
   end;
   CallConv := ConvNative;
-  Result := Lexer_NextToken(Scope);
-  while True do begin
-    case Result of
-      token_forward: Result := ProcSpec_Forward(Scope, Proc, ProcFlags);
-      token_export: Result := ProcSpec_Export(Scope, Proc, ProcFlags);
-      token_inline: Result := ProcSpec_Inline(Scope, Proc, ProcFlags);
-      token_external: Result := ProcSpec_Import(Scope, Proc, ProcFlags);
-      token_overload: Result := ProcSpec_Overload(Scope, Proc, ProcFlags);
-      token_virtual: Result := ProcSpec_Virtual(Scope, Proc, ProcFlags);
-      token_override: Result := ProcSpec_Override(Scope, Proc, ProcFlags);
-      token_reintroduce: Result := ProcSpec_Reintroduce(Scope, Proc, ProcFlags);
-      token_static: Result := ProcSpec_Static(Scope, Proc, ProcFlags);
-      token_stdcall: Result := ProcSpec_StdCall(Scope, CallConv);
-      token_fastcall: Result := ProcSpec_FastCall(Scope, CallConv);
-      token_cdecl: Result := ProcSpec_CDecl(Scope, CallConv);
-      token_varargs: begin
-        Lexer_ReadSemicolon(Scope);
-        Result := Lexer_NextToken(Scope);
-      end;
-      token_deprecated: begin
-        Result := CheckAndParseDeprecated(Scope, token_deprecated);
-        Result := Lexer_NextToken(Scope);
-      end;
-      token_platform: begin
-        Result := ParsePlatform(Scope);
-        Result := Lexer_NextToken(Scope);
-      end;
-    else
-      if (Scope.ScopeClass = scInterface) or (pfImport in ProcFlags) or (pfForward in ProcFlags) then
-      begin
-        Proc.Flags := ProcFlags;
-        Proc.CallConvention := CallConv;
-        Break;
-      end;
+  Proc.Flags := ProcFlags;
+  Proc.CallConvention := CallConv;
 
-      // имена парметров реализации процедуры могут отличатся от ее определения
-      // копируем накопленный VarSpace в процедуру
+  if (Scope.ScopeClass <> scInterface) and not (pfImport in ProcFlags)
+                                       and not (pfForward in ProcFlags) then
+  begin
+    // имена парметров реализации процедуры могут отличатся от ее определения
+    // копируем накопленный VarSpace в процедуру
 
-      Proc.VarSpace := VarSpace;
+    Proc.VarSpace := VarSpace;
 
-      Parameters.ProcSpace := Proc.ProcSpace;
-      Proc.EntryScope := Parameters;
+    Parameters.ProcSpace := Proc.ProcSpace;
+    Proc.EntryScope := Parameters;
 
-      if (FwdDeclState = dsDifferent) and not (pfOveload in ProcFlags) then
-      begin
-        if Assigned(Proc.IL) then
-          ERROR_OVERLOADED_MUST_BE_MARKED(ID)
-        else
-          ERROR_DECL_DIFF_WITH_PREV_DECL(ID);
-      end;
-      Result := ParseProcBody(Proc);
-      if Result = token_eof then
-        Exit;
-
-      if Result <> token_semicolon then
-        ERROR_SEMICOLON_EXPECTED;
-
-      Result := Lexer_NextToken(Scope);
-      Break;
+    if (FwdDeclState = dsDifferent) and not (pfOveload in ProcFlags) then
+    begin
+      if Assigned(Proc.IL) then
+        ERROR_OVERLOADED_MUST_BE_MARKED(ID)
+      else
+        ERROR_DECL_DIFF_WITH_PREV_DECL(ID);
     end;
+    Result := ParseProcBody(Proc);
+    if Result = token_eof then
+      Exit;
+
+    if Result <> token_semicolon then
+      ERROR_SEMICOLON_EXPECTED;
+
+    Result := Lexer_NextToken(Scope);
   end;
 
   if (ProcType = ptDestructor) and (Struct.DataTypeID = dtClass) then
@@ -6610,6 +6608,7 @@ var
   CurParserPos: TParserPosition;
   ProcFlags: TProcFlags;
   GD: PGenericDescriptor;
+  ImportLib, ImportName: TIDDeclaration;
 begin
   GD := GenericProc.GenericDescriptor;
   if not Assigned(GD) then
@@ -6675,13 +6674,11 @@ begin
   Result := Lexer_NextToken(Scope);
   while True do begin
     case Result of
-      token_forward: Result := ProcSpec_Forward(Scope, Proc, ProcFlags);
-      token_export: Result := ProcSpec_Export(Scope, Proc, ProcFlags);
-      token_inline: Result := ProcSpec_Inline(Scope, Proc, ProcFlags);
-      //token_noreturn: Result := ProcSpec_NoReturn(Scope, Proc, ProcFlags);
-      token_external: Result := ProcSpec_Import(Scope, Proc, ProcFlags);
-      token_overload: Result := ProcSpec_Overload(Scope, Proc, ProcFlags);
-      //token_pure: Result := ProcSpec_Pure(Scope, Proc, ProcFlags);
+      token_forward: Result := ProcSpec_Forward(Scope, ProcFlags);
+      token_export: Result := ProcSpec_Export(Scope, ProcFlags);
+      token_inline: Result := ProcSpec_Inline(Scope, ProcFlags);
+      token_external: Result := ProcSpec_External(Scope, ImportLib, ImportName, ProcFlags);
+      token_overload: Result := ProcSpec_Overload(Scope, ProcFlags);
       token_procedure,
       token_function,
       token_const,
@@ -6726,6 +6723,7 @@ var
   OperatorID: TOperatorID;
   ParamCount: Integer;
   ProcFlags: TProcFlags;
+  ImportLib, ImportName: TIDDeclaration;
 begin
   Result := ParseProcName(Scope, ID, Struct, Parameters, GenericsParams);
 
@@ -6850,13 +6848,11 @@ begin
   Result := Lexer_NextToken(Scope);
   while True do begin
     case Result of
-      token_forward: Result := ProcSpec_Forward(Scope, Proc, ProcFlags);
-      token_export: Result := ProcSpec_Export(Scope, Proc, ProcFlags);
-      token_inline: Result := ProcSpec_Inline(Scope, Proc, ProcFlags);
-      //token_noreturn: Result := ProcSpec_Import(Scope, Proc, ProcFlags);
-      token_external: Result := ProcSpec_Import(Scope, Proc, ProcFlags);
-      token_overload: Result := ProcSpec_Overload(Scope, Proc, ProcFlags);
-      //token_pure: Result := ProcSpec_Pure(Scope, Proc, ProcFlags);
+      token_forward: Result := ProcSpec_Forward(Scope, ProcFlags);
+      token_export: Result := ProcSpec_Export(Scope, ProcFlags);
+      token_inline: Result := ProcSpec_Inline(Scope, ProcFlags);
+      token_external: Result := ProcSpec_External(Scope, ImportLib, ImportName, ProcFlags);
+      token_overload: Result := ProcSpec_Overload(Scope, ProcFlags);
     else
       if (Scope.ScopeClass = scInterface) or (pfImport in ProcFlags) then
       begin
@@ -6949,21 +6945,34 @@ end;
 function TASTDelphiUnit.ParseRecordType(Scope: TScope; Decl: TIDStructure): TTokenID;
 var
   Visibility: TVisibility;
-  //Expr: TIDExpression;
-  //Ancestor: TIDRecord;
 begin
   Visibility := vPublic;
   Result := Lexer_NextToken(Scope);
   while True do begin
     case Result of
       token_case: Result := ParseCaseRecord(Decl.Members, Decl);
-      token_class: Result := Lexer_NextToken(scope);
+      token_class: begin
+        Result := Lexer_NextToken(scope);
+        case Result of
+          token_procedure: Result := ParseProcedure(Decl.Members, ptClassProc, Decl);
+          token_function: Result := ParseProcedure(Decl.Members, ptClassFunc, Decl);
+          token_operator: Result := ParseOperator(Decl.Members, Decl);
+          token_property: Result := ParseProperty(Decl {todo: IsClass});
+          token_constructor: Result := ParseProcedure(Decl.Members, ptClassConstructor, Decl);
+          token_destructor: Result := ParseProcedure(Decl.Members, ptClassDestructor, Decl);
+          token_var: begin
+             Lexer_NextToken(Scope);
+             Result := ParseVarSection(Decl.Members, Visibility, Decl {todo: IsClass});
+          end;
+        else
+          AbortWork('Class members can be: PROCEDURE, FUNCTION, OPERATOR, CONSTRUCTOR, DESTRUCTOR, PROPERTY, VAR', Lexer_Position);
+        end;
+      end;
       token_procedure: Result := ParseProcedure(Decl.Members, ptProc, Decl);
       token_function: Result := ParseProcedure(Decl.Members, ptFunc, Decl);
       token_constructor: Result := ParseProcedure(Decl.Members, ptConstructor, Decl);
       token_destructor: Result := ParseProcedure(Decl.Members, ptDestructor, Decl);
       token_property: Result := ParseProperty(Decl);
-      token_operator: Result := ParseOperator(Decl.Members, Decl);
       token_public: begin
         Visibility := vPublic;
         Result := Lexer_NextToken(Scope);
@@ -6998,8 +7007,6 @@ begin
 
   Lexer_MatchToken(Result, token_end);
   Result := Lexer_NextToken(Scope);
-  if Result = token_external then
-    Result := ParseImportStatement(Scope, Decl);
 
   if Result = token_platform then
     Result := Lexer_NextToken(Scope);
@@ -7306,7 +7313,7 @@ begin
     Result := ActualToken
 end;
 
-function TASTDelphiUnit.ProcSpec_Inline(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+function TASTDelphiUnit.ProcSpec_Inline(Scope: TScope; var Flags: TProcFlags): TTokenID;
 begin
   if pfImport in Flags then
     ERROR_IMPORT_FUNCTION_CANNOT_BE_INLINE;
@@ -7317,7 +7324,7 @@ begin
   Result := Lexer_NextToken(Scope);
 end;
 
-function TASTDelphiUnit.ProcSpec_Export(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+function TASTDelphiUnit.ProcSpec_Export(Scope: TScope; var Flags: TProcFlags): TTokenID;
 var
   ExportID: TIdentifier;
 begin
@@ -7327,17 +7334,18 @@ begin
   {if Scope.ScopeClass <> scInterface then
     ERROR_EXPORT_ALLOWS_ONLY_IN_INTF_SECTION;}
   Result := Lexer_NextToken(Scope);
-  if Result = token_identifier then begin
+  if Result = token_identifier then
+  begin
     Lexer_ReadCurrIdentifier(ExportID);
-  Result := Lexer_NextToken(Scope);
-  end else
-    ExportID := Proc.ID;
-  Proc.Export := Package.GetStringConstant(ExportID.Name);
+    Result := Lexer_NextToken(Scope);
+  end; //else
+//    ExportID := Proc.ID;
+//  Proc.Export := Package.GetStringConstant(ExportID.Name);
   Lexer_MatchToken(Result, token_semicolon);
   Result := Lexer_NextToken(Scope);
 end;
 
-function TASTDelphiUnit.ProcSpec_Forward(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+function TASTDelphiUnit.ProcSpec_Forward(Scope: TScope; var Flags: TProcFlags): TTokenID;
 begin
   if (pfForward in Flags) or (pfImport in Flags) then
     ERROR_DUPLICATE_SPECIFICATION(PS_FORWARD);
@@ -7346,16 +7354,16 @@ begin
   Result := Lexer_NextToken(Scope);
 end;
 
-function TASTDelphiUnit.ProcSpec_Import(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+function TASTDelphiUnit.ProcSpec_External(Scope: TScope; out ImportLib, ImportName: TIDDeclaration; var Flags: TProcFlags): TTokenID;
 begin
   if pfImport in Flags then
     ERROR_DUPLICATE_SPECIFICATION(PS_IMPORT);
   Include(Flags, pfImport);
-  ParseImportStatement(Scope, Proc);
-  Result := Lexer.NextToken;
+  ParseImportStatement(Scope, ImportLib, ImportName);
+  Result := Lexer_NextToken(Scope);
 end;
 
-function TASTDelphiUnit.ProcSpec_Overload(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+function TASTDelphiUnit.ProcSpec_Overload(Scope: TScope; var Flags: TProcFlags): TTokenID;
 begin
   if pfOveload in Flags then
     ERROR_DUPLICATE_SPECIFICATION(PS_OVELOAD);
@@ -7363,7 +7371,7 @@ begin
   Result := Lexer_ReadSemicolonAndToken(Scope);
 end;
 
-function TASTDelphiUnit.ProcSpec_Reintroduce(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+function TASTDelphiUnit.ProcSpec_Reintroduce(Scope: TScope; var Flags: TProcFlags): TTokenID;
 begin
   if pfReintroduce in Flags then
     ERROR_DUPLICATE_SPECIFICATION(PS_REINTRODUCE);
@@ -7372,36 +7380,36 @@ begin
   Result := Lexer_NextToken(Scope);
 end;
 
-function TASTDelphiUnit.ProcSpec_Virtual(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+function TASTDelphiUnit.ProcSpec_Virtual(Scope: TScope; Struct: TIDStructure; var Flags: TProcFlags): TTokenID;
 begin
   if pfVirtual in Flags then
     ERROR_DUPLICATE_SPECIFICATION(PS_VIRTUAL);
   Include(Flags, pfVirtual);
 
-  if not Assigned(Proc.Struct) then
+  if not Assigned(Struct) then
     ERROR_VIRTUAL_ALLOWED_ONLY_IN_CLASSES;
 
-  Proc.VirtualIndex := Proc.Struct.GetLastVirtualIndex + 1;
+  //Proc.VirtualIndex := Proc.Struct.GetLastVirtualIndex + 1;
 
   Lexer_ReadSemicolon(Scope);
   Result := Lexer_NextToken(Scope);
 end;
 
-function TASTDelphiUnit.ProcSpec_Override(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+function TASTDelphiUnit.ProcSpec_Override(Scope: TScope; Struct: TIDStructure; var Flags: TProcFlags): TTokenID;
 var
   PrevProc: TIDProcedure;
 begin
-  if pfOverride in Proc.Flags then
+  if pfOverride in Flags then
     ERROR_DUPLICATE_SPECIFICATION(PS_OVERRIDE);
 
-  if not Assigned(Proc.Struct) then
+  if not Assigned(Struct) then
     ERROR_STRUCT_TYPE_REQUIRED(Lexer_Position);
 
-  PrevProc := Proc.Struct.FindVirtualProcInAncestor(Proc);
-  if not Assigned(PrevProc) then
-    ERROR_NO_METHOD_IN_BASE_CLASS(Proc);
+  //PrevProc := Proc.Struct.FindVirtualProcInAncestor(Proc);
+  //if not Assigned(PrevProc) then
+  //  ERROR_NO_METHOD_IN_BASE_CLASS(Proc);
 
-  Proc.VirtualIndex := PrevProc.VirtualIndex;
+  //Proc.VirtualIndex := PrevProc.VirtualIndex;
 
   Include(Flags, pfOverride);
   Include(Flags, pfVirtual);
@@ -7409,9 +7417,9 @@ begin
   Result := Lexer_NextToken(Scope);
 end;
 
-function TASTDelphiUnit.ProcSpec_Static(Scope: TScope; Proc: TIDProcedure; var Flags: TProcFlags): TTokenID;
+function TASTDelphiUnit.ProcSpec_Static(Scope: TScope; var Flags: TProcFlags; var ProcType: TProcType): TTokenID;
 begin
-  if pfStatic in Proc.Flags then
+  if pfStatic in Flags then
     ERROR_DUPLICATE_SPECIFICATION(PS_STATIC);
   Include(Flags, pfStatic);
   Lexer_ReadSemicolon(Scope);
@@ -7993,8 +8001,6 @@ begin
   Decl.StructFlags := Decl.StructFlags + [StructCompleted];
   Lexer_MatchToken(Result, token_end);
   Result := Lexer_NextToken(Scope);
-  if Result = token_external then
-    Result := ParseImportStatement(Scope, Decl);
 end;
 
 function TASTDelphiUnit.ParseIntfGUID(Scope: TScope; Decl: TIDInterface): TTokenID;

@@ -746,6 +746,7 @@ begin
   RegisterBuiltin(TSF_Exit);
   RegisterBuiltin(TSF_FreeMem);
   RegisterBuiltin(TSF_FillChar);
+  RegisterBuiltin(TSF_GetMem);
   RegisterBuiltin(TSF_HiBound);
   RegisterBuiltin(TSF_Inc);
   RegisterBuiltin(TSF_LoBound);

@@ -194,6 +194,13 @@ type
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {GetMem}
+  TSF_GetMem = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
   {FreeMem}
   TSF_FreeMem = class(TIDSysRuntimeFunction)
   public
@@ -814,6 +821,25 @@ begin
   Result := Arg;
 end;
 
+{ TSF_GetMem }
+
+class function TSF_GetMem.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'GetMem', _Void);
+  Result.AddParam('StoragePointer ', SYSUnit._Pointer, [VarInOut]);
+  Result.AddParam('StorageSize ', SYSUnit._Int32, [VarConst]);
+end;
+
+function TSF_GetMem.Process(var EContext: TEContext): TIDExpression;
+var
+  ArgP, ArgS: TIDExpression;
+begin
+  // read arguments
+  ArgS := EContext.RPNPopExpression();
+  ArgP := EContext.RPNPopExpression();
+  Result := nil;
+end;
+
 { TSF_Succ }
 
 class function TSF_Succ.CreateDecl(Scope: TScope): TIDBuiltInFunction;
@@ -887,5 +913,6 @@ begin
   AResult := EContext.RPNPopExpression();
   Result := nil;
 end;
+
 
 end.
