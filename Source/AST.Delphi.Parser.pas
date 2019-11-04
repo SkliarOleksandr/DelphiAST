@@ -4533,6 +4533,21 @@ function TASTDelphiUnit.ParseCondStatements(Scope: TScope; Token: TTokenID): TTo
       end;
     end;
   end;
+  procedure CheckCorrectEndCondStatemet(var Token: TTokenID);
+  var
+    Found: Boolean;
+  begin
+    Found := False;
+    while (Token < token_cond_define) and (Token <> token_eof) and (Token <> token_closefigure) do
+    begin
+      if not Found then
+      begin
+        Warning('Invalid chars in conditional statement: %s', [Lexer_TokenLexem(Token)], Lexer_Position);
+        Found := True;
+      end;
+      Token := Lexer.NextToken;
+    end;
+  end;
 var
   ExprResult: TCondIFValue;
   CondResult: Boolean;
@@ -4542,13 +4557,13 @@ begin
   begin
     case Result of
       //////////////////////////////////////////
-      // {$DEFINE ...}
+      // {$define ...}
       token_cond_define: begin
         ParseCondDefine(Scope, True);
         Result := Lexer_NextToken(Scope);
       end;
       //////////////////////////////////////////
-      // {$else ... }
+      // {$else ...}
       token_cond_else: begin
         // skip all comment tokens
         repeat
@@ -4582,10 +4597,10 @@ begin
         Result := Lexer.NextToken;
       end;
       //////////////////////////////////////////
-      // #include
+      // {$include ...}
       token_cond_include: Result := ParseCondInclude(Scope);
       //////////////////////////////////////////
-      // {$UNDEFINE ...}
+      // {$undefine ...}
       token_cond_undefine: begin
         ParseCondDefine(Scope, False);
         Result := Lexer.NextToken;
@@ -4593,7 +4608,7 @@ begin
         Result := Lexer_NextToken(Scope);
       end;
       //////////////////////////////////////////
-      // {$IFDEF ...}
+      // {$ifdef ...}
       token_cond_ifdef: begin
         CondResult := ParseCondIfDef(Scope);
         fCondStack.Push(CondResult);
@@ -4603,7 +4618,7 @@ begin
           Result := Lexer.NextToken;
       end;
       //////////////////////////////////////////
-      // {$IFNDEF ...}
+      // {$ifndef ...}
       token_cond_ifndef: begin
         CondResult := ParseCondIfDef(Scope);
         fCondStack.Push(not CondResult);
@@ -4613,7 +4628,7 @@ begin
           Result := Lexer.NextToken;
       end;
       //////////////////////////////////////////
-      // {$IF...}
+      // {$if ...}
       token_cond_if: begin
         Result := ParseCondIf(Scope, ExprResult);
         fCondStack.Push(ExprResult = condIfTrue);
@@ -4621,9 +4636,10 @@ begin
           condIFFalse: Result := SkipToElseOrEnd(False);
           condIFUnknown: Result := SkipToElseOrEnd(True);
         end;
+        CheckCorrectEndCondStatemet(Result);
       end;
       //////////////////////////////////////////
-      // {$IFOPT...}
+      // {$ifopt ...}
       token_cond_ifopt: begin
         // todo: complete the options check
         repeat
@@ -4633,7 +4649,7 @@ begin
         Result := SkipToElseOrEnd(False);
       end;
       //////////////////////////////////////////
-      // {$MESSAGE...}
+      // {$message ...}
       token_cond_message: Result := ParseCondMessage(Scope);
     else
       ERROR_FEATURE_NOT_SUPPORTED;
