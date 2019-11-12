@@ -61,7 +61,7 @@ type
 
   TScope = class;
   TStructScope = class;
-
+  TProcScope = class;
 
   TIDParam = TIDVariable;
 
@@ -1311,7 +1311,7 @@ type
   strict private
     FExplicitParams: TVariableList; // actual arguments (excluding 'self', 'Result', etc...);
     FCount: Integer;                // count of parameters
-    FParamsScope: TScope;           // only parameters scope
+    FParamsScope: TProcScope;       // only parameters scope
     FEntryScope: TScope;            // proc body scope (params, local vars, types, procs etc...)
     FStruct: TIDStructure;          // self parameter
     FProcFlags: TProcFlags;         // флаги inline/pure
@@ -1364,7 +1364,7 @@ type
 
     property NextOverload: TIDProcedure read FNextOverload write FNextOverload;
     property EntryScope: TScope read FEntryScope write SetEntryScope;
-    property ParamsScope: TScope read FParamsScope write FParamsScope;
+    property ParamsScope: TProcScope read FParamsScope write FParamsScope;
     property ParamsCount: Integer read FCount;
     {$warnings off}
     property ResultType: TIDType read FResultType write FResultType;

@@ -20,6 +20,7 @@ uses System.SysUtils,
      AST.Parser.Options,
      AST.Project;
      // system
+     // sysinit
 
 type
 
@@ -1070,7 +1071,7 @@ begin
     // если модуль используется первый раз - компилируем
     if not UUnit.Compiled then
     begin
-      if UUnit.Compile = CompileFail then begin
+      if UUnit.Compile() = CompileFail then begin
         Messages.CopyFrom(UUnit.Messages);
         StopCompile(False);
       end;
@@ -4077,7 +4078,7 @@ end;
 
 function TASTDelphiUnit.ParseAnonymousProc(Scope: TScope; var EContext: TEContext; const SContext: TSContext; ProcType: TTokenID): TTokenID;
 var
-  Parameters: TScope;
+  Parameters: TProcScope;
   GenericsArgs: TIDTypeList;
   ResultType: TIDType;
   ResultParam: TIDVariable;
@@ -6395,6 +6396,14 @@ begin
     // ошибка если перекрыли идентификатор другого типа:
     if ForwardDecl.ItemType <> itProcedure then
       ERROR_ID_REDECLARATED(ID);
+
+    // The case when proc impl doesn't have params at all insted of decl
+    if (Parameters.Count = 0) and (ForwardDecl.NextOverload = nil) and (ForwardDecl.ParamsCount > 0)then
+    begin
+      FwdDeclState := dsSame;
+      Proc := ForwardDecl;
+      Parameters.CopyFrom(ForwardDecl.ParamsScope);
+    end else
     // ищем подходящую декларацию в списке перегруженных:
     while True do begin
       if ForwardDecl.SameDeclaration(Parameters) then begin
@@ -6614,7 +6623,7 @@ function TASTDelphiUnit.ParseGenericProcRepeatedly(Scope: TScope; GenericProc, P
 {type
   TFwdDeclState = (dsNew, dsDifferent, dsSame);}
 var
-  Parameters: TScope;
+  Parameters: TProcScope;
   ResultType: TIDType;
   RetVar: TIDVariable;
   VarSpace: TVarSpace;

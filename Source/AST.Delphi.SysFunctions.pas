@@ -12,8 +12,22 @@ uses AST.Pascal.Parser,
 
 type
 
-  {now}
+  {Now}
   TSF_Now = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
+  {New}
+  TSF_New = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
+  {Dispose}
+  TSF_Dispose = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
@@ -217,6 +231,13 @@ type
 
   {Exit}
   TSF_Exit = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
+  {Exit}
+  TSF_Halt = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
@@ -914,5 +935,56 @@ begin
   Result := nil;
 end;
 
+
+{ TSF_Halt }
+
+class function TSF_Halt.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Halt', _Void);
+  Result.AddParam('ExitValue', SYSUnit._Int32, [VarConst]);
+end;
+
+function TSF_Halt.Process(var EContext: TEContext): TIDExpression;
+var
+  AResult: TIDExpression;
+begin
+  // read arguments
+  AResult := EContext.RPNPopExpression();
+  Result := nil;
+end;
+
+{ TSF_New }
+
+class function TSF_New.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'New', _Void);
+  Result.AddParam('X', SYSUnit._Pointer, [VarInOut]);
+end;
+
+function TSF_New.Process(var EContext: TEContext): TIDExpression;
+var
+  AResult: TIDExpression;
+begin
+  // read arguments
+  AResult := EContext.RPNPopExpression();
+  Result := nil;
+end;
+
+{ TSF_Dispose }
+
+class function TSF_Dispose.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Dispose', _Void);
+  Result.AddParam('P', SYSUnit._Pointer, [VarConst]);
+end;
+
+function TSF_Dispose.Process(var EContext: TEContext): TIDExpression;
+var
+  AResult: TIDExpression;
+begin
+  // read arguments
+  AResult := EContext.RPNPopExpression();
+  Result := nil;
+end;
 
 end.

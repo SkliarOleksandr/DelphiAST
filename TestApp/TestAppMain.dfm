@@ -20,7 +20,7 @@ object frmTestAppMain: TfrmTestAppMain
     Top = 172
     Width = 629
     Height = 468
-    ActivePage = tsNameSpace
+    ActivePage = tsSource
     Align = alClient
     TabOrder = 0
     object tsSource: TTabSheet
@@ -62,7 +62,13 @@ object frmTestAppMain: TfrmTestAppMain
           'const cc = #65'#39'abc'#39';'
           'const dd = #65'#39'abc'#39'#65;'
           ''
+          'procedure F1(a: integer);'
+          ''
           'implementation'
+          ''
+          'procedure F1;'
+          'begin'
+          'end;'
           ''
           'type TRec = record'
           '  a, b: Integer;'
