@@ -148,7 +148,6 @@ type
     procedure ParseOneLineRem(var SPos: Integer);
     procedure ParseDidgit(SPos: Integer);
     procedure ParseCharCode(SPos: Integer); overload;
-    procedure ParseCharCode(SPos: Integer; out Chars: string); overload;
     procedure ParseQuote(Ch: Char; SPos: Integer);
     function ParseQuoteMulti(Ch: Char; SPos: Integer): Integer;
     procedure ParseUnicodeChars(SPos: Integer);
@@ -867,15 +866,11 @@ begin
 end;
 
 procedure TGenericLexer.ParseCharCode(SPos: Integer);
-type
-  TNumberSymbols = set of (nsExponent, nsPoint, nsSign);
 var
   ReadedChars: integer;
   Ch: Char;
-  NumberSymbols: TNumberSymbols;
   CToken: PCharToken;
 begin
-  NumberSymbols := [];
   ReadedChars := 0;
   Inc(SPos);
   Inc(ReadedChars);
@@ -884,7 +879,10 @@ begin
     Ch := Char(fUpCase[fSource[SPos]]);
     CToken := addr(Tokens[Ch]);
     if (CToken.TokenType <> ttCharCode) and
-       (CToken.TokenType <> ttDigit) then Break;
+       (CToken.TokenType <> ttHexPrefix) and
+       not (tfHexDigit in CToken.Flags) and
+       not (tfDigit in CToken.Flags)
+       then Break;
     Inc(SPos);
     Inc(ReadedChars);
   end;
@@ -892,33 +890,6 @@ begin
   fCurrentToken := Copy(fSource, SPos - ReadedChars, ReadedChars);
   fIdentifireType := itCharCodes;
   fCurrentTokenID := fIdentifireId;
-  fSrcPos := SPos;
-end;
-
-procedure TGenericLexer.ParseCharCode(SPos: Integer; out Chars: string);
-type
-  TNumberSymbols = set of (nsExponent, nsPoint, nsSign);
-var
-  ReadedChars: integer;
-  Ch: Char;
-  NumberSymbols: TNumberSymbols;
-  CToken: PCharToken;
-begin
-  Chars := '';
-  NumberSymbols := [];
-  ReadedChars := 0;
-  Inc(SPos);
-  while SPos <= fLength do
-  begin
-    Ch := Char(fUpCase[fSource[SPos]]);
-    CToken := addr(Tokens[Ch]);
-    if (CToken.TokenType <> ttCharCode) and
-       (CToken.TokenType <> ttDigit) then Break;
-    Inc(SPos);
-    Inc(ReadedChars);
-  end;
-  // read identifier:
-  Chars := Copy(fSource, SPos - ReadedChars, ReadedChars);
   fSrcPos := SPos;
 end;
 

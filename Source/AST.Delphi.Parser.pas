@@ -5227,7 +5227,9 @@ begin
     end else
     if OperatorDecl.ItemType = itSysOperator then
     begin
-      // todo: ERROR_INVALID_EXPLICIT_TYPECAST(SrcExpr, TargetType);
+      ResExpr := TSysOpExplisit(OperatorDecl).Match(SContext, SrcExpr, DstExpression.AsType);
+      if not Assigned(ResExpr) then
+        ERROR_INVALID_EXPLICIT_TYPECAST(SrcExpr, TargetType);
     end;
   end else
     ERROR_INVALID_EXPLICIT_TYPECAST(SrcExpr, TargetType);

@@ -347,6 +347,8 @@ begin
 
   // String
   _String.OverloadExplicitTo(_Pointer);
+  _String.OverloadExplicitTo(_NativeInt);
+  _String.OverloadExplicitTo(_NativeUInt);
   _String.OverloadExplicitTo(_PCharType);
   _String.OverloadExplicitTo(_WideString);
   _String.OverloadExplicitTo(_ShortString);
@@ -354,12 +356,17 @@ begin
 
   // AnsiString
   _AnsiString.OverloadExplicitTo(_Pointer);
+  _AnsiString.OverloadExplicitTo(_NativeInt);
+  _AnsiString.OverloadExplicitTo(_NativeUInt);
   _AnsiString.OverloadExplicitTo(_PAnsiCharType);
   _AnsiString.OverloadExplicitTo(_ShortString);
   _AnsiString.OverloadExplicitFromAny(TSysExplicitAnsiStringFromAny.Instance);
 
   // WideString
   _WideString.OverloadExplicitTo(_String);
+  _WideString.OverloadExplicitTo(_Pointer);
+  _WideString.OverloadExplicitTo(_NativeInt);
+  _WideString.OverloadExplicitTo(_NativeUInt);
 
   // AnsiChar
   _AnsiChar.OverloadExplicitTo(_Char);
