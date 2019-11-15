@@ -375,7 +375,7 @@ var
   i: Integer;
 begin
   for i := Low(Str) to High(Str) do
-    if Ord(Str[i]) > 127 then
+    if Str[i] > High(AnsiChar) then
       Exit(False);
   Result := True;
 end;

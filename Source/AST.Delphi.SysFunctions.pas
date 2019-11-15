@@ -565,7 +565,7 @@ begin
       end;
     end;
     // dynamic array, string
-    dtDynArray, dtString, dtAnsiString: begin
+    dtDynArray, dtString, dtAnsiString, dtWideString: begin
       if Expr.Declaration is TIDDynArrayConstant then
         Result := IntConstExpression(Expr.AsDynArrayConst.ArrayLength)
       else
