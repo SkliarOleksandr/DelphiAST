@@ -683,7 +683,7 @@ end;
 
 function TSysExplicitStringFromAny.Check(const Src, Dst: TIDType): Boolean;
 begin
-  Result := (Src.DataTypeID = dtAnsiString) or
+  Result := (Src.DataTypeID = dtAnsiString) or (Src.DataTypeID = dtPointer) or
             ((Src.DataTypeID = dtStaticArray) and (TIDArray(Src).ElementDataType.DataTypeID = dtChar)) ;
 end;
 
@@ -691,7 +691,15 @@ end;
 
 function TSysExplictPointerToAny.Check(const Src, Dst: TIDType): Boolean;
 begin
-  Result := Dst.Ordinal or (Dst.DataTypeID in [dtPointer, dtProcType, dtRecord]);
+  Result := Dst.Ordinal or (Dst.DataTypeID in [dtPointer,
+                                               dtProcType,
+                                               dtRecord,
+                                               dtClass,
+                                               dtInterface,
+                                               dtDynArray,
+                                               dtAnsiString,
+                                               dtString,
+                                               dtWideString]);
 end;
 
 { TSysAnsiChar_In }

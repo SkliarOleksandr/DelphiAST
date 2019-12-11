@@ -3678,7 +3678,13 @@ begin
             begin
               SrcDataTypeID := ArgDataType.DataTypeID;
               DstDataTypeID := ParamDataType.DataTypeID;
-              ParamFactor := ImplicitFactor(SrcDataTypeID, DstDataTypeID);
+              if SrcDataTypeID = DstDataTypeID then
+                ParamFactor := 100
+              else begin
+                ParamFactor := ImplicitFactor(SrcDataTypeID, DstDataTypeID);
+                if ParamFactor = 0 then
+                  ParamFactor := 50;
+              end;
               Inc(DataLossCount, DataLossFactor(SrcDataTypeID, DstDataTypeID));
             end;
             if ParamFactor = 0 then begin
@@ -3704,7 +3710,7 @@ begin
       Continue;
     end;
 
-    if DataLossCount < MinDataLossFactor then
+    if (DeclarationFactor > 0) and (DataLossCount < MinDataLossFactor) then
     begin
       MinDataLossFactor := DataLossCount;
       MaxMatchedFactor := DeclarationFactor;

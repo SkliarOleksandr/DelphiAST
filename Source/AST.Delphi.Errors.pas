@@ -38,7 +38,7 @@ resourcestring
   sVariableIsDeclaredButNeverUsedInFmt =  'Variable "%s" is declared but never used';
     // overload:
   sOverloadedMustBeMarked = 'Overloaded entry "%s" must be marked with the "overload" directive';
-  sErrorOverload = 'There isn''t function with such parameters';
+  sErrorOverload = '%s: There is no overload version with such parameters';
   sAmbiguousOverloadedCallFmt = 'Ambiguous overloaded call to "%s"';
   sInvalidIndex = 'Index is out of bounds';
   sNotAllowedHere = 'Not allowed here: "%s"';
@@ -867,7 +867,7 @@ end;
 
 class procedure TASTDelphiErrors.ERROR_OVERLOAD(CallExpr: TIDExpression);
 begin
-  AbortWork(sErrorOverload, CallExpr.TextPosition);
+  AbortWork(sErrorOverload, [CallExpr.Declaration.Name], CallExpr.TextPosition);
 end;
 
 class procedure TASTDelphiErrors.ERROR_AMBIGUOUS_OVERLOAD_CALL(CallExpr: TIDExpression);
