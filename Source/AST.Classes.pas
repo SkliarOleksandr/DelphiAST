@@ -71,9 +71,10 @@ type
   protected
     function GetModuleName: string; virtual; abstract;
     function GetSource: string; virtual; abstract;
+    procedure SetFileName(const Value: string);
   public
     property Name: string read GetModuleName;
-    property FileName: string read fFileName;
+    property FileName: string read fFileName write SetFileName;
 
     function GetFirstFunc: TASTDeclaration; virtual; abstract;
     function GetFirstVar: TASTDeclaration; virtual; abstract;
@@ -1108,6 +1109,11 @@ end;
 function TASTOpLogicalNot.GetDisplayName: string;
 begin
   Result := 'lnot';
+end;
+
+procedure TASTModule.SetFileName(const Value: string);
+begin
+  fFileName := Value;
 end;
 
 end.

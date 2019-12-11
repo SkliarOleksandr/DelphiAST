@@ -157,7 +157,7 @@ begin
       else
         SrcCoords := format('(%d)', [Row]);
     end;
-    Result := AddStringSegment(Result, Format('[%s] %s%s: %s', [MessageTypeName,  UnitName, SrcCoords, MessageText]), #13#10);
+    Result := AddStringSegment(Result, Format('[%s] %s%s: %s', [MessageTypeName, UnitName, SrcCoords, MessageText]), #13#10);
   end;
 end;
 

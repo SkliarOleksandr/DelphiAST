@@ -39,7 +39,7 @@ type
     fPackage: INPPackage;
     fDefines: TDefines;
     fOptions: TCompilerOptions;
-
+    fIncludeFilesStack: TSimpleStack<string>;
     procedure CheckLeftOperand(const Status: TRPNStatus);
     class procedure CheckAndCallFuncImplicit(const EContext: TEContext); overload; static;
     class function CheckAndCallFuncImplicit(const SContext: TSContext; Expr: TIDExpression; out WasCall: Boolean): TIDExpression; overload; static;
@@ -72,9 +72,11 @@ type
     function SpecializeGenericType(GenericType: TIDType; const ID: TIdentifier; const SpecializeArgs: TIDExpressions): TIDType;
     function GetWeakRefType(Scope: TScope; SourceDataType: TIDType): TIDWeekRef;
     function CreateAnonymousConstTuple(Scope: TScope; ElementDataType: TIDType): TIDExpression;
+    function GetCurrentParsedFileName(OnlyFileName: Boolean): string;
     class function CreateRangeType(Scope: TScope; LoBound, HiBound: Integer): TIDRangeType; static;
     class procedure AddSelfParameter(Params: TScope; Struct: TIDStructure; ClassMethod: Boolean); static; inline;
     class function AddResultParameter(Params: TScope): TIDVariable; static; inline;
+    procedure CheckCorrectEndCondStatemet(var Token: TTokenID);
   public
     property Package: INPPackage read FPackage;
     property Options: TCompilerOptions read FOptions;
@@ -329,8 +331,8 @@ type
     property Source: string read GetSource;
     function Compile(RunPostCompile: Boolean = True): TCompilerResult; override;
     function CompileIntfOnly: TCompilerResult; override;
-    function CompileSource(Section: TUnitSection; const Source: string): ICompilerMessages;
-    constructor Create(const Project: IASTProject; const FileName: string;  const Source: string = ''); override;
+    function CompileSource(Section: TUnitSection; const FileName: string; const Source: string): ICompilerMessages;
+    constructor Create(const Project: IASTProject; const FileName: string; const Source: string = ''); override;
     destructor Destroy; override;
   end;
 
@@ -2312,7 +2314,7 @@ begin
   Result := Compile;
 end;
 
-function TASTDelphiUnit.CompileSource(Section: TUnitSection; const Source: string): ICompilerMessages;
+function TASTDelphiUnit.CompileSource(Section: TUnitSection; const FileName: string; const Source: string): ICompilerMessages;
 var
   ParserState: TParserPosition;
   ParserSource: string;
@@ -2322,6 +2324,7 @@ begin
   Result := Messages;
   Lexer.SaveState(ParserState);
   ParserSource := Lexer.Source;
+  fIncludeFilesStack.Push(FileName);
   try
     try
       case Section of
@@ -2422,6 +2425,7 @@ begin
   finally
     Lexer.Source := ParserSource;
     Lexer.LoadState(ParserState);
+    fIncludeFilesStack.Pop;
   end;
 end;
 
@@ -2478,6 +2482,16 @@ begin
     SetValue := SetValue or (1 shl ItemValue);
   end;
   Result := TIDExpression.Create(TIDIntConstant.CreateAnonymous(nil, SYSUnit._Int32, SetValue), Source.TextPosition);
+end;
+
+function TASTDelphiUnit.GetCurrentParsedFileName(OnlyFileName: Boolean): string;
+begin
+  if fIncludeFilesStack.Count > 0 then
+    Result := fIncludeFilesStack.Top
+  else
+    Result := FileName;
+  if OnlyFileName then
+    Result := ExtractFileName(Result);
 end;
 
 function TASTDelphiUnit.GetFirstConst: TASTDeclaration;
@@ -2639,17 +2653,29 @@ begin
     Lexer_ReadTokenAsID(Identifier);
 end;
 
+procedure TASTDelphiUnit.CheckCorrectEndCondStatemet(var Token: TTokenID);
+var
+  Found: Boolean;
+begin
+  Found := False;
+  while (Token < token_cond_define) and (Token <> token_eof) and (Token <> token_closefigure) do
+  begin
+    if not Found then
+    begin
+      Warning('Invalid chars in conditional statement: %s', [Lexer_TokenLexem(Token)], Lexer_Position);
+      Found := True;
+    end;
+    Token := Lexer.NextToken;
+  end;
+end;
+
 procedure TASTDelphiUnit.Lexer_ReadNextIFDEFLiteral(Scope: TScope; var Identifier: TIdentifier);
 var
   Token: TTokenID;
 begin
   Lexer_ReadNextIdentifier(Scope, Identifier);
   Token := Lexer.NextToken;
-  while (Token <> token_closefigure) and (Token <> token_eof) do
-  begin
-    Identifier.Name := Identifier.Name + Lexer.OriginalToken;
-    Token := Lexer.NextToken;
-  end;
+  CheckCorrectEndCondStatemet(Token);
   Lexer_MatchToken(Token, token_closefigure);
 end;
 
@@ -2800,7 +2826,7 @@ var
   Msg: TCompilerMessage;
 begin
   Msg := TCompilerMessage.Create(Self, MessageType, MessageText, SourcePosition);
-  Msg.UnitName := _ID.Name;
+  Msg.UnitName := GetCurrentParsedFileName(True);
   Messages.Add(Msg);
 end;
 
@@ -4449,7 +4475,7 @@ begin
   Stream := TStringStream.Create;
   try
     Stream.LoadFromFile(ExtractFilePath(Self.FileName) + FileName);
-    var Messages := CompileSource(usImplementation, Stream.DataString);
+    var Messages := CompileSource(usImplementation, FileName, Stream.DataString);
     if Messages.HasErrors then
       AbortWork('The included file: ' + FileName + ' has errors', Lexer_Position);
   finally
@@ -4532,21 +4558,6 @@ function TASTDelphiUnit.ParseCondStatements(Scope: TScope; Token: TTokenID): TTo
         end;
         token_eof: ERROR_END_OF_FILE;
       end;
-    end;
-  end;
-  procedure CheckCorrectEndCondStatemet(var Token: TTokenID);
-  var
-    Found: Boolean;
-  begin
-    Found := False;
-    while (Token < token_cond_define) and (Token <> token_eof) and (Token <> token_closefigure) do
-    begin
-      if not Found then
-      begin
-        Warning('Invalid chars in conditional statement: %s', [Lexer_TokenLexem(Token)], Lexer_Position);
-        Found := True;
-      end;
-      Token := Lexer.NextToken;
     end;
   end;
 var

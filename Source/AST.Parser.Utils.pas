@@ -1425,6 +1425,7 @@ end;
 constructor TSimpleStack<T>.Create(Capacity: Integer);
 begin
   SetLength(fItems, Capacity);
+  fCount := 0;
 end;
 
 procedure TSimpleStack<T>.Push(const Value: T);
