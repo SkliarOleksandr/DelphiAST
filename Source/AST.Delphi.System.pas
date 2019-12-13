@@ -745,9 +745,12 @@ begin
   FRefType := TIDType.Create(nil, Identifier(''));
 
   RegisterBuiltin(TSF_Abs);
+  RegisterBuiltin(TSF_Assert);
   RegisterBuiltin(TSF_Assigned);
-  RegisterBuiltin(TSF_AtomicExchange);
   RegisterBuiltin(TSF_AtomicCmpExchange);
+  RegisterBuiltin(TSF_AtomicDecrement);
+  RegisterBuiltin(TSF_AtomicExchange);
+  RegisterBuiltin(TSF_AtomicIncrement);
   RegisterBuiltin(TSF_Copy);
   RegisterBuiltin(TSF_Chr);
   RegisterBuiltin(TCT_Dec);
@@ -768,6 +771,7 @@ begin
   RegisterBuiltin(TSF_Ord);
   RegisterBuiltin(TSF_Odd);
   RegisterBuiltin(TSF_Pred);
+  RegisterBuiltin(TSF_ReallocMem);
   RegisterBuiltin(TSF_Round);
   RegisterBuiltin(TSF_RunError);
   RegisterBuiltin(TSF_Str);

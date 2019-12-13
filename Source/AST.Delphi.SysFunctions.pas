@@ -12,6 +12,20 @@ uses AST.Pascal.Parser,
 
 type
 
+  {Assigned}
+  TSF_Assigned = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
+  {Assert}
+  TSF_Assert = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
   {Now}
   TSF_Now = class(TIDSysRuntimeFunction)
   public
@@ -63,6 +77,20 @@ type
 
   {AtomicCmpExchange}
   TSF_AtomicCmpExchange = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
+  {AtomicDecrement}
+  TSF_AtomicDecrement = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
+  {AtomicIncrement}
+  TSF_AtomicIncrement = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
@@ -152,13 +180,6 @@ type
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
-  {Assigned}
-  TSF_Assigned = class(TIDSysRuntimeFunction)
-  public
-    function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
-  end;
-
   {Trunc}
   TSF_Trunc = class(TIDSysRuntimeFunction)
   public
@@ -238,6 +259,13 @@ type
 
   {Exit}
   TSF_Halt = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
+  {ReallocMem}
+  TSF_ReallocMem = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
@@ -984,6 +1012,83 @@ var
 begin
   // read arguments
   AResult := EContext.RPNPopExpression();
+  Result := nil;
+end;
+
+{ TSF_ReallocMem }
+
+class function TSF_ReallocMem.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'ReallocMem', _Void);
+  Result.AddParam('P', SYSUnit._Pointer, [VarInOut]);
+  Result.AddParam('Size', SYSUnit._Int32, [VarConst]);
+end;
+
+function TSF_ReallocMem.Process(var EContext: TEContext): TIDExpression;
+var
+  ASize, APtr: TIDExpression;
+begin
+  // read arguments
+  ASize := EContext.RPNPopExpression();
+  APtr := EContext.RPNPopExpression();
+  Result := nil;
+end;
+
+{ TSF_AtomicDecreament }
+
+class function TSF_AtomicDecrement.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'AtomicDecrement', _Void);
+  Result.AddParam('Target', SYSUnit._UntypedReference, [VarInOut]);
+  Result.AddParam('Value', SYSUnit._Int32, [VarConst], SYSUnit._OneExpression);
+end;
+
+function TSF_AtomicDecrement.Process(var EContext: TEContext): TIDExpression;
+var
+  AValue, ATarget: TIDExpression;
+begin
+  // read arguments
+  AValue := EContext.RPNPopExpression();
+  ATarget := EContext.RPNPopExpression();
+  Result := nil;
+end;
+
+{ TSF_AtomicIncrement }
+
+class function TSF_AtomicIncrement.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'AtomicIncreament', _Void);
+  Result.AddParam('Target', SYSUnit._UntypedReference, [VarInOut]);
+  Result.AddParam('Value', SYSUnit._Int32, [VarConst], SYSUnit._OneExpression);
+end;
+
+function TSF_AtomicIncrement.Process(var EContext: TEContext): TIDExpression;
+var
+  AValue, ATarget: TIDExpression;
+begin
+  // read arguments
+  AValue := EContext.RPNPopExpression();
+  ATarget := EContext.RPNPopExpression();
+  Result := nil;
+end;
+
+
+{ TSF_Assert }
+
+class function TSF_Assert.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Assert', _Void);
+  Result.AddParam('Condition', SYSUnit._Boolean, [VarConst]);
+  Result.AddParam('Message', SYSUnit._String, [VarConst], SYSUnit._NullPtrExpression);
+end;
+
+function TSF_Assert.Process(var EContext: TEContext): TIDExpression;
+var
+  AMessage, ACondition: TIDExpression;
+begin
+  // read arguments
+  AMessage := EContext.RPNPopExpression();
+  ACondition := EContext.RPNPopExpression();
   Result := nil;
 end;
 
