@@ -309,7 +309,7 @@ type
     function CheckAndParseDeprecated(Scope: TScope; CurrToken: TTokenID): TTokenID;
     function ParseAttribute(Scope: TScope): TTokenID;
     function CheckAndParseAttribute(Scope: TScope): TTokenID;
-    function CheckAndParseProcTypeCallConv(Scope: TScope; TypeDecl: TIDType): TTokenID;
+    function CheckAndParseProcTypeCallConv(Scope: TScope; Token: TTokenID; TypeDecl: TIDType): TTokenID;
     function ParseAsmSpecifier: TTokenID;
     property InitProc: TIDProcedure read FInitProc;
     property FinalProc: TIDProcedure read FFinalProc;
@@ -528,8 +528,8 @@ begin
         Result := Lexer_NextToken(Scope);
         Continue;
       end;
-      {IDENTIFIER}
-      token_identifier: begin
+      {IDENTIFIER, OPEN ROUND}
+      token_identifier, token_openround: begin
         InitEContext(LEContext, SContext, ExprLValue);
         begin
           var ASTEDst, ASTESrc: TASTExpression;
@@ -538,8 +538,6 @@ begin
             InitEContext(REContext, SContext, ExprRValue);
             Lexer_NextToken(Scope);
             Result := ParseExpression(Scope, SContext, REContext, ASTESrc);
-//            if Assigned(REContext.LastBoolNode) then
-//              Bool_CompleteImmediateExpression(REContext, REContext.Result);
 
             LEContext.RPNPushExpression(REContext.Result);
             LEContext.RPNPushOperator(opAssignment);
@@ -3989,9 +3987,13 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.CheckAndParseProcTypeCallConv(Scope: TScope; TypeDecl: TIDType): TTokenID;
+function TASTDelphiUnit.CheckAndParseProcTypeCallConv(Scope: TScope; Token: TTokenID; TypeDecl: TIDType): TTokenID;
 begin
-  Result := Lexer_NextToken(Scope);
+  if Token = token_semicolon then
+    Result := Lexer_NextToken(Scope)
+  else
+    Result := Token;
+
   case Result of
     token_stdcall: begin
       TIDProcType(TypeDecl).CallConv := ConvStdCall;
@@ -7825,10 +7827,7 @@ begin
     Lexer_MatchToken(Result, token_semicolon);
 
     // check and parse procedural type call convention
-    if Decl is TIDProcType then
-      Result := CheckAndParseProcTypeCallConv(Scope, Decl)
-    else
-      Result := Lexer_NextToken(Scope);
+    Result := CheckAndParseProcTypeCallConv(Scope, Result,  Decl)
 
   until Result <> token_identifier;
 end;
@@ -8234,7 +8233,7 @@ var
   Field: TIDVariable;
   Names: TIdentifiersPool;
   VarFlags: TVariableFlags;
-  Deprecated: TIDExpression;
+  DeprecatedText: TIDExpression;
 begin
   c := 0;
   Names := TIdentifiersPool.Create(2);
@@ -8268,7 +8267,7 @@ begin
         Lexer_ReadNextIdentifier(Scope, ID);
         DeclAbsolute := Scope.FindID(ID.Name);
         if not Assigned(DeclAbsolute) then
-          AbortWork(sUndeclaredIdentifier, [ID.Name], ID.TextPosition);
+          ERROR_UNDECLARED_ID(ID);
         if DeclAbsolute.ItemType <> itVar then
           AbortWork(sVariableRequired, Lexer_Position);
         Result := Lexer_NextToken(Scope);
@@ -8277,14 +8276,10 @@ begin
 
     // deprecated
     if Result = token_deprecated then
-      Result := ParseDeprecated(Scope, Deprecated);
+      Result := ParseDeprecated(Scope, DeprecatedText);
 
-    Lexer_MatchToken(Result, token_semicolon);
     // check and parse procedural type call convention
-    if DataType is TIDProcType then
-      Result := CheckAndParseProcTypeCallConv(Scope, DataType)
-    else
-      Result := Lexer_NextToken(Scope);
+    Result := CheckAndParseProcTypeCallConv(Scope, Result, DataType);
 
     for i := 0 to c do begin
       if not Assigned(Struct) then
@@ -8296,21 +8291,13 @@ begin
         DataType := GetWeakRefType(Scope, DataType);
       Field.DataType := DataType;
       Field.Visibility := Visibility;
-
-      // if the init value for global var is not constant value
-//      if Assigned(DefaultValue) and DefaultValue.IsTMPVar then
-//      begin
-//        ILWrite(@fInitProcSConect, TIL.IL_Move(TIDExpression.Create(Field), DefaultValue));
-//      end else
       Field.DefaultValue := DefaultValue;
-
       Field.Absolute := TIDVariable(DeclAbsolute);
       Field.Flags := Field.Flags + VarFlags;
       if isRef then
         Field.Flags := Field.Flags + [VarNotNull];
       Scope.AddVariable(Field);
     end;
-
     if Result <> token_identifier then
       Exit;
     c := 0;
