@@ -447,7 +447,7 @@ begin
 
   DataType := DataType.ActualDataType;
 
-  if DataType.Ordinal then
+  if DataType.IsOrdinal then
   begin
     Decl := TIDIntConstant.CreateAnonymous(nil, DataType, (DataType as TIDOrdinal).LowBound);
   end else
@@ -497,7 +497,7 @@ begin
 
   DataType := DataType.ActualDataType;
 
-  if DataType.Ordinal then
+  if DataType.IsOrdinal then
   begin
     Decl := TIDIntConstant.CreateAnonymous(nil, DataType, (DataType as TIDOrdinal).HighBound);
   end else

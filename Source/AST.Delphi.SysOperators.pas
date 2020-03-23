@@ -154,7 +154,7 @@ type
     function Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
   end;
 
-  {implicit Variant -> Any}
+  {implicit Variant -> Untyped}
   TIDOpImplicitAnyToUntyped = class(TSysOpImplicit<TIDOpImplicitAnyToUntyped>)
   public
     function Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; override;
@@ -171,6 +171,12 @@ type
   TIDOpImplicitPointerToAny = class(TSysOpImplicit<TIDOpImplicitPointerToAny>)
   public
     function Check(const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
+    function Check(const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
+  {implicit String <- Any}
+  TSysImplicitStringFromAny = class(TSysOpImplicit<TSysImplicitStringFromAny>)
+  public
     function Check(const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
@@ -264,10 +270,18 @@ type
   end;
 
 
+  {operator ptr IntDiv int}
   TSys_Ptr_IntDiv_Int = class(TSysOpBinary<TSys_Ptr_IntDiv_Int>)
   public
     function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; override;
   end;
+
+  {operator ptr IntDiv int}
+  TSys_StaticArray_Add = class(TSysOpBinary<TSys_StaticArray_Add>)
+  public
+    function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; override;
+  end;
+
 
 implementation
 
@@ -591,7 +605,7 @@ end;
 
 function TSysExplicitEnumToAny.Check(const Src, Dst: TIDType): Boolean;
 begin
-  Result := Dst.Ordinal;
+  Result := Dst.IsOrdinal;
 end;
 
 { TIDOpImplicitStringToPChar }
@@ -661,7 +675,7 @@ end;
 
 function TSysExplictPointerFromAny.Check(const Src, Dst: TIDType): Boolean;
 begin
-  Result := Src.Ordinal or (Src.DataTypeID in [dtPointer, dtClass, dtInterface, dtWideString, dtString, dtAnsiString, dtDynArray]);
+  Result := Src.IsOrdinal or (Src.DataTypeID in [dtPointer, dtClass, dtInterface, dtWideString, dtString, dtAnsiString, dtDynArray]);
 end;
 
 { TSysExplicitAnsiStringFromAny }
@@ -673,7 +687,7 @@ end;
 
 function TSysExplicitAnsiStringFromAny.Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
 begin
-  if Src.IsConstant and Src.DataType.Ordinal then
+  if Src.IsConstant and Src.DataType.IsOrdinal then
     Result := Src
   else
     Result := inherited;
@@ -691,7 +705,7 @@ end;
 
 function TSysExplictPointerToAny.Check(const Src, Dst: TIDType): Boolean;
 begin
-  Result := Dst.Ordinal or (Dst.DataTypeID in [dtPointer,
+  Result := Dst.IsOrdinal or (Dst.DataTypeID in [dtPointer,
                                                dtProcType,
                                                dtRecord,
                                                dtClass,
@@ -751,6 +765,34 @@ end;
 function TSysExplicitCharToAny.Check(const Src, Dst: TIDType): Boolean;
 begin
   Result := True;
+end;
+
+{ TSys_CharArray_Add_Int }
+
+function TSys_StaticArray_Add.Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression;
+begin
+  if (Left.DataTypeID = dtStaticArray) and (Right.DataType.IsInteger) then
+  begin
+    var ADT := TIDArray(Left.DataType);
+    if ADT.ElementDataType = SYSUnit._Char then
+    begin
+      Result := TIDExpression.Create(GetTMPVar(SYSUnit._Char.DefaultReference));
+      Exit;
+    end;
+    if ADT.ElementDataType = SYSUnit._AnsiChar then
+    begin
+      Result := TIDExpression.Create(GetTMPVar(SYSUnit._AnsiChar.DefaultReference));
+      Exit;
+    end;
+  end;
+  Result := nil;
+end;
+
+{ TSysImplicitStringFromAny }
+
+function TSysImplicitStringFromAny.Check(const Src, Dst: TIDType): Boolean;
+begin
+  Result := TSysExplicitStringFromAny.Instance.Check(Src, Dst);
 end;
 
 end.

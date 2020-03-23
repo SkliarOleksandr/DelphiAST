@@ -433,7 +433,7 @@ begin
       Result := ParseConstExpression(Scope, Expression, ExprRValue);
       if Expression.ItemType = itType then begin
         Base := Expression.Declaration;
-        if not TIDType(Base).Ordinal then
+        if not TIDType(Base).IsOrdinal then
           AbortWork(sOrdinalTypeRequired, Lexer_PrevPosition);
       end else begin
         Base := TIDRangeType.Create(Scope, ID);
@@ -582,7 +582,7 @@ function TASTDelphiUnit.ParseStaticArrayType(Scope: TScope; Decl: TIDArray): TTo
   begin
     CheckEmptyExpression(Expr);
     if not ((Expr.ItemType = itConst) or
-           ((Expr.ItemType = itType) and (TIDType(Expr.Declaration).Ordinal))) then
+           ((Expr.ItemType = itType) and (TIDType(Expr.Declaration).IsOrdinal))) then
       ERROR_ORDINAL_CONST_OR_TYPE_REQURED;
   end;
 var
@@ -692,7 +692,7 @@ begin
   if Result = token_openblock then
   begin
     {static array}
-    Decl := TIDArray.Create(Scope, ID);
+    Decl := TIDStaticArray.Create(Scope, ID);
     Decl.GenericDescriptor := GDescriptor;
     if ID.Name <> '' then begin
       if Assigned(GDescriptor) then
@@ -5745,7 +5745,7 @@ begin
   if LoopVar.DataType = nil then
     LoopVar.DataType := SYSUnit._Int32
   else
-  if (LoopVar.ItemType <> itVar) or not (LoopVar.DataType.Ordinal) then
+  if (LoopVar.ItemType <> itVar) or not (LoopVar.DataType.IsOrdinal) then
     AbortWork(sForLoopIndexVarsMastBeSimpleIntVar, Lexer_Position);
 
   // начальное значение
@@ -8618,7 +8618,7 @@ end;
 
 class procedure TASTDelphiUnit.CheckOrdinalExpression(Expression: TIDExpression);
 begin
-  if not Expression.DataType.Ordinal then
+  if not Expression.DataType.IsOrdinal then
     ERROR_ORDINAL_TYPE_REQUIRED(Expression.TextPosition);
 end;
 

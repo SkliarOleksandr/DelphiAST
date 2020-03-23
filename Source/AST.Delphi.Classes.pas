@@ -310,18 +310,18 @@ type
     TBinarOperators = array [opIn..High(TOperatorID)] of TIDPairList;
     TExplistIDList = TAVLTree<TDataTypeId, TIDDeclaration>;
   private
-    FElementary: Boolean;
-    FIsPooled: Boolean;         // если это анонимный тип, то флаг показывает находится ли этот тип в пуле
-    FDefaultReference: TIDType; // дефолтный анонимный указатель на этот тип
-    FWeakType: TIDWeekRef;
-    FDataTypeID: TDataTypeID;
-    FTypeKind: TTypeKind;
+    fElementary: Boolean;
+    fIsPooled: Boolean;         // если это анонимный тип, то флаг показывает находится ли этот тип в пуле
+    fDefaultReference: TIDType; // дефолтный анонимный указатель на этот тип
+    fWeakType: TIDWeekRef;
+    fDataTypeID: TDataTypeID;
+    fTypeKind: TTypeKind;
     // lists of implicit operators
-    FImplicitsTo: TIDPairList;      // self -> dest
-    FImplicitsIDTo: TIDPairList;    // self -> dest
-    FImplicitsFrom: TIDPairList;    // src -> self
-    FSysImplicitToAny: TIDOperator;    // self -> any
-    FSysImplicitFromAny: TIDOperator;  // any -> self
+    fImplicitsTo: TIDPairList;      // self -> dest
+    fImplicitsIDTo: TIDPairList;    // self -> dest
+    fImplicitsFrom: TIDPairList;    // src -> self
+    fSysImplicitToAny: TIDOperator;    // self -> any
+    fSysImplicitFromAny: TIDOperator;  // any -> self
 
     // lists of explicits operators (user level 2):
     fExplicitsTo: TIDPairList;
@@ -333,27 +333,27 @@ type
     fSysExplicitToAny: TIDOperator;
     fSysExplicitFromAny: TIDOperator;
 
-    FUnarOperators: TUnarOperators;
-    FBinarOperators: TBinarOperators;
-    FBinarOperatorsFor: TBinarOperators;
-    FGenericDescriptor: PGenericDescriptor; // содерижт всю информацию по generic-типу/процедуре
-    FGenericNextOverload: TIDType;
+    fUnarOperators: TUnarOperators;
+    fBinarOperators: TBinarOperators;
+    fBinarOperatorsFor: TBinarOperators;
+    fGenericDescriptor: PGenericDescriptor; // содерижт всю информацию по generic-типу/процедуре
+    fGenericNextOverload: TIDType;
     /////////////////////////////////////////////////////////
-    FPacked: Boolean;
-    FNeedForward: Boolean;
-    FForwardID: TIdentifier;
-    FInitProc: TIDProcedure;
-    FCopyProc: TIDProcedure;
-    FFinalProc: TIDProcedure;
+    fPacked: Boolean;
+    fNeedForward: Boolean;
+    fForwardID: TIdentifier;
+    fInitProc: TIDProcedure;
+    fCopyProc: TIDProcedure;
+    fFinalProc: TIDProcedure;
     function GetOperators(const Op: TOperatorID): TIDPairList;
     function GetOperatorsFor(const Op: TOperatorID): TIDPairList;
     function GetIsReferenced: Boolean;
+    function GetIsInteger: Boolean;
   protected
     function GetDataSize: Integer; virtual;
     function GetOrdinal: Boolean; virtual;
     function GetDisplayName: string; override;
     function GetIsManaged: Boolean; virtual;
-//    function GetManagedFlags: TManagedDataTypeFlags; virtual;
     function GetActualDataType: TIDType; virtual;
     function GetParent: TIDType;
     procedure SetGenericDescriptor(const Value: PGenericDescriptor); virtual;
@@ -372,7 +372,8 @@ type
     property Elementary: Boolean read FElementary write FElementary;
     property BinarOperators[const Op: TOperatorID]: TIDPairList read GetOperators;
     property BinarOperatorsFor[const Op: TOperatorID]: TIDPairList read GetOperatorsFor;
-    property Ordinal: Boolean read GetOrdinal;
+    property IsOrdinal: Boolean read GetOrdinal;
+    property IsInteger: Boolean read GetIsInteger;
     property IsPacked: Boolean read FPacked write FPacked;
     property IsReferenced: Boolean read GetIsReferenced;
     // функция возвращает точный implicit оператор, если определен
@@ -754,6 +755,14 @@ type
     procedure IncRefCount(RCPath: UInt32); override;
     procedure SaveDeclToStream(Stream: TStream; const Package: INPPackage); override;
   end;
+
+  TIDStaticArray = class(TIDArray)
+  public
+    constructor CreateAnonymous(Scope: TScope; BaseType: TIDType); reintroduce;
+    constructor Create(Scope: TScope; const ID: TIdentifier); override;
+    procedure CreateStandardOperators; override;
+  end;
+
 
   {тип - динамический массив}
   TIDDynArray = class(TIDArray)
@@ -2938,6 +2947,12 @@ end;
 //  Result := cDataTypeManagedFlags[DataTypeID];
 //end;
 
+function TIDType.GetIsInteger: Boolean;
+begin
+  Result := FDataTypeID in [dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64,
+                            dtNativeInt, dtNativeUInt];
+end;
+
 function TIDType.GetIsManaged: Boolean;
 begin
   Result := cDataTypeManaged[DataTypeID];
@@ -4405,16 +4420,16 @@ begin
     Exit(FID.Name);
 
   case FDataTypeID of
-    dtStaticArray: Result := 'static array [' + GetDimInfo + '] of ' + FElementDataType.DisplayName;
-    dtDynArray: Result := 'array of ' + FElementDataType.DisplayName;
-    dtOpenArray: Result := 'openarray of ' + FElementDataType.DisplayName;
+    dtStaticArray: Result := 'static array [' + GetDimInfo + '] of ';
+    dtDynArray: Result := 'array of ';
+    dtOpenArray: Result := 'openarray of ';
   end;
-end;
 
-//function TIDArray.GetManagedFlags: TManagedDataTypeFlags;
-//begin
-//  Result := cDataTypeManagedFlags[DataTypeID];
-//end;
+  if Assigned(FElementDataType) then
+    Result := Result + FElementDataType.DisplayName
+  else
+    Result := Result + '<null>';
+end;
 
 procedure TIDArray.IncRefCount(RCPath: UInt32);
 var
@@ -4599,8 +4614,7 @@ begin
     Exit;
   inherited CreateStandardOperators;
 
-  OverloadBinarOperator2(opAdd, Self, Self);
-  OverloadBinarOperator2(opSubtract, Self, Self);
+  OverloadBinarOperator2(opSubtract, Self, SYSUnit._Int32);
 
   OverloadBinarOperator2(opAdd, SYSUnit._Int8, Self);
   OverloadBinarOperator2(opAdd, SYSUnit._Int16, Self);
@@ -5064,7 +5078,7 @@ end;
 
 function TIDAliasType.GetOrdinal: Boolean;
 begin
-  Result := FLinkedType.Ordinal;
+  Result := FLinkedType.IsOrdinal;
 end;
 
 procedure TIDAliasType.IncRefCount(RCPath: UInt32);
@@ -6250,6 +6264,26 @@ constructor TASTDelphiLabel.Create(Scope: TScope; const Identifier: TIdentifier)
 begin
   inherited;
   ItemType := itLabel;
+end;
+
+{ TIDStaticArray }
+
+constructor TIDStaticArray.Create(Scope: TScope; const ID: TIdentifier);
+begin
+  inherited;
+  DataTypeID := dtStaticArray;
+end;
+
+constructor TIDStaticArray.CreateAnonymous(Scope: TScope; BaseType: TIDType);
+begin
+  inherited;
+  DataTypeID := dtStaticArray;
+end;
+
+procedure TIDStaticArray.CreateStandardOperators;
+begin
+  inherited;
+  AddBinarySysOperator(opAdd, TSys_StaticArray_Add.Instance);
 end;
 
 initialization

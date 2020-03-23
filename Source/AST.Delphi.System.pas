@@ -269,6 +269,7 @@ begin
   _String.OverloadImplicitTo(_PAnsiCharType, TIDOpImplicitStringToPChar.CreateInternal(_PAnsiCharType));
   _String.OverloadImplicitTo(_WideString);
   _String.OverloadImplicitFrom(_PCharType);
+  _String.OverloadImplicitFromAny(TSysImplicitStringFromAny.Instance);
 
   // AnsiString
   _AnsiString.OverloadImplicitTo(_Variant, FImplicitAnyToVariant);
@@ -871,7 +872,7 @@ begin
   TIDString(fWideString).ElementDataType := _Char;
   TIDString(fWideString).AddBound(TIDOrdinal(_NativeUInt));
   //===============================================================
-  fShortString := RegisterTypeCustom('ShortString', TIDString, dtString);
+  fShortString := RegisterTypeCustom('ShortString', TIDString, dtAnsiString);
   TIDString(fShortString).ElementDataType := _Char;
   TIDString(fShortString).AddBound(TIDOrdinal(_NativeUInt));
   //===============================================================
