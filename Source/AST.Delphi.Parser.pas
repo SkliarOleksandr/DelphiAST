@@ -88,6 +88,8 @@ type
     class function GetTMPRefExpr(const SContext: TSContext; DataType: TIDType): TIDExpression; overload; inline; static;
     class function GetTMPRefExpr(const SContext: TSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline; static;
     class function GetStaticTMPVar(DataType: TIDType; VarFlags: TVariableFlags = []): TIDVariable; static;
+  private
+    function MatchOverloadProc2(Item: TIDExpression; const CallArgs: TIDExpressions; CallArgsCount: Integer): TIDProcedure;
   protected
     function GetSource: string; override;
     procedure CheckLabelExpression(const Expr: TIDExpression); overload;
@@ -3643,6 +3645,10 @@ var
   DstDataTypeID: TDataTypeID;
 begin
   Result := nil;
+
+//  if Item.textposition.row = 17460 then
+//    sleep(1);
+
   MaxMatchedFactor := 0;
   MatchedCount := 0;
   MinDataLossFactor := MaxInt;
@@ -3677,7 +3683,7 @@ begin
               SrcDataTypeID := ArgDataType.DataTypeID;
               DstDataTypeID := ParamDataType.DataTypeID;
               if SrcDataTypeID = DstDataTypeID then
-                ParamFactor := 100
+                ParamFactor := 99
               else begin
                 ParamFactor := ImplicitFactor(SrcDataTypeID, DstDataTypeID);
                 if ParamFactor = 0 then
@@ -3725,6 +3731,105 @@ begin
     if (DataLossCount = MinDataLossFactor) and
        (DeclarationFactor > 0) and
        (DeclarationFactor = MaxMatchedFactor) then
+      Inc(MatchedCount);
+    // Берем следующую overload декларацию
+    Declaration := Declaration.NextOverload;
+  until Declaration = nil;
+
+  if MatchedCount = 0 then
+    ERROR_OVERLOAD(Item)
+  else
+  if MatchedCount > 1 then
+    ERROR_AMBIGUOUS_OVERLOAD_CALL(Item);
+end;
+
+
+function TASTDelphiUnit.MatchOverloadProc2(Item: TIDExpression; const CallArgs: TIDExpressions; CallArgsCount: Integer): TIDProcedure;
+const
+  cWFactor = 1000000;            // Масштабирующий коэффициент
+var
+  i,
+  MatchedCount: Integer;         // Кол-во деклараций имеющих одинаковый максимальный коэффициент
+  ParamDataType,                 // Тип формального параметра процедуры
+  ArgDataType                    // Тип передаваемого аргумента
+  : TIDType;
+  Param: TIDVariable;
+  ImplicitCast: TIDDeclaration;
+  Declaration: TIDProcedure;
+  SrcDataTypeID,
+  DstDataTypeID: TDataTypeID;
+  curArgsMatches: TASTArgsMachLevels;
+  curLevel: TASTArgMatchLevel;
+  curRate: TASTArgMatchRate;
+begin
+  Result := nil;
+  MatchedCount := 0;
+  Declaration := TIDProcedure(Item.Declaration);
+  repeat
+    if (Declaration.ParamsCount = 0) and (CallArgsCount = 0) then
+      Exit(Declaration);
+
+    curArgsMatches := fArgsMatch[MatchedCount];
+    if CallArgsCount <= Declaration.ParamsCount then
+    begin
+      for i := 0 to Declaration.ParamsCount - 1 do begin
+        Param := Declaration.ExplicitParams[i];
+        // Если аргумент не пропущен
+        if (i < CallArgsCount) and Assigned(CallArgs[i]) then
+        begin
+          ParamDataType := Param.DataType.ActualDataType;
+          ArgDataType := CallArgs[i].DataType.ActualDataType;
+
+          // сравнение типов формального параметра и аргумента (пока не учитываются модификаторы const, var... etc)
+          if ParamDataType.DataTypeID = dtGeneric then
+            curLevel := TASTArgMatchLevel.MatchGeneric
+          else
+          if ParamDataType = ArgDataType then
+            curLevel := TASTArgMatchLevel.MatchStrict
+          else begin
+            // Подбираем implicit type cast
+            curRate := 1;
+            ImplicitCast := MatchImplicit(ArgDataType, ParamDataType);
+            if Assigned(ImplicitCast) then
+            begin
+              SrcDataTypeID := ArgDataType.DataTypeID;
+              DstDataTypeID := ParamDataType.DataTypeID;
+              if SrcDataTypeID = DstDataTypeID then
+                curLevel := TASTArgMatchLevel.MatchImplicit
+              else begin
+                  curRate := 1;  // todo
+                  curLevel := MatchNone;
+//                ParamFactor := ImplicitFactor(SrcDataTypeID, DstDataTypeID);
+//                if ParamFactor = 0 then
+//                  ParamFactor := 50;
+              end;
+            end;
+
+            // if any arg doesn't match - skip this declaration
+            if curLevel = MatchNone then
+              Break;
+
+          end;
+        end else begin
+          // if the arg is missed and the param has a default value
+          if VarHasDefault in param.Flags then
+            curLevel := TASTArgMatchLevel.MatchStrict
+          else begin
+            // if not, skip this declaration
+            curLevel := MatchNone;
+            Break;
+          end;
+        end;
+      end;
+
+      // Масштабируем получившийся коэффициент и усредняем его по кол-ву параметров
+      // DeclarationFactor := DeclarationFactor*cWFactor div Declaration.ParamsCount;
+    end else begin
+      Declaration := Declaration.NextOverload;
+      Continue;
+    end;
+
+    if curLevel <> MatchNone then
       Inc(MatchedCount);
     // Берем следующую overload декларацию
     Declaration := Declaration.NextOverload;

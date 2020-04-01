@@ -51,26 +51,47 @@ type
 
   TCondIFValue = (condIFFalse, condIfTrue, condIFUnknown);
 
+  TASTArgMatchLevel = (
+    MatchNone,                     // doesn't match at all
+    MatchImplicitCallAndDataLoss,  // matches using implicit operator call and possible data loss
+    MatchImplicitAndDataLoss,      // matches using implicit cast and possible data loss
+    MatchImplicitCall,             // matches using implicit operator call
+    MatchImplicit,                 // matches using implicit cast (minimally matches)
+    MatchGeneric,                  // matches strictly using generic instantiation
+    MatchStrict                    // matches strictly
+  );
+
+  TASTArgMatchRate = 1..10;
+
+  TASTArgMatchInfo = record
+    Level: TASTArgMatchLevel;
+    Rate: TASTArgMatchRate;
+  end;
+
+  TASTArgsMachLevels = array of TASTArgMatchInfo;
+  TASTArgsMachArray = array of TASTArgsMachLevels;
+
   TNPUnit = class(TASTModule)
   type
     TVarModifyPlace = (vmpAssignment, vmpPassArgument);
     TIdentifiersPool = TPool<TIdentifier>;
   private
-    FID: Integer;                      // ID модуля в пакете
+    fID: Integer;                      // ID модуля в пакете
     fLexer: TDelphiLexer;
-    FIntfScope: TScope;                // interface scope
-    FImplScope: TScope;                // implementation scope
-    FIntfImportedUnits: TUnitList;
-    FImplImportedUnits: TUnitList;
-    FMessages: ICompilerMessages;
-    FVarSpace: TVarSpace;
-    FProcSpace: TProcSpace;
-    FTypeSpace: TTypeSpace;
-    FConsts: TConstSpace;              // список нетривиальных констант (массивы, структуры)
-    FCompiled: Boolean;
+    fIntfScope: TScope;                // interface scope
+    fImplScope: TScope;                // implementation scope
+    fIntfImportedUnits: TUnitList;
+    fImplImportedUnits: TUnitList;
+    fMessages: ICompilerMessages;
+    fVarSpace: TVarSpace;
+    fProcSpace: TProcSpace;
+    fTypeSpace: TTypeSpace;
+    fConsts: TConstSpace;              // список нетривиальных констант (массивы, структуры)
+    fCompiled: Boolean;
     function GetMessagesText: string;
   protected
     fUnitName: TIdentifier;            // the Unit declaration name
+    fArgsMatch: TASTArgsMachArray;
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
     function GetModuleName: string; override;
     procedure SetUnitName(const Name: string);
@@ -160,6 +181,11 @@ begin
     // добовляем system в uses
     FIntfImportedUnits.AddObject('system', SYSUnit);
   end;
+
+  SetLength(fArgsMatch, 8);
+  for var i := 0 to Length(fArgsMatch) - 1 do
+    SetLength(fArgsMatch[i], 8);
+
 //  FOptions := TCompilerOptions.Create(Package.Options);
 //
 //  fCondStack := TSimpleStack<Boolean>.Create(0);
