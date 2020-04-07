@@ -61,15 +61,23 @@ type
     MatchStrict                    // matches strictly
   );
 
-  TASTArgMatchRate = 1..10;
-
   TASTArgMatchInfo = record
     Level: TASTArgMatchLevel;
     Rate: TASTArgMatchRate;
   end;
+  PASTArgMatchInfo = ^TASTArgMatchInfo;
 
-  TASTArgsMachLevels = array of TASTArgMatchInfo;
-  TASTArgsMachArray = array of TASTArgsMachLevels;
+  TASTArgsMachItems = array of TASTArgMatchInfo;
+
+  TASTProcMatchItem = record
+    ArgsInfo: TASTArgsMachItems;
+    Decl: TIDProcedure;
+    TotalRate: Integer;
+  end;
+  PASTProcMatchItem = ^TASTProcMatchItem;
+
+
+  TASTProcMachArray = array of TASTProcMatchItem;
 
   TNPUnit = class(TASTModule)
   type
@@ -91,7 +99,7 @@ type
     function GetMessagesText: string;
   protected
     fUnitName: TIdentifier;            // the Unit declaration name
-    fArgsMatch: TASTArgsMachArray;
+    fProcMatches: TASTProcMachArray;
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
     function GetModuleName: string; override;
     procedure SetUnitName(const Name: string);
@@ -182,9 +190,10 @@ begin
     FIntfImportedUnits.AddObject('system', SYSUnit);
   end;
 
-  SetLength(fArgsMatch, 8);
-  for var i := 0 to Length(fArgsMatch) - 1 do
-    SetLength(fArgsMatch[i], 8);
+  // pre allocate 8 items by 8 args
+  SetLength(fProcMatches, 8);
+  for var i := 0 to Length(fProcMatches) - 1 do
+    SetLength(fProcMatches[i].ArgsInfo, 8);
 
 //  FOptions := TCompilerOptions.Create(Package.Options);
 //

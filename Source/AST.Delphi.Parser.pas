@@ -127,7 +127,7 @@ type
     class function MatchOperatorIn(const Left, Right: TIDExpression): TIDDeclaration; static;
     class function MatchConstDynArrayImplicit(Source: TIDExpression; Destination: TIDType): TIDType; static;
     class function MatchDynArrayImplicit(Source: TIDExpression; Destination: TIDType): TIDType; static;
-    class function MatchOverloadProc(Item: TIDExpression; const CallArgs: TIDExpressions; CallArgsCount: Integer): TIDProcedure; static;
+    function MatchOverloadProc(Item: TIDExpression; const CallArgs: TIDExpressions; CallArgsCount: Integer): TIDProcedure;
     class function MatchImplicitClassOf(Source: TIDExpression; Destination: TIDClassOf): TIDDeclaration; static;
     class function MatchProcedureTypes(Src: TIDProcType; Dst: TIDProcType): TIDType; static;
     class procedure MatchPropSetter(Prop: TIDProperty; Setter: TIDExpression; PropParams: TScope);
@@ -3624,7 +3624,7 @@ begin
   // пока без проверки на пользовательские операторы
 end;
 
-class function TASTDelphiUnit.MatchOverloadProc(Item: TIDExpression; const CallArgs: TIDExpressions; CallArgsCount: Integer): TIDProcedure;
+function TASTDelphiUnit.MatchOverloadProc2(Item: TIDExpression; const CallArgs: TIDExpressions; CallArgsCount: Integer): TIDProcedure;
 const
   cWFactor = 1000000;            // Масштабирующий коэффициент
 var
@@ -3744,21 +3744,21 @@ begin
 end;
 
 
-function TASTDelphiUnit.MatchOverloadProc2(Item: TIDExpression; const CallArgs: TIDExpressions; CallArgsCount: Integer): TIDProcedure;
+function TASTDelphiUnit.MatchOverloadProc(Item: TIDExpression; const CallArgs: TIDExpressions; CallArgsCount: Integer): TIDProcedure;
 const
-  cWFactor = 1000000;            // Масштабирующий коэффициент
+  cRateFactor = 1000000;                // multiplication factor for total rate calculdation
 var
   i,
-  MatchedCount: Integer;         // Кол-во деклараций имеющих одинаковый максимальный коэффициент
-  ParamDataType,                 // Тип формального параметра процедуры
-  ArgDataType                    // Тип передаваемого аргумента
-  : TIDType;
+  MatchedCount: Integer;                // Кол-во деклараций имеющих одинаковый максимальный коэффициент
+  ParamDataType,                        // Тип формального параметра процедуры
+  ArgDataType  : TIDType;               // Тип передаваемого аргумента
   Param: TIDVariable;
   ImplicitCast: TIDDeclaration;
   Declaration: TIDProcedure;
   SrcDataTypeID,
   DstDataTypeID: TDataTypeID;
-  curArgsMatches: TASTArgsMachLevels;
+  curProcMatchItem: PASTProcMatchItem;
+  cutArgMatchItem: PASTArgMatchInfo;
   curLevel: TASTArgMatchLevel;
   curRate: TASTArgMatchRate;
 begin
@@ -3769,17 +3769,22 @@ begin
     if (Declaration.ParamsCount = 0) and (CallArgsCount = 0) then
       Exit(Declaration);
 
-    curArgsMatches := fArgsMatch[MatchedCount];
+    // check and grow
+    if MatchedCount >= Length(fProcMatches) then
+      SetLength(fProcMatches, 4);
+
+    curProcMatchItem := @fProcMatches[MatchedCount];
     if CallArgsCount <= Declaration.ParamsCount then
     begin
       for i := 0 to Declaration.ParamsCount - 1 do begin
         Param := Declaration.ExplicitParams[i];
-        // Если аргумент не пропущен
+        // if cur arg presents
         if (i < CallArgsCount) and Assigned(CallArgs[i]) then
         begin
           ParamDataType := Param.DataType.ActualDataType;
           ArgDataType := CallArgs[i].DataType.ActualDataType;
 
+          curRate := 0;
           // сравнение типов формального параметра и аргумента (пока не учитываются модификаторы const, var... etc)
           if ParamDataType.DataTypeID = dtGeneric then
             curLevel := TASTArgMatchLevel.MatchGeneric
@@ -3787,8 +3792,7 @@ begin
           if ParamDataType = ArgDataType then
             curLevel := TASTArgMatchLevel.MatchStrict
           else begin
-            // Подбираем implicit type cast
-            curRate := 1;
+            // find implicit type cast
             ImplicitCast := MatchImplicit(ArgDataType, ParamDataType);
             if Assigned(ImplicitCast) then
             begin
@@ -3797,11 +3801,12 @@ begin
               if SrcDataTypeID = DstDataTypeID then
                 curLevel := TASTArgMatchLevel.MatchImplicit
               else begin
-                  curRate := 1;  // todo
-                  curLevel := MatchNone;
-//                ParamFactor := ImplicitFactor(SrcDataTypeID, DstDataTypeID);
-//                if ParamFactor = 0 then
-//                  ParamFactor := 50;
+                  var dataLoss: Boolean;
+                  curRate := GetImplicitRate(SrcDataTypeID, DstDataTypeID, dataLoss);  // todo
+                  if dataLoss  then
+                    curLevel := TASTArgMatchLevel.MatchImplicitAndDataLoss
+                  else
+                    curLevel := TASTArgMatchLevel.MatchImplicit;
               end;
             end;
 
@@ -3820,26 +3825,69 @@ begin
             Break;
           end;
         end;
-      end;
+        // check and grow
+        if i >= Length(curProcMatchItem.ArgsInfo) then
+          SetLength(curProcMatchItem.ArgsInfo, 4);
 
-      // Масштабируем получившийся коэффициент и усредняем его по кол-ву параметров
-      // DeclarationFactor := DeclarationFactor*cWFactor div Declaration.ParamsCount;
+        // store argument's match info into cache
+        cutArgMatchItem := @curProcMatchItem.ArgsInfo[i];
+        cutArgMatchItem.Level := curLevel;
+        cutArgMatchItem.Rate := curRate;
+      end;
     end else begin
+      // skip this declaration due to params length doesn't match
       Declaration := Declaration.NextOverload;
       Continue;
     end;
 
     if curLevel <> MatchNone then
+    begin
+
+      curProcMatchItem.Decl := Declaration;
       Inc(MatchedCount);
-    // Берем следующую overload декларацию
+    end;
+    // take next declaration
     Declaration := Declaration.NextOverload;
   until Declaration = nil;
 
-  if MatchedCount = 0 then
+  Declaration := nil;
+  if MatchedCount > 0 then
+  begin
+    // calculating total rates for each match
+    for i := 0 to MatchedCount - 1 do
+    begin
+      var TotalRate: Integer := 0;
+      curProcMatchItem := @fProcMatches[i];
+      for var j := 0 to CallArgsCount - 1  do
+      begin
+        cutArgMatchItem := @curProcMatchItem.ArgsInfo[j];
+        TotalRate := TotalRate + Ord(cutArgMatchItem.Level)*cRateFactor + cutArgMatchItem.Rate * 100000;
+      end;
+      curProcMatchItem.TotalRate := TotalRate;
+    end;
+    // finding the most matched or ambiguous
+    var MaxRate := 0;
+    var AmbiguousRate: Integer := 0;
+    for i := 0 to MatchedCount - 1 do
+    begin
+      curProcMatchItem := @fProcMatches[i];
+      if curProcMatchItem.TotalRate > MaxRate then
+      begin
+        MaxRate := curProcMatchItem.TotalRate;
+        Result := curProcMatchItem.Decl;
+        AmbiguousRate := 0;
+      end else
+      if curProcMatchItem.TotalRate = MaxRate then
+      begin
+        AmbiguousRate := curProcMatchItem.TotalRate;
+      end;
+    end;
+    // todo: using AmbiguousRate as key we can log all ambiguous decls
+    if AmbiguousRate > 0 then
+      ERROR_AMBIGUOUS_OVERLOAD_CALL(Item);
+
+  end else
     ERROR_OVERLOAD(Item)
-  else
-  if MatchedCount > 1 then
-    ERROR_AMBIGUOUS_OVERLOAD_CALL(Item);
 end;
 
 function TASTDelphiUnit.MatchBinarOperatorWithImplicit(const SContext: TSContext; Op: TOperatorID; var Left,

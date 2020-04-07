@@ -39,7 +39,7 @@ resourcestring
     // overload:
   sOverloadedMustBeMarked = 'Overloaded entry "%s" must be marked with the "overload" directive';
   sErrorOverload = '%s: There is no overload version with such parameters';
-  sAmbiguousOverloadedCallFmt = 'Ambiguous overloaded call to "%s"';
+  sAmbiguousOverloadedCallFmt = 'Ambiguous overloaded call "%s"';
   sInvalidIndex = 'Index is out of bounds';
   sNotAllowedHere = 'Not allowed here: "%s"';
   sUnexpectedEndOfFile = 'Unexpected end of file';
