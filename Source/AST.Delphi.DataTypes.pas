@@ -386,78 +386,85 @@ end;
 
 function GetImplicitRate(const Src, Dst: TDataTypeID; out DataLoss: Boolean): TASTArgMatchRate;
 begin
-  var RValue := implicitRates[Src, Dst];
-  DataLoss := RValue < 0;
-  Result := Abs(RValue);
+  if (Src <= dtVariant) and (Dst <= dtVariant) then
+  begin
+    var RValue := implicitRates[Src, Dst];
+    DataLoss := RValue < 0;
+    Exit(Abs(RValue));
+  end;
+  Result := 0;
 end;
 
-procedure Rate(Src, Dst: TDataTypeID; Rate: TASTArgMatchRate; DataLoss: Boolean = False);
+procedure Rate(Src: TDataTypeID; Dsts: array of TDataTypeID);
 begin
-  if implicitRates[Src, Dst] <> 0 then
-    raise Exception.Create('Rate is already set');
+  for var i := 0 to Length(Dsts) - 1 do
+  begin
+    if implicitRates[Src, Dsts[i]] <> 0 then
+      raise Exception.Create('Rate is already set');
 
-  var RateValue: Integer := Rate;
-  if DataLoss then
-    RateValue := - Rate;
+    var RateValue: Integer := Length(Dsts) - i;
+    implicitRates[Src, Dsts[i]] := RateValue;
+  end;
+end;
 
-  implicitRates[Src, Dst] := RateValue;
+procedure RateWDL(Src: TDataTypeID; Dsts: array of TDataTypeID);
+begin
+  for var i := 0 to Length(Dsts) - 1 do
+  begin
+    if implicitRates[Src, Dsts[i]] <> 0 then
+      raise Exception.Create('Rate is already set');
+
+    var RateValue: Integer := - (Length(Dsts) - i);
+    implicitRates[Src, Dsts[i]] := RateValue;
+  end;
 end;
 
 procedure InitImplicitRates;
 begin
   FillChar(implicitRates, Sizeof(implicitRates), #0);
-
   // Int8 ///////////////////////////////////////////
-  Rate(dtInt8, dtInt8, High(TASTArgMatchRate));
-  Rate(dtInt8, dtInt16, 9);
-  Rate(dtInt8, dtInt32, 8);
-  Rate(dtInt8, dtInt64, 7);
-  Rate(dtInt8, dtUInt8, 8, True);
-  Rate(dtInt8, dtUInt16, 9, True);
-  Rate(dtInt8, dtUInt32, 7, True);
-  Rate(dtInt8, dtUInt64, 6, True);
-  Rate(dtInt8, dtFloat32, 5);
-  Rate(dtInt8, dtFloat64, 4);
-  Rate(dtInt8, dtVariant, 3);
-
+  Rate(dtInt8, [dtInt8, dtInt16, dtInt32, dtInt64, dtFloat32, dtFloat64, dtVariant]);
+  RateWDL(dtInt8, [dtUInt16, dtUInt32, dtUInt64, dtUInt8]);
   // Int16 //////////////////////////////////////////
-  Rate(dtInt16, dtInt8, 7, True);
-  Rate(dtInt16, dtInt16, High(TASTArgMatchRate));
-  Rate(dtInt16, dtInt32, 9);
-  Rate(dtInt16, dtInt64, 8);
-  Rate(dtInt16, dtUInt8, 6, True);
-  Rate(dtInt16, dtUInt16, 9, True);
-  Rate(dtInt16, dtUInt32, 8, True);
-  Rate(dtInt16, dtUInt64, 7, True);
-  Rate(dtInt16, dtFloat32, 5);
-  Rate(dtInt16, dtFloat64, 4);
-  Rate(dtInt16, dtVariant, 3);
-
+  Rate(dtInt16, [dtInt16, dtInt32, dtInt64, dtFloat32, dtFloat64, dtVariant]);
+  RateWDL(dtInt16, [dtUInt32, dtUInt64, dtUInt16, dtInt8, dtUInt8]);
   // Int32 //////////////////////////////////////////
-  Rate(dtInt32, dtInt8, 4, True);
-  Rate(dtInt32, dtInt16, 6, True);
-  Rate(dtInt32, dtInt32, High(TASTArgMatchRate));
-  Rate(dtInt32, dtInt64, 9);
-  Rate(dtInt32, dtUInt8, 5, True);
-  Rate(dtInt32, dtUInt16, 7, True);
-  Rate(dtInt32, dtUInt32, 9, True);
-  Rate(dtInt32, dtUInt64, 8, True);
-  Rate(dtInt32, dtFloat32, 8);
-  Rate(dtInt32, dtFloat64, 7);
-  Rate(dtInt32, dtVariant, 6);
-
+  Rate(dtInt32, [dtInt32, dtInt64, dtFloat64, dtVariant]);
+  RateWDL(dtInt32, [dtUInt32, dtFloat32, dtUInt64, dtInt16, dtUInt16, dtInt8, dtUInt8]);
   // Int64 //////////////////////////////////////////
-  Rate(dtInt64, dtInt8, 4, True);
-  Rate(dtInt64, dtInt16, 6, True);
-  Rate(dtInt64, dtInt32, High(TASTArgMatchRate));
-  Rate(dtInt64, dtInt64, 9);
-  Rate(dtInt64, dtUInt8, 5, True);
-  Rate(dtInt64, dtUInt16, 7, True);
-  Rate(dtInt64, dtUInt32, 9, True);
-  Rate(dtInt64, dtUInt64, 8, True);
-  Rate(dtInt64, dtFloat32, 8);
-  Rate(dtInt64, dtFloat64, 7);
-  Rate(dtInt64, dtVariant, 6);
+  Rate(dtInt64, [dtInt64, dtVariant]);
+  RateWDL(dtInt64, [dtUInt64, dtFloat64, dtInt32, dtFloat32, dtUInt32, dtInt16, dtUInt16, dtInt8, dtUInt8]);
+  // UInt8 ///////////////////////////////////////////
+  Rate(dtUInt8, [dtUInt8, dtUInt16, dtInt16, dtInt32, dtUInt32, dtInt64, dtUInt64, dtFloat32, dtFloat64, dtVariant]);
+  RateWDL(dtUInt8, [dtInt8]);
+  // UInt16 //////////////////////////////////////////
+  Rate(dtUInt16, [dtUInt16, dtUInt32, dtInt32, dtInt64, dtUInt64, dtFloat32, dtFloat64, dtVariant]);
+  RateWDL(dtUInt16, [dtInt16, dtUInt8, dtInt8]);
+  // UInt32 //////////////////////////////////////////
+  Rate(dtUInt32, [dtUInt32, dtInt64, dtUInt64, dtFloat64, dtVariant]);
+  RateWDL(dtUInt32, [dtInt32, dtFloat32, dtUInt16, dtInt16, dtUInt8, dtInt8]);
+  // UInt64 //////////////////////////////////////////
+  Rate(dtUInt64, [dtUInt64, dtVariant]);
+  RateWDL(dtUInt64, [dtInt64, dtFloat64, dtInt32, dtUInt32, dtFloat32, dtInt16, dtUInt16, dtInt8, dtUInt8]);
+  // Float32 /////////////////////////////////////////
+  Rate(dtFloat32, [dtFloat32, dtFloat64, dtVariant]);
+  // Float64 /////////////////////////////////////////
+  Rate(dtFloat64, [dtFloat64, dtVariant]);
+  RateWDL(dtFloat64, [dtFloat32]);
+  // Boolean /////////////////////////////////////////
+  Rate(dtBoolean, [dtBoolean, dtVariant]);
+  // AnsiChar /////////////////////////////////////////
+  Rate(dtAnsiChar, [dtAnsiChar, dtVariant]);
+  // Char /////////////////////////////////////////
+  Rate(dtChar, [dtChar, dtVariant]);
+  // AnsiString /////////////////////////////////////////
+  Rate(dtAnsiString, [dtAnsiString, dtVariant]);
+  // String /////////////////////////////////////////
+  Rate(dtString, [dtString, dtVariant]);
+  // WideString /////////////////////////////////////////
+  Rate(dtWideString, [dtWideString, dtVariant]);
+  // Variant /////////////////////////////////////////
+  Rate(dtVariant, [dtVariant]); // todo
 end;
 
 
