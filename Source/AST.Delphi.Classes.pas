@@ -2882,6 +2882,7 @@ const
     {dtBoolean}     1,
     {dtAnsiChar}    1,
     {dtChar}        2,
+    {dtShortString}-1,
     {dtAnsiString} -1,
     {dtString}     -1,
     {dtWideString} -1,

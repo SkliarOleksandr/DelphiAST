@@ -65,8 +65,6 @@ type
     fFinalArrayOfStrProc: TIDProcedure;
     fFinalArrayOfVarProc: TIDProcedure;
     fAsserProc: TIDProcedure;
-    fWideString: TIDType;
-    fShortString: TIDType;
     fOpenString: TIDType;
     fDeprecatedDefaultStr: TIDStringConstant;
     procedure AddImplicists;
@@ -125,7 +123,8 @@ type
     property _Char: TIDType read fDataTypes[dtChar] write fDataTypes[dtChar];
     property _AnsiString: TIDType read fDataTypes[dtAnsiString] write fDataTypes[dtAnsiString];
     property _String: TIDType read fDataTypes[dtString] write fDataTypes[dtString];
-    property _ShortString: TIDType read fShortString write fShortString;
+    property _ShortString: TIDType read fDataTypes[dtShortString] write fDataTypes[dtShortString];
+    property _WideString: TIDType read fDataTypes[dtWideString] write fDataTypes[dtWideString];
     property _Variant: TIDType read fDataTypes[dtVariant] write fDataTypes[dtVariant];
     property _NilPointer: TIDType read fNullPtrType;
     property _TGuid: TIDStructure read fGuidType;
@@ -162,7 +161,6 @@ type
     property _PAnsiCharType: TIDType read fPAnsiChar;
     property _PCharType: TIDType read fPChar;
     property _AnyArrayType: TIDArray read fArrayType;
-    property _WideString: TIDType read fWideString;
   end;
 
 var
@@ -271,6 +269,16 @@ begin
   _String.OverloadImplicitFrom(_PCharType);
   _String.OverloadImplicitFromAny(TSysImplicitStringFromAny.Instance);
 
+
+  // ShortString
+  _ShortString.OverloadImplicitTo(_AnsiString);
+  _ShortString.OverloadImplicitTo(_Variant, FImplicitAnyToVariant);
+  _ShortString.OverloadImplicitTo(_PCharType, TIDOpImplicitStringToPChar.CreateInternal(_PCharType));
+  _ShortString.OverloadImplicitTo(_PAnsiCharType, TIDOpImplicitStringToPChar.CreateInternal(_PAnsiCharType));
+  _ShortString.OverloadImplicitTo(_String, TIDOpImplicitAnsiStringToString.CreateInternal(_String));
+  _ShortString.OverloadImplicitTo(_TGuid, TIDOpImplicitStringToGUID.CreateInternal(_TGuid));
+  _ShortString.OverloadImplicitFrom(_PAnsiCharType);
+
   // AnsiString
   _AnsiString.OverloadImplicitTo(_Variant, FImplicitAnyToVariant);
   _AnsiString.OverloadImplicitTo(_PCharType, TIDOpImplicitStringToPChar.CreateInternal(_PCharType));
@@ -282,9 +290,6 @@ begin
 
   // WideString
   _WideString.OverloadImplicitTo(_String);
- 
-  // ShortString
-  _ShortString.OverloadImplicitTo(_AnsiString);
 
   // Char
   _Char.OverloadImplicitTo(_String, TIDOpImplicitCharToString.CreateInternal(_String));
@@ -857,6 +862,10 @@ begin
   RegisterOrdinal('AnsiChar', dtAnsiChar, 0, MaxUInt8);
   RegisterOrdinal('Char', dtChar, 0, MaxUInt16);
   //===============================================================
+  RegisterType('ShortString', TIDString, dtShortString);
+  TIDString(_ShortString).ElementDataType := _AnsiChar;
+  TIDString(_ShortString).AddBound(TIDOrdinal(_NativeUInt));
+  //===============================================================
   RegisterType('AnsiString', TIDString, dtAnsiString);
   TIDString(_AnsiString).ElementDataType := _AnsiChar;
   TIDString(_AnsiString).AddBound(TIDOrdinal(_NativeUInt));
@@ -868,13 +877,9 @@ begin
   FImplicitAnyToVariant := TIDOpImplicitAnyToVariant.CreateInternal(_Variant);
   FImplicitVariantToAny := TIDOpImplicitVariantToAny.CreateInternal(nil);
   //===============================================================
-  fWideString := RegisterTypeCustom('WideString', TIDString, dtWideString);
-  TIDString(fWideString).ElementDataType := _Char;
-  TIDString(fWideString).AddBound(TIDOrdinal(_NativeUInt));
-  //===============================================================
-  fShortString := RegisterTypeCustom('ShortString', TIDString, dtAnsiString);
-  TIDString(fShortString).ElementDataType := _Char;
-  TIDString(fShortString).AddBound(TIDOrdinal(_NativeUInt));
+  RegisterType('WideString', TIDString, dtWideString);
+  TIDString(_WideString).ElementDataType := _Char;
+  TIDString(_WideString).AddBound(TIDOrdinal(_NativeUInt));
   //===============================================================
   fOpenString := RegisterTypeCustom('OpenString', TIDString, dtString);
   TIDString(fOpenString).ElementDataType := _Char;
@@ -924,7 +929,7 @@ begin
   RegisterTypeAlias('Comp', _Int64);
   RegisterTypeAlias('Byte', _UInt8);
   RegisterTypeAlias('Word', _UInt16);
-  RegisterTypeAlias('_ShortString', fShortString);
+  RegisterTypeAlias('_ShortString', _ShortString);
   RegisterTypeAlias('UnicodeString', _String);
   RegisterTypeAlias('WideChar', _Char);
 

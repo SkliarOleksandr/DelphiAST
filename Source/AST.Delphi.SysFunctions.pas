@@ -456,7 +456,7 @@ begin
     DataType := (DataType as TIDArray).Dimensions[0];
     Decl := TIDIntConstant.CreateAnonymous(nil, SYSUnit._Int32, (DataType as TIDOrdinal).LowBound);
   end else
-  if DataType.DataTypeID in [dtDynArray, dtString, dtAnsiString] then
+  if DataType.DataTypeID in [dtDynArray, dtString, dtShortString, dtAnsiString] then
   begin
     Exit(SYSUnit._ZeroExpression);
   end else
@@ -506,7 +506,7 @@ begin
     DataType := (DataType as TIDArray).Dimensions[0];
     Decl := TIDIntConstant.CreateAnonymous(nil, SYSUnit._Int32, (DataType as TIDOrdinal).HighBound);
   end else
-  if DataType.DataTypeID in [dtDynArray, dtString, dtAnsiString] then
+  if DataType.DataTypeID in [dtDynArray, dtString, dtShortString, dtAnsiString] then
   begin
     // Lenght - 1
     Decl := TIDIntConstant.CreateAnonymous(nil, SYSUnit._Int32, 0); // tmp
@@ -593,7 +593,7 @@ begin
       end;
     end;
     // dynamic array, string
-    dtDynArray, dtString, dtAnsiString, dtWideString: begin
+    dtDynArray, dtShortString, dtString, dtAnsiString, dtWideString: begin
       if Expr.Declaration is TIDDynArrayConstant then
         Result := IntConstExpression(Expr.AsDynArrayConst.ArrayLength)
       else
@@ -1057,7 +1057,7 @@ end;
 
 class function TSF_AtomicIncrement.CreateDecl(Scope: TScope): TIDBuiltInFunction;
 begin
-  Result := Self.Create(Scope, 'AtomicIncreament', _Void);
+  Result := Self.Create(Scope, 'AtomicIncrement', _Void);
   Result.AddParam('Target', SYSUnit._UntypedReference, [VarInOut]);
   Result.AddParam('Value', SYSUnit._Int32, [VarConst], SYSUnit._OneExpression);
 end;

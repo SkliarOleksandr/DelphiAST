@@ -1897,7 +1897,7 @@ begin
     ParamDataType := TIDType(Node.Key);
     ImplicitCast := MatchImplicit(Right, ParamDataType);
     if Assigned(ImplicitCast) then begin
-      ParamFactor := ImplicitFactor(Right.DataTypeID, ParamDataType.DataTypeID);
+      ParamFactor := ImplicitFactor2(Right.DataTypeID, ParamDataType.DataTypeID);
       if ParamFactor > BetterFactor then begin
         BetterFactor := ParamFactor;
         BetterOp := Node.Data as TIDDeclaration;
@@ -3641,6 +3641,19 @@ var
   curRate: TASTArgMatchRate;
 begin
   Result := nil;
+
+  if Item.TextPosition.Row = 18020 then
+  begin
+    Sleep(1);
+    for i := 0 to Length(fProcMatches) - 1 do
+    begin
+      FillChar(fProcMatches[i].ArgsInfo[0], Length(fProcMatches[i].ArgsInfo) - 1, 0);
+      fProcMatches[i].Decl := nil;
+      fProcMatches[i].TotalRate := 0;
+    end;
+
+  end;
+
   MatchedCount := 0;
   Declaration := TIDProcedure(Item.Declaration);
   repeat
@@ -3649,9 +3662,9 @@ begin
 
     // check and grow
     if MatchedCount >= Length(fProcMatches) then
-      SetLength(fProcMatches, 4);
+      SetLength(fProcMatches, MatchedCount + 4);
 
-    curProcMatchItem := @fProcMatches[MatchedCount];
+    curProcMatchItem := Addr(fProcMatches[MatchedCount]);
     if CallArgsCount <= Declaration.ParamsCount then
     begin
       for i := 0 to Declaration.ParamsCount - 1 do begin
@@ -3663,6 +3676,7 @@ begin
           ArgDataType := CallArgs[i].DataType.ActualDataType;
 
           curRate := 0;
+          curLevel := MatchNone;
           // сравнение типов формального параметра и аргумента (пока не учитываются модификаторы const, var... etc)
           if ParamDataType.DataTypeID = dtGeneric then
             curLevel := TASTArgMatchLevel.MatchGeneric
@@ -3677,8 +3691,10 @@ begin
               SrcDataTypeID := ArgDataType.DataTypeID;
               DstDataTypeID := ParamDataType.DataTypeID;
               if SrcDataTypeID = DstDataTypeID then
-                curLevel := TASTArgMatchLevel.MatchImplicit
-              else begin
+              begin
+                curLevel := TASTArgMatchLevel.MatchImplicit;
+                curRate := 10;
+              end else begin
                   var dataLoss: Boolean;
                   curRate := GetImplicitRate(SrcDataTypeID, DstDataTypeID, dataLoss);  // todo
                   if dataLoss  then
@@ -3705,7 +3721,7 @@ begin
         end;
         // check and grow
         if i >= Length(curProcMatchItem.ArgsInfo) then
-          SetLength(curProcMatchItem.ArgsInfo, 4);
+          SetLength(curProcMatchItem.ArgsInfo, i + 4);
 
         // store argument's match info into cache
         cutArgMatchItem := @curProcMatchItem.ArgsInfo[i];
@@ -3720,7 +3736,6 @@ begin
 
     if curLevel <> MatchNone then
     begin
-
       curProcMatchItem.Decl := Declaration;
       Inc(MatchedCount);
     end;
@@ -3735,10 +3750,10 @@ begin
     for i := 0 to MatchedCount - 1 do
     begin
       var TotalRate: Integer := 0;
-      curProcMatchItem := @fProcMatches[i];
+      curProcMatchItem := Addr(fProcMatches[i]);
       for var j := 0 to CallArgsCount - 1  do
       begin
-        cutArgMatchItem := @curProcMatchItem.ArgsInfo[j];
+        cutArgMatchItem := Addr(curProcMatchItem.ArgsInfo[j]);
         TotalRate := TotalRate + Ord(cutArgMatchItem.Level)*cRateFactor + cutArgMatchItem.Rate * 100000;
       end;
       curProcMatchItem.TotalRate := TotalRate;
@@ -3748,7 +3763,7 @@ begin
     var AmbiguousRate: Integer := 0;
     for i := 0 to MatchedCount - 1 do
     begin
-      curProcMatchItem := @fProcMatches[i];
+      curProcMatchItem := Addr(fProcMatches[i]);
       if curProcMatchItem.TotalRate > MaxRate then
       begin
         MaxRate := curProcMatchItem.TotalRate;
@@ -5478,7 +5493,7 @@ begin
         continue;
       end;
       token_inherited: begin
-        CheckLeftOperand(Status);
+        //CheckLeftOperand(Status);
         Result := ParseInheritedStatement(Scope, EContext);
         Status := rpOperand;
         continue;
