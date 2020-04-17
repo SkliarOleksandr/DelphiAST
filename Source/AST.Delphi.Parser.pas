@@ -2298,7 +2298,7 @@ begin
       end;
     end;
     Result := CompileSuccess;
-    //FCompiled := True;
+    FCompiled := True;
   except
     on e: ECompilerStop do Exit();
     on e: ECompilerSkip do Exit(CompileSkip);
@@ -7109,10 +7109,11 @@ var
   i, ac, ai: Integer;
   Item: ^TGenericInstance;
   SrcArg, DstArg: TIDExpression;
+  SrcType, DstType: TIDType;
 begin
   for i := 0 to Length(GenericInstances) - 1 do
   begin
-    Item := @GenericInstances[i];
+    Item := addr(GenericInstances[i]);
     ac := Length(SpecializeArgs);
     if ac <> Length(Item.Args) then
       AbortWorkInternal('Wrong length generics arguments');
@@ -7121,20 +7122,18 @@ begin
       DstArg := Item.Args[ai];
       SrcArg := SpecializeArgs[ai];
       // тут упрощенная проверка:
-      case SrcArg.ItemType of
-        itType: begin
-          if SrcArg.AsType.ActualDataType <> DstArg.AsType.ActualDataType then
-            continue;
-        end;
-        itConst, itVar: begin
-          if SrcArg.DataType.ActualDataType <> DstArg.AsType.ActualDataType then
-            continue;
-        end;
-        else
-          AbortWork(sFeatureNotSupported, SrcArg.TextPosition);
+      SrcType := SrcArg.AsType.ActualDataType;
+      DstType := DstArg.AsType.ActualDataType;
+      if SrcType <> DstType then
+      begin
+        if (SrcType.DataTypeID = dtGeneric) and (DstType.DataTypeID = dtGeneric) then
+          continue;
+        Item := nil;
+        break;
       end;
-      Exit(Item.Instance);
     end;
+    if Assigned(Item) then
+      Exit(Item.Instance);
   end;
   Result := nil;
 end;
@@ -7948,8 +7947,8 @@ begin
       case Decl.ItemType of
         itProcedure: begin
           PrevProc := Decl as TIDProcedure;
-          if PrevProc.Name <> Proc.Name then
-            ERROR_NO_METHOD_IN_BASE_CLASS(PrevProc);
+//          if PrevProc.Name <> Proc.Name then
+//            ERROR_NO_METHOD_IN_BASE_CLASS(PrevProc);
           Result := Lexer_NextToken(Scope);
          ArgsCnt := Length(CallArgs);
           if Result = token_openround then

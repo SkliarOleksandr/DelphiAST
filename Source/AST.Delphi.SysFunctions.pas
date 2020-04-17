@@ -152,6 +152,13 @@ type
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {Swap}
+  TSF_Swap = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
   {Ord}
   TSF_Ord = class(TIDSysRuntimeFunction)
   public
@@ -271,6 +278,12 @@ type
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {Close}
+  TSF_Close = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
 
 implementation
 
@@ -456,7 +469,10 @@ begin
     DataType := (DataType as TIDArray).Dimensions[0];
     Decl := TIDIntConstant.CreateAnonymous(nil, SYSUnit._Int32, (DataType as TIDOrdinal).LowBound);
   end else
-  if DataType.DataTypeID in [dtDynArray, dtString, dtShortString, dtAnsiString] then
+  if DataType.DataTypeID in [dtString, dtShortString, dtAnsiString] then
+    Exit(SYSUnit._OneExpression)
+  else
+  if DataType.DataTypeID in [dtDynArray, dtWideString] then
   begin
     Exit(SYSUnit._ZeroExpression);
   end else
@@ -1089,6 +1105,40 @@ begin
   // read arguments
   AMessage := EContext.RPNPopExpression();
   ACondition := EContext.RPNPopExpression();
+  Result := nil;
+end;
+
+{ TSF_Swap }
+
+class function TSF_Swap.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Swap', SYSUnit._Int32);
+  Result.AddParam('Value', SYSUnit._Int32, [VarConst]);
+end;
+
+function TSF_Swap.Process(var EContext: TEContext): TIDExpression;
+var
+  AValue: TIDExpression;
+begin
+  // read arguments
+  AValue := EContext.RPNPopExpression();
+  Result := AValue;
+end;
+
+{ TSF_Close }
+
+class function TSF_Close.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Close', _Void);
+  Result.AddParam('Handle', SYSUnit._Pointer, [VarConst]);
+end;
+
+function TSF_Close.Process(var EContext: TEContext): TIDExpression;
+var
+  AHandle: TIDExpression;
+begin
+  // read arguments
+  AHandle := EContext.RPNPopExpression();
   Result := nil;
 end;
 

@@ -95,9 +95,9 @@ type
     fProcSpace: TProcSpace;
     fTypeSpace: TTypeSpace;
     fConsts: TConstSpace;              // список нетривиальных констант (массивы, структуры)
-    fCompiled: Boolean;
     function GetMessagesText: string;
   protected
+    fCompiled: Boolean;
     fUnitName: TIdentifier;            // the Unit declaration name
     fProcMatches: TASTProcMachArray;
     //////////////////////////////////////////////////////////////////////////////////////////////////////////

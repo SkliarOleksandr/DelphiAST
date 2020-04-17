@@ -2300,6 +2300,7 @@ function TIDProcedure.SameDeclaration(const ParamsScope: TScope): Boolean;
 var
   item1, item2: TScope.PAVLNode;
   Decl1, Decl2: TIDDeclaration;
+  AType1, AType2: TIDType;
 begin
   if FParamsScope.Count <> ParamsScope.Count then
     Exit(False);
@@ -2308,8 +2309,17 @@ begin
   while Assigned(item1) do begin
     Decl1 := TIDVariable(Item1.Data);
     Decl2 := TIDVariable(Item2.Data);
-    if Decl1.DataType.ActualDataType <> Decl2.DataType.ActualDataType then
-      Exit(False);
+    AType1 := Decl1.DataType.ActualDataType;
+    AType2 := Decl2.DataType.ActualDataType;
+    if AType1 <> AType2 then
+    begin
+      if (AType1.DataTypeID = dtDynArray) and (AType2.DataTypeID = dtDynArray) then
+      begin
+        if TIDArray(AType1).ElementDataType <> TIDArray(AType2).ElementDataType then
+          Exit(False);
+      end else
+        Exit(False);
+    end;
     item1 := FParamsScope.Next(item1);
     item2 := ParamsScope.Next(item2);
   end;

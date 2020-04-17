@@ -676,6 +676,9 @@ end;
 function TSysExplictPointerFromAny.Check(const Src, Dst: TIDType): Boolean;
 begin
   Result := Src.IsOrdinal or (Src.DataTypeID in [dtPointer, dtClass, dtInterface, dtWideString, dtString, dtAnsiString, dtDynArray]);
+
+  if (Src.DataTypeID = dtRecord) and (Src.DataSize = 4) then   // todo: platform
+    Result := True;
 end;
 
 { TSysExplicitAnsiStringFromAny }

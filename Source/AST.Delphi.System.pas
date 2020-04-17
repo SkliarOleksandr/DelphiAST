@@ -259,7 +259,7 @@ begin
     OverloadImplicitTo(_Variant, FImplicitAnyToVariant);
   end;
 
-  // string
+  // String
   _String.OverloadImplicitTo(_Variant, FImplicitAnyToVariant);
   _String.OverloadImplicitTo(_AnsiString, TIDOpImplicitStringToAnsiString.CreateInternal(_AnsiString));
   _String.OverloadImplicitTo(_TGuid, TIDOpImplicitStringToGUID.CreateInternal(_TGuid));
@@ -286,6 +286,7 @@ begin
   _AnsiString.OverloadImplicitTo(_String, TIDOpImplicitAnsiStringToString.CreateInternal(_String));
   _AnsiString.OverloadImplicitTo(_TGuid, TIDOpImplicitStringToGUID.CreateInternal(_TGuid));
   _AnsiString.OverloadImplicitTo(_ShortString);
+  _AnsiString.OverloadImplicitTo(_WideString);
   _AnsiString.OverloadImplicitFrom(_PAnsiCharType);
 
   // WideString
@@ -357,6 +358,7 @@ begin
   _String.OverloadExplicitTo(_NativeUInt);
   _String.OverloadExplicitTo(_PCharType);
   _String.OverloadExplicitTo(_WideString);
+  _String.OverloadExplicitTo(_AnsiString);
   _String.OverloadExplicitTo(_ShortString);
   _String.OverloadExplicitFromAny(TSysExplicitStringFromAny.Instance);
 
@@ -640,7 +642,7 @@ begin
   AD(opGreater);
   AD(opGreaterOrEqual);
 
-  // char
+  // Char
   AddBinarOperator(opEqual, _Char, _Char, _Boolean);
   AddBinarOperator(opNotEqual, _Char, _Char, _Boolean);
   AddBinarOperator(opLess, _Char, _Char, _Boolean);
@@ -648,7 +650,7 @@ begin
   AddBinarOperator(opGreater, _Char, _Char, _Boolean);
   AddBinarOperator(opGreaterOrEqual, _Char, _Char, _Boolean);
 
-  // ansichar
+  // AnsiChar
   AddBinarOperator(opEqual, _AnsiChar, _AnsiChar, _Boolean);
   AddBinarOperator(opNotEqual, _AnsiChar, _AnsiChar, _Boolean);
   AddBinarOperator(opLess, _AnsiChar, _AnsiChar, _Boolean);
@@ -656,7 +658,15 @@ begin
   AddBinarOperator(opGreater, _AnsiChar, _AnsiChar, _Boolean);
   AddBinarOperator(opGreaterOrEqual, _AnsiChar, _AnsiChar, _Boolean);
 
-  // ansistring
+  // ShortString
+  AddBinarOperator(opEqual, _ShortString, _ShortString, _Boolean);
+  AddBinarOperator(opNotEqual, _ShortString, _ShortString, _Boolean);
+  AddBinarOperator(opLess, _ShortString, _ShortString, _Boolean);
+  AddBinarOperator(opLessOrEqual, _ShortString, _ShortString, _Boolean);
+  AddBinarOperator(opGreater, _ShortString, _ShortString, _Boolean);
+  AddBinarOperator(opGreaterOrEqual, _ShortString, _ShortString, _Boolean);
+
+  // AnsiString
   AddBinarOperator(opEqual, _AnsiString, _AnsiString, _Boolean);
   AddBinarOperator(opNotEqual, _AnsiString, _AnsiString, _Boolean);
   AddBinarOperator(opLess, _AnsiString, _AnsiString, _Boolean);
@@ -664,13 +674,21 @@ begin
   AddBinarOperator(opGreater, _AnsiString, _AnsiString, _Boolean);
   AddBinarOperator(opGreaterOrEqual, _AnsiString, _AnsiString, _Boolean);
 
-  // string
+  // String
   AddBinarOperator(opEqual, _String, _String, _Boolean);
   AddBinarOperator(opNotEqual, _String, _String, _Boolean);
   AddBinarOperator(opLess, _String, _String, _Boolean);
   AddBinarOperator(opLessOrEqual, _String, _String, _Boolean);
   AddBinarOperator(opGreater, _String, _String, _Boolean);
   AddBinarOperator(opGreaterOrEqual, _String, _String, _Boolean);
+
+  // WideString
+  AddBinarOperator(opEqual, _WideString, _WideString, _Boolean);
+  AddBinarOperator(opNotEqual, _WideString, _WideString, _Boolean);
+  AddBinarOperator(opLess, _WideString, _WideString, _Boolean);
+  AddBinarOperator(opLessOrEqual, _WideString, _WideString, _Boolean);
+  AddBinarOperator(opGreater, _WideString, _WideString, _Boolean);
+  AddBinarOperator(opGreaterOrEqual, _WideString, _WideString, _Boolean);
 end;
 
 function TSYSTEMUnit.RegisterType(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
@@ -744,12 +762,7 @@ begin
 end;
 
 procedure TSYSTEMUnit.RegisterBuiltinFunctions;
-var
-  Decl: TIDBuiltInFunction;
 begin
-  FArrayType := TIDArray.Create(nil, Identifier('<array type or string>'));
-  FRefType := TIDType.Create(nil, Identifier(''));
-
   RegisterBuiltin(TSF_Abs);
   RegisterBuiltin(TSF_Assert);
   RegisterBuiltin(TSF_Assigned);
@@ -759,6 +772,7 @@ begin
   RegisterBuiltin(TSF_AtomicIncrement);
   RegisterBuiltin(TSF_Copy);
   RegisterBuiltin(TSF_Chr);
+  RegisterBuiltin(TSF_Close);
   RegisterBuiltin(TCT_Dec);
   RegisterBuiltin(TSF_Dispose);
   RegisterBuiltin(TSCTF_Defined);
@@ -785,6 +799,7 @@ begin
   RegisterBuiltin(TSF_Succ);
   RegisterBuiltin(TSF_SetLength);
   RegisterBuiltin(TSF_SetString);
+  RegisterBuiltin(TSF_Swap);
   RegisterBuiltin(TSF_Trunc);
   RegisterBuiltin(TSF_Val);
 
@@ -810,6 +825,7 @@ begin
     if Result = CompileSuccess then
     begin
       SearchSystemTypes;
+      fCompiled := true;
     end;
   except
     on e: ECompilerStop do Exit;
