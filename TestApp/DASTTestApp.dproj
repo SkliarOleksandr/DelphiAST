@@ -129,6 +129,7 @@
         <DCCReference Include="..\Source\AST.Delphi.Errors.pas"/>
         <DCCReference Include="..\Source\AST.Parser.Errors.pas"/>
         <DCCReference Include="..\Source\Lexers\AST.Lexer.pas"/>
+        <DCCReference Include="..\Source\AST.Parser.ProcessStatuses.pas"/>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
             <CfgParent>Base</CfgParent>

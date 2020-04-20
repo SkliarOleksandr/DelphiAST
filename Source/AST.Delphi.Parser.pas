@@ -388,7 +388,8 @@ uses
      AST.Delphi.Errors,
      AST.Delphi.DataTypes,
      AST.Pascal.ConstCalculator,
-     AST.Delphi.System;
+     AST.Delphi.System,
+     AST.Parser.ProcessStatuses;
 
 type
   TSContextHelper = record helper for TSContext
@@ -2191,6 +2192,7 @@ var
   Token: TTokenID;
   Scope: TScope;
 begin
+  Progress(TASTStatusParseBegin);
   Result := CompileFail;
   Messages.Clear;
   FRCPathCount := 1;
@@ -2299,11 +2301,18 @@ begin
     end;
     Result := CompileSuccess;
     FCompiled := True;
+    Progress(TASTStatusParseSuccess);
   except
     on e: ECompilerStop do Exit();
     on e: ECompilerSkip do Exit(CompileSkip);
-    on e: ECompilerAbort do PutMessage(ECompilerAbort(e).CompilerMessage^);
-    on e: Exception do PutMessage(cmtInteranlError, e.Message, Lexer_Position);
+    on e: ECompilerAbort do begin
+      PutMessage(ECompilerAbort(e).CompilerMessage^);
+      Progress(TASTStatusParseFail);
+    end;
+    on e: Exception do begin
+      PutMessage(cmtInteranlError, e.Message, Lexer_Position);
+      Progress(TASTStatusParseFail);
+    end;
   end;
 end;
 
@@ -3641,19 +3650,6 @@ var
   curRate: TASTArgMatchRate;
 begin
   Result := nil;
-
-  if Item.TextPosition.Row = 18020 then
-  begin
-    Sleep(1);
-    for i := 0 to Length(fProcMatches) - 1 do
-    begin
-      FillChar(fProcMatches[i].ArgsInfo[0], Length(fProcMatches[i].ArgsInfo) - 1, 0);
-      fProcMatches[i].Decl := nil;
-      fProcMatches[i].TotalRate := 0;
-    end;
-
-  end;
-
   MatchedCount := 0;
   Declaration := TIDProcedure(Item.Declaration);
   repeat
@@ -7559,7 +7555,11 @@ begin
   else
     Decl := Scope.FindMembers(ExprName);
   if not Assigned(Decl) then
+  begin
+    // if not found -  need to instantiate
+    // todo:
     ERROR_UNDECLARED_ID(ExprName, Lexer_PrevPosition);
+  end;
 
   if Decl.ItemType = itType then
     Decl := SpecializeGenericType(TIDType(Decl), PMContext.ID, GenericArgs)

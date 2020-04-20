@@ -2,7 +2,7 @@ unit AST.Classes;
 
 interface
 
-uses AST.Lexer, AST.Project, AST.Parser.Utils;
+uses AST.Lexer, AST.Project, AST.Parser.Utils, AST.Parser.ProcessStatuses, System.SysUtils;
 
 type
   TASTItemTypeID = Integer;
@@ -37,9 +37,14 @@ type
   TASTItemClass = class of TASTItem;
 
   TASTProject = class(TInterfacedObject, IASTProject)
+  private
+    fOnProgress: TASTProgressEvent;
+    procedure SetOnProgress(const Value: TASTProgressEvent);
+    function GetOnProgress: TASTProgressEvent;
   protected
     function GetUnitClass: TASTUnitClass; virtual; abstract;
   public
+    property OnProgress: TASTProgressEvent read GetOnProgress write SetOnProgress;
   end;
 
   TASTParentItem = class(TASTItem)
@@ -65,13 +70,15 @@ type
 
   TEnumASTDeclProc = reference to procedure (const Module: TASTModule; const Decl: TASTDeclaration);
 
-  TASTModule = class
+  TASTModule = class(TInterfacedObject, IASTModule)
   private
+    fProject: IASTProject;
     fFileName: string;
   protected
-    function GetModuleName: string; virtual; abstract;
+    function GetModuleName: string; virtual;
     function GetSource: string; virtual; abstract;
     procedure SetFileName(const Value: string);
+    procedure Progress(StatusClass: TASTProcessStatusClass);
   public
     property Name: string read GetModuleName;
     property FileName: string read fFileName write SetFileName;
@@ -81,6 +88,7 @@ type
     function GetFirstType: TASTDeclaration; virtual; abstract;
     function GetFirstConst: TASTDeclaration; virtual; abstract;
     constructor Create(const Project: IASTProject; const FileName: string; const Source: string = ''); virtual;
+    constructor CreateFromFile(const Project: IASTProject; const FileName: string); virtual;
     procedure EnumIntfDeclarations(const Proc: TEnumASTDeclProc); virtual; abstract;
   end;
 
@@ -575,6 +583,7 @@ end;
 
 constructor TASTModule.Create(const Project: IASTProject; const FileName: string; const Source: string);
 begin
+  fProject := Project;
   fFileName := FileName;
 end;
 
@@ -1111,9 +1120,40 @@ begin
   Result := 'lnot';
 end;
 
+constructor TASTModule.CreateFromFile(const Project: IASTProject; const FileName: string);
+begin
+  fFileName := FileName;
+end;
+
+function TASTModule.GetModuleName: string;
+begin
+  Result := ExtractFileName(fFileName);
+end;
+
+procedure TASTModule.Progress(StatusClass: TASTProcessStatusClass);
+var
+  Event: TASTProgressEvent;
+begin
+  Event := fProject.OnProgress;
+  if Assigned(Event) then
+    Event(Self, StatusClass);
+end;
+
 procedure TASTModule.SetFileName(const Value: string);
 begin
   fFileName := Value;
+end;
+
+{ TASTProject }
+
+function TASTProject.GetOnProgress: TASTProgressEvent;
+begin
+  Result := fOnProgress;
+end;
+
+procedure TASTProject.SetOnProgress(const Value: TASTProgressEvent);
+begin
+  fOnProgress := Value;
 end;
 
 end.

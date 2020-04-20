@@ -3,7 +3,7 @@ object frmTestAppMain: TfrmTestAppMain
   Top = 0
   Caption = 'Delphi AST Test App'
   ClientHeight = 643
-  ClientWidth = 635
+  ClientWidth = 793
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -14,11 +14,19 @@ object frmTestAppMain: TfrmTestAppMain
   Position = poScreenCenter
   PixelsPerInch = 96
   TextHeight = 13
+  object Splitter1: TSplitter
+    Left = 265
+    Top = 169
+    Height = 474
+    ExplicitLeft = 208
+    ExplicitTop = 208
+    ExplicitHeight = 100
+  end
   object PageControl1: TPageControl
     AlignWithMargins = True
-    Left = 3
+    Left = 271
     Top = 172
-    Width = 629
+    Width = 519
     Height = 468
     ActivePage = tsSource
     Align = alClient
@@ -28,7 +36,7 @@ object frmTestAppMain: TfrmTestAppMain
       object edUnit: TSynEdit
         Left = 0
         Top = 0
-        Width = 621
+        Width = 511
         Height = 440
         Align = alClient
         Font.Charset = DEFAULT_CHARSET
@@ -77,7 +85,6 @@ object frmTestAppMain: TfrmTestAppMain
           ''
           '')
         FontSmoothing = fsmNone
-        ExplicitLeft = 1
       end
     end
     object tsAST: TTabSheet
@@ -86,7 +93,7 @@ object frmTestAppMain: TfrmTestAppMain
       object tvAST: TTreeView
         Left = 0
         Top = 0
-        Width = 621
+        Width = 511
         Height = 440
         Align = alClient
         Indent = 19
@@ -99,7 +106,7 @@ object frmTestAppMain: TfrmTestAppMain
       object edAllItems: TSynEdit
         Left = 0
         Top = 0
-        Width = 621
+        Width = 511
         Height = 440
         Align = alClient
         Font.Charset = DEFAULT_CHARSET
@@ -130,13 +137,13 @@ object frmTestAppMain: TfrmTestAppMain
   object Panel1: TPanel
     Left = 0
     Top = 0
-    Width = 635
+    Width = 793
     Height = 169
     Align = alTop
     BevelOuter = bvNone
     TabOrder = 1
     DesignSize = (
-      635
+      793
       169)
     object Label1: TLabel
       Left = 8
@@ -145,17 +152,17 @@ object frmTestAppMain: TfrmTestAppMain
       Height = 13
       Caption = 'Delphi Source Path'
     end
-    object Edit1: TEdit
+    object edSrcRoot: TEdit
       Left = 8
       Top = 24
-      Width = 393
+      Width = 551
       Height = 21
       Anchors = [akLeft, akTop, akRight]
       TabOrder = 0
       Text = 'C:\Program Files (x86)\Embarcadero\Studio\20.0\source\'
     end
     object Button1: TButton
-      Left = 407
+      Left = 565
       Top = 20
       Width = 106
       Height = 25
@@ -165,7 +172,7 @@ object frmTestAppMain: TfrmTestAppMain
       OnClick = Button1Click
     end
     object Button2: TButton
-      Left = 519
+      Left = 677
       Top = 20
       Width = 108
       Height = 25
@@ -177,13 +184,61 @@ object frmTestAppMain: TfrmTestAppMain
     object Memo1: TMemo
       Left = 8
       Top = 51
-      Width = 619
+      Width = 777
       Height = 118
       Anchors = [akLeft, akTop, akRight]
       Lines.Strings = (
         'Memo1')
       ScrollBars = ssVertical
       TabOrder = 3
+    end
+  end
+  object Panel2: TPanel
+    Left = 0
+    Top = 169
+    Width = 265
+    Height = 474
+    Align = alLeft
+    BevelOuter = bvNone
+    Caption = 'Panel2'
+    TabOrder = 2
+    object Panel3: TPanel
+      Left = 0
+      Top = 0
+      Width = 265
+      Height = 33
+      Align = alTop
+      BevelOuter = bvNone
+      Caption = 'Panel3'
+      ShowCaption = False
+      TabOrder = 0
+      object Button3: TButton
+        Left = 0
+        Top = 6
+        Width = 106
+        Height = 25
+        Caption = 'Load all files'
+        TabOrder = 0
+        OnClick = Button3Click
+      end
+      object Button4: TButton
+        Left = 112
+        Top = 6
+        Width = 106
+        Height = 25
+        Caption = 'Parse selected'
+        TabOrder = 1
+        OnClick = Button4Click
+      end
+    end
+    object lbFiles: TCheckListBox
+      Left = 0
+      Top = 33
+      Width = 265
+      Height = 441
+      Align = alClient
+      ItemHeight = 13
+      TabOrder = 1
     end
   end
   object SynPasSyn1: TSynPasSyn

@@ -115,6 +115,7 @@ type
   public
     ////////////////////////////////////////////////////////////////////////////
     constructor Create(const Project: IASTProject; const FileName: string; const Source: string = ''); override;
+    constructor CreateFromFile(const Project: IASTProject; const FileName: string); override;
     destructor Destroy; override;
     ////////////////////////////////////////////////////////////////////////////
     procedure SaveConstsToStream(Stream: TStream); // сохраняет сложные константы модуля
@@ -199,6 +200,19 @@ begin
 //
 //  fCondStack := TSimpleStack<Boolean>.Create(0);
 //  fCondStack.OnPopError := procedure begin ERROR_INVALID_COND_DIRECTIVE() end;
+end;
+
+constructor TNPUnit.CreateFromFile(const Project: IASTProject; const FileName: string);
+var
+  Stream: TStringStream;
+begin
+  Stream := TStringStream.Create();
+  try
+    Stream.LoadFromFile(FileName);
+    Create(Project, FileName, Stream.DataString);
+  finally
+    Stream.Free;
+  end;
 end;
 
 destructor TNPUnit.Destroy;
@@ -295,6 +309,8 @@ end;
 function TNPUnit.GetModuleName: string;
 begin
   Result := fUnitName.Name;
+  if Result = '' then
+    Result := inherited GetModuleName();
 end;
 
 class function TNPUnit.IsConstEqual(const Left, Right: TIDExpression): Boolean;

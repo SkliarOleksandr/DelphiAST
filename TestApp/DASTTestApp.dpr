@@ -27,7 +27,8 @@ uses
   AST.Delphi.Contexts in '..\Source\AST.Delphi.Contexts.pas',
   AST.Delphi.Errors in '..\Source\AST.Delphi.Errors.pas',
   AST.Parser.Errors in '..\Source\AST.Parser.Errors.pas',
-  AST.Lexer in '..\Source\Lexers\AST.Lexer.pas';
+  AST.Lexer in '..\Source\Lexers\AST.Lexer.pas',
+  AST.Parser.ProcessStatuses in '..\Source\AST.Parser.ProcessStatuses.pas';
 
 {$R *.res}
 

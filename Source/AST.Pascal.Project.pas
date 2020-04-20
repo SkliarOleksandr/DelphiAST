@@ -70,7 +70,8 @@ type
     procedure PrepareStrLiterals;
     procedure SaveStrLiterals(Stream: TStream);
     procedure AddUnit(aUnit, BeforeUnit: TASTModule); overload;
-    procedure AddUnit(const Source: string); overload;
+    procedure AddUnit(const FileName: string); overload;
+    procedure AddUnitSource(const Source: string);
     procedure AddUnitSearchPath(const Path: string; IncludeSubDirectories: Boolean);
     procedure Clear;
     property IncludeDebugInfo: Boolean read GetIncludeDebugInfo write SetIncludeDebugInfo;
@@ -311,12 +312,17 @@ begin
   SetTarget('ANY');
 end;
 
-procedure TNPPackage.AddUnit(const Source: string);
+procedure TNPPackage.AddUnitSource(const Source: string);
 var
   UN: TNPUnit;
 begin
   UN := TNPUnit.Create(Self, Source);
   AddUnit(UN, nil);
+end;
+
+procedure TNPPackage.AddUnit(const FileName: string);
+begin
+  AddUnit(GetUnitClass().CreateFromFile(Self, FileName), nil);
 end;
 
 procedure TNPPackage.AddUnitSearchPath(const Path: string; IncludeSubDirectories: Boolean);

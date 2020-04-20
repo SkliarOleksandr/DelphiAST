@@ -132,7 +132,8 @@ type
     procedure SetTarget(const Value: string);
     procedure SaveToStream(Stream: TStream);
     procedure AddUnit(aUnit, AfterUnit: TASTModule); overload;
-    procedure AddUnit(const Source: string); overload;
+    procedure AddUnit(const FileName: string); overload;
+    procedure AddUnitSource(const Source: string); overload;
     procedure AddUnitSearchPath(const Path: string; IncludeSubDirectories: Boolean = True);
     procedure Clear;
     procedure InitUnits;

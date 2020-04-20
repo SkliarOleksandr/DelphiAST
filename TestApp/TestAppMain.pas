@@ -6,7 +6,7 @@ uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, System.Generics.Collections, AST.Pascal.Project,
   AST.Pascal.Parser, AST.Delphi.Classes, SynEdit, SynEditHighlighter, SynEditCodeFolding, SynHighlighterPas, AST.Delphi.Project,
-  Vcl.ComCtrls, Vcl.ExtCtrls;   // system
+  Vcl.ComCtrls, System.Types, Vcl.ExtCtrls, AST.Project, AST.Parser.ProcessStatuses, Vcl.CheckLst;   // system
 
 type
   TSourceFileInfo = record
@@ -26,17 +26,27 @@ type
     tvAST: TTreeView;
     Panel1: TPanel;
     Label1: TLabel;
-    Edit1: TEdit;
+    edSrcRoot: TEdit;
     Button1: TButton;
     Button2: TButton;
     Memo1: TMemo;
     tsNameSpace: TTabSheet;
     edAllItems: TSynEdit;
+    Panel2: TPanel;
+    Panel3: TPanel;
+    Button3: TButton;
+    Splitter1: TSplitter;
+    lbFiles: TCheckListBox;
+    Button4: TButton;
     procedure Button2Click(Sender: TObject);
     procedure Button1Click(Sender: TObject);
+    procedure Button3Click(Sender: TObject);
+    procedure Button4Click(Sender: TObject);
   private
     { Private declarations }
     //fPKG: INPPackage;
+    fFiles: TStringDynArray;
+    procedure OnProgress(const Module: IASTModule; Status: TASTProcessStatusClass);
   public
     { Public declarations }
     procedure IndexSources(const RootPath: string; Dict: TSourcesDict);
@@ -48,12 +58,14 @@ var
 implementation
 
 uses
-  System.IOUtils, System.Types,
+  System.IOUtils,
   AST.Delphi.System,
   AST.Delphi.Parser,
   AST.Classes,
   AST.Parser.Messages,
-  AST.Writer, AST.Targets, AST.Delphi.DataTypes;
+  AST.Writer,
+  AST.Targets,
+  AST.Delphi.DataTypes;
 
 {$R *.dfm}
 
@@ -165,7 +177,7 @@ end;
 const cRTLUsesSource =
 'unit RTLParseTest; '#10#13 +
 'interface'#10#13 +
-'uses System;'#10#13 +
+'uses System.Types;'#10#13 +
 'implementation'#10#13 +
 'end.';
 
@@ -183,6 +195,12 @@ begin
   end;
 end;
 
+procedure TfrmTestAppMain.OnProgress(const Module: IASTModule; Status: TASTProcessStatusClass);
+begin
+  //if Status = TASTStatusParseSuccess then
+    Memo1.Lines.Add(Module.Name + ' : ' + Status.Name)
+end;
+
 procedure TfrmTestAppMain.Button2Click(Sender: TObject);
 var
   UN: TASTDelphiUnit;
@@ -195,13 +213,14 @@ begin
   FreeAndNil(SYSUnit);
 
   Prj := TASTDelphiProject.Create('test');
-  Prj.AddUnitSearchPath(Edit1.Text);
+  Prj.AddUnitSearchPath(edSrcRoot.Text);
   Prj.InitUnits;
   Prj.Target := TWINX86_Target.TargetName;
   Prj.Defines.Add('CPUX86');
   Prj.Defines.Add('CPU386');
   Prj.Defines.Add('MSWINDOWS');
   Prj.Defines.Add('ASSEMBLER');
+
 
   Prj.AddUnit(AST.Delphi.System.SYSUnit, nil);
 
@@ -234,6 +253,77 @@ begin
     CompilerMessagesToStrings(Prj.Messages, Msg);
 
     Memo1.Lines := Msg;
+  finally
+    Msg.Free;
+  end;
+end;
+
+procedure TfrmTestAppMain.Button3Click(Sender: TObject);
+begin
+  fFiles := TDirectory.GetFiles(edSrcRoot.Text, '*.pas', TSearchOption.soAllDirectories);
+  lbFiles.Clear;
+  lbFiles.Items.BeginUpdate;
+  try
+    for var i := 0 to Length(fFiles) - 1 do
+      lbFiles.AddItem(ExtractRelativePath(edSrcRoot.Text, fFiles[i]), nil);
+    lbFiles.CheckAll(cbChecked);
+  finally
+    lbFiles.Items.EndUpdate;
+  end;
+end;
+
+procedure TfrmTestAppMain.Button4Click(Sender: TObject);
+var
+  Msg: TStrings;
+  Prj: INPPackage;
+  CResult: TCompilerResult;
+begin
+  Memo1.Clear;
+
+  FreeAndNil(SYSUnit);
+
+  Prj := TASTDelphiProject.Create('test');
+  Prj.AddUnitSearchPath(edSrcRoot.Text);
+  Prj.InitUnits;
+  Prj.Target := TWINX86_Target.TargetName;
+  Prj.Defines.Add('CPUX86');
+  Prj.Defines.Add('CPU386');
+  Prj.Defines.Add('MSWINDOWS');
+  Prj.Defines.Add('ASSEMBLER');
+  Prj.OnProgress := OnProgress;
+
+  Prj.AddUnit(AST.Delphi.System.SYSUnit, nil);
+
+
+  for var f in fFiles do
+    Prj.AddUnit(f);
+
+  Msg := TStringList.Create;
+  try
+    Msg.Add('===================================================================');
+    CResult := Prj.Compile;
+    if CResult = CompileSuccess then
+      Msg.Add('compile success')
+    else
+      Msg.Add('compile fail');
+
+    //ASTToTreeView2(UN, tvAST);
+
+    edAllItems.BeginUpdate;
+    try
+      edAllItems.Clear;
+      Prj.EnumIntfDeclarations(
+        procedure(const Module: TASTModule; const Decl: TASTDeclaration)
+        begin
+          edAllItems.Lines.Add(format('%s - %s.%s', [GetItemTypeName(TIDDeclaration(Decl).ItemType), Module.Name, GetDeclName(Decl)]));
+        end);
+    finally
+      edAllItems.EndUpdate;
+    end;
+
+    CompilerMessagesToStrings(Prj.Messages, Msg);
+
+    Memo1.Lines.AddStrings(Msg);
   finally
     Msg.Free;
   end;
