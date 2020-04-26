@@ -28,7 +28,8 @@ uses
   AST.Delphi.Errors in '..\Source\AST.Delphi.Errors.pas',
   AST.Parser.Errors in '..\Source\AST.Parser.Errors.pas',
   AST.Lexer in '..\Source\Lexers\AST.Lexer.pas',
-  AST.Parser.ProcessStatuses in '..\Source\AST.Parser.ProcessStatuses.pas';
+  AST.Parser.ProcessStatuses in '..\Source\AST.Parser.ProcessStatuses.pas',
+  AST.Delphi.Options in '..\Source\AST.Delphi.Options.pas';
 
 {$R *.res}
 

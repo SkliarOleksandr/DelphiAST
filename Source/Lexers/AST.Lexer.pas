@@ -88,6 +88,7 @@ type
   end;
 
   TParserPosition = record
+    Source: string;
     SourcePosition: Integer;
     Row, Col: Integer;
     LastEnterPos: Integer;
@@ -734,6 +735,7 @@ end;
 
 procedure TGenericLexer.SaveState(out State: TParserPosition);
 begin
+  State.Source := fSource;
   State.SourcePosition := fSrcPos;
   State.Row := fRow;
   State.Col := fSrcPos - fLastEnterPos;
@@ -744,6 +746,7 @@ end;
 
 procedure TGenericLexer.LoadState(const State: TParserPosition);
 begin
+  fSource := State.Source;
   fSrcPos := State.SourcePosition;
   fRow := State.Row;
   fLastEnterPos := State.LastEnterPos;

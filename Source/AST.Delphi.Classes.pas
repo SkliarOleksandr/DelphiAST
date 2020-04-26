@@ -1232,6 +1232,7 @@ type
     function GetIsTemporaryOwner: Boolean;
     function GetLastRWInstruction: TObject;
     function GetIsAnyLocalVar: Boolean; inline;
+    function GetIsExplicit: Boolean; inline;
   protected
     function GetDisplayName: string; override;
     function GetCValue: TIDConstant; override;
@@ -1250,6 +1251,7 @@ type
     property Absolute: TIDVariable read FAbsolute write FAbsolute;
     property IsField: Boolean read GetIsField;
     property IsTemporary: Boolean read GetIsTemporary;
+    property IsExplicit: Boolean read GetIsExplicit;
     property IsTemporaryOwner: Boolean read GetIsTemporaryOwner;
     property IsAnyLocalVar: Boolean read GetIsAnyLocalVar;
     // первая инструкция оперирующая с этой переменной
@@ -2300,7 +2302,7 @@ end;
 function TIDProcedure.SameDeclaration(const ParamsScope: TScope): Boolean;
 var
   item1, item2: TScope.PAVLNode;
-  Decl1, Decl2: TIDDeclaration;
+  Decl1, Decl2: TIDParam;
   AType1, AType2: TIDType;
 begin
   if FParamsScope.Count <> ParamsScope.Count then
@@ -2310,6 +2312,10 @@ begin
   while Assigned(item1) do begin
     Decl1 := TIDVariable(Item1.Data);
     Decl2 := TIDVariable(Item2.Data);
+
+    if Decl1.IsExplicit <> Decl2.IsExplicit then
+      Exit(False);
+
     AType1 := Decl1.DataType.ActualDataType;
     AType2 := Decl2.DataType.ActualDataType;
     if AType1 <> AType2 then
@@ -3420,6 +3426,11 @@ begin
   Result := VarIsField in FFlags;
 end;
 
+function TIDVariable.GetIsExplicit: Boolean;
+begin
+  Result := not (VarHiddenParam in FFlags);
+end;
+
 function TIDVariable.GetIsTemporary: Boolean;
 begin
   Result := (VarTemporatyVar in FFlags) or (VarTemporatyRef in Flags);
@@ -4428,8 +4439,9 @@ function TIDArray.GetDisplayName: string;
       Result := AddStringSegment(Result, IntToStr(FDimensions[i].GetElementsCount), ', ');
   end;
 begin
-  if FID.Name <> '' then
-    Exit(FID.Name);
+  Result := inherited GetDisplayName;
+  if Result <> '' then
+    Exit;
 
   case FDataTypeID of
     dtStaticArray: Result := 'static array [' + GetDimInfo + '] of ';

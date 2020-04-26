@@ -44,6 +44,7 @@ type
   protected
     function GetUnitClass: TASTUnitClass; virtual; abstract;
   public
+    constructor Create(const Name: string; RTTICharset: TRTTICharset = RTTICharsetASCII); virtual; abstract;
     property OnProgress: TASTProgressEvent read GetOnProgress write SetOnProgress;
   end;
 

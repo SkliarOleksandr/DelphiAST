@@ -164,7 +164,8 @@ type
     token_cond_ifndef,              // {$IFNDEF
     token_cond_if,                  // {$IF...
     token_cond_ifopt,               // {$IFOPT...
-    token_cond_message              // {$MESSAGE...
+    token_cond_message,             // {$MESSAGE...
+    token_cond_any
   );
 
 
@@ -479,6 +480,7 @@ begin
   RegisterToken('{$MESSAGE', token_cond_message);
   RegisterToken('{$INCLUDE', token_cond_include);
   RegisterToken('{$I', token_cond_include);
+  RegisterToken('{$', token_cond_any);
 end;
 
 end.

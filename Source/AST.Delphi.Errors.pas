@@ -244,7 +244,7 @@ type
     class procedure ERROR_NO_OVERLOAD_OPERATOR_FOR_TYPES(Op: TOperatorID; Right: TIDExpression); overload;
     class procedure ERROR_UNIT_NOT_FOUND(const ID: TIdentifier); static;
     class procedure ERROR_UNIT_RECURSIVELY_USES_ITSELF(const ID: TIdentifier); static;
-    class procedure ERROR_SETTER_MUST_BE_SUCH(const Setter: TIDProcedure; const DeclString: string); static;
+    class procedure ERROR_SETTER_MUST_BE_SUCH(const DeclString: string; const TextPosition: TTextPosition); static;
     class procedure ERROR_GETTER_MUST_BE_SUCH(const Getter: TIDProcedure; const DeclString: string); static;
     class procedure ERROR_DIVISION_BY_ZERO(Expr: TIDExpression); static;
     class procedure ERROR_CONST_VALUE_OVERFLOW(Expr: TIDExpression; DstDataType: TIDType); static;
@@ -717,9 +717,9 @@ begin
   AbortWork('TYPE specification required', TextPosition);
 end;
 
-class procedure TASTDelphiErrors.ERROR_SETTER_MUST_BE_SUCH(const Setter: TIDProcedure; const DeclString: string);
+class procedure TASTDelphiErrors.ERROR_SETTER_MUST_BE_SUCH(const DeclString: string; const TextPosition: TTextPosition);
 begin
-  AbortWork('Setter must have declaration: %s', [DeclString], Setter.ID.TextPosition);
+  AbortWork('Setter must have declaration: %s', [DeclString], TextPosition);
 end;
 
 class procedure TASTDelphiErrors.ERROR_GETTER_MUST_BE_SUCH(const Getter: TIDProcedure; const DeclString: string);

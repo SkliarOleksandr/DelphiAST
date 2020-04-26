@@ -19,7 +19,7 @@ type
   TTypes = TList<TIDType>;
   TEnumDeclProc = procedure (Module: TASTModule; Decl: TASTDeclaration);
 
-  TNPPackage = class(TASTProject, INPPackage)
+  TPascalProject = class(TASTProject, INPPackage)
   type
     TStrConstKey = record
       StrTypeID: TDataTypeID;
@@ -63,7 +63,7 @@ type
   protected
     function GetUnitClass: TASTUnitClass; override;
   public
-    constructor Create(const Name: string; RTTICharset: TRTTICharset = RTTICharsetASCII);
+    constructor Create(const Name: string; RTTICharset: TRTTICharset = RTTICharsetASCII); override;
     destructor Destroy; override;
     ////////////////////////////////////////
     procedure SaveToStream(Stream: TStream);
@@ -77,6 +77,7 @@ type
     property IncludeDebugInfo: Boolean read GetIncludeDebugInfo write SetIncludeDebugInfo;
     property RTTICharset: TRTTICharset read GetRTTICharset write SetRTTICharset;
     property Units: TUnits read FUnits;
+    property Options: TPackageOptions read GetOptions;
     function GetStringConstant(const Value: string): Integer; overload;
     function GetStringConstant(const StrConst: TIDStringConstant): Integer; overload;
     function FindUnitFile(const UnitName: string): string;
@@ -92,22 +93,22 @@ implementation
 uses AST.Parser.Errors,
      AST.Delphi.Errors;
 
-function TNPPackage.GetOptions: TPackageOptions;
+function TPascalProject.GetOptions: TPackageOptions;
 begin
   Result := FOptions;
 end;
 
-function TNPPackage.GetDefines: TDefines;
+function TPascalProject.GetDefines: TDefines;
 begin
   Result := FDefines;
 end;
 
-function TNPPackage.GetIncludeDebugInfo: Boolean;
+function TPascalProject.GetIncludeDebugInfo: Boolean;
 begin
   Result := FIncludeDebugInfo;
 end;
 
-function TNPPackage.GetMessages: ICompilerMessages;
+function TPascalProject.GetMessages: ICompilerMessages;
 var
   i: Integer;
   UnitMessages: ICompilerMessages;
@@ -120,17 +121,17 @@ begin
   Result := FMessages;
 end;
 
-function TNPPackage.GetRTTICharset: TRTTICharset;
+function TPascalProject.GetRTTICharset: TRTTICharset;
 begin
   Result := FRTTICharset;
 end;
 
-function TNPPackage.GetSearchPathes: TStrings;
+function TPascalProject.GetSearchPathes: TStrings;
 begin
   Result := FUnitSearchPathes;
 end;
 
-function TNPPackage.GetStringConstant(const Value: string): Integer;
+function TPascalProject.GetStringConstant(const Value: string): Integer;
 var
   Node: TStrLiterals.PAVLNode;
   Data: TConstInfo;
@@ -154,7 +155,7 @@ begin
   end;
 end;
 
-function TNPPackage.GetStringConstant(const StrConst: TIDStringConstant): Integer;
+function TPascalProject.GetStringConstant(const StrConst: TIDStringConstant): Integer;
 var
   Node: TStrLiterals.PAVLNode;
   Data: TConstInfo;
@@ -173,17 +174,17 @@ begin
   end;
 end;
 
-function TNPPackage.GetTarget: string;
+function TPascalProject.GetTarget: string;
 begin
   Result := FTargetName;
 end;
 
-function TNPPackage.GetUnit(Index: Integer): TObject;
+function TPascalProject.GetUnit(Index: Integer): TObject;
 begin
   Result := FUnits[Index];
 end;
 
-function TNPPackage.GetUnit(const UnitName: string): TObject;
+function TPascalProject.GetUnit(const UnitName: string): TObject;
 var
   i: Integer;
 begin
@@ -196,12 +197,12 @@ begin
   Result := nil;
 end;
 
-function TNPPackage.GetUnitClass: TASTUnitClass;
+function TPascalProject.GetUnitClass: TASTUnitClass;
 begin
   Result := TNPUnit;
 end;
 
-function TNPPackage.GetUnitsCount: Integer;
+function TPascalProject.GetUnitsCount: Integer;
 begin
   Result := FUnits.Count;
 end;
@@ -219,7 +220,7 @@ begin
   end;
 end;
 
-procedure TNPPackage.InitUnits;
+procedure TPascalProject.InitUnits;
 var
   Stream: TStringStream;
   SysFileName, SysSource: string;
@@ -249,7 +250,7 @@ begin
   end;
 end;
 
-procedure TNPPackage.AddUnit(aUnit, BeforeUnit: TASTModule);
+procedure TPascalProject.AddUnit(aUnit, BeforeUnit: TASTModule);
 var
   i: Integer;
 begin
@@ -269,14 +270,14 @@ begin
   FUnits.Add(aUnit);
 end;
 
-class function TNPPackage.StrListCompare(const Left, Right: TStrConstKey): NativeInt;
+class function TPascalProject.StrListCompare(const Left, Right: TStrConstKey): NativeInt;
 begin
   Result := Ord(Left.StrTypeID) - Ord(Right.StrTypeID);
   if Result = 0 then
     Result := AnsiCompareStr(Left.StrValue, Right.StrValue);
 end;
 
-function TNPPackage.UsesUnit(const UnitName: string; AfterUnit: TASTModule): TASTModule;
+function TPascalProject.UsesUnit(const UnitName: string; AfterUnit: TASTModule): TASTModule;
 var
   i: Integer;
   SUnitName: string;
@@ -298,7 +299,7 @@ begin
     Result := nil;
 end;
 
-constructor TNPPackage.Create(const Name: string; RTTICharset: TRTTICharset);
+constructor TPascalProject.Create(const Name: string; RTTICharset: TRTTICharset);
 begin
   FName := Name;
   FUnits := TUnits.Create;
@@ -312,7 +313,7 @@ begin
   SetTarget('ANY');
 end;
 
-procedure TNPPackage.AddUnitSource(const Source: string);
+procedure TPascalProject.AddUnitSource(const Source: string);
 var
   UN: TNPUnit;
 begin
@@ -320,17 +321,17 @@ begin
   AddUnit(UN, nil);
 end;
 
-procedure TNPPackage.AddUnit(const FileName: string);
+procedure TPascalProject.AddUnit(const FileName: string);
 begin
   AddUnit(GetUnitClass().CreateFromFile(Self, FileName), nil);
 end;
 
-procedure TNPPackage.AddUnitSearchPath(const Path: string; IncludeSubDirectories: Boolean);
+procedure TPascalProject.AddUnitSearchPath(const Path: string; IncludeSubDirectories: Boolean);
 begin
   FUnitSearchPathes.AddObject(Path, TObject(IncludeSubDirectories));
 end;
 
-procedure TNPPackage.Clear;
+procedure TPascalProject.Clear;
 var
   i: Integer;
 begin
@@ -343,7 +344,7 @@ begin
   GetStringConstant(''); // занимаем нулевой индекс за пустой строкой
 end;
 
-function TNPPackage.Compile: TCompilerResult;
+function TPascalProject.Compile: TCompilerResult;
 var
   i: Integer;
 begin
@@ -358,7 +359,7 @@ begin
   end;
 end;
 
-destructor TNPPackage.Destroy;
+destructor TPascalProject.Destroy;
 begin
   Clear;
   FUnits.Free;
@@ -369,7 +370,7 @@ begin
   inherited;
 end;
 
-procedure TNPPackage.EnumIntfDeclarations(const EnumProc: TEnumASTDeclProc);
+procedure TPascalProject.EnumIntfDeclarations(const EnumProc: TEnumASTDeclProc);
 var
   i: Integer;
   Module: TASTModule;
@@ -381,7 +382,7 @@ begin
   end;
 end;
 
-function TNPPackage.OpenUnit(const UnitName: string): TASTModule;
+function TPascalProject.OpenUnit(const UnitName: string): TASTModule;
 var
   Stream: TStringStream;
   UnitClass: TASTUnitClass;
@@ -396,7 +397,7 @@ begin
   end;
 end;
 
-procedure TNPPackage.PrepareStrLiterals;
+procedure TPascalProject.PrepareStrLiterals;
 var
   Idx: Integer;
   Constant: TIDConstant;
@@ -413,7 +414,7 @@ begin
   end;
 end;
 
-function TNPPackage.RefCount: Integer;
+function TPascalProject.RefCount: Integer;
 begin
   Result := FRefCount;
 end;
@@ -439,7 +440,7 @@ begin
   Result := '';
 end;
 
-function TNPPackage.FindUnitFile(const UnitName: string): string;
+function TPascalProject.FindUnitFile(const UnitName: string): string;
 var
   i: Integer;
   SearchPath, SearchUnitName: string;
@@ -464,27 +465,27 @@ begin
   Result := '';
 end;
 
-procedure TNPPackage.SaveStrLiterals(Stream: TStream);
+procedure TPascalProject.SaveStrLiterals(Stream: TStream);
 begin
 
 end;
 
-procedure TNPPackage.SaveToStream(Stream: TStream);
+procedure TPascalProject.SaveToStream(Stream: TStream);
 begin
 
 end;
 
-procedure TNPPackage.SetIncludeDebugInfo(const Value: Boolean);
+procedure TPascalProject.SetIncludeDebugInfo(const Value: Boolean);
 begin
   FIncludeDebugInfo := Value;
 end;
 
-procedure TNPPackage.SetRTTICharset(const Value: TRTTICharset);
+procedure TPascalProject.SetRTTICharset(const Value: TRTTICharset);
 begin
   FRTTICharset := Value;
 end;
 
-procedure TNPPackage.SetTarget(const Value: string);
+procedure TPascalProject.SetTarget(const Value: string);
 begin
   FTargetName := Value;
   FTarget := FindTarget(Value);
@@ -492,7 +493,7 @@ begin
     AbortWorkInternal('Unknwon target: ' + Value);
 end;
 
-function TNPPackage.CompileInterfacesOnly: TCompilerResult;
+function TPascalProject.CompileInterfacesOnly: TCompilerResult;
 var
   i: Integer;
 begin
@@ -506,12 +507,12 @@ begin
   end;
 end;
 
-function TNPPackage.GetPointerSize: Integer;
+function TPascalProject.GetPointerSize: Integer;
 begin
   Result := FTarget.PointerSize;
 end;
 
-function TNPPackage.GetNativeIntSize: Integer;
+function TPascalProject.GetNativeIntSize: Integer;
 begin
   Result := FTarget.NativeIntSize;
 end;

@@ -5,23 +5,59 @@ interface
 uses SysUtils, Variants, Generics.Collections, System.Classes;
 
 type
+  TOptDataType = (odtInteger, odtBoolean, odtFloat, odtString, odtEnum, optSpecial);
+
+  // base class for option
+  TOption = class(TList<Variant>)
+  private
+    OptionType: TOptDataType;
+    BoosterPtr: Pointer;  // указатель на значение-кеш
+  public
+    class function ArgsCount: Integer; virtual;
+  end;
+  TOptionClass = class of TOption;
+
+  TValueOption = class(TOption)
+  public
+    class function ArgsCount: Integer; override;
+    procedure SetValue(const Value: string; out Error: string); virtual;
+  end;
+
+  TStrOption = class(TValueOption)
+  private
+    fValue: string;
+  public
+    procedure SetValue(const Value: string; out Error: string); override;
+    property Value: string read fValue;
+  end;
+
+//  TIntOption = class(TValueOption)
+//  private
+//    fValue: Integer;
+//  end;
+
+  TBoolOption = class(TValueOption)
+  private
+    fValue: Boolean;
+  public
+    procedure SetValue(const Value: string; out Error: string); override;
+    property Value: Boolean read fValue;
+  end;
+
   TOptions = class
   private type
-    TOptDataType = (odtInteger, odtBoolean, odtFloat, odtString, odtEnum);
-    TOptValues = class(TList<Variant>)
-    private
-      OptionType: TOptDataType;
-      BoosterPtr: Pointer;  // указатель на значение-кеш
-    end;
-    TOptionList = TDictionary<string, TOptValues>;
+    TOptionList = TDictionary<string, TOption>;
   private var
     FParent: TOptions;
     FOptions: TOptionList;
-  protected
-    procedure AddOption(const OptName: string; OptDataType: TOptDataType; BoosterPtr: Pointer; const DefaultValue: Variant);
   public
     constructor Create(Parent: TOptions); virtual;
     destructor Destroy; override;
+
+    function AddBoolOption(const OptName: string): TBoolOption; overload;
+    function AddOption(const OptShortName, OptName: string; OptionClass: TOptionClass): TOption; overload;
+    function FindOption(const Name: string): TOption;
+
     function Exist(const OptName: string): Boolean;
     function OptPush(const OptName: string): Boolean;
     function OptPop(const OptName: string): Boolean;
@@ -30,69 +66,33 @@ type
 
   TDefines = TStringList;
 
-  {TDefines = class
-  private
-    FItems: TStrings;
-    FParent: TDefines;
-  public
-    constructor Create(Parent: TDefines);
-    destructor Destroy; override;
-  end;}
-
-  TCompilerOptions = class(TOptions)
-  private
-    FARC: Boolean;
-    FSAFECODE: Boolean;
-    FOPT_REUSE_TMP_VARS: Boolean;
-    FOPT_ELEMINATE_UNUSED_LOCAL_VARS: Boolean;
-    FOPT_REDUCE_TMP_VARS: Boolean;
-    FOPT_REDUCE_INCREF_DECREF: Boolean;
-    FOPT_SHOW_UNUSED_HINTS: Boolean;
-  public
-    constructor Create(Parent: TOptions); override;
-    property ARC: Boolean read FARC;
-    property SAFECODE: Boolean read FSAFECODE;
-
-    // оптимизации
-    property OPT_ELEMINATE_UNUSED_LOCAL_VARS: Boolean read FOPT_ELEMINATE_UNUSED_LOCAL_VARS write FOPT_ELEMINATE_UNUSED_LOCAL_VARS;
-    property OPT_REUSE_TMP_VARS: Boolean read FOPT_REUSE_TMP_VARS write FOPT_REUSE_TMP_VARS;
-    property OPT_REDUCE_TMP_VARS: Boolean read FOPT_REDUCE_TMP_VARS write FOPT_REDUCE_TMP_VARS;
-    property OPT_REDUCE_INCREF_DECREF: Boolean read FOPT_REDUCE_INCREF_DECREF write FOPT_REDUCE_INCREF_DECREF;
-    property OPT_SHOW_UNUSED_HINTS: Boolean read FOPT_SHOW_UNUSED_HINTS write FOPT_SHOW_UNUSED_HINTS;
-  end;
-
   // глобальные опции сборки
   TPackageOptions = class(TOptions)
-  private
-    FVARIANT_EXPLICIT_CONVERT: Boolean;
   public
     constructor Create(Parent: TOptions); override;
-    ///////////////////////////////////
-    property VARIANT_EXPLICIT_CONVERT: Boolean read FVARIANT_EXPLICIT_CONVERT;
   end;
 
 
 implementation
 
-{ TCompilerOptions }
-
-procedure TOptions.AddOption(const OptName: string; OptDataType: TOptDataType; BoosterPtr: Pointer; const DefaultValue: Variant);
-var
-  Values: TOptValues;
-begin
-  Values := TOptValues.Create;
-  Values.BoosterPtr := BoosterPtr;
-  Values.OptionType := OptDataType;
-  Values.Add(DefaultValue);
-  FOptions.Add(OptName, Values);
-
-  if Assigned(BoosterPtr) then
-  case Values.OptionType of
-    odtInteger: PInt64(BoosterPtr)^ := DefaultValue;
-    odtBoolean: PBoolean(BoosterPtr)^ := DefaultValue;
-    odtFloat: PDouble(BoosterPtr)^ := DefaultValue;
-    odtString: PString(BoosterPtr)^ := DefaultValue;
+type
+  TOptionAlias = class(TOption)
+  private
+    fOriginalOption: TOption;
   end;
+
+
+{ TOptions }
+
+function TOptions.AddBoolOption(const OptName: string): TBoolOption;
+begin
+  Result := TBoolOption.Create();
+  FOptions.Add(OptName, Result);
+end;
+
+function TOptions.AddOption(const OptShortName, OptName: string; OptionClass: TOptionClass): TOption;
+begin
+
 end;
 
 constructor TOptions.Create(Parent: TOptions);
@@ -103,7 +103,7 @@ end;
 
 destructor TOptions.Destroy;
 var
-  V: TOptValues;
+  V: TOption;
 begin
   for V in FOptions.Values do
     V.Free;
@@ -118,9 +118,15 @@ begin
     Result := FParent.Exist(OptName);
 end;
 
+function TOptions.FindOption(const Name: string): TOption;
+begin
+  if not FOptions.TryGetValue(UpperCase(Name), Result) and Assigned(FParent) then
+    Result := FParent.FindOption(Name);
+end;
+
 function TOptions.OptSet(const OptName: string; const Value: Variant): Boolean;
 var
-  Values: TOptValues;
+  Values: TOption;
   OptNameUC: string;
 begin
   OptNameUC := UpperCase(OptName);
@@ -148,7 +154,7 @@ end;
 
 function TOptions.OptPop(const OptName: string): Boolean;
 var
-  Values: TOptValues;
+  Values: TOption;
 begin
   if not FOptions.ContainsKey(OptName) then
     Exit(False);
@@ -161,7 +167,7 @@ end;
 
 function TOptions.OptPush(const OptName: string): Boolean;
 var
-  Values: TOptValues;
+  Values: TOption;
 begin
   if not FOptions.ContainsKey(OptName) then
     Exit(False);
@@ -172,40 +178,53 @@ begin
   Result := True;
 end;
 
-{ TPascalCompilerOptions }
-
-constructor TCompilerOptions.Create(Parent: TOptions);
-begin
-  inherited;
-  AddOption('ARC', odtBoolean, @FARC, True);
-  AddOption('SAFECODE', odtBoolean, @FSAFECODE, False);
-
-  FOPT_REUSE_TMP_VARS := True;
-  FOPT_REDUCE_TMP_VARS := True;
-  FOPT_REDUCE_INCREF_DECREF := True;
-  FOPT_ELEMINATE_UNUSED_LOCAL_VARS := TRUE;
-end;
-
 { TPackageOptions }
 
 constructor TPackageOptions.Create(Parent: TOptions);
 begin
   inherited;
-  AddOption('VARIANTEXPLICITCONVERT', odtBoolean, @FVARIANT_EXPLICIT_CONVERT, True);
 end;
 
-{ TDefines }
+{ TValueOption }
 
-{constructor TDefines.Create(Parent: TDefines);
+class function TValueOption.ArgsCount: Integer;
 begin
-  FItems := TStringList.Create;
-  FParent := Parent;
+  Result := 1;
 end;
 
-destructor TDefines.Destroy;
+procedure TValueOption.SetValue(const Value: string; out Error: string);
 begin
-  FItems.Free;
-  inherited;
-end;}
+
+end;
+
+{ TOption }
+
+class function TOption.ArgsCount: Integer;
+begin
+  Result := 0;
+end;
+
+{ TStrOption }
+
+procedure TStrOption.SetValue(const Value: string; out Error: string);
+begin
+  fValue := Value;
+end;
+
+{ TBoolOption }
+
+procedure TBoolOption.SetValue(const Value: string; out Error: string);
+begin
+  var UCVal := UpperCase(Value);
+  if (UCVal <> '+') and
+     (UCVal <> '-') and
+     (UCVal <> 'ON') and
+     (UCVal <> 'OFF') then
+  begin
+    Error := 'The switch value can be only +, -, ON, OFF';
+    Exit;
+  end;
+  fValue := (UCVal = '+') or (UCVal = 'ON');
+end;
 
 end.

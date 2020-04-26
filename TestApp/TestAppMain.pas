@@ -130,6 +130,20 @@ begin
   end;
 end;
 
+function GetDeclName(const Decl: TASTDeclaration): string;
+begin
+  if Decl.Name <> '' then
+    Result := Decl.DisplayName
+  else
+    Result := '[Anonymous]' + Decl.DisplayName;
+
+  var CastedDecl := (Decl as TIDDeclaration);
+  case CastedDecl.ItemType of
+    itVar, itConst: Result := Result + ' : '  + CastedDecl.DataType.DisplayName;
+    itType: Result := Result + ' ['  + GetDataTypeName(TIDType(CastedDecl).DataTypeID) + ']';
+  end;
+end;
+
 procedure TfrmTestAppMain.Button1Click(Sender: TObject);
 var
   UN: TASTDelphiUnit;
@@ -166,6 +180,18 @@ begin
 
     ASTToTreeView2(UN, tvAST);
 
+    edAllItems.BeginUpdate;
+    try
+      edAllItems.Clear;
+      Prj.EnumIntfDeclarations(
+        procedure(const Module: TASTModule; const Decl: TASTDeclaration)
+        begin
+          edAllItems.Lines.Add(format('%s - %s.%s', [GetItemTypeName(TIDDeclaration(Decl).ItemType), Module.Name, GetDeclName(Decl)]));
+        end);
+    finally
+      edAllItems.EndUpdate;
+    end;
+
     CompilerMessagesToStrings(Prj.Messages, Msg);
 
     Memo1.Lines := Msg;
@@ -181,19 +207,6 @@ const cRTLUsesSource =
 'implementation'#10#13 +
 'end.';
 
-function GetDeclName(const Decl: TASTDeclaration): string;
-begin
-  if Decl.Name <> '' then
-    Result := Decl.DisplayName
-  else
-    Result := '[Anonymous]' + Decl.DisplayName;
-
-  var CastedDecl := (Decl as TIDDeclaration);
-  case CastedDecl.ItemType of
-    itVar, itConst: Result := Result + ' : '  + CastedDecl.DataType.DisplayName;
-    itType: Result := Result + ' ['  + GetDataTypeName(TIDType(CastedDecl).DataTypeID) + ']';
-  end;
-end;
 
 procedure TfrmTestAppMain.OnProgress(const Module: IASTModule; Status: TASTProcessStatusClass);
 begin
