@@ -33,6 +33,7 @@ type
     fTrueExpression: TIDExpression;
     fZeroConstant: TIDIntConstant;
     fZeroExpression: TIDExpression;
+    fZeroFloatExpression: TIDExpression;
     fOneConstant: TIDIntConstant;
     fOneExpression: TIDExpression;
     fNullPtrType: TIDType;
@@ -133,7 +134,8 @@ type
     property _TrueExpression: TIDExpression read fTrueExpression;
     property _FalseExpression: TIDExpression read fFalseExpression;
     property _ZeroConstant: TIDIntConstant read fZeroConstant;
-    property _ZeroExpression: TIDExpression read fZeroExpression;
+    property _ZeroIntExpression: TIDExpression read fZeroExpression;
+    property _ZeroFloatExpression: TIDExpression read fZeroFloatExpression;
     property _OneConstant: TIDIntConstant read fOneConstant;
     property _OneExpression: TIDExpression read fOneExpression;
     property _NullPtrConstant: TIDIntConstant read fNullPtrConstatnt;
@@ -351,6 +353,8 @@ begin
 
   AddExplicits(_Float32, dtFloat32, dtFloat64);
   AddExplicits(_Float64, dtFloat32, dtFloat64);
+  AddExplicits(_Float32, dtInt8, dtNativeUInt);
+  AddExplicits(_Float64, dtInt8, dtNativeUInt);
 
   // String
   _String.OverloadExplicitTo(_Pointer);
@@ -790,11 +794,14 @@ begin
   RegisterBuiltin(TSF_Now);
   RegisterBuiltin(TSF_Ord);
   RegisterBuiltin(TSF_Odd);
+  RegisterBuiltin(TSF_Pi);
   RegisterBuiltin(TSF_Pred);
   RegisterBuiltin(TSF_ReallocMem);
   RegisterBuiltin(TSF_Round);
   RegisterBuiltin(TSF_RunError);
   RegisterBuiltin(TSF_Str);
+  RegisterBuiltin(TSF_Sqr);
+//  RegisterBuiltin(TSF_Sqrt);
   RegisterBuiltin(TCT_SizeOf);
   RegisterBuiltin(TSF_Succ);
   RegisterBuiltin(TSF_SetLength);
@@ -973,6 +980,9 @@ begin
   // constant "0"
   FZeroConstant := TIDIntConstant.CreateAnonymous(IntfScope, _UInt8, 0);
   FZeroExpression := TIDExpression.Create(FZeroConstant);
+
+  FZeroFloatExpression := TIDExpression.Create(TIDFloatConstant.CreateAnonymous(IntfScope, _Float64, 0));
+
   // constant "1"
   FOneConstant := TIDIntConstant.CreateAnonymous(IntfScope, _UInt8, 1);
   FOneExpression := TIDExpression.Create(FOneConstant);

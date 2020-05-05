@@ -63,6 +63,7 @@ type
     function ProcSpec_External(Scope: TScope; out ImportLib, ImportName: TIDDeclaration; var Flags: TProcFlags): TTokenID;
     function ProcSpec_Overload(Scope: TScope; var Flags: TProcFlags): TTokenID;
     function ProcSpec_Virtual(Scope: TScope; Struct: TIDStructure; var Flags: TProcFlags): TTokenID;
+    function ProcSpec_Abstract(Scope: TScope; Struct: TIDStructure; var Flags: TProcFlags): TTokenID;
     function ProcSpec_Override(Scope: TScope; Struct: TIDStructure; var Flags: TProcFlags): TTokenID;
     function ProcSpec_Reintroduce(Scope: TScope; var Flags: TProcFlags): TTokenID;
     function ProcSpec_Static(Scope: TScope; var Flags: TProcFlags; var ProcType: TProcType): TTokenID;
@@ -906,7 +907,10 @@ begin
     token_function: Result := ParseProcedure(Struct.Members, ptClassFunc, Struct);
     token_property: Result := ParseProperty(Struct);
     token_operator: Result := ParseOperator(Struct.Members, Struct);
-    token_var: ParseVarSection(Struct.Members, vLocal, Struct);
+    token_var: begin
+      Lexer_NextToken(Scope);
+      Result := ParseVarSection(Struct.Members, vLocal, Struct);
+    end
   else
     ERROR_PROC_OR_PROP_OR_VAR_REQUIRED;
   end;
@@ -3982,9 +3986,9 @@ begin
     DataType := Struct;
 
   if Struct.DataTypeID = dtRecord then
-    SelfParam := TIDVariable.Create(Params, Identifier('Self'), DataType, [VarParameter, VarSelf, VarConst, VarInOut, VarHiddenParam])
+    SelfParam := TIDVariable.Create(Params, Identifier('Self'), DataType, [VarParameter, VarSelf, VarInOut, VarHiddenParam])
   else
-    SelfParam := TIDVariable.Create(Params, Identifier('Self'), DataType, [VarParameter, VarSelf, VarConst, VarHiddenParam]);
+    SelfParam := TIDVariable.Create(Params, Identifier('Self'), DataType, [VarParameter, VarSelf, VarHiddenParam]);
 
   Params.AddVariable(SelfParam);
 end;
@@ -5218,6 +5222,11 @@ begin
       ERROR_ID_REDECLARATED(ID);
     Decl.NeedForward := True;
     Exit;
+  end;
+
+  if Result = token_abstract then
+  begin
+    Result := Lexer_NextToken(Scope);
   end;
 
   while True do begin
@@ -6487,6 +6496,7 @@ begin
       token_external: Result := ProcSpec_External(Scope, ImportLib, ImportName, ProcFlags);
       token_overload: Result := ProcSpec_Overload(Scope, ProcFlags);
       token_virtual: Result := ProcSpec_Virtual(Scope, Struct, ProcFlags);
+      token_abstract: Result := ProcSpec_Abstract(Scope, Struct, ProcFlags);
       token_override: Result := ProcSpec_Override(Scope, Struct, ProcFlags);
       token_reintroduce: Result := ProcSpec_Reintroduce(Scope, ProcFlags);
       token_static: Result := ProcSpec_Static(Scope, ProcFlags, ProcType);
@@ -7543,6 +7553,19 @@ begin
     ERROR_VIRTUAL_ALLOWED_ONLY_IN_CLASSES;
 
   //Proc.VirtualIndex := Proc.Struct.GetLastVirtualIndex + 1;
+
+  Lexer_ReadSemicolon(Scope);
+  Result := Lexer_NextToken(Scope);
+end;
+
+function TASTDelphiUnit.ProcSpec_Abstract(Scope: TScope; Struct: TIDStructure; var Flags: TProcFlags): TTokenID;
+begin
+  if pfAbstract in Flags then
+    ERROR_DUPLICATE_SPECIFICATION(PS_ABSTRACT);
+  Include(Flags, pfAbstract);
+
+  if not Assigned(Struct) then
+    ERROR_VIRTUAL_ALLOWED_ONLY_IN_CLASSES;
 
   Lexer_ReadSemicolon(Scope);
   Result := Lexer_NextToken(Scope);

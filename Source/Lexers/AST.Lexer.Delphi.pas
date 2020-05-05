@@ -51,6 +51,7 @@ type
     token_closeround_asteriks,
 
     token_absolute,                 // keyword: absolute
+    token_abstract,                 // keyword: abstract
     token_asm,                      // keyword: asm
     token_stdcall,                  // keyword: stdcall
     token_fastcall,                 // keyword: fastcall
@@ -367,6 +368,7 @@ begin
   RegisterToken('@', token_address);
   RegisterToken(':=', token_assign);
   RegisterToken('absolute', token_absolute);
+  RegisterToken('abstract', token_abstract);
   RegisterToken('as', token_as);
   RegisterToken('asm', token_asm);
   RegisterToken('and', token_and);

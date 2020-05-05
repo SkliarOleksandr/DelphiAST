@@ -29,6 +29,7 @@ type
     PS_EXPORT,
     PS_IMPORT,
     PS_VIRTUAL,
+    PS_ABSTRACT,
     PS_OVERRIDE,
     PS_STATIC,
     PS_STDCALL,
@@ -1298,6 +1299,7 @@ type
   TProcFlag = (
     pfHasResult,
     pfVirtual,
+    pfAbstract,
     pfInline,
     pfOveload,
     pfExport,

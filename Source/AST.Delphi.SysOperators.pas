@@ -750,7 +750,7 @@ end;
 function TSys_Ptr_IntDiv_Int.Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression;
 begin
   if Left.DataTypeID = dtPointer then
-    Result := SYSUnit._ZeroExpression // tmp
+    Result := SYSUnit._ZeroIntExpression // tmp
   else
     Result := nil;
 end;

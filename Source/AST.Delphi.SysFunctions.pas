@@ -215,6 +215,20 @@ type
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {Sqr}
+  TSF_Sqr = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
+  {Sqrt}
+  TSF_Sqrt = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
   {Round}
   TSF_Round = class(TIDSysRuntimeFunction)
   public
@@ -280,6 +294,13 @@ type
 
   {Close}
   TSF_Close = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
+  {Pi}
+  TSF_Pi = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
@@ -474,7 +495,7 @@ begin
   else
   if DataType.DataTypeID in [dtDynArray, dtWideString] then
   begin
-    Exit(SYSUnit._ZeroExpression);
+    Exit(SYSUnit._ZeroIntExpression);
   end else
     UN.ERROR_ORDINAL_TYPE_REQUIRED(Expr.TextPosition);
 
@@ -814,7 +835,7 @@ begin
   ArgCnt := EContext.RPNPopExpression();
   ArgV := EContext.RPNPopExpression();
   ArgS := EContext.RPNPopExpression();
-  Result := SYSUnit._ZeroExpression;
+  Result := SYSUnit._ZeroIntExpression;
 end;
 
 { TSF_Abs }
@@ -928,7 +949,7 @@ class function TSF_FreeMem.CreateDecl(Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'FreeMem', _Void);
   Result.AddParam('P', SYSUnit._Pointer, [VarConst]);
-  Result.AddParam('Size', SYSUnit._Int32, [VarConst], SYSUnit._ZeroExpression);
+  Result.AddParam('Size', SYSUnit._Int32, [VarConst], SYSUnit._ZeroIntExpression);
 end;
 
 function TSF_FreeMem.Process(var EContext: TEContext): TIDExpression;
@@ -1140,6 +1161,52 @@ begin
   // read arguments
   AHandle := EContext.RPNPopExpression();
   Result := nil;
+end;
+
+{ TSF_Pi }
+
+class function TSF_Pi.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Pi', SYSUnit._Float64);
+end;
+
+function TSF_Pi.Process(var EContext: TEContext): TIDExpression;
+begin
+  Result := SYSUnit._ZeroFloatExpression;
+end;
+
+{ TSF_Sqr }
+
+class function TSF_Sqr.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Sqr', SYSUnit._Variant);
+  Result.AddParam('Value', SYSUnit._Variant, [VarConst]);
+end;
+
+function TSF_Sqr.Process(var EContext: TEContext): TIDExpression;
+var
+  AValue: TIDExpression;
+begin
+  // read arguments
+  AValue := EContext.RPNPopExpression();
+  Result := AValue;
+end;
+
+{ TSF_Sqrt }
+
+class function TSF_Sqrt.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+begin
+//  Result := Self.Create(Scope, 'Sqrt', SYSUnit._Float64);
+//  Result.AddParam('Value', SYSUnit._Float64, [VarConst]);
+end;
+
+function TSF_Sqrt.Process(var EContext: TEContext): TIDExpression;
+var
+  AValue: TIDExpression;
+begin
+  // read arguments
+  AValue := EContext.RPNPopExpression();
+  Result := AValue;
 end;
 
 end.
