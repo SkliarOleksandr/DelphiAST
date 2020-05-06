@@ -3258,8 +3258,6 @@ begin
     Exit;
   end;
 
-  //todo сделать преобразование констант !!! string->ansistring->string
-
   // ищем явно определенный implicit у источника
   Decl := SDataType.GetImplicitOperatorTo(Dest);
   if Decl is TSysOpImplicit then
@@ -5901,7 +5899,7 @@ begin
     WriteIL := ((JMPCondition = cGreater) and (StartExpr.AsIntConst.Value <= StopExpr.AsIntConst.Value)) or
                ((JMPCondition = cLess) and (StartExpr.AsIntConst.Value >= StopExpr.AsIntConst.Value));
     if not WriteIL then
-      Warning(sForOrWhileLoopExecutesZeroTimes, [], LoopVar.SourcePosition);
+      Warning(sForOrWhileLoopExecutesZeroTimes, [], StartExpr.TextPosition);
   end;
 
   // тело цикла

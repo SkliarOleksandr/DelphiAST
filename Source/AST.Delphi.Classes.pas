@@ -349,8 +349,9 @@ type
     fFinalProc: TIDProcedure;
     function GetOperators(const Op: TOperatorID): TIDPairList;
     function GetOperatorsFor(const Op: TOperatorID): TIDPairList;
-    function GetIsReferenced: Boolean;
-    function GetIsInteger: Boolean;
+    function GetIsReferenced: Boolean; inline;
+    function GetIsInteger: Boolean; inline;
+    function GetIsGeneric: Boolean; inline;
   protected
     function GetDataSize: Integer; virtual;
     function GetOrdinal: Boolean; virtual;
@@ -378,6 +379,7 @@ type
     property IsInteger: Boolean read GetIsInteger;
     property IsPacked: Boolean read FPacked write FPacked;
     property IsReferenced: Boolean read GetIsReferenced;
+    property IsGeneric: Boolean read GetIsGeneric;
     // функция возвращает точный implicit оператор, если определен
     function GetImplicitOperatorTo(const Destination: TIDType): TIDDeclaration;
     function GetImplicitOperatorFrom(const Source: TIDType): TIDDeclaration;
@@ -2327,6 +2329,9 @@ begin
         if TIDArray(AType1).ElementDataType <> TIDArray(AType2).ElementDataType then
           Exit(False);
       end else
+      if (AType1.IsGeneric and AType2.IsGeneric) and (AType1.Name = AType2.Name) then
+      begin
+      end else
         Exit(False);
     end;
     item1 := FParamsScope.Next(item1);
@@ -2966,6 +2971,11 @@ end;
 //begin
 //  Result := cDataTypeManagedFlags[DataTypeID];
 //end;
+
+function TIDType.GetIsGeneric: Boolean;
+begin
+  Result := fDataTypeID = dtGeneric;
+end;
 
 function TIDType.GetIsInteger: Boolean;
 begin

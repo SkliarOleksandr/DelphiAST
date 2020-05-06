@@ -726,8 +726,8 @@ end;
 
 procedure TSYSTEMUnit.SearchSystemTypes;
 begin
-{  FTObject := GetPublicClass('TObject');
-  FException := GetPublicClass('Exception');
+  fTObject := GetPublicClass('TObject');
+{  FException := GetPublicClass('Exception');
   FEAssertClass := GetPublicClass('EAssert');
   FTypeIDType := GetPublicType('TDataTypeID');}
 end;
@@ -782,11 +782,13 @@ begin
   RegisterBuiltin(TSCTF_Defined);
   RegisterBuiltin(TSCTF_Declared);
   RegisterBuiltin(TSF_Exit);
+  RegisterBuiltin(TSF_Exclude);
   RegisterBuiltin(TSF_FreeMem);
   RegisterBuiltin(TSF_FillChar);
   RegisterBuiltin(TSF_GetMem);
   RegisterBuiltin(TSF_Halt);
   RegisterBuiltin(TSF_HiBound);
+  RegisterBuiltin(TSF_Include);
   RegisterBuiltin(TSF_Inc);
   RegisterBuiltin(TSF_LoBound);
   RegisterBuiltin(TSF_Length);
@@ -801,7 +803,6 @@ begin
   RegisterBuiltin(TSF_RunError);
   RegisterBuiltin(TSF_Str);
   RegisterBuiltin(TSF_Sqr);
-//  RegisterBuiltin(TSF_Sqrt);
   RegisterBuiltin(TCT_SizeOf);
   RegisterBuiltin(TSF_Succ);
   RegisterBuiltin(TSF_SetLength);

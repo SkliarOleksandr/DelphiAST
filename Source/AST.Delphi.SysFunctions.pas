@@ -117,6 +117,13 @@ type
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {Include}
+  TSF_Include = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
   {Inc}
   TSF_Inc = class(TIDSysRuntimeFunction)
   public
@@ -222,13 +229,6 @@ type
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
-  {Sqrt}
-  TSF_Sqrt = class(TIDSysRuntimeFunction)
-  public
-    function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
-  end;
-
   {Round}
   TSF_Round = class(TIDSysRuntimeFunction)
   public
@@ -278,7 +278,14 @@ type
     class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
   end;
 
-  {Exit}
+  {Exclude}
+  TSF_Exclude = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
+  {Halt}
   TSF_Halt = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
@@ -546,7 +553,7 @@ begin
   if DataType.DataTypeID in [dtDynArray, dtString, dtShortString, dtAnsiString] then
   begin
     // Lenght - 1
-    Decl := TIDIntConstant.CreateAnonymous(nil, SYSUnit._Int32, 0); // tmp
+    Decl := EContext.Proc.GetTMPVar(SYSUnit._NativeUInt); // tmp
   end else
     UN.ERROR_ORDINAL_TYPE_REQUIRED(Expr.TextPosition);
 
@@ -1192,21 +1199,42 @@ begin
   Result := AValue;
 end;
 
-{ TSF_Sqrt }
+{ TSF_Include }
 
-class function TSF_Sqrt.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_Include.CreateDecl(Scope: TScope): TIDBuiltInFunction;
 begin
-//  Result := Self.Create(Scope, 'Sqrt', SYSUnit._Float64);
-//  Result.AddParam('Value', SYSUnit._Float64, [VarConst]);
+  Result := Self.Create(Scope, 'Include', _Void);
+  Result.AddParam('Set', SYSUnit._Variant, [VarInOut]);
+  Result.AddParam('Flags', SYSUnit._Variant, [VarConst]);
 end;
 
-function TSF_Sqrt.Process(var EContext: TEContext): TIDExpression;
+function TSF_Include.Process(var EContext: TEContext): TIDExpression;
 var
-  AValue: TIDExpression;
+  A1, A2: TIDExpression;
 begin
   // read arguments
-  AValue := EContext.RPNPopExpression();
-  Result := AValue;
+  A2 := EContext.RPNPopExpression();
+  A1 := EContext.RPNPopExpression();
+  Result := nil;
+end;
+
+{ TSF_Exclude }
+
+class function TSF_Exclude.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Exclude', _Void);
+  Result.AddParam('Set', SYSUnit._Variant, [VarInOut]);
+  Result.AddParam('Flags', SYSUnit._Variant, [VarConst]);
+end;
+
+function TSF_Exclude.Process(var EContext: TEContext): TIDExpression;
+var
+  A1, A2: TIDExpression;
+begin
+  // read arguments
+  A2 := EContext.RPNPopExpression();
+  A1 := EContext.RPNPopExpression();
+  Result := nil;
 end;
 
 end.

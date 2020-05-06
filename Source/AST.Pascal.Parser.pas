@@ -101,6 +101,8 @@ type
     fUnitName: TIdentifier;            // the Unit declaration name
     fProcMatches: TASTProcMachArray;
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
+    function FindPublicDecl(const Name: string): TIDDeclaration;
+    function GetPublicClass(const Name: string): TIDClass;
     function GetModuleName: string; override;
     procedure SetUnitName(const Name: string);
   public
@@ -225,6 +227,11 @@ begin
   inherited;
 end;
 
+function TNPUnit.FindPublicDecl(const Name: string): TIDDeclaration;
+begin
+  Result := fIntfScope.FindID(Name);
+end;
+
 function TNPUnit.UsedUnit(const UnitName: string): Boolean;
 var
   i: Integer;
@@ -311,6 +318,14 @@ begin
   Result := fUnitName.Name;
   if Result = '' then
     Result := inherited GetModuleName();
+end;
+
+function TNPUnit.GetPublicClass(const Name: string): TIDClass;
+var
+  Res: TIDDeclaration;
+begin
+  Res := FindPublicDecl(Name);
+  Result := Res as TIDClass;
 end;
 
 class function TNPUnit.IsConstEqual(const Left, Right: TIDExpression): Boolean;
