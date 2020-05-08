@@ -5659,6 +5659,7 @@ begin
     OverloadExplicitTo(SYSUnit._NativeUInt);
     OverloadExplicitFrom(SYSUnit._NativeUInt);
     OverloadExplicitFrom(SYSUnit._NativeInt);
+    OverloadImplicitTo(dtClass, TSysImplicitClassToClass.Instance);
   end;
 end;
 

@@ -1991,7 +1991,7 @@ begin
             //Bool_AddExprNode(EContext, SContext.ILLast, TILCondition(Ord(OpID) - Ord(opEqual) + 1));
             Exit;
           end;
-          //opIn: Result := Process_operator_In(EContext, Left, Right);
+          opIn: Result := Process_operator_In(EContext, Left, Right);
           opAnd, opOr, opXor, opShiftLeft, opShiftRight: begin
             if (OpID in [opAnd, opOr]) and (TmpVar.DataType = SYSUnit._Boolean) then
             begin
@@ -3295,13 +3295,6 @@ begin
               Exit(Source);
 
             if TIDPointer(SDataType).ReferenceType.ActualDataType = TIDPointer(Dest).ReferenceType.ActualDataType then
-              Exit(Source);
-          end;
-
-          { если оба - классы, то проверяем InheritsForm }
-          if (SrcDTID = dtClass) and (DstDTID = dtClass) then
-          begin
-            if TIDClass(Source.DataType).IsInheritsForm(TIDClass(Dest)) then
               Exit(Source);
           end;
 
@@ -6626,7 +6619,7 @@ begin
       Proc.GenericDescriptor.ImplSRCPosition := SRCProcPos;
   end;
   CallConv := ConvNative;
-  Proc.Flags := ProcFlags;
+  Proc.Flags := Proc.Flags + ProcFlags;
   Proc.CallConvention := CallConv;
 
   if (Scope.ScopeClass <> scInterface) and not (pfImport in ProcFlags)

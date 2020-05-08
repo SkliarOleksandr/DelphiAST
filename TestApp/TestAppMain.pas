@@ -203,7 +203,7 @@ end;
 const cRTLUsesSource =
 'unit RTLParseTest; '#10#13 +
 'interface'#10#13 +
-'uses System.Types;'#10#13 +
+'uses System.UITypes;'#10#13 +
 'implementation'#10#13 +
 'end.';
 

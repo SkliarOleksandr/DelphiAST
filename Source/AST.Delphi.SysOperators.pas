@@ -180,6 +180,12 @@ type
     function Check(const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
+  {implicit String <- PChar}
+  TSysImplicitClassToClass = class(TSysOpImplicit<TSysImplicitClassToClass>)
+  public
+    function Check(const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
   ///////////////////////////////////////////////////////////////////////////////////////////
   /// EXPLICIT
   ///////////////////////////////////////////////////////////////////////////////////////////
@@ -796,6 +802,13 @@ end;
 function TSysImplicitStringFromAny.Check(const Src, Dst: TIDType): Boolean;
 begin
   Result := TSysExplicitStringFromAny.Instance.Check(Src, Dst);
+end;
+
+{ TSysImplicitClassToClass }
+
+function TSysImplicitClassToClass.Check(const Src, Dst: TIDType): Boolean;
+begin
+  Result := TIDClass(Src).IsInheritsForm(TIDClass(Dst));
 end;
 
 end.
