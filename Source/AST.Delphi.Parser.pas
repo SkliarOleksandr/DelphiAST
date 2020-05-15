@@ -228,10 +228,11 @@ type
     //=======================================================================================================================
     ///  Парсинг типов
     procedure ParseEnumType(Scope: TScope; Decl: TIDEnum);
-    procedure ParseRangeType(Scope: TScope; Expr: TIDExpression; Decl: TIDRangeType);
+    procedure ParseRangeType(Scope: TScope; Expr: TIDExpression; const ID: TIdentifier; out Decl: TIDRangeType);
     function ParseImportStatement(Scope: TScope; out ImportLib, ImportName: TIDDeclaration): TTokenID;
     function ParseStaticArrayType(Scope: TScope; Decl: TIDArray): TTokenID;
     function ParseSetType(Scope: TScope; Decl: TIDSet): TTokenID;
+    function ParsePointerType(Scope: TScope; const ID: TIdentifier; out Decl: TIDPointer): TTokenID;
     function ParseProcType(Scope: TScope; const ID: TIdentifier; ProcType: TProcType; out Decl: TIDProcType): TTokenID;
     function ParseRecordType(Scope: TScope; Decl: TIDStructure): TTokenID;
     function ParseCaseRecord(Scope: TScope; Decl: TIDStructure): TTokenID;
@@ -247,6 +248,7 @@ type
     function ParseTypeHelper(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
     // функция парсинга анонимного типа
     function ParseTypeDecl(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
+    function ParseTypeDeclOther(Scope: TScope; const ID: TIdentifier; out Decl: TIDType): TTokenID;
     // функция парсинга именованного типа
     function ParseNamedTypeDecl(Scope: TScope): TTokenID;
     // функция парсинга указания типа (имени существующего или анонимного типа)
@@ -428,7 +430,7 @@ end;
 function TASTDelphiUnit.ParseSetType(Scope: TScope; Decl: TIDSet): TTokenID;
 var
   ID: TIdentifier;
-  Base: TIDDeclaration;
+  Base: TIDType;
   Expression: TIDExpression;
 begin
   Lexer_MatchToken(Lexer_NextToken(Scope), token_of);
@@ -437,20 +439,19 @@ begin
     token_identifier: begin
       Result := ParseConstExpression(Scope, Expression, ExprRValue);
       if Expression.ItemType = itType then begin
-        Base := Expression.Declaration;
-        if not TIDType(Base).IsOrdinal then
+        Base := Expression.AsType;
+        if not Base.IsOrdinal then
           AbortWork(sOrdinalTypeRequired, Lexer_PrevPosition);
       end else begin
-        Base := TIDRangeType.Create(Scope, ID);
-        ParseRangeType(Scope, Expression, TIDRangeType(Base));
-        AddType(TIDType(Base));
+        ParseRangeType(Scope, Expression, ID, TIDRangeType(Base));
+        AddType(Base);
       end;
     end;
     token_openround: begin
       Base := TIDEnum.CreateAsAnonymous(Scope);
       ParseEnumType(Scope, TIDEnum(Base));
       Result := Lexer_NextToken(Scope);
-      AddType(TIDType(Base));
+      AddType(Base);
     end;
     else begin
       ERROR_ORDINAL_TYPE_REQUIRED(Lexer_PrevPosition);
@@ -602,8 +603,7 @@ begin
     Result := ParseConstExpression(Scope, Expr, ExprNested);
     CheckExpression(Expr);
     if Result = token_period then begin
-     Bound := TIDRangeType.CreateAsAnonymous(Scope);
-      ParseRangeType(Scope, Expr, TIDRangeType(Bound));
+      ParseRangeType(Scope, Expr, TIdentifier.Empty, TIDRangeType(Bound));
       AddType(Bound);
     end else begin
       if Expr.ItemType = itType then begin
@@ -725,10 +725,8 @@ end;
 function TASTDelphiUnit.ParseTypeDecl(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier;
                                       out Decl: TIDType): TTokenID;
 var
-  DataType: TIDType;
   IsPacked: Boolean;
   IsAnonimous: Boolean;
-  TmpID: TIdentifier;
 begin
   Result := Lexer_CurTokenID;
 
@@ -750,7 +748,7 @@ begin
     token_type: begin
       Lexer_NextToken(Scope);
       var ResExpr: TIDExpression;
-      Result := ParseConstExpression(Scope,  ResExpr, ExprRValue);
+      Result := ParseConstExpression(Scope, ResExpr, ExprRValue);
       if ResExpr.ItemType = itType then
       begin
         Decl := TIDAliasType.CreateAlias(Scope, ID, ResExpr.AsType);
@@ -761,32 +759,7 @@ begin
     /////////////////////////////////////////////////////////////////////////
     // pointer type
     /////////////////////////////////////////////////////////////////////////
-    token_caret: begin
-      Lexer_ReadNextIdentifier(Scope, TmpID);
-      DataType := TIDType(FindIDNoAbort(Scope, TmpID));
-      if Assigned(DataType) then
-      begin
-        if DataType.ItemType <> itType then
-          AbortWork(sTypeIdExpectedButFoundFmt, [TmpID.Name], Lexer.Position);
-        if IsAnonimous then begin
-          Decl := DataType.GetDefaultReference(Scope);
-          {признак, что этот анонимный тип является ссылкой на структуру которая еще не закончена}
-          if (TIDPointer(Decl).ReferenceType is TIDStructure) and (Scope.ScopeType = stStruct) and
-             (TIDPointer(Decl).ReferenceType = TStructScope(Scope).Struct) then
-            TIDPointer(Decl).NeedForward := True;
-        end else begin
-          Decl := TIDPointer.Create(Scope, ID);
-          TIDPointer(Decl).ReferenceType := DataType;
-          InsertToScope(Scope, Decl);
-        end;
-      end else begin
-        Decl := TIDPointer.Create(Scope, ID);
-        TIDPointer(Decl).ForwardID := TmpID;
-        TIDPointer(Decl).NeedForward := True;
-        InsertToScope(Scope, Decl);
-      end;
-      Result := Lexer_NextToken(Scope);
-    end;
+    token_caret: Result := ParsePointerType(Scope, ID, TIDPointer(Decl));
     /////////////////////////////////////////////////////////////////////////
     // helper type
     /////////////////////////////////////////////////////////////////////////
@@ -800,17 +773,6 @@ begin
     /////////////////////////////////////////////////////////////////////////
     token_function: Result := ParseProcType(Scope, ID, TProcType.ptFunc, TIDProcType(Decl));
     token_procedure: Result := ParseProcType(Scope, ID, TProcType.ptProc, TIDProcType(Decl));
-    /////////////////////////////////////////////////////////////////////////
-    // open array
-    /////////////////////////////////////////////////////////////////////////
-    (*token_openarray: begin
-      if not IsAnonimous then
-        AbortWork(sOpenArrayAllowedOnlyAsTypeOfParam, FLexer.Position);
-      Lexer_MatchToken(Lexer_NextToken(Scope), token_of);
-      Decl := TIDOpenArray.CreateAsAnonymous(Scope);
-      Result := ParseTypeSpec(Scope, DataType);
-      TIDArray(Decl).ElementDataType := DataType;
-    end;*)
     /////////////////////////////////////////////////////////////////////////
     // set
     /////////////////////////////////////////////////////////////////////////
@@ -857,29 +819,49 @@ begin
     /////////////////////////////////////////////////////////////////////////
     // other
     /////////////////////////////////////////////////////////////////////////
-    token_identifier, token_minus, token_plus: begin
-      var ResExpr: TIDExpression;
-      Result := ParseConstExpression(Scope, ResExpr, ExprRValue);
+  else
+    Result := ParseTypeDeclOther(Scope, ID, Decl);
+  end;
+  if Assigned(Decl) then
+  begin
+    Decl.IsPacked := IsPacked;
+    AddType(Decl);
+  end;
+end;
+
+function TASTDelphiUnit.ParseTypeDeclOther(Scope: TScope; const ID: TIdentifier; out Decl: TIDType): TTokenID;
+var
+  IsPacked: Boolean;
+  IsAnonimous: Boolean;
+  Expr: TIDExpression;
+  TempId: TIdentifier;
+  TempDecl: TIDDeclaration;
+begin
+  IsAnonimous := (ID.Name = '');
+  Result := Lexer_CurTokenID;
+  case Result of
+    token_minus, token_plus: begin
+      Result := ParseConstExpression(Scope, Expr, ExprRValue);
+      ParseRangeType(Scope, Expr, ID, TIDRangeType(Decl));
+      if not IsAnonimous then
+        InsertToScope(Scope, Decl);
+    end;
+    token_identifier: begin
+      Result := ParseConstExpression(Scope, Expr, ExprRValue);
       {alias type}
-      if ResExpr.ItemType = itType then begin
-        Decl := TIDAliasType.CreateAlias(Scope, ID, ResExpr.AsType);
+      if Expr.ItemType = itType then begin
+        Decl := TIDAliasType.CreateAlias(Scope, ID, Expr.AsType);
       end else
       {range type}
       begin
-        Decl := TIDRangeType.Create(Scope, ID);
-        ParseRangeType(Scope, ResExpr, TIDRangeType(Decl));
+        ParseRangeType(Scope, Expr, ID, TIDRangeType(Decl));
       end;
       if not IsAnonimous then
         InsertToScope(Scope, Decl);
     end;
-    else begin
-      Decl := nil;
-      Exit;
-    end;
+  else
+    Decl := nil;
   end;
-  // добовляем тип в пул
-  Decl.IsPacked := IsPacked;
-  AddType(Decl);
 end;
 
 function TASTDelphiUnit.ParseTypeHelper(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier;
@@ -1012,6 +994,11 @@ begin
             end;
             Exit;
           end;
+        end;
+        itUnit: begin
+          SearchScope := TIDUnit(Decl).Members;
+          Lexer_NextToken(Scope);
+          continue;
         end;
       else
         ERROR_INVALID_TYPE_DECLARATION;
@@ -4276,7 +4263,18 @@ begin
     end;
     //PMContext.Add(Expr);
   end else
+  if (ArrDecl.ItemType = itType) and (TIDType(ArrDecl).DataTypeID in [dtString, dtAnsiString]) then
   begin
+    // string with length restriction (ShortString)
+    Lexer_NextToken(Scope);
+    Result := ParseConstExpression(Scope, Expr, ExprNested);
+    Lexer_MatchToken(Result, token_closeblock);
+    Result := Lexer_NextToken(Scope);
+    // todo: create new string type and add size restriction
+    Expr := TIDExpression.Create(ArrDecl, ArrExpr.TextPosition);
+    EContext.RPNPushExpression(Expr);
+    Exit;
+  end else begin
     ERROR_ARRAY_TYPE_REQUIRED(ArrDecl.ID, ArrExpr.TextPosition);
     DimensionsCount := 0;
   end;
@@ -6335,6 +6333,37 @@ begin
   Result := Lexer_NextToken(Scope);
 end;
 
+function TASTDelphiUnit.ParsePointerType(Scope: TScope; const ID: TIdentifier; out Decl: TIDPointer): TTokenID;
+var
+  TmpID: TIdentifier;
+  DataType: TIDType;
+begin
+  Lexer_ReadNextIdentifier(Scope, TmpID);
+  DataType := TIDType(FindIDNoAbort(Scope, TmpID));
+  if Assigned(DataType) then
+  begin
+    if DataType.ItemType <> itType then
+      AbortWork(sTypeIdExpectedButFoundFmt, [TmpID.Name], Lexer.Position);
+    if ID.Name = '' then begin
+      Decl := DataType.GetDefaultReference(Scope) as TIDPointer;
+      {признак, что этот анонимный тип является ссылкой на структуру которая еще не закончена}
+      if (Decl.ReferenceType is TIDStructure) and (Scope.ScopeType = stStruct) and
+         (Decl.ReferenceType = TStructScope(Scope).Struct) then
+        Decl.NeedForward := True;
+    end else begin
+      Decl := TIDPointer.Create(Scope, ID);
+      Decl.ReferenceType := DataType;
+      InsertToScope(Scope, Decl);
+    end;
+  end else begin
+    Decl := TIDPointer.Create(Scope, ID);
+    Decl.ForwardID := TmpID;
+    Decl.NeedForward := True;
+    InsertToScope(Scope, Decl);
+  end;
+  Result := Lexer_NextToken(Scope);
+end;
+
 function TASTDelphiUnit.ParseProcBody(Proc: TASTDelphiProc): TTokenID;
 var
   Scope: TScope;
@@ -7055,7 +7084,7 @@ begin
   KW.Expression := ASTExpr;
 end;
 
-procedure TASTDelphiUnit.ParseRangeType(Scope: TScope; Expr: TIDExpression; Decl: TIDRangeType);
+procedure TASTDelphiUnit.ParseRangeType(Scope: TScope; Expr: TIDExpression; const ID: TIdentifier; out Decl: TIDRangeType);
 var
   LB, HB: Int64;
   CRange: TIDRangeConstant;
@@ -7077,6 +7106,8 @@ begin
 
   RDataTypeID := GetValueDataType(HB - LB);
   RDataType := SYSUnit.DataTypes[RDataTypeID];
+
+  Decl := TIDRangeType.Create(Scope, ID);
 
   Decl.LowBound := LB;
   Decl.HighBound := HB;

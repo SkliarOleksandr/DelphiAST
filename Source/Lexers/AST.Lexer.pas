@@ -85,6 +85,7 @@ type
     Name: string;
     TextPosition: TTextPosition;
     class function Make(const Name: string): TIdentifier; static;
+    class function Empty: TIdentifier; static;
   end;
 
   TParserPosition = record
@@ -917,6 +918,12 @@ begin
 end;
 
 { TIdentifier }
+
+class function TIdentifier.Empty: TIdentifier;
+begin
+  Result.Name := '';
+  Result.TextPosition := TTextPosition.Empty;
+end;
 
 class function TIdentifier.Make(const Name: string): TIdentifier;
 begin

@@ -1071,6 +1071,7 @@ type
     function GetCValue: TIDConstant; inline;
     procedure SetCValue(Value: TIDConstant); inline;
     function GetIsParam: Boolean;
+    function GetText: string;
   protected
     function GetDataType: TIDType; virtual;
   public
@@ -1117,6 +1118,7 @@ type
     property AsRangeConst: TIDRangeConstant read GetAsRangeConst;
     property AsClosure: TIDClosure read GetAsClosure;
     property CValue: TIDConstant read GetCValue write SetCValue;
+    property Text: string read GetText;
   end;
 
   // Выражение - список (индексы массивов, поля структур)
@@ -3761,6 +3763,11 @@ begin
   Result := FTextPosition.Row;
 end;
 
+function TIDExpression.GetText: string;
+begin
+  Result := DisplayName;
+end;
+
 procedure TIDExpression.SetCValue(Value: TIDConstant);
 begin
   FDeclaration.CValue := Value;
@@ -4180,8 +4187,13 @@ end;
 function TIDIntConstant.CompareTo(Constant: TIDConstant): Integer;
 begin
   if ClassType = Constant.ClassType then
-    Result := Value - TIDIntConstant(Constant).Value
-  else
+  begin
+    if Value > TIDIntConstant(Constant).Value then
+      Exit(1);
+    if Value < TIDIntConstant(Constant).Value then
+      Exit(-1);
+    Exit(0);
+  end else
     Result := -1;
 end;
 
@@ -5409,6 +5421,7 @@ begin
   OverloadBinarOperator2(opLessOrEqual, Self, SYSUnit._Boolean);
   OverloadBinarOperator2(opGreater, Self, SYSUnit._Boolean);
   OverloadBinarOperator2(opGreaterOrEqual, Self, SYSUnit._Boolean);
+  OverloadExplicitFromAny(TSysExplicitRangeFromAny.Instance);
   FDataTypeID := dtRange;
 end;
 

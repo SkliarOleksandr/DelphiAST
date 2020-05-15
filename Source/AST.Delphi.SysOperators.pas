@@ -259,6 +259,12 @@ type
     function Check(const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
+  {explicit Renge <- Any}
+  TSysExplicitRangeFromAny = class(TSysOpExplisit<TSysExplicitRangeFromAny>)
+  public
+    function Check(const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
   ///////////////////////////////////////////////////////////////////////////////////////////
   /// BINARY
   ///////////////////////////////////////////////////////////////////////////////////////////
@@ -809,6 +815,13 @@ end;
 function TSysImplicitClassToClass.Check(const Src, Dst: TIDType): Boolean;
 begin
   Result := TIDClass(Src).IsInheritsForm(TIDClass(Dst));
+end;
+
+{ TSysExplicitRangeFromAny }
+
+function TSysExplicitRangeFromAny.Check(const Src, Dst: TIDType): Boolean;
+begin
+  Result := Src.IsOrdinal;
 end;
 
 end.
