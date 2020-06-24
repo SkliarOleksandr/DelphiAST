@@ -2,7 +2,7 @@ unit AST.Classes;
 
 interface
 
-uses AST.Lexer, AST.Project, AST.Parser.Utils, AST.Parser.ProcessStatuses, System.SysUtils;
+uses AST.Lexer, AST.Intf, AST.Parser.Utils, AST.Parser.ProcessStatuses, System.SysUtils;
 
 type
   TASTItemTypeID = Integer;
@@ -18,6 +18,12 @@ type
   TASTExpressionArray = array of TASTExpression;
 
   TASTUnitClass = class of TASTModule;
+
+  TCompilerResult = (
+    CompileSuccess,
+    CompileFail,
+    CompileSkip
+  );
 
   TASTItem = class(TPooledObject)
   private
@@ -36,6 +42,10 @@ type
 
   TASTItemClass = class of TASTItem;
 
+
+  TASTProjectSettings = class(TInterfacedObject, IASTProjectSettings)
+  end;
+
   TASTProject = class(TInterfacedObject, IASTProject)
   private
     fOnProgress: TASTProgressEvent;
@@ -43,8 +53,10 @@ type
     function GetOnProgress: TASTProgressEvent;
   protected
     function GetUnitClass: TASTUnitClass; virtual; abstract;
+    function GetPointerSize: Integer; virtual; abstract;
+    function GetNativeIntSize: Integer; virtual; abstract;
   public
-    constructor Create(const Name: string; RTTICharset: TRTTICharset = RTTICharsetASCII); virtual; abstract;
+    constructor Create(const Name: string); virtual; abstract;
     property OnProgress: TASTProgressEvent read GetOnProgress write SetOnProgress;
   end;
 
@@ -83,7 +95,7 @@ type
   public
     property Name: string read GetModuleName;
     property FileName: string read fFileName write SetFileName;
-
+    property Project: IASTProject read fProject;
     function GetFirstFunc: TASTDeclaration; virtual; abstract;
     function GetFirstVar: TASTDeclaration; virtual; abstract;
     function GetFirstType: TASTDeclaration; virtual; abstract;
@@ -96,12 +108,14 @@ type
   TASTDeclaration = class(TASTItem)
   protected
     fID: TIdentifier;
+    fModule: TASTModule;
     function GetDisplayName: string; override;
   public
     property ID: TIdentifier read fID write fID;
     property Name: string read fID.Name write FID.Name;
     property TextPosition: TTextPosition read FID.TextPosition write FID.TextPosition;
     property SourcePosition: TTextPosition read FID.TextPosition;
+    property Module: TASTModule read fModule;
   end;
 
   TASTDeclarations = array of TASTDeclaration;

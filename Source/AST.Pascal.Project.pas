@@ -4,14 +4,15 @@ interface
 
 uses System.SysUtils, System.Classes, System.Types, Generics.Collections, System.IOUtils,
      AVL,
+     AST.Intf,
      AST.Delphi.DataTypes,
-     AST.Delphi.Classes,
      AST.Parser.Options,
      AST.Targets,
+     AST.Delphi.Intf,
+     AST.Delphi.Classes,
      AST.Parser.Messages,
      AST.Parser.Utils,
-     AST.Pascal.Parser,
-     AST.Delphi.System,
+     AST.Pascal.Intf,
      AST.Classes;
 
 type
@@ -19,7 +20,12 @@ type
   TTypes = TList<TIDType>;
   TEnumDeclProc = procedure (Module: TASTModule; Decl: TASTDeclaration);
 
-  TPascalProject = class(TASTProject, INPPackage)
+  TPascalProjectSettings = class(TASTProjectSettings, IPascalProjectSettings)
+
+  end;
+
+
+  TPascalProject = class(TASTProject, IASTProject, IASTPascalProject)
   type
     TStrConstKey = record
       StrTypeID: TDataTypeID;
@@ -53,17 +59,22 @@ type
     function GetOptions: TPackageOptions;
     function GetTarget: string;
     function GetDefines: TDefines;
-    function GetPointerSize: Integer;
-    function GetNativeIntSize: Integer;
+
+    function GetSysUnit: TASTModule;
     procedure SetIncludeDebugInfo(const Value: Boolean);
     procedure SetRTTICharset(const Value: TRTTICharset);
     procedure SetTarget(const Value: string);
-    procedure InitUnits;
     class function StrListCompare(const Left, Right: TStrConstKey): NativeInt; static;
   protected
+    fSysUnit: TASTModule;
     function GetUnitClass: TASTUnitClass; override;
+    function GetSystemUnitClass: TASTUnitClass; virtual; abstract;
+    function GetSystemUnitFileName: string; virtual;
+    function GetPointerSize: Integer; override;
+    function GetNativeIntSize: Integer; override;
+    procedure InitSystemUnit; virtual;
   public
-    constructor Create(const Name: string; RTTICharset: TRTTICharset = RTTICharsetASCII); override;
+    constructor Create(const Name: string); override;
     destructor Destroy; override;
     ////////////////////////////////////////
     procedure SaveToStream(Stream: TStream);
@@ -77,6 +88,7 @@ type
     property IncludeDebugInfo: Boolean read GetIncludeDebugInfo write SetIncludeDebugInfo;
     property RTTICharset: TRTTICharset read GetRTTICharset write SetRTTICharset;
     property Units: TUnits read FUnits;
+    property SysUnit: TASTModule read fSysUnit;
     property Options: TPackageOptions read GetOptions;
     function GetStringConstant(const Value: string): Integer; overload;
     function GetStringConstant(const StrConst: TIDStringConstant): Integer; overload;
@@ -91,7 +103,8 @@ type
 implementation
 
 uses AST.Parser.Errors,
-     AST.Delphi.Errors;
+     AST.Delphi.Errors,
+     AST.Pascal.Parser;
 
 function TPascalProject.GetOptions: TPackageOptions;
 begin
@@ -174,6 +187,16 @@ begin
   end;
 end;
 
+function TPascalProject.GetSystemUnitFileName: string;
+begin
+  Result := 'System.pas';
+end;
+
+function TPascalProject.GetSysUnit: TASTModule;
+begin
+  Result := fSysUnit;
+end;
+
 function TPascalProject.GetTarget: string;
 begin
   Result := FTargetName;
@@ -220,13 +243,13 @@ begin
   end;
 end;
 
-procedure TPascalProject.InitUnits;
+procedure TPascalProject.InitSystemUnit;
 var
   Stream: TStringStream;
   SysFileName, SysSource: string;
 begin
   try
-    if not Assigned(SYSUnit) then
+    if not Assigned(fSysUnit) then
     begin
       SysFileName := FindUnitFile('system');
       if FileExists(SysFileName) then
@@ -241,8 +264,8 @@ begin
       end else
         SysSource := 'unit system; end.';
 
-      SYSUnit := TSYSTEMUnit.Create(Self, SysFileName, SysSource);
-      SYSUnit.InitSystemUnit;
+      fSysUnit := GetSystemUnitClass.Create(Self, GetSystemUnitFileName, SysSource);
+      FUnits.Insert(0, fSysUnit);
     end;
   except
     on e: exception do
@@ -299,7 +322,7 @@ begin
     Result := nil;
 end;
 
-constructor TPascalProject.Create(const Name: string; RTTICharset: TRTTICharset);
+constructor TPascalProject.Create(const Name: string);
 begin
   FName := Name;
   FUnits := TUnits.Create;
@@ -309,7 +332,6 @@ begin
   FMessages := TCompilerMessages.Create;
   FRTTICharset := RTTICharset;
   FStrLiterals := TStrLiterals.Create(StrListCompare);
-  GetStringConstant(''); // занимаем нулевой индекс за пустой строкой
   SetTarget('ANY');
 end;
 
@@ -336,12 +358,11 @@ var
   i: Integer;
 begin
   for i := 0 to FUnits.Count - 1 do
-    if TNPUnit(FUnits[i]) <> SYSUnit then
+    if FUnits[i] <> SYSUnit then
       FUnits[i].Free;
   FUnits.Clear;
   FStrLiterals.Free;
   FStrLiterals := TStrLiterals.Create(StrListCompare);
-  GetStringConstant(''); // занимаем нулевой индекс за пустой строкой
 end;
 
 function TPascalProject.Compile: TCompilerResult;
@@ -350,6 +371,7 @@ var
 begin
   Result := CompileSuccess;
   // компиляция модулей
+  InitSystemUnit;
   for i := 0 to FUnits.Count - 1 do
   begin
     var UN := FUnits[i];

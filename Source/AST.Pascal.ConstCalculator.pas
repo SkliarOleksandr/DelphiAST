@@ -4,23 +4,36 @@ interface
 
 uses System.SysUtils,
      System.Math,
+     AST.Classes,
      AST.Delphi.Classes,
      AST.Parser.Errors,
-     AST.Delphi.Operators;
+     AST.Delphi.Operators,
+     AST.Delphi.Errors,
+     AST.Delphi.Intf;
 
-function ProcessConstOperation(Left, Right: TIDExpression; Operation: TOperatorID): TIDExpression; overload;
-function ProcessConstOperation(const Left, Right: TIDConstant; Operation: TOperatorID): TIDConstant; overload;
+type
+  TExpressionCalculator = record
+  private
+    fErrors: TASTDelphiErrors;
+    fSysDecls: PDelphiSystemDeclarations;
+    property Sys: PDelphiSystemDeclarations read fSysDecls;
+  public
+    constructor Create(const Module: IASTDelphiUnit);
+    function ProcessConstOperation(Left, Right: TIDExpression; Operation: TOperatorID): TIDExpression; overload;
+    function ProcessConstOperation(const Left, Right: TIDConstant; Operation: TOperatorID): TIDConstant; overload;
+  end;
+
 
 implementation
 
-uses AST.Delphi.System,
-     AST.Pascal.Parser,
-     AST.Delphi.DataTypes,
-     AST.Parser.Utils,
-     AST.Delphi.Parser,
-     AST.Delphi.Errors;
+uses
+   AST.Delphi.System,
+   AST.Pascal.Parser,
+   AST.Delphi.DataTypes,
+   AST.Parser.Utils,
+   AST.Delphi.Parser;
 
-function ProcessConstOperation(const Left, Right: TIDConstant; Operation: TOperatorID): TIDConstant; overload;
+function TExpressionCalculator.ProcessConstOperation(const Left, Right: TIDConstant; Operation: TOperatorID): TIDConstant;
   //////////////////////////////////////////////////////////////
   function CalcInteger(LValue, RValue: Int64; Operation: TOperatorID): TIDConstant;
   var
@@ -36,12 +49,12 @@ function ProcessConstOperation(const Left, Right: TIDConstant; Operation: TOpera
       opNegative: iValue := -RValue;
       opIntDiv, opDivide: begin
         if RValue = 0 then
-          TASTDelphiUnit.ERROR_DIVISION_BY_ZERO(SYSUnit._EmptyStrExpression);
+          fErrors.DIVISION_BY_ZERO(Sys._EmptyStrExpression);
         if Operation = opIntDiv then
           iValue := LValue div RValue
         else begin
          fValue := LValue / RValue;
-         Exit(TIDFloatConstant.CreateAnonymous(Left.Scope, SYSUnit._Float64, fValue));
+         Exit(TIDFloatConstant.CreateAsAnonymous(Left.Scope, Sys._Float64, fValue));
         end;
       end;
       opEqual,
@@ -59,7 +72,7 @@ function ProcessConstOperation(const Left, Right: TIDConstant; Operation: TOpera
           opLessOrEqual: bValue := (LValue <= RValue);
           else bValue := False;
         end;
-        Exit(TIDBooleanConstant.CreateAnonymous(Left.Scope, SYSUnit._Boolean, bValue));
+        Exit(TIDBooleanConstant.CreateAsAnonymous(Left.Scope, Sys._Boolean, bValue));
       end;
       opAnd: iValue := LValue and RValue;
       opOr: iValue := LValue or RValue;
@@ -69,8 +82,8 @@ function ProcessConstOperation(const Left, Right: TIDConstant; Operation: TOpera
       opShiftRight: iValue := LValue shr RValue;
       else Exit(nil);
     end;
-    DT := SYSUnit.DataTypes[GetValueDataType(iValue)];
-    Result := TIDIntConstant.CreateAnonymous(Left.Scope, DT, iValue);
+    DT := Sys.DataTypes[GetValueDataType(iValue)];
+    Result := TIDIntConstant.CreateAsAnonymous(Left.Scope, DT, iValue);
   end;
   //////////////////////////////////////////////////////////////
   function CalcFloat(LValue, RValue: Double; Operation: TOperatorID): TIDConstant;
@@ -79,14 +92,14 @@ function ProcessConstOperation(const Left, Right: TIDConstant; Operation: TOpera
     bValue: Boolean;
     ValueDT: TIDType;
   begin
-    ValueDT := SYSUnit._Float64;
+    ValueDT := Sys._Float64;
     case Operation of
       opAdd: fValue := LValue + RValue;
       opSubtract: fValue := LValue - RValue;
       opMultiply: fValue := LValue * RValue;
       opDivide: begin
         if RValue = 0 then
-          TASTDelphiUnit.ERROR_DIVISION_BY_ZERO(SYSUnit._EmptyStrExpression);
+          fErrors.DIVISION_BY_ZERO(Sys._EmptyStrExpression);
         fValue := LValue / RValue;
       end;
       opNegative: begin
@@ -109,12 +122,12 @@ function ProcessConstOperation(const Left, Right: TIDConstant; Operation: TOpera
         else
           bValue := False;
         end;
-        Exit(TIDBooleanConstant.CreateAnonymous(Left.Scope, SYSUnit._Boolean, bValue));
+        Exit(TIDBooleanConstant.CreateAsAnonymous(Left.Scope, Sys._Boolean, bValue));
       end;
     else
       Exit(nil);
     end;
-    Result := TIDFloatConstant.CreateAnonymous(nil, ValueDT, fValue);
+    Result := TIDFloatConstant.CreateAsAnonymous(Left.Scope, ValueDT, fValue);
     Result.ExplicitDataType := ValueDT;
   end;
   //////////////////////////////////////////////////////////////
@@ -129,7 +142,7 @@ function ProcessConstOperation(const Left, Right: TIDConstant; Operation: TOpera
       opNot: Value := not RValue;
       else Exit(nil);
     end;
-    Result := TIDBooleanConstant.Create(Left.Scope, Identifier(BoolToStr(Value, True)), SYSUnit._Boolean, Value);
+    Result := TIDBooleanConstant.Create(Left.Scope, Identifier(BoolToStr(Value, True)), Sys._Boolean, Value);
   end;
   //////////////////////////////////////////////////////////////
   function CalcString(const LValue, RValue: string): TIDConstant;
@@ -140,7 +153,7 @@ function ProcessConstOperation(const Left, Right: TIDConstant; Operation: TOpera
     case Operation of
       opAdd: begin
         sValue := LValue + RValue;
-        Result := TIDStringConstant.CreateAnonymous(Left.Scope, SYSUnit._String, sValue);
+        Result := TIDStringConstant.CreateAsAnonymous(Left.Scope, Sys._String, sValue);
       end;
       opEqual,
       opNotEqual: begin
@@ -149,7 +162,7 @@ function ProcessConstOperation(const Left, Right: TIDConstant; Operation: TOpera
           opNotEqual: bValue := LValue <> RValue;
           else bValue := False;
         end;
-        Exit(TIDBooleanConstant.CreateAnonymous(Left.Scope, SYSUnit._Boolean, bValue));
+        Exit(TIDBooleanConstant.CreateAsAnonymous(Left.Scope, Sys._Boolean, bValue));
       end;
       else Exit(nil);
     end;
@@ -163,7 +176,7 @@ function ProcessConstOperation(const Left, Right: TIDConstant; Operation: TOpera
     LB := TIDConstant(Right.Value.LBExpression.Declaration);
     HB := TIDConstant(Right.Value.HBExpression.Declaration);
     bValue := (Left.CompareTo(LB) >= 0) and (Left.CompareTo(HB) <= 0);
-    Result := TIDBooleanConstant.CreateAnonymous(Left.Scope, SYSUnit._Boolean, bValue);
+    Result := TIDBooleanConstant.CreateAsAnonymous(Left.Scope, Sys._Boolean, bValue);
   end;
 var
   LeftType, RightType: TClass;
@@ -214,7 +227,7 @@ begin
   Result := Constant;
 end;
 
-function ProcessConstOperation(Left, Right: TIDExpression; Operation: TOperatorID): TIDExpression;
+function TExpressionCalculator.ProcessConstOperation(Left, Right: TIDExpression; Operation: TOperatorID): TIDExpression;
   //////////////////////////////////////////////////////////////
   function CalcInteger(LValue, RValue: Int64; Operation: TOperatorID): TIDConstant;
   var
@@ -235,7 +248,7 @@ function ProcessConstOperation(Left, Right: TIDExpression; Operation: TOperatorI
           iValue := LValue div RValue
         else begin
          fValue := LValue / RValue;
-         Exit(TIDFloatConstant.CreateAnonymous(nil, SYSUnit._Float64, fValue));
+         Exit(TIDFloatConstant.CreateWithoutScope(Sys._Float64, fValue));
         end;
       end;
       opEqual,
@@ -253,7 +266,7 @@ function ProcessConstOperation(Left, Right: TIDExpression; Operation: TOperatorI
           opLessOrEqual: bValue := (LValue <= RValue);
           else bValue := False;
         end;
-        Exit(TIDBooleanConstant.CreateAnonymous(nil, SYSUnit._Boolean, bValue));
+        Exit(TIDBooleanConstant.CreateWithoutScope(Sys._Boolean, bValue));
       end;
       opAnd: iValue := LValue and RValue;
       opOr: iValue := LValue or RValue;
@@ -263,8 +276,8 @@ function ProcessConstOperation(Left, Right: TIDExpression; Operation: TOperatorI
       opShiftRight: iValue := LValue shr RValue;
       else Exit(nil);
     end;
-    DT := SYSUnit.DataTypes[GetValueDataType(iValue)];
-    Result := TIDIntConstant.CreateAnonymous(nil, DT, iValue);
+    DT := Sys.DataTypes[GetValueDataType(iValue)];
+    Result := TIDIntConstant.CreateWithoutScope(DT, iValue);
   end;
   //////////////////////////////////////////////////////////////
   function CalcFloat(LValue, RValue: Double; Operation: TOperatorID): TIDConstant;
@@ -273,7 +286,7 @@ function ProcessConstOperation(Left, Right: TIDExpression; Operation: TOperatorI
     bValue: Boolean;
     ValueDT: TIDType;
   begin
-    ValueDT := SYSUnit._Float64;
+    ValueDT := Sys._Float64;
     case Operation of
       opAdd: fValue := LValue + RValue;
       opSubtract: fValue := LValue - RValue;
@@ -311,12 +324,12 @@ function ProcessConstOperation(Left, Right: TIDExpression; Operation: TOperatorI
         else
           bValue := False;
         end;
-        Exit(TIDBooleanConstant.CreateAnonymous(nil, SYSUnit._Boolean, bValue));
+        Exit(TIDBooleanConstant.CreateWithoutScope(Sys._Boolean, bValue));
       end;
     else
       Exit(nil);
     end;
-    Result := TIDFloatConstant.CreateAnonymous(nil, ValueDT, fValue);
+    Result := TIDFloatConstant.CreateWithoutScope(ValueDT, fValue);
   end;
   //////////////////////////////////////////////////////////////
   function CalcBoolean(LValue, RValue: Boolean; Operation: TOperatorID): TIDConstant;
@@ -330,7 +343,7 @@ function ProcessConstOperation(Left, Right: TIDExpression; Operation: TOperatorI
       opNot: Value := not RValue;
       else Exit(nil);
     end;
-    Result := TIDBooleanConstant.Create(nil, Identifier(BoolToStr(Value, True)), SYSUnit._Boolean, Value);
+    Result := TIDBooleanConstant.CreateWithoutScope(Sys._Boolean, Value);
   end;
   //////////////////////////////////////////////////////////////
   function CalcString(const LValue, RValue: string): TIDConstant;
@@ -341,7 +354,7 @@ function ProcessConstOperation(Left, Right: TIDExpression; Operation: TOperatorI
     case Operation of
       opAdd: begin
         sValue := LValue + RValue;
-        Result := TIDStringConstant.CreateAnonymous(nil, SYSUnit._String, sValue);
+        Result := TIDStringConstant.CreateWithoutScope(Sys._String, sValue);
       end;
       opEqual,
       opNotEqual: begin
@@ -350,7 +363,7 @@ function ProcessConstOperation(Left, Right: TIDExpression; Operation: TOperatorI
           opNotEqual: bValue := LValue <> RValue;
           else bValue := False;
         end;
-        Exit(TIDBooleanConstant.CreateAnonymous(nil, SYSUnit._Boolean, bValue));
+        Exit(TIDBooleanConstant.CreateWithoutScope(Sys._Boolean, bValue));
       end;
       else Exit(nil);
     end;
@@ -364,7 +377,7 @@ function ProcessConstOperation(Left, Right: TIDExpression; Operation: TOperatorI
     case Operation of
       opAdd: begin
         sValue := LValue + RValue;
-        Result := TIDStringConstant.CreateAnonymous(nil, SYSUnit._String, sValue);
+        Result := TIDStringConstant.CreateWithoutScope(Sys._String, sValue);
       end;
       opEqual,
       opNotEqual,
@@ -381,7 +394,7 @@ function ProcessConstOperation(Left, Right: TIDExpression; Operation: TOperatorI
           opLessOrEqual: bValue := (LValue <= RValue);
           else bValue := False;
         end;
-        Exit(TIDBooleanConstant.CreateAnonymous(nil, SYSUnit._Boolean, bValue));
+        Exit(TIDBooleanConstant.CreateWithoutScope(Sys._Boolean, bValue));
       end;
     else
       Exit(nil);
@@ -396,7 +409,7 @@ function ProcessConstOperation(Left, Right: TIDExpression; Operation: TOperatorI
     LB := TIDConstant(Right.Value.LBExpression.Declaration);
     HB := TIDConstant(Right.Value.HBExpression.Declaration);
     bValue := (Left.CompareTo(LB) >= 0) and (Left.CompareTo(HB) <= 0);
-    Result := TIDBooleanConstant.CreateAnonymous(nil, SYSUnit._Boolean, bValue);
+    Result := TIDBooleanConstant.CreateWithoutScope(Sys._Boolean, bValue);
   end;
 var
   L, R: TIDConstant;
@@ -448,6 +461,14 @@ begin
     AbortWork('Operation %s not supported for constants', [OperatorFullName(Operation)], L.SourcePosition);
   Result := TIDExpression.Create(Constant, Right.TextPosition);
 
+end;
+
+{ TExpressionCalculator }
+
+constructor TExpressionCalculator.Create(const Module: IASTDelphiUnit);
+begin
+  fSysDecls := Module.SystemDeclarations;
+  fErrors := Module.Errors;
 end;
 
 end.

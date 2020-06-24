@@ -1,4 +1,4 @@
-unit AST.Project;
+unit AST.Intf;
 
 interface
 
@@ -19,6 +19,15 @@ type
     procedure SetOnProgress(const Value: TASTProgressEvent);
     function GetOnProgress: TASTProgressEvent;
     property OnProgress: TASTProgressEvent read GetOnProgress write SetOnProgress;
+
+    function GetPointerSize: Integer;
+    function GetNativeIntSize: Integer;
+    property PointerSize: Integer read GetPointerSize;
+    property NativeIntSize: Integer read GetNativeIntSize;
+  end;
+
+  IASTProjectSettings = interface
+    ['{F0A54AD9-2588-4CC9-9B8E-0010BD9E06DC}']
   end;
 
 implementation

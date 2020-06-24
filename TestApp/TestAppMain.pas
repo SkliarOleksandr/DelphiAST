@@ -6,7 +6,7 @@ uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, System.Generics.Collections, AST.Pascal.Project,
   AST.Pascal.Parser, AST.Delphi.Classes, SynEdit, SynEditHighlighter, SynEditCodeFolding, SynHighlighterPas, AST.Delphi.Project,
-  Vcl.ComCtrls, System.Types, Vcl.ExtCtrls, AST.Project, AST.Parser.ProcessStatuses, Vcl.CheckLst;   // system
+  Vcl.ComCtrls, System.Types, Vcl.ExtCtrls, AST.Intf, AST.Parser.ProcessStatuses, Vcl.CheckLst;   // system
 
 type
   TSourceFileInfo = record
@@ -148,23 +148,16 @@ procedure TfrmTestAppMain.Button1Click(Sender: TObject);
 var
   UN: TASTDelphiUnit;
   Msg: TStrings;
-  Prj: INPPackage;
+  Prj: IASTDelphiProject;
   CResult: TCompilerResult;
 begin
   Memo1.Clear;
 
-  FreeAndNil(SYSUnit);
-
   Prj := TASTDelphiProject.Create('test');
-  //Prj.AddUnitSearchPath(Edit1.Text);
   Prj.AddUnitSearchPath(ExtractFilePath(Application.ExeName));
-  Prj.InitUnits;
   Prj.Target := 'WIN-X86';
   Prj.Defines.Add('CPUX86');
   Prj.Defines.Add('MSWINDOWS');
-
-
-  //Prj.AddUnit(SystemUnit.SYSUnit, nil);
 
   UN := TASTDelphiUnit.Create(Prj, 'test', edUnit.Text);
   Prj.AddUnit(UN, nil);
@@ -211,31 +204,25 @@ const cRTLUsesSource =
 procedure TfrmTestAppMain.OnProgress(const Module: IASTModule; Status: TASTProcessStatusClass);
 begin
   //if Status = TASTStatusParseSuccess then
-    Memo1.Lines.Add(Module.Name + ' : ' + Status.Name)
+    Memo1.Lines.Add(Module.Name + ' : ' + Status.Name);
 end;
 
 procedure TfrmTestAppMain.Button2Click(Sender: TObject);
 var
   UN: TASTDelphiUnit;
   Msg: TStrings;
-  Prj: INPPackage;
+  Prj: IASTDelphiProject;
   CResult: TCompilerResult;
 begin
   Memo1.Clear;
 
-  FreeAndNil(SYSUnit);
-
   Prj := TASTDelphiProject.Create('test');
   Prj.AddUnitSearchPath(edSrcRoot.Text);
-  Prj.InitUnits;
   Prj.Target := TWINX86_Target.TargetName;
   Prj.Defines.Add('CPUX86');
   Prj.Defines.Add('CPU386');
   Prj.Defines.Add('MSWINDOWS');
   Prj.Defines.Add('ASSEMBLER');
-
-
-  Prj.AddUnit(AST.Delphi.System.SYSUnit, nil);
 
   UN := TASTDelphiUnit.Create(Prj, 'RTLParseTest', cRTLUsesSource);
   Prj.AddUnit(UN, nil);
@@ -288,25 +275,19 @@ end;
 procedure TfrmTestAppMain.Button4Click(Sender: TObject);
 var
   Msg: TStrings;
-  Prj: INPPackage;
+  Prj: IASTDelphiProject;
   CResult: TCompilerResult;
 begin
   Memo1.Clear;
 
-  FreeAndNil(SYSUnit);
-
   Prj := TASTDelphiProject.Create('test');
   Prj.AddUnitSearchPath(edSrcRoot.Text);
-  Prj.InitUnits;
   Prj.Target := TWINX86_Target.TargetName;
   Prj.Defines.Add('CPUX86');
   Prj.Defines.Add('CPU386');
   Prj.Defines.Add('MSWINDOWS');
   Prj.Defines.Add('ASSEMBLER');
   Prj.OnProgress := OnProgress;
-
-  Prj.AddUnit(AST.Delphi.System.SYSUnit, nil);
-
 
   for var f in fFiles do
     Prj.AddUnit(f);

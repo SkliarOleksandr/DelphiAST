@@ -16,301 +16,301 @@ type
   TSF_Assigned = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Assert}
   TSF_Assert = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Now}
   TSF_Now = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {New}
   TSF_New = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Dispose}
   TSF_Dispose = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {RunError}
   TSF_RunError = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Defined}
   TSCTF_Defined = class(TIDSysCompileFunction)
   public
     function Process(const Ctx: TSysFunctionContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Declared}
   TSCTF_Declared = class(TIDSysCompileFunction)
   public
     function Process(const Ctx: TSysFunctionContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {AtomicExchange}
   TSF_AtomicExchange = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {AtomicCmpExchange}
   TSF_AtomicCmpExchange = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {AtomicDecrement}
   TSF_AtomicDecrement = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {AtomicIncrement}
   TSF_AtomicIncrement = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {SizeOf}
   TCT_SizeOf = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Low}
   TSF_LoBound = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {High}
   TSF_HiBound = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Include}
   TSF_Include = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Inc}
   TSF_Inc = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Dec}
   TCT_Dec = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Length}
   TSF_Length = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {SetLength}
   TSF_SetLength = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {SetString}
   TSF_SetString = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Swap}
   TSF_Swap = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Ord}
   TSF_Ord = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Odd}
   TSF_Odd = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Chr}
   TSF_Chr = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {FillChar}
   TSF_FillChar = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Trunc}
   TSF_Trunc = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Val}
   TSF_Val = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Abs}
   TSF_Abs = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Str}
   TSF_Str = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Sqr}
   TSF_Sqr = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Round}
   TSF_Round = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Pred}
   TSF_Pred = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Succ}
   TSF_Succ = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {GetMem}
   TSF_GetMem = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {FreeMem}
   TSF_FreeMem = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Copy}
   TSF_Copy = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Exit}
   TSF_Exit = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Exclude}
   TSF_Exclude = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Halt}
   TSF_Halt = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {ReallocMem}
   TSF_ReallocMem = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Close}
   TSF_Close = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
   {Pi}
   TSF_Pi = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
-    class function CreateDecl(Scope: TScope): TIDBuiltInFunction; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
 implementation
@@ -329,7 +329,7 @@ begin
   Result := TIDExpression.Create(ResVar, UN.Lexer_Position);
 end;
 
-class function TSF_Now.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_Now.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'Now', SYSUnit._DateTime);
 end;
@@ -351,7 +351,7 @@ begin
     Result := SYSUnit._FalseExpression;
 end;
 
-class function TSCTF_Defined.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSCTF_Defined.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'Defined', SYSUnit._Boolean);
   Result.AddParam('Expression', SYSUnit._Boolean, [VarConst]);
@@ -369,11 +369,11 @@ begin
   // todo:
 end;
 
-class function TSF_AtomicExchange.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_AtomicExchange.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'AtomicExchange', SYSUnit._NativeInt);
-  Result.AddParam('Left', _Void, [VarInOut]);
-  Result.AddParam('Right', _Void, [VarInOut]);
+  Result.AddParam('Left', SYSUnit._Void, [VarInOut]);
+  Result.AddParam('Right', SYSUnit._Void, [VarInOut]);
 end;
 
 { TSF_AtomicCmpExchange }
@@ -387,12 +387,12 @@ begin
 end;
 
 
-class function TSF_AtomicCmpExchange.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_AtomicCmpExchange.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'AtomicCmpExchange', SYSUnit._NativeInt);
-  Result.AddParam('Target', _Void, [VarInOut]);
-  Result.AddParam('Comparand', _Void, [VarIn]);
-  Result.AddParam('Succeeded', _Void, [VarOut]);
+  Result.AddParam('Target', SYSUnit._Void, [VarInOut]);
+  Result.AddParam('Comparand', SYSUnit._Void, [VarIn]);
+  Result.AddParam('Succeeded', SYSUnit._Void, [VarOut]);
 end;
 
 { TSCTF_Declared }
@@ -413,7 +413,7 @@ begin
 
 end;
 
-class function TSCTF_Declared.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSCTF_Declared.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'Declared', SYSUnit._Boolean);
   Result.AddParam('Expression', SYSUnit._Boolean, [VarConst]);
@@ -430,7 +430,7 @@ begin
   Result := nil;
 end;
 
-class function TSF_RunError.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_RunError.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'RunError', nil);
   Result.AddParam('ErrorCode', SYSUnit._Int32, []);
@@ -452,14 +452,14 @@ begin
   else
     DataType := TIDType(Decl).ActualDataType;
 
-  Result := IntConstExpression(DataType.DataSize);
+  Result := IntConstExpression(EContext.SContext, DataType.DataSize);
   Result.TextPosition := Expr.TextPosition;
 end;
 
-class function TCT_SizeOf.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TCT_SizeOf.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := TCT_SizeOf.Create(Scope, 'SizeOf', SYSUnit._Int32);
-  Result.AddParam('S', _Void);
+  Result.AddParam('S', SYSUnit._Void);
 end;
 
 { TSF_LoBound }
@@ -482,7 +482,7 @@ begin
     itType: DataType := Decl as TIDType;
     itVar, itConst: DataType := Decl.DataType;
   else
-    UN.ERROR_ORDINAL_TYPE_REQUIRED(Expr.TextPosition);
+    UN.ERRORS.ORDINAL_TYPE_REQUIRED(Expr.TextPosition);
     Exit(nil);
   end;
 
@@ -490,12 +490,12 @@ begin
 
   if DataType.IsOrdinal then
   begin
-    Decl := TIDIntConstant.CreateAnonymous(nil, DataType, (DataType as TIDOrdinal).LowBound);
+    Decl := TIDIntConstant.CreateAsAnonymous(UN.IntfScope, DataType, (DataType as TIDOrdinal).LowBound);
   end else
   if DataType.DataTypeID = dtStaticArray then
   begin
     DataType := (DataType as TIDArray).Dimensions[0];
-    Decl := TIDIntConstant.CreateAnonymous(nil, SYSUnit._Int32, (DataType as TIDOrdinal).LowBound);
+    Decl := TIDIntConstant.CreateAsAnonymous(UN.IntfScope, SYSUnit._Int32, (DataType as TIDOrdinal).LowBound);
   end else
   if DataType.DataTypeID in [dtString, dtShortString, dtAnsiString] then
     Exit(SYSUnit._OneExpression)
@@ -504,15 +504,15 @@ begin
   begin
     Exit(SYSUnit._ZeroIntExpression);
   end else
-    UN.ERROR_ORDINAL_TYPE_REQUIRED(Expr.TextPosition);
+    UN.ERRORS.ORDINAL_TYPE_REQUIRED(Expr.TextPosition);
 
   Result := TIDExpression.Create(Decl, UN.Lexer_Position);
 end;
 
-class function TSF_LoBound.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_LoBound.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'Low', SYSUnit._OrdinalType);
-  Result.AddParam('Value', _Void, [VarConst]);
+  Result.AddParam('Value', SYSUnit._Void, [VarConst]);
 end;
 
 { TSF_HiBound }
@@ -535,7 +535,7 @@ begin
     itType: DataType := Decl as TIDType;
     itVar, itConst: DataType := Decl.DataType;
   else
-    UN.ERROR_ORDINAL_TYPE_REQUIRED(Expr.TextPosition);
+    UN.ERRORS.ORDINAL_TYPE_REQUIRED(Expr.TextPosition);
     Exit(nil);
   end;
 
@@ -543,27 +543,27 @@ begin
 
   if DataType.IsOrdinal then
   begin
-    Decl := TIDIntConstant.CreateAnonymous(nil, DataType, (DataType as TIDOrdinal).HighBound);
+    Decl := TIDIntConstant.CreateAsAnonymous(UN.IntfScope, DataType, (DataType as TIDOrdinal).HighBound);
   end else
   if DataType.DataTypeID = dtStaticArray then
   begin
     DataType := (DataType as TIDArray).Dimensions[0];
-    Decl := TIDIntConstant.CreateAnonymous(nil, SYSUnit._Int32, (DataType as TIDOrdinal).HighBound);
+    Decl := TIDIntConstant.CreateAsAnonymous(UN.IntfScope, SYSUnit._Int32, (DataType as TIDOrdinal).HighBound);
   end else
   if DataType.DataTypeID in [dtDynArray, dtString, dtShortString, dtAnsiString] then
   begin
     // Lenght - 1
     Decl := EContext.Proc.GetTMPVar(SYSUnit._NativeUInt); // tmp
   end else
-    UN.ERROR_ORDINAL_TYPE_REQUIRED(Expr.TextPosition);
+    UN.ERRORS.ORDINAL_TYPE_REQUIRED(Expr.TextPosition);
 
   Result := TIDExpression.Create(Decl, UN.Lexer_Position);
 end;
 
-class function TSF_HiBound.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_HiBound.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'High', SYSUnit._OrdinalType);
-  Result.AddParam('Value', _Void, [VarConst]);
+  Result.AddParam('Value', SYSUnit._Void, [VarConst]);
 end;
 
 { TSF_Inc }
@@ -580,7 +580,7 @@ begin
   Result := nil;
 end;
 
-class function TSF_Inc.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_Inc.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'Inc', SYSUnit._OrdinalType);
   Result.AddParam('Value', SYSUnit._OrdinalType, [VarInOut]);
@@ -601,7 +601,7 @@ begin
   Result := nil;
 end;
 
-class function TCT_Dec.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TCT_Dec.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := TCT_Dec.Create(Scope, 'Dec', SYSUnit._OrdinalType);
   Result.AddParam('Value', SYSUnit._OrdinalType, [VarInOut]);
@@ -622,12 +622,12 @@ begin
   DataType := Expr.DataType.ActualDataType;
   case DataType.DataTypeID of
     // static array
-    dtStaticArray: Result := IntConstExpression(TIDArray(DataType).Dimensions[0].ElementsCount);
+    dtStaticArray: Result := IntConstExpression(EContext.SContext, TIDArray(DataType).Dimensions[0].ElementsCount);
     // oppen array
     dtOpenArray: begin
       Decl := Expr.Declaration;
       if Decl.ItemType = itConst then
-        Result := IntConstExpression(TIDDynArrayConstant(Decl).ArrayLength)
+        Result := IntConstExpression(EContext.SContext, TIDDynArrayConstant(Decl).ArrayLength)
       else begin
         ParamName := Decl.Name + '$Length';
         Decl := Expr.Declaration.Scope.FindID(ParamName);
@@ -639,10 +639,10 @@ begin
     // dynamic array, string
     dtDynArray, dtShortString, dtString, dtAnsiString, dtWideString: begin
       if Expr.Declaration is TIDDynArrayConstant then
-        Result := IntConstExpression(Expr.AsDynArrayConst.ArrayLength)
+        Result := IntConstExpression(EContext.SContext, Expr.AsDynArrayConst.ArrayLength)
       else
       if Expr.IsConstant then
-        Result := IntConstExpression(Expr.AsStrConst.StrLength)
+        Result := IntConstExpression(EContext.SContext, Expr.AsStrConst.StrLength)
       else begin
         var TMPVar := EContext.Proc.GetTMPVar(SYSUnit._NativeUInt);
         Result := TIDExpression.Create(TMPVar, Expr.TextPosition);
@@ -665,7 +665,7 @@ begin
   end;
 end;
 
-class function TSF_Length.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_Length.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'Length', SYSUnit._NativeUInt);
   Result.AddParam('S', SYSUnit._AnyArrayType);
@@ -673,9 +673,9 @@ end;
 
 { TSF_SetLength }
 
-class function TSF_SetLength.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_SetLength.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
-  Result := Self.Create(Scope, 'SetLength', _Void);
+  Result := Self.Create(Scope, 'SetLength', SYSUnit._Void);
   Result.AddParam('S', SYSUnit._AnyArrayType);
   Result.AddParam('Len', SYSUnit._NativeUInt);
 end;
@@ -705,20 +705,20 @@ begin
   UN.CheckOrdinalExpression(Expr);
   if Expr.IsConstant then begin
     CValue := Expr.AsConst.AsInt64;
-    Result := TIDExpression.Create(TIDIntConstant.CreateAnonymous(nil, SYSUnit._Int32, CValue), Expr.TextPosition)
+    Result := TIDExpression.Create(TIDIntConstant.CreateAsAnonymous(UN.IntfScope, SYSUnit._Int32, CValue), Expr.TextPosition)
   end else
     Result := TIDCastExpression.Create(Expr.Declaration, SYSUnit._Int32, UN.Lexer_PrevPosition);
 end;
 
-class function TSF_Ord.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_Ord.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'Ord', SYSUnit._Int64);
-  Result.AddParam('Value', _Void, [VarConst]);
+  Result.AddParam('Value', SYSUnit._Void, [VarConst]);
 end;
 
 { TSF_Chr }
 
-class function TSF_Chr.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_Chr.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'Chr', SYSUnit._AnsiChar);
   Result.AddParam('X', SYSUnit._UInt8, []);
@@ -734,7 +734,7 @@ end;
 
 { TSF_FillChar }
 
-class function TSF_FillChar.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_FillChar.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'FillChar', nil);
   Result.AddParam('X', SYSUnit._UntypedReference, [VarInOut]);
@@ -754,7 +754,7 @@ end;
 
 { TSF_Assigned }
 
-class function TSF_Assigned.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_Assigned.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'Assigned', SYSUnit._Boolean);
   Result.AddParam('Value', SYSUnit._Pointer, [VarConst]);
@@ -771,9 +771,9 @@ end;
 
 { TSF_SetString }
 
-class function TSF_SetString.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_SetString.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
-  Result := Self.Create(Scope, 'SetString', _Void);
+  Result := Self.Create(Scope, 'SetString', SYSUnit._Void);
   Result.AddParam('S', SYSUnit._AnyArrayType);
   Result.AddParam('Buffer', SYSUnit._Pointer);
   Result.AddParam('Length', SYSUnit._Int32);
@@ -792,7 +792,7 @@ end;
 
 { TSF_Trunc }
 
-class function TSF_Trunc.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_Trunc.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'Trunc', SYSUnit._Float64);
   Result.AddParam('Val', SYSUnit._Float64);
@@ -809,7 +809,7 @@ end;
 
 { TSF_Odd }
 
-class function TSF_Odd.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_Odd.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'Odd', SYSUnit._Boolean);
   Result.AddParam('X', SYSUnit._Int32, [VarConst]);
@@ -826,9 +826,9 @@ end;
 
 { TSF_Val }
 
-class function TSF_Val.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_Val.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
-  Result := Self.Create(Scope, 'Val', _Void);
+  Result := Self.Create(Scope, 'Val', SYSUnit._Void);
   Result.AddParam('S', SYSUnit._String, [VarConst]);
   Result.AddParam('V', SYSUnit._UntypedReference, [VarInOut]);
   Result.AddParam('Code', SYSUnit._Int32, []);
@@ -847,10 +847,10 @@ end;
 
 { TSF_Abs }
 
-class function TSF_Abs.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_Abs.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
-  Result := Self.Create(Scope, 'Abs', _Void);
-  Result.AddParam('X', _Void, [VarConst]);
+  Result := Self.Create(Scope, 'Abs', SYSUnit._Void);
+  Result.AddParam('X', SYSUnit._Void, [VarConst]);
 end;
 
 function TSF_Abs.Process(var EContext: TEContext): TIDExpression;
@@ -864,10 +864,10 @@ end;
 
 { TSF_Str }
 
-class function TSF_Str.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_Str.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
-  Result := Self.Create(Scope, 'Str', _Void);
-  Result.AddParam('X', _Void, [VarConst]);
+  Result := Self.Create(Scope, 'Str', SYSUnit._Void);
+  Result.AddParam('X', SYSUnit._Void, [VarConst]);
   Result.AddParam('S', SYSUnit._String, [VarInOut]);
 end;
 
@@ -882,7 +882,7 @@ end;
 
 { TSF_Round }
 
-class function TSF_Round.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_Round.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'Round', SYSUnit._Float64);
   Result.AddParam('X', SYSUnit._Float64, [VarConst]);
@@ -899,7 +899,7 @@ end;
 
 { TSF_Pred }
 
-class function TSF_Pred.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_Pred.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'Pred', SYSUnit._OrdinalType);
   Result.AddParam('X', SYSUnit._OrdinalType, [VarConst]);
@@ -916,9 +916,9 @@ end;
 
 { TSF_GetMem }
 
-class function TSF_GetMem.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_GetMem.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
-  Result := Self.Create(Scope, 'GetMem', _Void);
+  Result := Self.Create(Scope, 'GetMem', SYSUnit._Void);
   Result.AddParam('StoragePointer ', SYSUnit._Pointer, [VarInOut]);
   Result.AddParam('StorageSize ', SYSUnit._Int32, [VarConst]);
 end;
@@ -935,7 +935,7 @@ end;
 
 { TSF_Succ }
 
-class function TSF_Succ.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_Succ.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'Succ', SYSUnit._OrdinalType);
   Result.AddParam('X', SYSUnit._OrdinalType, [VarConst]);
@@ -952,9 +952,9 @@ end;
 
 { TSF_FreeMem }
 
-class function TSF_FreeMem.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_FreeMem.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
-  Result := Self.Create(Scope, 'FreeMem', _Void);
+  Result := Self.Create(Scope, 'FreeMem', SYSUnit._Void);
   Result.AddParam('P', SYSUnit._Pointer, [VarConst]);
   Result.AddParam('Size', SYSUnit._Int32, [VarConst], SYSUnit._ZeroIntExpression);
 end;
@@ -971,9 +971,9 @@ end;
 
 { TSF_Copy }
 
-class function TSF_Copy.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_Copy.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
-  Result := Self.Create(Scope, 'Copy', _Void);
+  Result := Self.Create(Scope, 'Copy', SYSUnit._Void);
   Result.AddParam('Source', SYSUnit._Pointer, [VarConst]);
   Result.AddParam('StartChar', SYSUnit._Int32, [VarConst]);
   Result.AddParam('Count ', SYSUnit._Int32, [VarConst]);
@@ -992,10 +992,10 @@ end;
 
 { TSF_Exit }
 
-class function TSF_Exit.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_Exit.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
-  Result := Self.Create(Scope, 'Exit', _Void);
-  Result.AddParam('Result', _Void, [VarConst], SYSUnit._NullPtrExpression);
+  Result := Self.Create(Scope, 'Exit', SYSUnit._Void);
+  Result.AddParam('Result', SYSUnit._Void, [VarConst], SYSUnit._NullPtrExpression);
 end;
 
 function TSF_Exit.Process(var EContext: TEContext): TIDExpression;
@@ -1010,9 +1010,9 @@ end;
 
 { TSF_Halt }
 
-class function TSF_Halt.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_Halt.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
-  Result := Self.Create(Scope, 'Halt', _Void);
+  Result := Self.Create(Scope, 'Halt', SYSUnit._Void);
   Result.AddParam('ExitValue', SYSUnit._Int32, [VarConst]);
 end;
 
@@ -1027,9 +1027,9 @@ end;
 
 { TSF_New }
 
-class function TSF_New.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_New.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
-  Result := Self.Create(Scope, 'New', _Void);
+  Result := Self.Create(Scope, 'New', SYSUnit._Void);
   Result.AddParam('X', SYSUnit._Pointer, [VarInOut]);
 end;
 
@@ -1044,9 +1044,9 @@ end;
 
 { TSF_Dispose }
 
-class function TSF_Dispose.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_Dispose.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
-  Result := Self.Create(Scope, 'Dispose', _Void);
+  Result := Self.Create(Scope, 'Dispose', SYSUnit._Void);
   Result.AddParam('P', SYSUnit._Pointer, [VarConst]);
 end;
 
@@ -1061,9 +1061,9 @@ end;
 
 { TSF_ReallocMem }
 
-class function TSF_ReallocMem.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_ReallocMem.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
-  Result := Self.Create(Scope, 'ReallocMem', _Void);
+  Result := Self.Create(Scope, 'ReallocMem', SYSUnit._Void);
   Result.AddParam('P', SYSUnit._Pointer, [VarInOut]);
   Result.AddParam('Size', SYSUnit._Int32, [VarConst]);
 end;
@@ -1080,9 +1080,9 @@ end;
 
 { TSF_AtomicDecreament }
 
-class function TSF_AtomicDecrement.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_AtomicDecrement.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
-  Result := Self.Create(Scope, 'AtomicDecrement', _Void);
+  Result := Self.Create(Scope, 'AtomicDecrement', SYSUnit._Void);
   Result.AddParam('Target', SYSUnit._UntypedReference, [VarInOut]);
   Result.AddParam('Value', SYSUnit._Int32, [VarConst], SYSUnit._OneExpression);
 end;
@@ -1099,9 +1099,9 @@ end;
 
 { TSF_AtomicIncrement }
 
-class function TSF_AtomicIncrement.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_AtomicIncrement.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
-  Result := Self.Create(Scope, 'AtomicIncrement', _Void);
+  Result := Self.Create(Scope, 'AtomicIncrement', SYSUnit._Void);
   Result.AddParam('Target', SYSUnit._UntypedReference, [VarInOut]);
   Result.AddParam('Value', SYSUnit._Int32, [VarConst], SYSUnit._OneExpression);
 end;
@@ -1119,9 +1119,9 @@ end;
 
 { TSF_Assert }
 
-class function TSF_Assert.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_Assert.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
-  Result := Self.Create(Scope, 'Assert', _Void);
+  Result := Self.Create(Scope, 'Assert', SYSUnit._Void);
   Result.AddParam('Condition', SYSUnit._Boolean, [VarConst]);
   Result.AddParam('Message', SYSUnit._String, [VarConst], SYSUnit._NullPtrExpression);
 end;
@@ -1138,7 +1138,7 @@ end;
 
 { TSF_Swap }
 
-class function TSF_Swap.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_Swap.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'Swap', SYSUnit._Int32);
   Result.AddParam('Value', SYSUnit._Int32, [VarConst]);
@@ -1155,9 +1155,9 @@ end;
 
 { TSF_Close }
 
-class function TSF_Close.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_Close.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
-  Result := Self.Create(Scope, 'Close', _Void);
+  Result := Self.Create(Scope, 'Close', SYSUnit._Void);
   Result.AddParam('Handle', SYSUnit._Pointer, [VarConst]);
 end;
 
@@ -1172,7 +1172,7 @@ end;
 
 { TSF_Pi }
 
-class function TSF_Pi.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_Pi.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'Pi', SYSUnit._Float64);
 end;
@@ -1184,7 +1184,7 @@ end;
 
 { TSF_Sqr }
 
-class function TSF_Sqr.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_Sqr.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'Sqr', SYSUnit._Variant);
   Result.AddParam('Value', SYSUnit._Variant, [VarConst]);
@@ -1201,9 +1201,9 @@ end;
 
 { TSF_Include }
 
-class function TSF_Include.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_Include.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
-  Result := Self.Create(Scope, 'Include', _Void);
+  Result := Self.Create(Scope, 'Include', SYSUnit._Void);
   Result.AddParam('Set', SYSUnit._Variant, [VarInOut]);
   Result.AddParam('Flags', SYSUnit._Variant, [VarConst]);
 end;
@@ -1220,9 +1220,9 @@ end;
 
 { TSF_Exclude }
 
-class function TSF_Exclude.CreateDecl(Scope: TScope): TIDBuiltInFunction;
+class function TSF_Exclude.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
-  Result := Self.Create(Scope, 'Exclude', _Void);
+  Result := Self.Create(Scope, 'Exclude', SYSUnit._Void);
   Result.AddParam('Set', SYSUnit._Variant, [VarInOut]);
   Result.AddParam('Flags', SYSUnit._Variant, [VarConst]);
 end;

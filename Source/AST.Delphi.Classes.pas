@@ -13,8 +13,9 @@ uses System.SysUtils, System.Classes, System.StrUtils, System.Math, System.Gener
      AST.Parser.Utils,
      AST.Parser.Messages,
      AST.Parser.Options,
+     AST.Pascal.Intf,
      AST.Classes,
-     AST.Project;
+     AST.Intf;
 type
 
   TExpessionPosition = (ExprNested, ExprLValue, ExprRValue, ExprNestedGeneric);
@@ -83,7 +84,6 @@ type
     property Count: Integer read FCount write FCount;
   end;
 
-
   TIDItemType = (
     itUnknown,         // неизвестный тип
     itVar,             // переменная
@@ -108,62 +108,11 @@ type
 
   TIDDynArrayConstant = class;
 
-  TCompilerResult = (
-    CompileSuccess,
-    CompileFail,
-    CompileSkip
-  );
-
-  INPPackage = interface(IASTProject)
-    ['{32BDB0E9-59FD-4116-9B7F-6B2DEAB26F59}']
-    function GetStringConstant(const Value: string): Integer; overload;
-    function GetStringConstant(const Value: TIDStringConstant): Integer; overload;
-    function GetIncludeDebugInfo: Boolean;
-    function GetUnitsCount: Integer;
-    function GetUnit(Index: Integer): TObject; overload;
-    function GetSearchPathes: TStrings;
-    function GetOptions: TPackageOptions;
-    function GetTarget: string;
-    function GetDefines: TDefines;
-    function FindUnitFile(const UnitName: string): string;
-    function GetUnit(const UnitName: string): TObject; overload;
-    function UsesUnit(const UnitName: string; AfterUnit: TASTModule): TASTModule;
-    procedure SetIncludeDebugInfo(const Value: Boolean);
-    procedure SetRTTICharset(const Value: TRTTICharset);
-    procedure SetTarget(const Value: string);
-    procedure SaveToStream(Stream: TStream);
-    procedure AddUnit(aUnit, AfterUnit: TASTModule); overload;
-    procedure AddUnit(const FileName: string); overload;
-    procedure AddUnitSource(const Source: string); overload;
-    procedure AddUnitSearchPath(const Path: string; IncludeSubDirectories: Boolean = True);
-    procedure Clear;
-    procedure InitUnits;
-    procedure EnumIntfDeclarations(const EnumProc: TEnumASTDeclProc);
-    function GetMessages: ICompilerMessages;
-    function GetRTTICharset: TRTTICharset;
-    function RefCount: Integer;
-    function Compile: TCompilerResult;
-    function CompileInterfacesOnly: TCompilerResult;
-    function GetPointerSize: Integer;
-    function GetNativeIntSize: Integer;
-    property Messages: ICompilerMessages read GetMessages;
-    property RTTICharset: TRTTICharset read GetRTTICharset write SetRTTICharset;
-    property IncludeDebugInfo: Boolean read GetIncludeDebugInfo write SetIncludeDebugInfo;
-    property UnitsCount: Integer read GetUnitsCount;
-    property Units[Index: Integer]: TObject read GetUnit;
-    property SearchPathes: TStrings read GetSearchPathes;
-    property Options: TPackageOptions read GetOptions;
-    property Target: string read GetTarget write SetTarget;
-    property Defines: TDefines read GetDefines;
-    property PointerSize: Integer read GetPointerSize;
-    property NativeIntSize: Integer read GetNativeIntSize;
-  end;
-
   TVisibility = (vLocal, vPublic, vProtected, vStrictProtected, vPrivate, vStrictPrivate);
 
   TIDDeclarationClass = class of TIDDeclaration;
 
-  {декларация - базовый класс}
+  {The base Declaration class}
   TIDDeclaration = class(TASTDeclaration)
   private
     FItemType: TIDItemType;
@@ -180,11 +129,10 @@ type
     FImportName: Integer;            // имя (индекс) функции импорта
     fDepricatedExpression: TIDExpression;
     function GetDataTypeID: TDataTypeID; inline;
-    function GetDeclUnit: TObject; inline;
     function GetUnitID: Integer;
     function GetIsAnonymous: Boolean; inline;
+    function GetPackage: IASTPascalProject;
     procedure SetIndex(const Value: Integer);
-    function GetPackage: INPPackage;
   protected
     function GetOriginalDecl: TIDDeclaration; virtual;
     function GetIndex: Integer; virtual;
@@ -198,13 +146,9 @@ type
     destructor Destroy; override;
     ////////////////////////////////////////////////////////////////////////////
     property ItemType: TIDItemType read FItemType write FItemType;
-    //property ID: TIdentifier read FID write FID;
-    //property Name: string read FID.Name write FID.Name;
-    //property TextPosition: TTextPosition read FID.TextPosition write FID.TextPosition;
     property DisplayName: string read GetDisplayName;
     property Scope: TScope read FScope;
     property DataType: TIDType read FDataType write SetDataType;
-    //property SourcePosition: TTextPosition read FID.TextPosition;
     property Visibility: TVisibility read FVisibility write FVisibility;
     property Index: Integer read FIndex write SetIndex;
     property Export: Integer read FExportNameIndex write FExportNameIndex;
@@ -215,7 +159,6 @@ type
     property Original: TIDDeclaration read GetOriginalDecl;
     property ImportLib: Integer read FImportLib write FImportLib;
     property ImportName: Integer read FImportName write FImportName;
-    property DeclUnit: TObject read GetDeclUnit;
     property UnitID: Integer read GetUnitID;
     property IsAnonymous: Boolean read GetIsAnonymous;
     property SpaceIndex: Integer read GetIndex;
@@ -223,7 +166,7 @@ type
     procedure DecRefCount(RCPath: UInt32); virtual; // удаляет зависимость
     {процедура делает DecReadCount для зависимостей}
     procedure RemoveILReferences(var RCPathCount: UInt32); virtual;
-    property Package: INPPackage read GetPackage;
+    property Package: IASTPascalProject read GetPackage;
     property CValue: TIDConstant read GetCValue write SetCValue;
     property DepricatedExpression: TIDExpression read fDepricatedExpression write fDepricatedExpression;
   end;
@@ -325,13 +268,10 @@ type
     fSysImplicitToAny: TIDOperator;    // self -> any
     fSysImplicitFromAny: TIDOperator;  // any -> self
 
-    // lists of explicits operators (user level 2):
+    // lists of explicits operators (user level):
     fExplicitsTo: TIDPairList;
     fExplicitsFrom: TIDPairList;
-    // lists of explicits operators (sys level 1):
-    fSysExplicitsToID: TExplistIDList;
-    fSysExplicitsFromID: TExplistIDList;
-    // lists of explicits operators (sys level 0):
+    // lists of system explicits operators:
     fSysExplicitToAny: TIDOperator;
     fSysExplicitFromAny: TIDOperator;
 
@@ -360,12 +300,10 @@ type
     function GetActualDataType: TIDType; virtual;
     function GetParent: TIDType;
     procedure SetGenericDescriptor(const Value: PGenericDescriptor); virtual;
-    procedure CheckCreateSysExplicitsToID;
-    procedure CheckCreateSysExplicitsFromID;
   public
+    constructor CreateAsAnonymous(Scope: TScope); override;
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
     constructor Create(Scope: TScope; const ID: TIdentifier); override;
-    constructor CreateAsAnonymous(Scope: TScope); override;
     destructor Destroy; override;
     ////////////////////////////////////////////////////////////////////////////
     function GetDefaultReference(Scope: TScope): TIDType;
@@ -398,7 +336,6 @@ type
     property TypeKind: TTypeKind read FTypeKind write FTypeKind;
     property DataSize: Integer read GetDataSize;
     property Managed: Boolean read GetIsManaged;
-//    property ManagedFlags: TManagedDataTypeFlags read GetManagedFlags;
     property IsPooled: Boolean read FIsPooled write FIsPooled;
     property NeedForward: Boolean read FNeedForward write FNeedForward;
     property ForwardID: TIdentifier read FForwardID write FForwardID;
@@ -418,9 +355,6 @@ type
     procedure OverloadExplicitTo(const Destination, Proc: TIDDeclaration); overload;
     procedure OverloadExplicitFrom(const Source: TIDDeclaration); overload;
     procedure OverloadExplicitFrom(const Source, Proc: TIDDeclaration); overload;
-
-    procedure OverloadExplicitToID(Destination: TDataTypeID; const Op: TIDDeclaration); overload;
-    procedure OverloadExplicitFromID(Source: TDataTypeID; const Op: TIDDeclaration); overload;
 
     procedure OverloadExplicitToAny(const Op: TIDOperator);
     procedure OverloadExplicitFromAny(const Op: TIDOperator);
@@ -447,8 +381,6 @@ type
     property SysExplicitFromAny: TIDOperator read fSysExplicitFromAny;
     property SysImplicitToAny: TIDOperator read FSysImplicitToAny;
     property SysImplicitFromAny: TIDOperator read fSysImplicitFromAny;
-
-    procedure SaveDeclToStream(Stream: TStream; const Package: INPPackage); virtual;
   end;
 
   {тип - специальный, для обобщенных типов}
@@ -541,7 +473,6 @@ type
     // показывает знаковый ли диаппазон (Int64) или беззнаковый (UInt64)
     property SignedBound: Boolean read FSignedBound write FSignedBound;
     property ElementsCount: UInt64 read GetElementsCount;
-    procedure SaveDeclToStream(Stream: TStream; const Package: INPPackage); override;
   end;
 
   {алиас}
@@ -632,20 +563,21 @@ type
     function FindMethod(const Name: string): TIDProcedure;
     procedure IncRefCount(RCPath: UInt32); override;
     procedure DecRefCount(RCPath: UInt32); override;
-    procedure SaveMethodBodiesToStream(Stream: TStream; const Package: INPPackage);
-    procedure SaveDeclToStream(Stream: TStream; const Package: INPPackage); override;
   end;
 
   {тип - структура}
   TIDRecord = class(TIDStructure)
   private
-    FStaticConstructor: TIDProcedure;
-    FStaticDestructor: TIDProcedure;
+    fStaticConstructor: TIDProcedure;
+    fStaticDestructor: TIDProcedure;
+    fCases: array of TVarSpace;
   protected
   public
     constructor Create(Scope: TScope; const Name: TIdentifier); override;
+    procedure CreateStandardOperators; override;
     property StaticConstructor: TIDProcedure read FStaticConstructor write FStaticConstructor;
     property StaticDestructor: TIDProcedure read FStaticDestructor write FStaticDestructor;
+    function AddCaseSpace: PVarSpace;
   end;
 
   TIDMethods = array of TIDProcedure;
@@ -668,7 +600,6 @@ type
     function FindInterface(const Intf: TIDInterface): Boolean;
     procedure AddInterface(const Intf: TIDInterface);
     procedure MapInterfaceMethod(const Intf: TIDInterface; IntfMethod, ImplMethod: TIDProcedure);
-    procedure SaveDeclToStream(Stream: TStream; const Package: INPPackage); override;
     property InterfacesCount: Integer read GetInterfacesCount;
     property Interfaces[Index: Integer]: TIDInterface read GetInterface;
     procedure IncRefCount(RCPath: UInt32); override;
@@ -690,7 +621,6 @@ type
     FCapturedVars: TCapturedVars;
   protected
     function GetDisplayName: string; override;
-//    function GetManagedFlags: TManagedDataTypeFlags; override;
   public
     constructor CreateClosure(const DeclProc, RunProc: TIDProcedure);
     destructor Destroy; override;
@@ -709,7 +639,6 @@ type
     function GetIsManaged: Boolean; override;
   public
     constructor Create(Scope: TScope; const Name: TIdentifier); override;
-    procedure SaveDeclToStream(Stream: TStream; const Package: INPPackage); override;
     property GUID: TGUID read FGUID write FGUID;
   end;
 
@@ -725,7 +654,6 @@ type
     function GetDimension(Index: Integer): TIDOrdinal; virtual;
   protected
     function GetDisplayName: string; override;
-//    function GetManagedFlags: TManagedDataTypeFlags; override;
     function GetDataSize: Integer; override;
   public
     constructor Create(Scope: TScope; const Name: TIdentifier); override;
@@ -737,7 +665,6 @@ type
     property DimensionsCount: Integer read FDimensionsCount;
     property Dimensions[Index: Integer]: TIDOrdinal read GetDimension;
     procedure AddBound(Bound: TIDOrdinal);
-    procedure SaveDeclToStream(Stream: TStream; const Package: INPPackage); override;
     procedure IncRefCount(RCPath: UInt32); override;
     procedure DecRefCount(RCPath: UInt32); override;
   end;
@@ -757,7 +684,6 @@ type
     property BitsCount: UInt32 read GetBitsCount;
     property BaseType: TIDType read FBaseType write FBaseType;
     procedure IncRefCount(RCPath: UInt32); override;
-    procedure SaveDeclToStream(Stream: TStream; const Package: INPPackage); override;
   end;
 
   TIDStaticArray = class(TIDArray)
@@ -773,7 +699,6 @@ type
   private
     function GetDimension(Index: Integer): TIDOrdinal; override;
   protected
-//    function GetManagedFlags: TManagedDataTypeFlags; override;
   public
     constructor Create(Scope: TScope; const Name: TIdentifier); override;
     constructor CreateAsAnonymous(Scope: TScope); override;
@@ -798,12 +723,9 @@ type
     constructor Create(Scope: TScope; const Name: TIdentifier); override; deprecated 'Only CreateAnonymous constructor allowed for this type';
     {$HINTS ON}
   protected
-//    function GetManagedFlags: TManagedDataTypeFlags; override;
   public
     constructor CreateAsAnonymous(Scope: TScope); override;
     ////////////////////////////////////////////////////////////////////////////
-    procedure SaveDeclToStream(Stream: TStream; const Package: INPPackage); override;
-    //property Flags: Integer read FFlags write FFlags;
   end;
 
   TVariableList = array of TIDVariable;
@@ -837,7 +759,6 @@ type
     constructor Create(Scope: TScope; const Identifier: TIdentifier); override;
     constructor CreateAsAnonymous(Scope: TScope); override;
     ////////////////////////////////////////////////////////////////////////
-    procedure SaveDeclToStream(Stream: TStream; const Package: INPPackage); override;
     procedure AddParam(const ID: TIdentifier; DataType: TIDType);
     property Params: TVariableList read FParams write FParams;
     property ResultType: TIDType read FResultType write FResultType;
@@ -863,7 +784,7 @@ type
     constructor Create(Scope: TScope; const Identifier: TIdentifier); override;
     procedure AssignValue(Source: TIDConstant); virtual; abstract;
     // WriteToStream пишет значение константы в Stream фиксированного размера (согласно типу)
-    procedure WriteToStream(Stream: TStream; const Package: INPPackage); virtual; abstract;
+    //procedure WriteToStream(Stream: TStream; const Package: INPPackage); virtual; abstract;
     property ExplicitDataType: TIDType read FExplicitDataType write SetExplicitDataType;
     function ValueDataType: TDataTypeID; virtual; abstract;
     function ValueByteSize: Integer; virtual; abstract;
@@ -884,9 +805,10 @@ type
   public
     constructor Create(Scope: TScope; const Identifier: TIdentifier; DataType: TIDType; Value: T); overload;
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
-    constructor CreateAnonymous(Scope: TScope; DataType: TIDType; Value: T);
+    constructor CreateAsAnonymous(Scope: TScope; DataType: TIDType; Value: T);
+    constructor CreateWithoutScope(DataType: TIDType; Value: T);
     procedure AssignValue(Source: TIDConstant); override;
-    procedure WriteToStream(Stream: TStream; const Package: INPPackage); override;
+    //procedure WriteToStream(Stream: TStream; const Package: INPPackage); override;
     property Value: T read FValue write FValue;
   end;
 
@@ -916,7 +838,7 @@ type
   {константа с плавоющей запятой}
   TIDFloatConstant = class(TIDXXXConstant<Double>)
   public
-    procedure WriteToStream(Stream: TStream; const Package: INPPackage); override;
+    //procedure WriteToStream(Stream: TStream; const Package: INPPackage); override;
     function ValueDataType: TDataTypeID; override;
     function ValueByteSize: Integer; override;
     function AsInt64: Int64; override;
@@ -928,7 +850,7 @@ type
   {константа строковая}
   TIDStringConstant = class(TIDXXXConstant<string>)
   public
-    procedure WriteToStream(Stream: TStream; const Package: INPPackage); override;
+    //procedure WriteToStream(Stream: TStream; const Package: INPPackage); override;
     function ValueByteSize: Integer; override;
     function ValueDataType: TDataTypeID; override;
     function AsInt64: Int64; override;
@@ -941,7 +863,7 @@ type
   {константа символьная}
   TIDCharConstant = class(TIDXXXConstant<char>)
   public
-    procedure WriteToStream(Stream: TStream; const Package: INPPackage); override;
+    //procedure WriteToStream(Stream: TStream; const Package: INPPackage); override;
     function ValueDataType: TDataTypeID; override;
     function ValueByteSize: Integer; override;
     function AsInt64: Int64; override;
@@ -966,7 +888,7 @@ type
     FStatic: Boolean;
     function GetLength: Integer;
   public
-    procedure WriteToStream(Stream: TStream; const Package: INPPackage); override;
+    //procedure WriteToStream(Stream: TStream; const Package: INPPackage); override;
     function ValueDataType: TDataTypeID; override;
     function ValueByteSize: Integer; override;
     function AsInt64: Int64; override;
@@ -1004,7 +926,7 @@ type
     function AsInt64: Int64; override;
     function AsVariant: Variant; override;
     function CompareTo(Constant: TIDConstant): Integer; override;
-    procedure WriteToStream(Stream: TStream; const Package: INPPackage); override;
+    //procedure WriteToStream(Stream: TStream; const Package: INPPackage); override;
   end;
 
   TIDRecordConstantField = record
@@ -1021,7 +943,6 @@ type
     function AsInt64: Int64; override;
     function AsVariant: Variant; override;
     function CompareTo(Constant: TIDConstant): Integer; override;
-    procedure WriteToStream(Stream: TStream; const Package: INPPackage); override;
   end;
 
   TExpressonType = (
@@ -1063,7 +984,6 @@ type
     function GetIsTMPRef: Boolean;
     function GetAsCharConst: TIDCharConstant;
     function GetAsClosure: TIDClosure;
-    function GetIsNullableVariable: Boolean;
     function GetIsAnonymousRef: Boolean;
     function GetIsAnonymousVar: Boolean;
     function GetIsNonAnonimousVariable: Boolean;
@@ -1102,7 +1022,7 @@ type
     property IsVariable: Boolean read GetIsVariable;
     property IsParam: Boolean read GetIsParam;
     property IsNonAnonimousVariable: Boolean read GetIsNonAnonimousVariable;
-    property IsNullableVariable: Boolean read GetIsNullableVariable;
+    //property IsNullableVariable: Boolean read GetIsNullableVariable;
     property AsType: TIDType read GetAsType;
     property AsConst: TIDConstant read GetAsConst;
     property AsIntConst: TIDIntConstant read GetAsIntConst;
@@ -1113,7 +1033,6 @@ type
     property AsVariable: TIDVariable read GetAsVariable;
     property AsProperty: TIDProperty read GetAsProperty;
     property AsProcedure: TIDProcedure read GetAsProcedure;
-    //property AsUserDefinedMacro: TIDUserDefinedMacro read GetAsUserDefinedMacro;
     property AsArrayConst: TIDDynArrayConstant read GetAsArrayConst;
     property AsRangeConst: TIDRangeConstant read GetAsRangeConst;
     property AsClosure: TIDClosure read GetAsClosure;
@@ -1203,7 +1122,6 @@ type
     VarInOut,        // параметр переданный по ссылке (var)
     VarConst,        // константный параметр
     VarConstRef,     // константный параметр переданный по ссылке
-    VarNotNull,      // переменная является ссылкой not null
     VarResult,       // параметр-результат функции
     VarSelf,         // параметр self метода
     VarHasDefault,   // параметр имеет значение по умолчаню
@@ -1223,7 +1141,6 @@ type
   private
     FFlags: TVariableFlags;
     FAbsolute: TIDVariable;       // ссылка на поле absolute
-    FAbsoluteOffset: Integer;     // смещение в байтах
     FDefaultValue: TIDExpression; // Значение по умолчанию
     FLastRInstruction: TObject;
     FLastWInstruction: TObject;
@@ -1267,7 +1184,6 @@ type
     property LastRWInstruction: TObject read GetLastRWInstruction;
     procedure IncRefCount(RCPath: UInt32); override;
     procedure DecRefCount(RCPath: UInt32); override;
-    procedure SaveToStream(Stream: TStream; const Package: INPPackage);
     procedure IncludeFlags(const Flags: TVariableFlags);
     procedure SaveAndIncludeFlags(const Flags: TVariableFlags; out PrevFlags: TVariableFlags);
   end;
@@ -1403,9 +1319,6 @@ type
     function AddParam(const Name: string; DataType: TIDType): TIDParam; overload;
     function AddParam(const Name: string; DataType: TIDType; Flags: TVariableFlags; DefaultValue: TIDExpression = nil): TIDParam; overload;
     //======================================================================
-    procedure SaveDeclToStream(Stream: TStream; const Package: INPPackage);
-    procedure SaveBodyToStream(Stream: TStream; const Package: INPPackage);
-    //======================================================================
     procedure IncRefCount(RCPath: UInt32); override;
     procedure DecRefCount(RCPath: UInt32); override;
 
@@ -1482,7 +1395,7 @@ type
 
   TScope = class(TIDList)
   private
-    fUnit: TObject;             // модуль (индекс модуля в пакете)
+    fUnit: TASTModule;             // модуль (индекс модуля в пакете)
     fParent: TScope;            // Parent scope
     fScopeType: TScopeType;     // Тип scope
     fVarSpace: PVarSpace;       // ссылка на список переменных
@@ -1498,9 +1411,9 @@ type
     procedure AddChild(Scope: TScope);
     procedure RemoveChild(Scope: TScope);
   public
-    constructor Create(ScopeType: TScopeType; DeclUnit: TObject); overload;
+    constructor Create(ScopeType: TScopeType; DeclUnit: TASTModule); overload;
     constructor Create(ScopeType: TScopeType; Parent: TScope); overload;
-    constructor Create(ScopeType: TScopeType; VarSpace: PVarSpace; ProcSpace: PProcSpace; Parent: TScope; DeclUnit: TObject); overload;
+    constructor Create(ScopeType: TScopeType; VarSpace: PVarSpace; ProcSpace: PProcSpace; Parent: TScope; DeclUnit: TASTModule); overload;
     destructor Destroy; override;
     //////////////////////////////////////////////////////////////////////
     procedure AddVariable(Declaration: TIDVariable);
@@ -1520,7 +1433,7 @@ type
     property VarSpace: PVarSpace read FVarSpace write FVarSpace;
     property ProcSpace: PProcSpace read FProcSpace write FProcSpace;
     property ScopeClass: TScopeClass read GetScopeClass;
-    property DeclUnit: TObject read FUnit;
+    property DeclUnit: TASTModule read FUnit;
     property AdditionalScopes: TScopes read FAdditionalScopes;
     {$IFDEF DEBUG}property Name: string read FName write FName;{$ENDIF}
   end;
@@ -1541,7 +1454,7 @@ type
     FAncestorScope: TScope;
     FStruct: TIDStructure;
   public
-    constructor CreateAsStruct(Parent: TScope; Struct: TIDStructure; VarSpace: PVarSpace; ProcSpace: PProcSpace; DeclUnit: TObject); reintroduce;
+    constructor CreateAsStruct(Parent: TScope; Struct: TIDStructure; VarSpace: PVarSpace; ProcSpace: PProcSpace; DeclUnit: TASTModule); reintroduce;
     function FindIDRecurcive(const ID: string; out Expression: TIDExpression): TIDDeclaration; override;
     function FindMembers(const ID: string): TIDDeclaration; override;
     property Struct: TIDStructure read FStruct;
@@ -1600,8 +1513,6 @@ type
     property Items[const Key: TIDDeclaration]: TObject read GetItem;
   end;
 
-  procedure SaveProcDecls(Stream: TStream; const Package: INPPackage; ProcSpace: PProcSpace);
-  procedure SaveProcBodies(Stream: TStream; const Package: INPPackage; ProcSpace: PProcSpace);
   function Identifier(const Name: string; TextPosition: TTextPosition): TIdentifier; overload; inline;
   function Identifier(const Name: string; SourceRow: Integer = 0; SourceCol: Integer = 0): TIdentifier; overload; inline;
 
@@ -1609,8 +1520,6 @@ type
   function ExpressionName(Expr: TIDExpression): string;
   function ExpressionsName(const Expressions: TIDExpressions): string;
   function GetProcName(Proc: TIDProcedure; WithParamsDataTypes: Boolean = False): string;
-  function IntConstExpression(const Value: Int64): TIDExpression; inline;
-  function StrConstExpression(const Value: string): TIDExpression; inline;
   function IDCompare(const Key1, Key2: TIDDeclaration): NativeInt;
   function IDVarCompare(const Key1, Key2: TIDVariable): NativeInt;
   function GetVarDebugString(const VarSpace: TVarSpace): string;
@@ -1656,7 +1565,6 @@ function GetBoolResultExpr(ExistExpr: TIDExpression): TIDBoolResultExpression;
 begin
   Result := TIDBoolResultExpression.Create(ExistExpr.Declaration, ExistExpr.TextPosition);
 end;
-
 
 function IDCompare(const Key1, Key2: TIDDeclaration): NativeInt;
 begin
@@ -1722,22 +1630,6 @@ begin
        Decl.DecRefCount(RCPath);
      end;
    end;
-end;
-
-function IntConstExpression(const Value: Int64): TIDExpression;
-var
-  DataType: TIDType;
-begin
-  DataType := SYSUnit.DataTypes[GetValueDataType(Value)];
-  Result := TIDExpression.Create(TIDIntConstant.CreateAnonymous(nil, DataType, Value));
-end;
-
-function StrConstExpression(const Value: string): TIDExpression; inline;
-var
-  Decl: TIDStringConstant;
-begin
-  Decl := TIDStringConstant.CreateAnonymous(nil, SYSUnit._String, Value);
-  Result := TIDExpression.Create(Decl);
 end;
 
 function Identifier(const Name: string; SourceRow: Integer = 0; SourceCol: Integer = 0): TIdentifier;
@@ -1844,7 +1736,7 @@ end;
 
 { TScope }
 
-constructor TScope.Create(ScopeType: TScopeType; DeclUnit: TObject);
+constructor TScope.Create(ScopeType: TScopeType; DeclUnit: TASTModule);
 begin
   inherited Create(StrCICompare);
   FScopeType := ScopeType;
@@ -1863,7 +1755,7 @@ begin
   Parent.AddChild(Self);
 end;
 
-constructor TScope.Create(ScopeType: TScopeType; VarSpace: PVarSpace; ProcSpace: PProcSpace; Parent: TScope; DeclUnit: TObject);
+constructor TScope.Create(ScopeType: TScopeType; VarSpace: PVarSpace; ProcSpace: PProcSpace; Parent: TScope; DeclUnit: TASTModule);
 begin
   inherited Create(StrCICompare);
   FScopeType := ScopeType;
@@ -2086,12 +1978,14 @@ begin
   CreateFromPool;
   FScope := Scope;
   FID := Identifier;
+  fModule := Scope.DeclUnit;
 end;
 
 constructor TIDDeclaration.CreateAsAnonymous(Scope: TScope);
 begin
   CreateFromPool;
   FScope := Scope;
+  fModule := Scope.DeclUnit;
 end;
 
 constructor TIDDeclaration.CreateAsSystem(Scope: TScope; const Name: string);
@@ -2099,6 +1993,7 @@ begin
   CreateFromPool;
   FScope := Scope;
   FID.Name := Name;
+  fModule := Scope.DeclUnit;
 end;
 
 destructor TIDDeclaration.Destroy;
@@ -2117,14 +2012,6 @@ begin
   Result := FDataType.DataTypeID;
 end;
 
-function TIDDeclaration.GetDeclUnit: TObject;
-begin
-  if Assigned(Scope) then
-    Result := Scope.DeclUnit
-  else
-    Result := nil;
-end;
-
 function TIDDeclaration.GetIndex: Integer;
 begin
   Result := FIndex;
@@ -2140,11 +2027,11 @@ begin
   Result := self;
 end;
 
-function TIDDeclaration.GetPackage: INPPackage;
+function TIDDeclaration.GetPackage: IASTPascalProject;
 var
   U: TASTDelphiUnit;
 begin
-  U := TASTDelphiUnit(DeclUnit);
+  U := TASTDelphiUnit(Module);
   Assert(Assigned(U));
   Result := U.Package;
 end;
@@ -2261,9 +2148,7 @@ end;
 
 constructor TIDProcedure.CreateAsSystem(Scope: TScope; const Name: string);
 begin
-  CreateFromPool;
-  FScope := Scope;
-  FID.Name := Name;
+  inherited CreateAsSystem(Scope, Name);
   ItemType := itProcedure;
   FParamsScope := TMethodScope.CreateInDecl(Scope, Scope, addr(FVarSpace), addr(FProcSpace));
   FEntryScope := FParamsScope;
@@ -2273,9 +2158,7 @@ constructor TIDProcedure.CreateAsSystemMethod(Struct: TIDStructure; const Name: 
 var
   SelfParam: TIDVariable;
 begin
-  CreateFromPool;
-  FScope := Scope;
-  FID.Name := Name;
+  inherited CreateAsSystem(Scope, Name);
   ItemType := itProcedure;
   FParamsScope := TMethodScope.CreateInDecl(Scope, Struct.Members, addr(FVarSpace), addr(FProcSpace));
   if Struct.DataTypeID = dtRecord then
@@ -2342,11 +2225,6 @@ begin
   Result := True;
 end;
 
-procedure TIDProcedure.SaveDeclToStream(Stream: TStream; const Package: INPPackage);
-begin
-
-end;
-
 function TIDProcedure.SameDeclaration(const Params: TVariableList): Boolean;
 var
   i, c: Integer;
@@ -2364,40 +2242,6 @@ begin
       Exit(False);
   end;
   Result := True;
-end;
-
-procedure TIDProcedure.SaveBodyToStream(Stream: TStream; const Package: INPPackage);
-//var
-//  c: Integer;
-//  Variable: TIDVariable;
-begin
-//  {Локальные переменные}
-//  c := FVarSpace.Count - ParamsCount;
-//  if Assigned(FResultType) then
-//    Dec(c);
-//  if Assigned(FStruct) and (not (pfOperator in Flags)) then
-//    Dec(c);
-//
-//  Stream.WriteStretchUInt(c);
-//  Variable := TIDVariable(FVarSpace.First);
-//  while Assigned(Variable) do begin
-//    if not (VarParameter in Variable.FFlags) then
-//      Variable.SaveToStream(Stream, Package);
-//    Variable := TIDVariable(Variable.NextItem);
-//  end;
-//
-//  {локальные процедуры}
-//  if Assigned(ProcSpace.First) then
-//  begin
-//    SaveProcDecls(Stream, Package, @FProcSpace);
-//    SaveProcBodies(Stream, Package, @FProcSpace);
-//  end;
-//
-//  {IL код}
-//  if Assigned(FIL) then
-//    TIL(FIL).SaveToStream(Stream, Package)
-//  else
-//    Stream.WriteUInt8(0);  // IL instructions count
 end;
 
 procedure TIDProcedure.SetEntryScope(const Value: TScope);
@@ -2428,7 +2272,7 @@ end;
 
 procedure TIDProcedure.Warning(const Message: string; const Params: array of const; const TextPosition: TTextPosition);
 begin
-  TASTDelphiUnit(DeclUnit).Warning(Message, Params, TextPosition);
+  TASTDelphiUnit(Module).Warning(Message, Params, TextPosition);
 end;
 
 function TIDProcedure.GetDebugIL: string;
@@ -2571,7 +2415,7 @@ end;
 
 procedure TIDProcedure.Hint(const Message: string; const Params: array of const; const TextPosition: TTextPosition);
 begin
-  TASTDelphiUnit(DeclUnit).Hint(Message, Params, TextPosition);
+  TASTDelphiUnit(Module).Hint(Message, Params, TextPosition);
 end;
 
 function TIDProcedure.GetMethodIndex: Integer;
@@ -2675,18 +2519,6 @@ begin
   Result := nil;
 end;
 
-procedure TIDType.CheckCreateSysExplicitsFromID;
-begin
-  if not Assigned(fSysExplicitsToID) then
-    fSysExplicitsToID := TExplistIDList.Create(DataTypeIDCompare);
-end;
-
-procedure TIDType.CheckCreateSysExplicitsToID;
-begin
-  if not Assigned(fSysExplicitsFromID) then
-    fSysExplicitsFromID := TExplistIDList.Create(DataTypeIDCompare);
-end;
-
 constructor TIDType.Create(Scope: TScope; const ID: TIdentifier);
 begin
   inherited Create(Scope, ID);
@@ -2694,18 +2526,17 @@ begin
   FImplicitsTo := TIDPairList.Create;
   FImplicitsFrom := TIDPairList.Create;
   FExplicitsTo := TIDPairList.Create;
-  FDataType := _MetaType;
+  FDataType := SYSUnit._MetaType;
 end;
 
 constructor TIDType.CreateAsAnonymous(Scope: TScope);
 begin
-  CreateFromPool;
-  FScope := Scope;
+  inherited CreateAsAnonymous(Scope);
   FItemType := itType;
   FImplicitsTo := TIDPairList.Create;
   FImplicitsFrom := TIDPairList.Create;
   FExplicitsTo := TIDPairList.Create;
-  FDataType := _MetaType;
+  FDataType := SYSUnit._MetaType;
 end;
 
 constructor TIDType.CreateAsSystem(Scope: TScope; const Name: string);
@@ -2715,6 +2546,7 @@ begin
   FImplicitsTo := TIDPairList.Create;
   FImplicitsFrom := TIDPairList.Create;
   FExplicitsTo := TIDPairList.Create;
+  FDataType := SYSUnit._MetaType;
 end;
 
 procedure TIDType.CreateStandardOperators;
@@ -2969,11 +2801,6 @@ begin
   Result := IsDataTypeReferenced(FDataTypeID);
 end;
 
-//function TIDType.GetManagedFlags: TManagedDataTypeFlags;
-//begin
-//  Result := cDataTypeManagedFlags[DataTypeID];
-//end;
-
 function TIDType.GetIsGeneric: Boolean;
 begin
   Result := fDataTypeID = dtGeneric;
@@ -3119,20 +2946,6 @@ begin
   fSysExplicitToAny := Op;
 end;
 
-procedure TIDType.OverloadExplicitToID(Destination: TDataTypeID; const Op: TIDDeclaration);
-begin
-  CheckCreateSysExplicitsToID();
-  if Assigned(fSysExplicitsToID.InsertNode(Destination, Op)) then
-    ERROR_OPERATOR_ALREADY_OVERLOADED(opImplicit, Destination, Op, TextPosition);
-end;
-
-procedure TIDType.OverloadExplicitFromID(Source: TDataTypeID; const Op: TIDDeclaration);
-begin
-  CheckCreateSysExplicitsFromID();
-  if Assigned(fSysExplicitsFromID.InsertNode(Source, Op)) then
-    ERROR_OPERATOR_ALREADY_OVERLOADED(opImplicit, Source, Op, TextPosition);
-end;
-
 procedure TIDType.OverloadImplicitTo(const Destination: TIDDeclaration);
 begin
   if Assigned(FImplicitsTo.InsertNode(Destination, Destination)) then
@@ -3186,16 +2999,6 @@ begin
     ERROR_OPERATOR_ALREADY_OVERLOADED(opImplicit, Self, Op, TextPosition);
 
   FSysImplicitFromAny := Op;
-end;
-
-procedure TIDType.SaveDeclToStream(Stream: TStream; const Package: INPPackage);
-var
-  DT: UInt8;
-begin
-  DT := UInt8(FDataTypeID);
-  Stream.WriteUInt8(DT);
-  if Package.IncludeDebugInfo then
-    Stream.WriteStretchUInt(Package.GetStringConstant(DisplayName));
 end;
 
 procedure TIDType.SetGenericDescriptor(const Value: PGenericDescriptor);
@@ -3334,24 +3137,12 @@ begin
   FValue := Value;
 end;
 
-constructor TIDXXXConstant<T>.CreateAnonymous(Scope: TScope; DataType: TIDType; Value: T);
+constructor TIDXXXConstant<T>.CreateAsAnonymous(Scope: TScope; DataType: TIDType; Value: T);
 begin
-  CreateFromPool;
-  FScope := Scope;
+  inherited CreateAsAnonymous(Scope);
   FItemType := itConst;
   FDataType := DataType;
   FValue := Value;
-end;
-
-procedure TIDXXXConstant<T>.WriteToStream(Stream: TStream; const Package: INPPackage);
-var
-  Size: Integer;
-begin
-  Size := FixedByteSize;
-  if Size = -1 then
-    Size := PTR_SIZE;
-
-  Stream.Write(FValue, Size)
 end;
 
 { TIDVariableItem }
@@ -3482,11 +3273,6 @@ begin
   FFlags := FFlags + Flags;
 end;
 
-procedure TIDVariable.SaveToStream(Stream: TStream; const Package: INPPackage);
-begin
-
-end;
-
 procedure TIDVariable.SetCValue(const Value: TIDConstant);
 begin
   FCValue := Value;
@@ -3503,6 +3289,16 @@ constructor TIDXXXConstant<T>.CreateAsSystem(Scope: TScope; const Name: string);
 begin
   inherited;
   fItemType := itConst;
+end;
+
+constructor TIDXXXConstant<T>.CreateWithoutScope(DataType: TIDType; Value: T);
+begin
+  CreateFromPool;
+  FScope := Scope;
+  fModule := nil;
+  FItemType := itConst;
+  FDataType := DataType;
+  FValue := Value;
 end;
 
 { TIDExpression }
@@ -3632,11 +3428,6 @@ begin
   Result := TIDType(FDeclaration);
 end;
 
-//function TIDExpression.GetAsUserDefinedMacro: TIDUserDefinedMacro;
-//begin
-//  Result := FDeclaration as TIDUserDefinedMacro;
-//end;
-
 function TIDExpression.GetAsVariable: TIDVariable;
 begin
   Result := TIDVariable(FDeclaration);
@@ -3714,13 +3505,6 @@ function TIDExpression.GetIsNonAnonimousVariable: Boolean;
 begin
   Result := (FDeclaration.ItemType = itVar) and
             (FDeclaration.ID.Name <> '');
-end;
-
-function TIDExpression.GetIsNullableVariable: Boolean;
-begin
-  Result := (FDeclaration.ItemType = itVar) and
-            (FDeclaration.DataType.IsReferenced) and
-            (not (VarNotNull in TIDVariable(FDeclaration).Flags));
 end;
 
 function TIDExpression.GetIsParam: Boolean;
@@ -3995,21 +3779,6 @@ begin
     Result := FAncestor.GetLastVirtualIndex;
 end;
 
-{function TIDStructure.GetOperator(const ID: TIdentifier): TIDProcedure;
-var
-  op: TOperator;
-  Decl: TIDDeclaration;
-begin
-  op := GetOperatorID(ID.Name);
-  if op = opNone then
-    AbortWork(sUnknownOperatorFmt, [ID.Name], ID.TextPosition)
-  else
-  if op < opIn then
-    Decl := FUnarOperators[op]
-  else
-    Decl := nil;//FBinarOperators[op]
-end;}
-
 function TIDStructure.GetProcSpace: PProcSpace;
 begin
   Result := @FProcSpace;
@@ -4111,25 +3880,6 @@ end;
 function TIDProcedure.GetSelfParamExpression: TIDExpression;
 begin
   Result := TIDExpression.Create(GetSelfParam);
-end;
-
-procedure TIDStructure.SaveMethodBodiesToStream(Stream: TStream; const Package: INPPackage);
-var
-  Proc: TIDProcedure;
-begin
-  // кол-во методов
-  Stream.WriteStretchUInt(FProcSpace.Count);
-  // тела методов
-  Proc := TIDProcedure(FProcSpace.First);
-  while Assigned(Proc) do begin
-    Proc.SaveBodyToStream(Stream, Package);
-    Proc := TIDProcedure(Proc.NextItem);
-  end;
-end;
-
-procedure TIDStructure.SaveDeclToStream(Stream: TStream; const Package: INPPackage);
-begin
-
 end;
 
 procedure TIDStructure.SetAncestor(const Value: TIDStructure);
@@ -4242,20 +3992,6 @@ begin
     Result := -1;
 end;
 
-procedure TIDFloatConstant.WriteToStream(Stream: TStream; const Package: INPPackage);
-var
-  f32: Single;
-begin
-  case DataType.DataTypeID of
-    dtFloat32: begin
-      f32 := Value;
-      Stream.WriteFloat32(F32);
-    end;
-  else
-    Stream.WriteFloat64(Value);
-  end;
-end;
-
 { TIDStringConstant }
 
 function TIDStringConstant.AsInt64: Int64;
@@ -4296,14 +4032,6 @@ begin
   Result := Length(Value);
 end;
 
-procedure TIDStringConstant.WriteToStream(Stream: TStream; const Package: INPPackage);
-var
-  Idx: Integer;
-begin
-  Idx := Package.GetStringConstant(Self);
-  Stream.WriteStretchUInt(Idx);
-end;
-
 { TIDCharConstant }
 
 function TIDCharConstant.AsInt64: Int64;
@@ -4337,17 +4065,6 @@ begin
     Result := Integer(Value) - Integer(TIDCharConstant(Constant).Value)
   else
     Result := -1;
-end;
-
-procedure TIDCharConstant.WriteToStream(Stream: TStream; const Package: INPPackage);
-var
-  ach: Byte;
-begin
-  if DataType.DataTypeID = dtAnsiChar then begin
-    ach := ord(Value);
-    Stream.WriteUInt8(ach);
-  end else
-    Stream.WriteChar(Value);
 end;
 
 { TIDBooleanConstant }
@@ -4512,11 +4229,6 @@ begin
     Stream.WriteStretchUInt(DataType.UnitID);
 end;
 
-procedure TIDArray.SaveDeclToStream(Stream: TStream; const Package: INPPackage);
-begin
-
-end;
-
 { TIDOrdinalType }
 
 function TIDOrdinal.GetElementsCount: UInt64;
@@ -4527,14 +4239,6 @@ end;
 function TIDOrdinal.GetOrdinal: Boolean;
 begin
   Result := True;
-end;
-
-procedure TIDOrdinal.SaveDeclToStream(Stream: TStream; const Package: INPPackage);
-begin
-  inherited SaveDeclToStream(Stream, Package);
-  Stream.WriteBoolean(FSignedBound);
-  Stream.WriteInt64(FLBound);
-  Stream.WriteInt64(FHBound);
 end;
 
 { TIDRefType }
@@ -4567,7 +4271,7 @@ begin
     if Assigned(Decl) and (Decl.ItemType = itType) then
       FReferenceType := TIDType(Decl)
     else
-      TASTDelphiUnit.ERROR_UNDECLARED_ID(ForwardID);
+      TASTDelphiErrors.UNDECLARED_ID(ForwardID);
   end;
   Result := FReferenceType;
 end;
@@ -4696,13 +4400,30 @@ end;
 
 { TIDRecordType }
 
+procedure TIDRecord.CreateStandardOperators;
+begin
+  inherited;
+  OverloadImplicitTo(Self);
+  OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
+  OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
+
+  fSysExplicitFromAny := TSysExplicitRecordFromAny.Instance;
+end;
+
+function TIDRecord.AddCaseSpace: PVarSpace;
+var
+  Len: Integer;
+begin
+  Len := Length(fCases);
+  SetLength(fCases, Len + 1);
+  Result := addr(fCases[Len]);
+end;
+
 constructor TIDRecord.Create(Scope: TScope; const Name: TIdentifier);
 begin
   inherited Create(Scope, Name);
   FDataTypeID := dtRecord;
-  OverloadImplicitTo(Self);
-  OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
-  OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
+  CreateStandardOperators();
 end;
 
 { TIDEnumType }
@@ -4731,7 +4452,7 @@ begin
   OverloadBinarOperator2(opLessOrEqual, Self, SYSUnit._Boolean);
   OverloadBinarOperator2(opGreater, Self, SYSUnit._Boolean);
   OverloadBinarOperator2(opGreaterOrEqual, Self, SYSUnit._Boolean);
-  OverloadExplicitFromAny(SYSUnit._ExplicitEnumFromAny);
+  OverloadExplicitFromAny(TIDOpExplicitIntToEnum.Instance);
   OverloadExplicitToAny(TSysExplicitEnumToAny.Instance);
 end;
 
@@ -4791,11 +4512,6 @@ begin
   Result := TIDOrdinal(SYSUnit._UInt32);
 end;
 
-//function TIDDynArray.GetManagedFlags: TManagedDataTypeFlags;
-//begin
-//  Result := [mtNeedClear, dtNeedFinal, dtNeedAlwaysFinal, mtNeedIncRef];
-//end;
-
 { TIDSetType }
 
 constructor TIDSet.Create(Scope: TScope; const ID: TIdentifier);
@@ -4842,12 +4558,6 @@ begin
   FRCPath := RCPath;
   Inc(FRefCount);
   FBaseType.IncRefCount(RCPath);
-end;
-
-procedure TIDSet.SaveDeclToStream(Stream: TStream; const Package: INPPackage);
-begin
-  inherited SaveDeclToStream(Stream, Package);
-  //WriteDataTypeIndex(Stream, FBaseType);
 end;
 
 { TIDArrayConstant }
@@ -4918,18 +4628,6 @@ end;
 function TIDDynArrayConstant.GetLength: Integer;
 begin
   Result := Length(Value);
-end;
-
-procedure TIDDynArrayConstant.WriteToStream(Stream: TStream; const Package: INPPackage);
-var
-  i: Integer;
-  Expr: TIDExpression;
-begin
-  for i := 0 to Length(Value) - 1 do
-  begin
-    Expr := Value[i];
-    Expr.AsConst.WriteToStream(Stream, Package);
-  end;
 end;
 
 function DeclarationName(Decl: TIDDeclaration; IsList: Boolean = False): string;
@@ -5340,24 +5038,6 @@ begin
     Result := inherited FindIDRecurcive(ID, Expression);
 end;
 
-
-
-{ TIDUserDefinedMacro }
-
-//constructor TIDUserDefinedMacro.Create(Scope: TScope; const ID: TIdentifier);
-//begin
-//  CreateFromPool;
-//  FID := ID;
-//  FScope := Scope;
-//  FItemType := itMacroFunction;
-//  FFunctionID := bf_userdefined;
-//end;
-
-{procedure TIDUserDefinedMacro.Append(const Text: string);
-begin
-  FBody := FBody + Text;
-end;}
-
 { TIDOpenArray }
 
 constructor TIDOpenArray.Create(Scope: TScope; const Name: TIdentifier);
@@ -5370,17 +5050,6 @@ begin
   inherited CreateAsAnonymous(Scope);
   FDataTypeID := dtOpenArray;
   FDimensionsCount := 1;
-end;
-
-//function TIDOpenArray.GetManagedFlags: TManagedDataTypeFlags;
-//begin
-//  Result := [];
-//end;
-
-procedure TIDOpenArray.SaveDeclToStream(Stream: TStream; const Package: INPPackage);
-begin
-  inherited SaveDeclToStream(Stream, Package);
-  //Stream.WriteStretchUInt(FFlags);
 end;
 
 { TIDRangeType }
@@ -5439,8 +5108,8 @@ end;
 constructor TIDProcType.Create(Scope: TScope; const Identifier: TIdentifier);
 begin
   inherited Create(Scope, Identifier);
-  fSysExplicitFromAny := SYSUnit._ExplicitTProcFromAny;
-  FSysImplicitFromAny := SYSUnit._ExplicitTProcFromAny;
+  fSysExplicitFromAny := TIDOpExplicitTProcFromAny.Instance;
+  FSysImplicitFromAny := TIDOpExplicitTProcFromAny.Instance;
 
   FDataTypeID := dtProcType;
 end;
@@ -5448,8 +5117,8 @@ end;
 constructor TIDProcType.CreateAsAnonymous(Scope: TScope);
 begin
   inherited CreateAsAnonymous(Scope);
-  fSysExplicitFromAny := SYSUnit._ExplicitTProcFromAny;
-  FSysImplicitFromAny := SYSUnit._ExplicitTProcFromAny;
+  fSysExplicitFromAny := TIDOpExplicitTProcFromAny.Instance;
+  FSysImplicitFromAny := TIDOpExplicitTProcFromAny.Instance;
 
   FDataTypeID := dtProcType;
 end;
@@ -5475,49 +5144,6 @@ begin
     if not FIsStatic then
       Result := Result + ' of object';
   end;
-end;
-
-procedure TIDProcType.SaveDeclToStream(Stream: TStream; const Package: INPPackage);
-var
-  i, pc: Integer;
-  Flags: set of (ProcHasResult, ProcStatic);
-  ResultVar: TIDVariable;
-begin
-  inherited;
-  if Assigned(ResultType) then
-    Flags := [ProcHasResult]
-  else
-    Flags := [];
-
-  if FIsStatic then
-    Flags := Flags + [ProcStatic];
-
-  {флаги}
-  Stream.WriteStretchUInt(Byte(Flags));
-
-  pc := Length(FParams);
-
-  {RTTI выходного параметра Result}
-  if Assigned(ResultType) then
-  begin
-    //WriteDataTypeIndex(Stream, ResultType);
-    inc(pc);
-  end;
-
-  {кол-во параметров}
-  Stream.WriteStretchUInt(pc);
-
-  if Assigned(ResultType) then
-  begin
-    ResultVar := TIDVariable.CreateAsSystem(Scope, 'Result');
-    ResultVar.DataType := ResultType;
-    ResultVar.Flags := [VarResult];
-    ResultVar.SaveToStream(Stream, Package);
-  end;
-
-  {параметры процедуры}
-  for i := 0 to Length(FParams) - 1 do
-    FParams[i].SaveToStream(Stream, Package);
 end;
 
 { TIDRangeConstant }
@@ -5595,35 +5221,6 @@ begin
   Result := inherited FindIDRecurcive(ID, Expression);
   if not Assigned(Result) and Assigned(FOuterScope) then
     Result := FOuterScope.FindIDRecurcive(ID, Expression);
-end;
-
-procedure SaveProcDecls(Stream: TStream; const Package: INPPackage; ProcSpace: PProcSpace);
-var
-  Decl: TIDDeclaration;
-begin
-  {Процедуры}
-  Stream.WriteStretchUInt(ProcSpace.Count); // кол-во процедур
-  ProcSpace.Reindex;
-
-  {Декларации}
-  Decl := ProcSpace.First;
-  while Assigned(Decl) do begin
-    TIDProcedure(Decl).SaveDeclToStream(Stream, Package);
-    Decl := TIDDeclaration(Decl.NextItem);
-  end;
-end;
-
-procedure SaveProcBodies(Stream: TStream; const Package: INPPackage; ProcSpace: PProcSpace);
-var
-  Decl: TIDProcedure;
-begin
-  {тела}
-  Decl := ProcSpace.First;
-  while Assigned(Decl) do begin
-    if Decl.ImportLib = 0 then // тело не пишется если функция импортная
-      Decl.SaveBodyToStream(Stream, Package);
-    Decl := TIDProcedure(Decl.NextItem);
-  end;
 end;
 
 { TIDClassType }
@@ -5802,9 +5399,7 @@ end;
 
 constructor TIDAlias.CreateAlias(Scope: TScope; const ID: TIdentifier; Decl: TIDDeclaration);
 begin
-  CreateFromPool;
-  FID := ID;
-  FScope := Scope;
+  inherited Create(Scope, ID);
   FItemType := itAlias;
   FOriginalDecl := Decl.Original;
 end;
@@ -6001,7 +5596,7 @@ end;
 
 { TStructScope }
 
-constructor TStructScope.CreateAsStruct(Parent: TScope; Struct: TIDStructure; VarSpace: PVarSpace; ProcSpace: PProcSpace; DeclUnit: TObject);
+constructor TStructScope.CreateAsStruct(Parent: TScope; Struct: TIDStructure; VarSpace: PVarSpace; ProcSpace: PProcSpace; DeclUnit: TASTModule);
 begin
   inherited Create(StrCICompare);
   FScopeType := stStruct;
@@ -6083,42 +5678,9 @@ begin
   Methods[IntfMethod.Index] := ImplMethod;
 end;
 
-procedure TIDClass.SaveDeclToStream(Stream: TStream; const Package: INPPackage);
-var
-  i, j, c: Integer;
-  Intf: TIDInterface;
-  Proc: TIDProcedure;
-  Methods: TIDMethods;
-begin
-  inherited SaveDeclToStream(Stream, Package);
-  c := InterfacesCount;
-  if c > 0 then
-    Stream.WriteStretchUInt(c);
-  for i := 0 to c - 1 do
-  begin
-    Intf := FInterfaces[i];
-    Stream.WriteStretchUInt(Intf.UnitID);
-    Stream.WriteStretchUInt(Intf.Index);
-    Stream.WriteStretchUInt(Intf.MethodCount);
-    // сохраняем индексы методов имплементаторов (согласно списку методов интерфейса)
-    Methods := FInterfacesMethods[i];
-    for j := 0 to Intf.MethodCount - 1 do
-    begin
-      Proc := Methods[j];
-      Stream.WriteStretchUInt(Proc.MethodIndex);
-    end;
-  end;
-end;
-
 function TIDInterface.GetIsManaged: Boolean;
 begin
   Result := True;
-end;
-
-procedure TIDInterface.SaveDeclToStream(Stream: TStream; const Package: INPPackage);
-begin
-  inherited;
-  Stream.WriteGuid(FGUID);
 end;
 
 { TIDGuidConstant }
@@ -6154,11 +5716,6 @@ begin
   Result := -1;
 end;
 
-procedure TIDGuidConstant.WriteToStream(Stream: TStream; const Package: INPPackage);
-begin
-  Stream.WriteGuid(FValue);
-end;
-
 { TIDDrefExpression }
 
 constructor TIDDrefExpression.Create(Src: TIDExpression);
@@ -6173,7 +5730,7 @@ function TIDDrefExpression.GetDataType: TIDType;
 begin
   Result := (FSrc.DataType as TIDPointer).ReferenceType;
   if not Assigned(Result) then
-    Result := SYSUnit._UntypedReference;
+    Result := FSrc.Declaration.SYSUnit._UntypedReference;
 end;
 
 { TIDClosure }
@@ -6220,11 +5777,6 @@ function TIDClosure.GetDisplayName: string;
 begin
   Result := FDeclProc.Name + '$Closure' + IntToStr(Index);
 end;
-
-//function TIDClosure.GetManagedFlags: TManagedDataTypeFlags;
-//begin
-//  Result := [mtNeedIncRef, dtNeedFinal, dtNeedAlwaysFinal];
-//end;
 
 { TIDString }
 
@@ -6300,12 +5852,6 @@ end;
 function TIDRecordConstant.ValueDataType: TDataTypeID;
 begin
   Result := dtRecord;
-end;
-
-procedure TIDRecordConstant.WriteToStream(Stream: TStream; const Package: INPPackage);
-begin
-  inherited;
-
 end;
 
 { TASTDelphiLabel }

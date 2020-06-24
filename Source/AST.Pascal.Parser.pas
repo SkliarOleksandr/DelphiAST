@@ -19,7 +19,8 @@ uses SysUtils, Math, Classes, StrUtils, Types, IOUtils, Generics.Collections,
      AST.Delphi.Contexts,
      AST.Classes,
      AST.Parser.Options,
-     AST.Project;
+     AST.Intf,
+     AST.Pascal.Intf;
 
 type
 
@@ -99,6 +100,7 @@ type
   protected
     fCompiled: Boolean;
     fUnitName: TIdentifier;            // the Unit declaration name
+    fSysUnit: TASTModule;
     fProcMatches: TASTProcMachArray;
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
     function FindPublicDecl(const Name: string): TIDDeclaration;
@@ -106,15 +108,11 @@ type
     function GetModuleName: string; override;
     procedure SetUnitName(const Name: string);
   public
-    class function IsConstValueInRange(Value: TIDExpression; RangeExpr: TIDRangeConstant): Boolean; static;
-    class function IsConstRangesIntersect(const Left, Right: TIDRangeConstant): Boolean; static;
-    class function IsConstEqual(const Left, Right: TIDExpression): Boolean; static;
     //======================================================================================================================================
     procedure AddType(const Decl: TIDType); inline;
     procedure AddConstant(const Decl: TIDConstant); inline;
-  public
     property Lexer: TDelphiLexer read fLexer;
-  public
+    property SysUnit: TASTModule read fSysUnit;
     ////////////////////////////////////////////////////////////////////////////
     constructor Create(const Project: IASTProject; const FileName: string; const Source: string = ''); override;
     constructor CreateFromFile(const Project: IASTProject; const FileName: string); override;
@@ -155,6 +153,7 @@ implementation
 
 uses AST.Delphi.System,
      AST.Parser.Errors,
+     AST.Pascal.Project,
      AST.Pascal.ConstCalculator;
 
 
@@ -166,6 +165,11 @@ end;
 function TNPUnit.Compile(RunPostCompile: Boolean = True): TCompilerResult;
 begin
   Result := TCompilerResult.CompileFail;
+
+  fSysUnit := (Project as IASTPascalProject).SysUnit;
+
+  if Assigned(fSysUnit) then
+    fIntfImportedUnits.AddObject('system', fSysUnit);
 end;
 
 function TNPUnit.CompileIntfOnly: TCompilerResult;
@@ -186,12 +190,6 @@ begin
   FIntfImportedUnits := TUnitList.Create;
   FImplImportedUnits := TUnitList.Create;
   //FBENodesPool := TBENodesPool.Create(16);
-  if Assigned(SYSUnit) then
-  begin
-    FTypeSpace.Initialize(SYSUnit.SystemTypesCount);
-    // добовляем system в uses
-    FIntfImportedUnits.AddObject('system', SYSUnit);
-  end;
 
   // pre allocate 8 items by 8 args
   SetLength(fProcMatches, 8);
@@ -247,42 +245,6 @@ begin
     Exit(False);
 end;
 
-class function TNPUnit.IsConstValueInRange(Value: TIDExpression; RangeExpr: TIDRangeConstant): Boolean;
-var
-  Expr: TIDExpression;
-begin
-  Expr := ProcessConstOperation(Value, RangeExpr.Value.LBExpression, opLess);
-  if TIDBooleanConstant(Expr.Declaration).Value then
-    Exit(False);
-
-  Expr := ProcessConstOperation(Value, RangeExpr.Value.HBExpression, opLessOrEqual);
-  Result := TIDBooleanConstant(Expr.Declaration).Value;
-end;
-
-class function TNPUnit.IsConstRangesIntersect(const Left, Right: TIDRangeConstant): Boolean;
-var
-  Expr,
-  LeftLB, LeftHB,
-  RightLB, RightHB: TIDExpression;
-begin
-  LeftLB := Left.Value.LBExpression;
-  LeftHB := Left.Value.HBExpression;
-
-  RightLB := Right.Value.LBExpression;
-  RightHB := Right.Value.HBExpression;
-
-  Expr := ProcessConstOperation(LeftLB, RightLB, opLess);
-  // если Left.Low < Right.Low
-  if TIDBooleanConstant(Expr.Declaration).Value then
-  begin
-    Expr := ProcessConstOperation(LeftHB, RightLB, opGreaterOrEqual);
-    Result := TIDBooleanConstant(Expr.Declaration).Value;
-  end else begin
-    Expr := ProcessConstOperation(RightHB, LeftLB, opGreaterOrEqual);
-    Result := TIDBooleanConstant(Expr.Declaration).Value;
-  end;
-end;
-
 procedure TNPUnit.AddConstant(const Decl: TIDConstant);
 var
   Item: TIDConstant;
@@ -328,16 +290,7 @@ begin
   Result := Res as TIDClass;
 end;
 
-class function TNPUnit.IsConstEqual(const Left, Right: TIDExpression): Boolean;
-var
-  RExpr: TIDExpression;
-begin
-  RExpr := ProcessConstOperation(Left, Right, opEqual);
-  Result := TIDBooleanConstant(RExpr.Declaration).Value;
-end;
-
 {parser methods}
-
 
 procedure TNPUnit.SaveConstsToStream(Stream: TStream);
 begin
@@ -403,3 +356,5 @@ initialization
   FormatSettings.DecimalSeparator := '.';
 
 end.
+
+

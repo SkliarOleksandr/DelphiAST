@@ -19,7 +19,7 @@ uses
   AST.Lexer.Delphi in '..\Source\Lexers\AST.Lexer.Delphi.pas',
   AST.Classes in '..\Source\AST.Classes.pas',
   AST.Delphi.Parser in '..\Source\AST.Delphi.Parser.pas',
-  AST.Project in '..\Source\AST.Project.pas',
+  AST.Intf in '..\Source\AST.Intf.pas',
   AST.Delphi.Project in '..\Source\AST.Delphi.Project.pas',
   AST.Writer in '..\Source\AST.Writer.pas',
   AST.Parser.Contexts in '..\Source\AST.Parser.Contexts.pas',
@@ -29,7 +29,9 @@ uses
   AST.Parser.Errors in '..\Source\AST.Parser.Errors.pas',
   AST.Lexer in '..\Source\Lexers\AST.Lexer.pas',
   AST.Parser.ProcessStatuses in '..\Source\AST.Parser.ProcessStatuses.pas',
-  AST.Delphi.Options in '..\Source\AST.Delphi.Options.pas';
+  AST.Delphi.Options in '..\Source\AST.Delphi.Options.pas',
+  AST.Delphi.Intf in '..\Source\AST.Delphi.Intf.pas',
+  AST.Pascal.Intf in '..\Source\AST.Pascal.Intf.pas';
 
 {$R *.res}
 

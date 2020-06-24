@@ -12,62 +12,73 @@ uses Classes, SysUtils,
      AST.Parser.Utils,
      AST.Parser.Messages,
      AST.Classes,
-     AST.Project,
+     AST.Intf,
+     AST.Delphi.Contexts,
      AST.Delphi.SysOperators,
-     AST.Delphi.Parser;
+     AST.Delphi.Parser, AST.Delphi.Intf;
      // System
 
 type
+  TSYSTEMUnit = class;
 
-  TSYSTEMUnit = class(TASTDelphiUnit)
+
+  TIDBuiltInFunction = class(TIDProcedure)
+  protected
+    class function GetFunctionID: TBuiltInFunctionID; virtual; abstract;
+    class function CreateTMPExpr(const EContext: TEContext; const DataType: TIDType): TIDExpression;
+  public
+    constructor Create(Scope: TScope; const Name: string; ResultType: TIDType); reintroduce; virtual;
+    /////////////////////////////////////////////////////////////////////////////////////////
+    property FunctionID: TBuiltInFunctionID read GetFunctionID;
+    class function CreateDecl(SyUtit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; virtual; abstract;
+  end;
+  TIDBuiltInFunctionClass = class of TIDBuiltInFunction;
+
+
+  TIDSysRuntimeFunction = class(TIDBuiltInFunction)
+  protected
+    class function GetFunctionID: TBuiltInFunctionID; override;
+  public
+    function Process(var EContext: TEContext): TIDExpression; virtual;
+  end;
+
+
+  TSysFunctionContext = record
+    UN: TASTDelphiUnit;
+    Scope: TScope;
+    ParamsStr: string;
+    EContext: ^TEContext;
+    SContext: ^TSContext;
+  end;
+
+  TIDSysCompileFunction = class(TIDBuiltInFunction)
+  protected
+    class function GetFunctionID: TBuiltInFunctionID; override;
+  public
+    function Process(const Ctx: TSysFunctionContext): TIDExpression; virtual; abstract;
+  end;
+
+  TIDSysRuntimeFunctionClass = class of TIDSysRuntimeFunction;
+//  TIDSysCompileFunctionClass = class of TIDSysCompileFunction;
+
+
+  TSYSTEMUnit = class(TASTDelphiUnit, IASTDelphiSystemUnit)
   type
     TDataTypes = array[TDataTypeID] of TIDType;
   const
     SystemTypesCount = Ord(dtPointer) + 1;
   private
   var
-    fDataTypes: TDataTypes;
-    fTrueConstant: TIDBooleanConstant;
-    fFalseConstant: TIDBooleanConstant;
-    fFalseExpression: TIDExpression;
-    fTrueExpression: TIDExpression;
-    fZeroConstant: TIDIntConstant;
-    fZeroExpression: TIDExpression;
-    fZeroFloatExpression: TIDExpression;
-    fOneConstant: TIDIntConstant;
-    fOneExpression: TIDExpression;
-    fNullPtrType: TIDType;
-    fNullPtrConstatnt: TIDIntConstant;
-    fNullPtrExpression: TIDExpression;
-    fEmptyStrConstant: TIDStringConstant;
-    fEmptyStrExpression: TIDExpression;
-    fPointerType: TIDPointer;
-    fUntypedReferenceType: TIDPointer;
+    fDecls: TDelphiSystemDeclarations;
     fArrayType: TIDArray; // служебный тип для функций Length/SetLength
-    fRefType: TIDType; // служебный тип для функций SizeOf
-    fGuidType: TIDStructure;
-    fPAnsiChar: TIDType;
-    fPChar: TIDType;
-    fOrdinalType: TIDType;
-    fTObject: TIDClass;
-    fException: TIDClass;
-    fEAssertClass: TIDClass;
     fDateTimeType: TIDType;
     fDateType: TIDType;
     fTimeType: TIDType;
     fTypeIDType: TIDType;
     fImplicitAnyToVariant: TSysOpImplicit;
     fImplicitVariantToAny: TSysOpImplicit;
-    fExplicitEnumFromAny: TSysOpImplicit;
-    fExplicitTProcFromAny: TSysOpImplicit;
-    fCopyArrayOfObjProc: TIDProcedure;
-    fCopyArrayOfStrProc: TIDProcedure;
-    fFinalArrayOfObjProc: TIDProcedure;
-    fFinalArrayOfStrProc: TIDProcedure;
-    fFinalArrayOfVarProc: TIDProcedure;
     fAsserProc: TIDProcedure;
     fOpenString: TIDType;
-    fDeprecatedDefaultStr: TIDStringConstant;
     procedure AddImplicists;
     procedure AddExplicists;
     procedure AddNegOperators;
@@ -81,11 +92,11 @@ type
     procedure AddBitwiseOperators;
     procedure AddCompareOperators;
     procedure AddArithmeticOperators;
+    procedure RegisterTypes;
     procedure RegisterBuiltinFunctions;
     procedure SystemFixup;
     procedure AddSystemOperators;
     procedure InsertToScope(Declaration: TIDDeclaration); overload;
-    function RegisterBuiltin(const Name: string; MacroID: TBuiltInFunctionID; ResultDataType: TIDType; Flags: TProcFlags = []): TIDBuiltInFunction; overload;
     function RegisterType(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
     function RegisterTypeCustom(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
     function RegisterOrdinal(const TypeName: string; DataType: TDataTypeID; LowBound: Int64; HighBound: UInt64): TIDType;
@@ -95,7 +106,9 @@ type
     function RegisterConstStr(Scope: TScope; const Name: string; const Value: string ): TIDStringConstant;
     function RegisterVariable(Scope: TScope; const Name: string; DataType: TIDType): TIDVariable;
     function RegisterBuiltin(const BuiltinClass: TIDBuiltInFunctionClass): TIDBuiltInFunction; overload;
+    function GetSystemDeclarations: PDelphiSystemDeclarations; override;
   private
+    function GetTypeByID(ID: TDataTypeID): TIDType;
     procedure SearchSystemTypes;
     procedure AddCustomExplicits(const Sources: array of TDataTypeID; Dest: TIDType); overload;
   public
@@ -104,78 +117,123 @@ type
     function Compile(RunPostCompile: Boolean = True): TCompilerResult; override;
     function CompileIntfOnly: TCompilerResult; override;
     ////////////////////////////////////////////////////////////////////////////////////////////////////
-    procedure InitSystemUnit;
-    //procedure RegisterExternalProc
-    property DataTypes: TDataTypes read fDataTypes;
-    property _Int8: TIDType read fDataTypes[dtInt8] write fDataTypes[dtInt8];
-    property _Int16: TIDType read fDataTypes[dtInt16] write fDataTypes[dtInt16];
-    property _Int32: TIDType read fDataTypes[dtInt32] write fDataTypes[dtInt32];
-    property _Int64: TIDType read fDataTypes[dtInt64] write fDataTypes[dtInt64];
-    property _UInt8: TIDType read fDataTypes[dtUInt8] write fDataTypes[dtUInt8];
-    property _UInt16: TIDType read fDataTypes[dtUInt16] write fDataTypes[dtUInt16];
-    property _UInt32: TIDType read fDataTypes[dtUInt32] write fDataTypes[dtUInt32];
-    property _UInt64: TIDType read fDataTypes[dtUInt64] write fDataTypes[dtUInt64];
-    property _NativeInt: TIDType read fDataTypes[dtNativeInt] write fDataTypes[dtNativeInt];
-    property _NativeUInt: TIDType read fDataTypes[dtNativeUInt] write fDataTypes[dtNativeUInt];
-    property _Float32: TIDType read fDataTypes[dtFloat32] write fDataTypes[dtFloat32];
-    property _Float64: TIDType read fDataTypes[dtFloat64] write fDataTypes[dtFloat64];
-    property _Boolean: TIDType read fDataTypes[dtBoolean] write fDataTypes[dtBoolean];
-    property _AnsiChar: TIDType read fDataTypes[dtAnsiChar] write fDataTypes[dtAnsiChar];
-    property _Char: TIDType read fDataTypes[dtChar] write fDataTypes[dtChar];
-    property _AnsiString: TIDType read fDataTypes[dtAnsiString] write fDataTypes[dtAnsiString];
-    property _String: TIDType read fDataTypes[dtString] write fDataTypes[dtString];
-    property _ShortString: TIDType read fDataTypes[dtShortString] write fDataTypes[dtShortString];
-    property _WideString: TIDType read fDataTypes[dtWideString] write fDataTypes[dtWideString];
-    property _Variant: TIDType read fDataTypes[dtVariant] write fDataTypes[dtVariant];
-    property _NilPointer: TIDType read fNullPtrType;
-    property _TGuid: TIDStructure read fGuidType;
-    property _True: TIDBooleanConstant read fTrueConstant;
-    property _False: TIDBooleanConstant read fFalseConstant;
-    property _TrueExpression: TIDExpression read fTrueExpression;
-    property _FalseExpression: TIDExpression read fFalseExpression;
-    property _ZeroConstant: TIDIntConstant read fZeroConstant;
-    property _ZeroIntExpression: TIDExpression read fZeroExpression;
-    property _ZeroFloatExpression: TIDExpression read fZeroFloatExpression;
-    property _OneConstant: TIDIntConstant read fOneConstant;
-    property _OneExpression: TIDExpression read fOneExpression;
-    property _NullPtrConstant: TIDIntConstant read fNullPtrConstatnt;
-    property _NullPtrExpression: TIDExpression read fNullPtrExpression;
-    property _EmptyStrExpression: TIDExpression read fEmptyStrExpression;
-    property _Pointer: TIDPointer read fPointerType;
-    property _UntypedReference: TIDPointer read fUntypedReferenceType;
-    property _TObject: TIDClass read fTObject;
-    property _Exception: TIDClass read fException;
-    property _EAssert: TIDClass read fEAssertClass;
+    property DataTypes[ID: TDataTypeID]: TIDType read GetTypeByID;
+    property SystemDeclarations: PDelphiSystemDeclarations read GetSystemDeclarations;
+    property _Int8: TIDType read fDecls._Int8 write fDecls._Int8;
+    property _Int16: TIDType read fDecls._Int16 write fDecls._Int16;
+    property _Int32: TIDType read fDecls._Int32 write fDecls._Int32;
+    property _Int64: TIDType read fDecls._Int64 write fDecls._Int64;
+    property _UInt8: TIDType read fDecls._UInt8 write fDecls._UInt8;
+    property _UInt16: TIDType read fDecls._UInt16 write fDecls._UInt16;
+    property _UInt32: TIDType read fDecls._UInt32 write fDecls._UInt32;
+    property _UInt64: TIDType read fDecls._UInt64 write fDecls._UInt64;
+    property _NativeInt: TIDType read fDecls._NativeInt write fDecls._NativeInt;
+    property _NativeUInt: TIDType read fDecls._NativeUInt write fDecls._NativeUInt;
+    property _Float32: TIDType read fDecls._Float32 write fDecls._Float32;
+    property _Float64: TIDType read fDecls._Float64 write fDecls._Float64;
+    property _Boolean: TIDType read fDecls._Boolean write fDecls._Boolean;
+    property _AnsiChar: TIDType read fDecls._AnsiChar write fDecls._AnsiChar;
+    property _Char: TIDType read fDecls._Char write fDecls._Char;
+    property _AnsiString: TIDType read fDecls._AnsiString write fDecls._AnsiString;
+    property _String: TIDType read fDecls._String write fDecls._String;
+    property _ShortString: TIDType read fDecls._ShortString write fDecls._ShortString;
+    property _WideString: TIDType read fDecls._WideString write fDecls._WideString;
+    property _Variant: TIDType read fDecls._Variant write fDecls._Variant;
+    property _NilPointer: TIDType read fDecls._NullPtrType;
+    property _TGuid: TIDStructure read fDecls._GuidType;
+    property _True: TIDBooleanConstant read fDecls._True;
+    property _False: TIDBooleanConstant read fDecls._False;
+    property _TrueExpression: TIDExpression read fDecls._TrueExpression;
+    property _FalseExpression: TIDExpression read fDecls._FalseExpression;
+    property _ZeroConstant: TIDIntConstant read fDecls._ZeroConstant;
+    property _ZeroIntExpression: TIDExpression read fDecls._ZeroIntExpression;
+    property _ZeroFloatExpression: TIDExpression read fDecls._ZeroFloatExpression;
+    property _OneConstant: TIDIntConstant read fDecls._OneConstant;
+    property _OneExpression: TIDExpression read fDecls._OneExpression;
+    property _NullPtrConstant: TIDIntConstant read fDecls._NullPtrConstant;
+    property _NullPtrExpression: TIDExpression read fDecls._NullPtrExpression;
+    property _EmptyStrExpression: TIDExpression read fDecls._EmptyStrExpression;
+    property _Pointer: TIDPointer read fDecls._PointerType;
+    property _UntypedReference: TIDPointer read fDecls._UntypedReference;
+    property _TObject: TIDClass read fDecls._TObject;
+    property _Exception: TIDClass read fDecls._Exception;
+    property _EAssert: TIDClass read fDecls._EAssertClass;
     property _DateTime: TIDType read fDateTimeType;
     property _Date: TIDType read fDateType;
     property _Time: TIDType read fTimeType;
-    property _CopyArrayOfObjProc: TIDProcedure read fCopyArrayOfObjProc;
-    property _CopyArrayOfStrProc: TIDProcedure read fCopyArrayOfStrProc;
-    property _FinalArrayOfObjProc: TIDProcedure read fFinalArrayOfObjProc;
-    property _FinalArrayOfStrProc: TIDProcedure read fFinalArrayOfStrProc;
-    property _FinalArrayOfVarProc: TIDProcedure read fFinalArrayOfVarProc;
-    property _ExplicitEnumFromAny: TSysOpImplicit read fExplicitEnumFromAny;
-    property _ExplicitTProcFromAny: TSysOpImplicit read fExplicitTProcFromAny;
     property _AssertProc: TIDProcedure read fAsserProc;
     property _TypeID: TIDType read fTypeIDType;
-    property _DeprecatedDefaultStr: TIDStringConstant read fDeprecatedDefaultStr;
-    property _OrdinalType: TIDType read fOrdinalType;
-    property _PAnsiCharType: TIDType read fPAnsiChar;
-    property _PCharType: TIDType read fPChar;
+    property _DeprecatedDefaultStr: TIDStringConstant read fDecls._DeprecatedDefaultStr;
+    property _OrdinalType: TIDType read fDecls._OrdinalType;
+    property _PAnsiCharType: TIDType read fDecls._PAnsiChar;
+    property _PCharType: TIDType read fDecls._PChar;
     property _AnyArrayType: TIDArray read fArrayType;
+    property _MetaType: TIDType read fDecls._MetaType;
+    property _Void: TIDType read fDecls._Void;
   end;
 
-var
-  SYSUnit: TSYSTEMUnit = nil;  // модуль SYSYTEM
-  _MetaType: TIDType = nil;    // служебный мета-тип который является типом всех остальных типов данных.
-  _Void: TIDType = nil;
+  TDlphDeclarationHelper = class helper for TIDDeclaration
+  private
+    function GetSysUnit: TSYSTEMUnit;
+  public
+    property SYSUnit: TSYSTEMUnit read GetSysUnit;
+  end;
 
 
 implementation
 
 uses AST.Parser.Errors,
      AST.Delphi.Errors,
-     AST.Delphi.SysFunctions, AST.Targets, AST.Lexer;
+     AST.Delphi.SysFunctions,
+     AST.Targets,
+     AST.Lexer;
+
+{ TDlphDeclarationHelper }
+
+function TDlphDeclarationHelper.GetSysUnit: TSYSTEMUnit;
+begin
+  if Module is TSYSTEMUnit then
+    Result := TSYSTEMUnit(Module)
+  else
+    Result := TASTDelphiUnit(Module).SysUnit as TSYSTEMUnit;
+end;
+
+{ TIDBuiltInFunction }
+
+constructor TIDBuiltInFunction.Create(Scope: TScope; const Name: string; ResultType: TIDType);
+begin
+  inherited CreateAsSystem(Scope, Name);
+  ItemType := itMacroFunction;
+  Self.DataType := ResultType;
+end;
+
+class function TIDBuiltInFunction.CreateTMPExpr(const EContext: TEContext; const DataType: TIDType): TIDExpression;
+var
+  Decl: TIDVariable;
+begin
+  Decl := EContext.SContext.Proc.GetTMPVar(DataType);
+  Result := TIDExpression.Create(Decl);
+end;
+
+{ TIDSysRuntimeFunction }
+
+class function TIDSysRuntimeFunction.GetFunctionID: TBuiltInFunctionID;
+begin
+  Result := bf_sysrtfunction;
+end;
+
+function TIDSysRuntimeFunction.Process(var EContext: TEContext): TIDExpression;
+begin
+  AbortWorkInternal('Method "Process" must be override');
+  Result := nil;
+end;
+
+{ TIDSysCompileFunction }
+
+class function TIDSysCompileFunction.GetFunctionID: TBuiltInFunctionID;
+begin
+  Result := bf_sysctfunction;
+end;
 
 procedure AddUnarOperator(Op: TOperatorID; Source, Destination: TIDType); inline;
 begin
@@ -697,24 +755,157 @@ end;
 
 function TSYSTEMUnit.RegisterType(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
 begin
-  Result := TypeClass.Create(IntfScope, Identifier(TypeName));
+  Result := TypeClass.CreateAsSystem(IntfScope, TypeName);
   Result.Elementary := True;
   Result.DataTypeID := DataType;
   Result.ItemType := itType;
   InsertToScope(Result);
-  FDataTypes[DataType] := Result;
   AddType(Result);
 end;
 
 function TSYSTEMUnit.RegisterTypeCustom(const TypeName: string; TypeClass: TIDTypeClass;
   DataType: TDataTypeID): TIDType;
 begin
-  Result := TypeClass.Create(IntfScope, Identifier(TypeName));
+  Result := TypeClass.CreateAsSystem(IntfScope, TypeName);
   Result.Elementary := True;
   Result.DataTypeID := DataType;
   Result.ItemType := itType;
   InsertToScope(Result);
   AddType(Result);
+end;
+
+procedure TSYSTEMUnit.RegisterTypes;
+begin
+  //===============================================================
+  _Int8 := RegisterOrdinal('_Int8', dtInt8, MinInt8, MaxInt8);
+  _Int16 := RegisterOrdinal('_Int16', dtInt16, MinInt16, MaxInt16);
+  _Int32 := RegisterOrdinal('_Int32', dtInt32, MinInt32, MaxInt32);
+  _Int64 := RegisterOrdinal('Int64', dtInt64, MinInt64, MaxInt64);
+  _UInt8 := RegisterOrdinal('_UInt8', dtUInt8, 0, MaxUInt8);
+  _UInt16 := RegisterOrdinal('_UInt16', dtUInt16, 0, MaxUInt16);
+  _UInt32 := RegisterOrdinal('_UInt32', dtUInt32, 0, MaxUInt32);
+  _UInt64 := RegisterOrdinal('UInt64', dtUInt64, 0, MaxUInt64);
+  _NativeInt := RegisterOrdinal('NativeInt', dtNativeInt, MinInt64, MaxInt64);
+  _NativeUInt := RegisterOrdinal('NativeUInt', dtNativeUInt, 0, MaxUInt64);
+  _Float32 := RegisterType('Single', TIDType, dtFloat32);
+  _Float64 := RegisterType('Double', TIDType, dtFloat64);
+
+  //===============================================================
+  _Boolean := RegisterOrdinal('Boolean', dtBoolean, 0, 1);
+  _AnsiChar := RegisterOrdinal('AnsiChar', dtAnsiChar, 0, MaxUInt8);
+  _Char := RegisterOrdinal('Char', dtChar, 0, MaxUInt16);
+  //===============================================================
+  _ShortString := RegisterType('ShortString', TIDString, dtShortString);
+  TIDString(_ShortString).ElementDataType := _AnsiChar;
+  TIDString(_ShortString).AddBound(TIDOrdinal(_NativeUInt));
+  //===============================================================
+  _AnsiString := RegisterType('AnsiString', TIDString, dtAnsiString);
+  TIDString(_AnsiString).ElementDataType := _AnsiChar;
+  TIDString(_AnsiString).AddBound(TIDOrdinal(_NativeUInt));
+  //===============================================================
+  _String := RegisterType('String', TIDString, dtString);
+  TIDString(_String).ElementDataType := _Char;
+  TIDString(_String).AddBound(TIDOrdinal(_NativeUInt));
+  //===============================================================
+  _Variant := RegisterType('Variant', TIDVariant, dtVariant);
+  FImplicitAnyToVariant := TIDOpImplicitAnyToVariant.CreateInternal(_Variant);
+  FImplicitVariantToAny := TIDOpImplicitVariantToAny.CreateInternal(nil);
+  //===============================================================
+  _WideString := RegisterType('WideString', TIDString, dtWideString);
+  TIDString(_WideString).ElementDataType := _Char;
+  TIDString(_WideString).AddBound(TIDOrdinal(_NativeUInt));
+  //===============================================================
+  fOpenString := RegisterTypeCustom('OpenString', TIDString, dtString);
+  TIDString(fOpenString).ElementDataType := _Char;
+  TIDString(fOpenString).AddBound(TIDOrdinal(_NativeUInt));
+  //===============================================================
+  // TObject ========================================================
+  {FTObject := TIDClass.CreateAsSystem(UnitInterface, 'TObject');
+  FTObject.NeedForward := True; // forward declaration
+  InsertToScope(FTObject);}
+  // TGUID ========================================================
+  fDecls._GuidType := TIDStructure.CreateAsSystem(IntfScope, '_TGUID');
+  fDecls._GuidType.DataTypeID := dtGuid;
+  fDecls._GuidType.AddField('LoDWord', _Int64);
+  fDecls._GuidType.AddField('HiDWord', _Int64);
+  fDecls._GuidType.OverloadBinarOperator2(opEqual, fDecls._GuidType, _Boolean);
+  fDecls._GuidType.OverloadBinarOperator2(opNotEqual, fDecls._GuidType, _Boolean);
+  fDecls._GuidType.DataType := _MetaType;
+  InsertToScope(fDecls._GuidType);
+  AddType(fDecls._GuidType);
+  //===============================================================
+  FDateTimeType := TIDAliasType.CreateAliasAsSystem(IntfScope, 'DateTime', _Float64);
+  FDateType := TIDAliasType.CreateAliasAsSystem(IntfScope, 'Date', _Float64);
+  FTimeType := TIDAliasType.CreateAliasAsSystem(IntfScope, 'Time', _Float64);
+
+  InsertToScope(FDateTimeType);
+  InsertToScope(FDateType);
+  InsertToScope(FTimeType);
+  AddType(FDateTimeType);
+  AddType(FDateType);
+  AddType(FTimeType);
+  //===============================================================
+  fDecls._PointerType := RegisterPointer('Pointer', nil);
+  //===============================================================
+
+  // Delphi system aliases
+  RegisterTypeAlias('Extended', _Float64);
+  RegisterTypeAlias('Currency', _Float64); // Let it be for now
+
+  RegisterTypeAlias('LongInt', _Int32);
+  RegisterTypeAlias('LongWord', _UInt32);
+  RegisterTypeAlias('ShortInt', _Int8);
+  RegisterTypeAlias('SmallInt', _Int16);
+  RegisterTypeAlias('Integer', _Int32);
+  RegisterTypeAlias('Cardinal', _UInt32);
+  RegisterTypeAlias('Comp', _Int64);
+  RegisterTypeAlias('Byte', _UInt8);
+  RegisterTypeAlias('Word', _UInt16);
+  RegisterTypeAlias('_ShortString', _ShortString);
+  RegisterTypeAlias('UnicodeString', _String);
+  RegisterTypeAlias('WideChar', _Char);
+
+  RegisterTypeAlias('WordBool', _Boolean);
+  RegisterTypeAlias('LongBool', _Boolean);
+  RegisterTypeAlias('OleVariant', _Variant);
+
+  fDecls._PAnsiChar := RegisterPointer('PAnsiChar', _AnsiChar);
+  fDecls._PChar := RegisterPointer('PWideChar', _Char);
+  RegisterTypeAlias('PChar', _PCharType);
+  RegisterTypeAlias('Text', _Pointer);
+
+  RegisterConstInt('MaxInt', _Int32, MaxInt32);
+
+  // constant "True"
+  fDecls._True := TIDBooleanConstant.Create(IntfScope, Identifier('TRUE'), _Boolean, True);
+  fDecls._TrueExpression := TIDExpression.Create(fDecls._True);
+  IntfScope.InsertID(fDecls._True);
+  // constant "False"
+  fDecls._False := TIDBooleanConstant.Create(IntfScope, Identifier('FALSE'), _Boolean, False);
+  fDecls._FalseExpression := TIDExpression.Create(fDecls._False);
+  IntfScope.InsertID(fDecls._False);
+  // constant "0"
+  fDecls._ZeroConstant := TIDIntConstant.CreateAsAnonymous(IntfScope, _UInt8, 0);
+  fDecls._ZeroIntExpression := TIDExpression.Create(fDecls._ZeroConstant);
+
+  fDecls._ZeroFloatExpression := TIDExpression.Create(TIDFloatConstant.CreateAsAnonymous(IntfScope, _Float64, 0));
+
+  // constant "1"
+  fDecls._OneConstant := TIDIntConstant.CreateAsAnonymous(IntfScope, _UInt8, 1);
+  fDecls._OneExpression := TIDExpression.Create(fDecls._OneConstant);
+  // constant ""
+  fDecls._EmptyStrConstant := TIDStringConstant.CreateAsAnonymous(IntfScope, _String, '');
+  fDecls._EmptyStrExpression := TIDExpression.Create(fDecls._EmptyStrConstant);
+  // constant for deprecated
+  fDecls._DeprecatedDefaultStr := TIDStringConstant.CreateAsSystem(IntfScope, 'The declaration is deprecated');
+
+  AddImplicists;
+  AddExplicists;
+  AddArithmeticOperators;
+  AddLogicalOperators;
+  AddBitwiseOperators;
+  AddCompareOperators;
+  AddSystemOperators;
 end;
 
 function TSYSTEMUnit.RegisterVariable(Scope: TScope; const Name: string; DataType: TIDType): TIDVariable;
@@ -726,7 +917,7 @@ end;
 
 procedure TSYSTEMUnit.SearchSystemTypes;
 begin
-  fTObject := GetPublicClass('TObject');
+  fDecls._TObject := GetPublicClass('TObject');
 {  FException := GetPublicClass('Exception');
   FEAssertClass := GetPublicClass('EAssert');
   FTypeIDType := GetPublicType('TDataTypeID');}
@@ -751,17 +942,9 @@ begin
   end;
 end;
 
-function TSYSTEMUnit.RegisterBuiltin(const Name: string; MacroID: TBuiltInFunctionID; ResultDataType: TIDType; Flags: TProcFlags = []): TIDBuiltInFunction;
-begin
-  Result := TIDBuiltInFunction.Create(Self.IntfScope, Name, ResultDataType);
-  Result.ResultType := ResultDataType;
-  Result.Flags := Flags;
-  InsertToScope(Result);
-end;
-
 function TSYSTEMUnit.RegisterBuiltin(const BuiltinClass: TIDBuiltInFunctionClass): TIDBuiltInFunction;
 begin
-  Result := BuiltinClass.CreateDecl(Self.IntfScope);
+  Result := BuiltinClass.CreateDecl(Self, Self.IntfScope);
   InsertToScope(Self.IntfScope, Result);
 end;
 
@@ -850,163 +1033,42 @@ begin
   SetUnitName('system');
   {$ENDIF}
 
+  fDecls._MetaType := TIDType.CreateAsSystem(IntfScope, 'MetaType');
+  fDecls._MetaType.DataTypeID := dtClass;
+
+  fDecls._Void := TIDType.CreateAsSystem(IntfScope, 'Void');
+  fDecls._Void.DataTypeID := TDataTypeID(dtUnknown);
+
   // nil constant
-  FNullPtrType := TIDNullPointerType.CreateAsSystem(IntfScope, 'null ptr');
-  FNullPtrConstatnt := TIDIntConstant.Create(IntfScope, Identifier('nil'), FNullPtrType, 0);
-  FNullPtrExpression := TIDExpression.Create(FNullPtrConstatnt);
-  IntfScope.InsertID(FNullPtrConstatnt);
+  fDecls._NullPtrType := TIDNullPointerType.CreateAsSystem(IntfScope, 'null ptr');
+  fDecls._NullPtrConstant := TIDIntConstant.Create(IntfScope, Identifier('nil'), fDecls._NullPtrType, 0);
+  fDecls._NullPtrExpression := TIDExpression.Create(fDecls._NullPtrConstant);
+  IntfScope.InsertID(fDecls._NullPtrConstant);
 
   // Untyped reference
-  fUntypedReferenceType := TIDPointer.CreateAsSystem(IntfScope, 'Untyped reference');
-  IntfScope.InsertID(fUntypedReferenceType);
-  fUntypedReferenceType.OverloadImplicitFromAny(TIDOpImplicitAnyToUntyped.Instance);
-  fUntypedReferenceType.OverloadExplicitToAny(TSysExplicitUntypedToAny.Instance);
+  fDecls._UntypedReference := TIDPointer.CreateAsSystem(IntfScope, 'Untyped reference');
+  IntfScope.InsertID(fDecls._UntypedReference);
+  fDecls._UntypedReference.OverloadImplicitFromAny(TIDOpImplicitAnyToUntyped.Instance);
+  fDecls._UntypedReference.OverloadExplicitToAny(TSysExplicitUntypedToAny.Instance);
 
-  fOrdinalType := TIDOrdinal.CreateAsSystem(nil, 'ordinal');
-  fExplicitEnumFromAny := TIDOpExplicitIntToEnum.Instance;
-  fExplicitTProcFromAny := TIDOpExplicitTProcFromAny.Instance;
+  fDecls._OrdinalType := TIDOrdinal.CreateAsSystem(IntfScope, 'ordinal');
 
-  {!!! Ïîðÿäîê ðåãèñòðàöèè òèïîâ ñîîòâåòñòâóåò ïîðÿäêîâîìó íîìåðó êîíñòàíòû DataTypeID !!!}
-  //===============================================================
-  RegisterOrdinal('_Int8', dtInt8, MinInt8, MaxInt8);
-  RegisterOrdinal('_Int16', dtInt16, MinInt16, MaxInt16);
-  RegisterOrdinal('_Int32', dtInt32, MinInt32, MaxInt32);
-  RegisterOrdinal('Int64', dtInt64, MinInt64, MaxInt64);
-  RegisterOrdinal('_UInt8', dtUInt8, 0, MaxUInt8);
-  RegisterOrdinal('_UInt16', dtUInt16, 0, MaxUInt16);
-  RegisterOrdinal('_UInt32', dtUInt32, 0, MaxUInt32);
-  RegisterOrdinal('UInt64', dtUInt64, 0, MaxUInt64);
-  RegisterOrdinal('NativeInt', dtNativeInt, MinInt64, MaxInt64);
-  RegisterOrdinal('NativeUInt', dtNativeUInt, 0, MaxUInt64);
-  RegisterType('Single', TIDType, dtFloat32);
-  RegisterType('Double', TIDType, dtFloat64);
+  RegisterTypes;
+  fDecls._PointerType.CreateStandardOperators;
+  fDecls._PAnsiChar.CreateStandardOperators;
+  fDecls._PChar.CreateStandardOperators;
 
-  //===============================================================
-  RegisterOrdinal('Boolean', dtBoolean, 0, 1);
-  RegisterOrdinal('AnsiChar', dtAnsiChar, 0, MaxUInt8);
-  RegisterOrdinal('Char', dtChar, 0, MaxUInt16);
-  //===============================================================
-  RegisterType('ShortString', TIDString, dtShortString);
-  TIDString(_ShortString).ElementDataType := _AnsiChar;
-  TIDString(_ShortString).AddBound(TIDOrdinal(_NativeUInt));
-  //===============================================================
-  RegisterType('AnsiString', TIDString, dtAnsiString);
-  TIDString(_AnsiString).ElementDataType := _AnsiChar;
-  TIDString(_AnsiString).AddBound(TIDOrdinal(_NativeUInt));
-  //===============================================================
-  RegisterType('String', TIDString, dtString);
-  TIDString(_String).ElementDataType := _Char;
-  TIDString(_String).AddBound(TIDOrdinal(_NativeUInt));
-  RegisterType('Variant', TIDVariant, dtVariant);
-  FImplicitAnyToVariant := TIDOpImplicitAnyToVariant.CreateInternal(_Variant);
-  FImplicitVariantToAny := TIDOpImplicitVariantToAny.CreateInternal(nil);
-  //===============================================================
-  RegisterType('WideString', TIDString, dtWideString);
-  TIDString(_WideString).ElementDataType := _Char;
-  TIDString(_WideString).AddBound(TIDOrdinal(_NativeUInt));
-  //===============================================================
-  fOpenString := RegisterTypeCustom('OpenString', TIDString, dtString);
-  TIDString(fOpenString).ElementDataType := _Char;
-  TIDString(fOpenString).AddBound(TIDOrdinal(_NativeUInt));
-  //===============================================================
-  // TObject ========================================================
-  {FTObject := TIDClass.CreateAsSystem(UnitInterface, 'TObject');
-  FTObject.NeedForward := True; // forward declaration
-  InsertToScope(FTObject);}
-  // TGUID ========================================================
-  FGuidType := TIDStructure.CreateAsSystem(IntfScope, '_TGUID');
-  FGuidType.DataTypeID := dtGuid;
-  FGuidType.AddField('LoDWord', _Int64);
-  FGuidType.AddField('HiDWord', _Int64);
-  FGuidType.OverloadBinarOperator2(opEqual, FGuidType, _Boolean);
-  FGuidType.OverloadBinarOperator2(opNotEqual, FGuidType, _Boolean);
-  FGuidType.DataType := _MetaType;
-  InsertToScope(FGuidType);
-  AddType(FGuidType);
-  //===============================================================
-  FDateTimeType := TIDAliasType.CreateAliasAsSystem(IntfScope, 'DateTime', _Float64);
-  FDateType := TIDAliasType.CreateAliasAsSystem(IntfScope, 'Date', _Float64);
-  FTimeType := TIDAliasType.CreateAliasAsSystem(IntfScope, 'Time', _Float64);
-
-  InsertToScope(FDateTimeType);
-  InsertToScope(FDateType);
-  InsertToScope(FTimeType);
-  AddType(FDateTimeType);
-  AddType(FDateType);
-  AddType(FTimeType);
-  //===============================================================
-  FPointerType := RegisterPointer('Pointer', nil);
-  //===============================================================
-
-  // Delphi system aliases
-  RegisterTypeAlias('Extended', _Float64);
-  //RegisterTypeAlias('Double', _Float64);
-  //RegisterTypeAlias('Single', _Float32);
-  RegisterTypeAlias('Currency', _Float64); // Let it be for now
-
-  RegisterTypeAlias('LongInt', _Int32);
-  RegisterTypeAlias('LongWord', _UInt32);
-  RegisterTypeAlias('ShortInt', _Int8);
-  RegisterTypeAlias('SmallInt', _Int16);
-  RegisterTypeAlias('Integer', _Int32);
-  RegisterTypeAlias('Cardinal', _UInt32);
-  RegisterTypeAlias('Comp', _Int64);
-  RegisterTypeAlias('Byte', _UInt8);
-  RegisterTypeAlias('Word', _UInt16);
-  RegisterTypeAlias('_ShortString', _ShortString);
-  RegisterTypeAlias('UnicodeString', _String);
-  RegisterTypeAlias('WideChar', _Char);
-
-  RegisterTypeAlias('WordBool', _Boolean);
-  RegisterTypeAlias('LongBool', _Boolean);
-  RegisterTypeAlias('OleVariant', _Variant);
-
-  fPAnsiChar := RegisterPointer('PAnsiChar', _AnsiChar);
-  fPChar := RegisterPointer('PWideChar', _Char);
-  RegisterTypeAlias('PChar', _PCharType);
-  RegisterTypeAlias('Text', _Pointer);
-  //RegisterTypeAlias('FixedInt', _Int32);
-  //RegisterTypeAlias('FixedUInt', _UInt32);
-
-  RegisterConstInt('MaxInt', _Int32, MaxInt32);
-
-  // constant "True"
-  FTrueConstant := TIDBooleanConstant.Create(IntfScope, Identifier('TRUE'), _Boolean, True);
-  FTrueExpression := TIDExpression.Create(FTrueConstant);
-  IntfScope.InsertID(FTrueConstant);
-  // constant "False"
-  FFalseConstant := TIDBooleanConstant.Create(IntfScope, Identifier('FALSE'), _Boolean, False);
-  FFalseExpression := TIDExpression.Create(FFalseConstant);
-  IntfScope.InsertID(FFalseConstant);
-  // constant "0"
-  FZeroConstant := TIDIntConstant.CreateAnonymous(IntfScope, _UInt8, 0);
-  FZeroExpression := TIDExpression.Create(FZeroConstant);
-
-  FZeroFloatExpression := TIDExpression.Create(TIDFloatConstant.CreateAnonymous(IntfScope, _Float64, 0));
-
-  // constant "1"
-  FOneConstant := TIDIntConstant.CreateAnonymous(IntfScope, _UInt8, 1);
-  FOneExpression := TIDExpression.Create(FOneConstant);
-  // constant ""
-  FEmptyStrConstant := TIDStringConstant.CreateAnonymous(IntfScope, _String, '');
-  FEmptyStrExpression := TIDExpression.Create(FEmptyStrConstant);
-  // constant for deprecated
-  fDeprecatedDefaultStr := TIDStringConstant.CreateAsSystem(IntfScope, 'The declaration is deprecated');
-
-  AddImplicists;
-  AddExplicists;
-  AddArithmeticOperators;
-  AddLogicalOperators;
-  AddBitwiseOperators;
-  AddCompareOperators;
-  AddSystemOperators;
+  fArrayType := TIDArray.CreateAsSystem(IntfScope, 'array');
 end;
 
-procedure TSYSTEMUnit.InitSystemUnit;
+function TSYSTEMUnit.GetTypeByID(ID: TDataTypeID): TIDType;
 begin
-  fPointerType.CreateStandardOperators;
-  fPAnsiChar.CreateStandardOperators;
-  fPChar.CreateStandardOperators;
+  Result := fDecls.DataTypes[ID];
+end;
+
+function TSYSTEMUnit.GetSystemDeclarations: PDelphiSystemDeclarations;
+begin
+  Result := addr(fDecls);
 end;
 
 procedure TSYSTEMUnit.InsertToScope(Declaration: TIDDeclaration);
@@ -1053,13 +1115,7 @@ begin
 end;
 
 initialization
-  _Void := TIDType.CreateAsSystem(nil, 'Void');
-  _Void.DataTypeID := TDataTypeID(dtUnknown);
-
-  _MetaType := TIDType.CreateAsSystem(nil, 'MetaType');
-  _MetaType.DataTypeID := dtClass;
 
 finalization
-
 
 end.
