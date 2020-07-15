@@ -48,27 +48,18 @@ Two extra properties included (DelphiVersion, PackageSource):
   PackageSource - Allows you to enable/disable the highlighting of package keywords
 }
 
-{$IFNDEF QSYNHIGHLIGHTERPAS}
 unit SynHighlighterPas;
-{$ENDIF}
 
-{$I SynEdit.Inc}
+{$I SynEdit.inc}
 
 interface
 
 uses
-{$IFDEF SYN_CLX}
-  QGraphics,
-  QSynEditTypes,
-  QSynEditHighlighter,
-  QSynUnicode,
-{$ELSE}
   Windows,
   Graphics,
   SynEditTypes,
   SynEditHighlighter,
   SynUnicode,
-{$ENDIF}
   SysUtils,
 {$IFDEF SYN_CodeFolding}
   SynEditCodeFolding,
@@ -244,11 +235,7 @@ type
 implementation
 
 uses
-{$IFDEF SYN_CLX}
-  QSynEditStrConst;
-{$ELSE}
   SynEditStrConst;
-{$ENDIF}
 
 const
   // if the language is case-insensitive keywords *must* be in lowercase
@@ -1161,7 +1148,7 @@ var
       end;
     end else if RE_BlockEnd.Exec(CurLine) then
     begin
-      Index :=  RE_BlockBegin.MatchPos[0];
+      Index := RE_BlockEnd.MatchPos[0];
       if GetHighlighterAttriAtRowCol(LinesToScan, Line, Index) <> fCommentAttri then
       begin
         FoldRanges.StopFoldRange(Line + 1, FT_Standard);
@@ -1256,7 +1243,7 @@ begin
       FoldRanges.StartFoldRange(Line +1, FT_Implementation)
     // Functions and procedures
     else if RE_Code.Exec(CurLine) then
-      FoldRanges.StartFoldRange(Line +1, FT_CodeDeclaration)
+      FoldRanges.StartFoldRange(Line + 1, FT_CodeDeclaration)
     // Find begin or end  (Fold Type 1)
     else if not BlockDelimiter(Line) then
       FoldRanges.NoFoldInfo(Line + 1);
@@ -1354,12 +1341,18 @@ end;
 
 procedure TSynPasSyn.EnumUserSettings(DelphiVersions: TStrings);
 
+{$IFNDEF SYN_DELPHI_2006_UP}
+const
+  KEY_WOW64_64KEY = $0100;
+  KEY_WOW64_32KEY = $0200; 
+{$ENDIF}
+
   procedure LoadKeyVersions(const Key, Prefix: string);
   var
     Versions: TStringList;
     i: Integer;
   begin
-    with TBetterRegistry.Create do
+    with TBetterRegistry.Create(KEY_READ or KEY_WOW64_32KEY) do
     begin
       try
         RootKey := HKEY_LOCAL_MACHINE;
@@ -1385,15 +1378,10 @@ procedure TSynPasSyn.EnumUserSettings(DelphiVersions: TStrings);
   end;
 
 begin
-  { returns the user settings that exist in the registry }
-{$IFNDEF SYN_CLX}
-  // See UseUserSettings below where these strings are used
   LoadKeyVersions('\SOFTWARE\Borland\Delphi', '');
   LoadKeyVersions('\SOFTWARE\Borland\BDS', BDSVersionPrefix);
   LoadKeyVersions('\SOFTWARE\CodeGear\BDS', BDSVersionPrefix);
   LoadKeyVersions('\SOFTWARE\Embarcadero\BDS', BDSVersionPrefix);
-
-{$ENDIF}
 end;
 
 function TSynPasSyn.UseUserSettings(VersionIndex: Integer): Boolean;
@@ -1404,7 +1392,6 @@ function TSynPasSyn.UseUserSettings(VersionIndex: Integer): Boolean;
 //   False: problem reading settings or invalid version specified - old settings
 //          were preserved
 
-{$IFNDEF SYN_CLX}
   function ReadDelphiSettings(settingIndex: Integer): Boolean;
 
     function ReadDelphiSetting(settingTag: string; attri: TSynHighlighterAttributes; key: string): Boolean;
@@ -1539,14 +1526,9 @@ function TSynPasSyn.UseUserSettings(VersionIndex: Integer): Boolean;
     tmpStringAttri.Free;
     tmpSymbolAttri.Free;
   end;
-{$ENDIF}
 
 begin
-{$IFNDEF SYN_CLX}
   Result := ReadDelphiSettings(VersionIndex);
-{$ELSE}
-  Result := False;
-{$ENDIF}
 end;
 
 function TSynPasSyn.GetSampleSource: UnicodeString;                                   

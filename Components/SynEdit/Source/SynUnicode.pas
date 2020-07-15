@@ -49,24 +49,19 @@ Last Changes:
 unit SynUnicode;
 {$ENDIF}
 
-{$I SynEdit.Inc}
+{$I SynEdit.inc}
 
 interface
 
 uses
-  {$IFDEF SYN_WIN32}
+  {$IFDEF MSWINDOWS}
   Windows,
   {$ENDIF}
-  {$IFDEF SYN_CLX}
-  QGraphics,
-  QClipbrd,  
-  {$ELSE}
   Messages,
   Controls,
   Forms,
   Graphics,
-  Clipbrd,  
-  {$ENDIF}
+  Clipbrd,
   {$IFDEF SYN_COMPILER_6_UP}
   Types,
   {$ENDIF}
@@ -306,7 +301,7 @@ procedure WStrDispose(Str: PWideChar);
 
 
 {$IFNDEF SYN_COMPILER_6_UP}
-{$IFDEF SYN_WIN32} // Kylix should have that from version 1 on
+{$IFDEF MSWINDOWS}
 function UnicodeToUtf8(Dest: PAnsiChar; MaxDestBytes: Cardinal;
   Source: PWideChar; SourceChars: Cardinal): Cardinal;
 function Utf8ToUnicode(Dest: PWideChar; MaxDestChars: Cardinal;
@@ -323,7 +318,7 @@ function WideCompareText(const S1, S2: UnicodeString): Integer;
 
 // Kylix has them, but Delphi 5 doesn't and Delphi 6&7 versions are buggy
 // in Win9X (fix taken from Troy Wolbrinks TntUnicode-package)
-{$IFDEF SYN_WIN32}
+{$IFDEF MSWINDOWS}
 {$IFNDEF UNICODE}
 var
   DefaultSystemCodePage: Cardinal; // implicitly used when converting AnsiString <--> UnicodeString.
@@ -357,7 +352,7 @@ function UnicodeStringOfChar(C: WideChar; Count: Cardinal): UnicodeString;
 function WideTrim(const S: UnicodeString): UnicodeString;
 function WideTrimLeft(const S: UnicodeString): UnicodeString;
 function WideTrimRight(const S: UnicodeString): UnicodeString;
-{$IFDEF SYN_WIN32}
+{$IFDEF MSWINDOWS}
 function CharSetFromLocale(Language: LCID): TFontCharSet;
 function CodePageFromLocale(Language: LCID): Integer;
 function KeyboardCodePage: Word;
@@ -433,12 +428,12 @@ procedure SetWideStrProp(Instance: TObject; PropInfo: PPropInfo; const Value: Un
 {$ENDIF}
 procedure UnicodeDefineProperties(Filer: TFiler; Instance: TPersistent);
 {$ENDIF}
-{$IFDEF SYN_WIN32}
+{$IFDEF MSWINDOWS}
 function IsWideCharMappableToAnsi(const WC: WideChar): Boolean;
 function IsUnicodeStringMappableToAnsi(const WS: UnicodeString): Boolean;
 {$ENDIF}
 
-{$IFDEF SYN_WIN32}
+{$IFDEF MSWINDOWS}
 var
   Win32PlatformIsUnicode: Boolean;
 {$ENDIF}
@@ -446,13 +441,9 @@ var
 implementation
 
 uses
-  {$IFDEF SYN_CLX}
-  QSynEditTextBuffer,
-  {$ELSE}
   SynEditTextBuffer,
-    {$IFDEF SYN_UNISCRIBE}
-    SynUsp10,
-    {$ENDIF}
+  {$IFDEF SYN_UNISCRIBE}
+  SynUsp10,
   {$ENDIF}
   Math,
   {$IFDEF SYN_LINUX}
@@ -465,11 +456,7 @@ uses
   {$IFDEF SYN_COMPILER_6_UP}
   RTLConsts;
   {$ELSE}
-    {$IFDEF SYN_CLX}
-    QConsts;
-    {$ELSE}
-    Consts;
-    {$ENDIF}
+  Consts;
   {$ENDIF}
 
 {$IFNDEF UNICODE}
@@ -514,14 +501,14 @@ end;
 procedure TUnicodeStrings.AddStrings(Strings: TStrings);
 var
   I: Integer;
-{$IFDEF SYN_WIN32}
+{$IFDEF MSWINDOWS}
   S: UnicodeString;
   CP: Integer;
 {$ENDIF}
 begin
   BeginUpdate;
   try
-    {$IFDEF SYN_WIN32}
+    {$IFDEF MSWINDOWS}
     CP := CodePageFromLocale(GetThreadLocale);
     for I := 0 to Strings.Count - 1 do
     begin
@@ -1722,7 +1709,7 @@ begin
 end;
 
 {$IFNDEF SYN_COMPILER_6_UP}
-{$IFDEF SYN_WIN32}
+{$IFDEF MSWINDOWS}
 function UnicodeToUtf8(Dest: PAnsiChar; MaxDestBytes: Cardinal;
   Source: PWideChar; SourceChars: Cardinal): Cardinal;
 var
@@ -1938,7 +1925,7 @@ end;
 {$ENDIF}
 {$ENDIF}
 
-{$IFDEF SYN_WIN32}
+{$IFDEF MSWINDOWS}
 // The Win9X fix for SynWideUpperCase and SynWideLowerCase was taken
 // from Troy Wolbrinks, TntUnicode-package.
 
@@ -1970,11 +1957,7 @@ begin
       Result := lpsz;
       while lpsz^ <> #0 do
       begin
-        {$IFDEF SYN_CLX}
-        lpsz^ := WideChar(QSynUnicode.WCharUpper(PWideChar(lpsz^)));
-        {$ELSE}
         lpsz^ := WideChar(SynUnicode.WCharUpper(PWideChar(lpsz^)));
-        {$ENDIF}
         Inc(lpsz);
       end;
     end;
@@ -1992,11 +1975,7 @@ begin
     Result := cchLength;
     for i := 1 to cchLength do
     begin
-      {$IFDEF SYN_CLX}
-      lpsz^ := WideChar(QSynUnicode.WCharUpper(PWideChar(lpsz^)));
-      {$ELSE}
       lpsz^ := WideChar(SynUnicode.WCharUpper(PWideChar(lpsz^)));
-      {$ENDIF}
       Inc(lpsz);
     end;
   end;
@@ -2030,11 +2009,7 @@ begin
       Result := lpsz;
       while lpsz^ <> #0 do
       begin
-        {$IFDEF SYN_CLX}
-        lpsz^ := WideChar(QSynUnicode.WCharLower(PWideChar(lpsz^)));
-        {$ELSE}
         lpsz^ := WideChar(SynUnicode.WCharLower(PWideChar(lpsz^)));
-        {$ENDIF}
         Inc(lpsz);
       end;
     end;
@@ -2052,11 +2027,7 @@ begin
     Result := cchLength;
     for i := 1 to cchLength do
     begin
-      {$IFDEF SYN_CLX}
-      lpsz^ := WideChar(QSynUnicode.WCharLower(PWideChar(lpsz^)));
-      {$ELSE}
       lpsz^ := WideChar(SynUnicode.WCharLower(PWideChar(lpsz^)));
-      {$ENDIF}
       Inc(lpsz);
     end;
   end;
@@ -2069,8 +2040,7 @@ begin
   Len := Length(S);
   SetString(Result, PWideChar(S), Len);
   if Len > 0 then
-    {$IFDEF SYN_CLX} QSynUnicode. {$ELSE} SynUnicode. {$ENDIF}
-    WCharUpperBuff(Pointer(Result), Len);
+    SynUnicode.WCharUpperBuff(Pointer(Result), Len);
 end;
 
 function SynWideLowerCase(const S: UnicodeString): UnicodeString;
@@ -2080,8 +2050,7 @@ begin
   Len := Length(S);
   SetString(Result, PWideChar(S), Len);
   if Len > 0 then
-    {$IFDEF SYN_CLX} QSynUnicode. {$ELSE} SynUnicode. {$ENDIF}
-    WCharLowerBuff(Pointer(Result), Len);
+    SynUnicode.WCharLowerBuff(Pointer(Result), Len);
 end;
 {$ELSE}
 function SynWideUpperCase(const S: UnicodeString): UnicodeString;
@@ -2095,7 +2064,7 @@ begin
 end;
 {$ENDIF}
 
-{$IFDEF SYN_WIN32}
+{$IFDEF MSWINDOWS}
 function SynIsCharAlpha(const C: WideChar): Boolean;
 begin
   if Win32PlatformIsUnicode then
@@ -2435,7 +2404,7 @@ begin
   Result := Copy(S, 1, I);
 end;
 
-{$IFDEF SYN_WIN32}
+{$IFDEF MSWINDOWS}
 function TranslateCharsetInfoEx(lpSrc: PDWORD; var lpCs: TCharsetInfo; dwFlags: DWORD): BOOL; stdcall;
   external 'gdi32.dll' name 'TranslateCharsetInfo';
 
@@ -2560,40 +2529,25 @@ type
 
 function TextExtent(ACanvas: TCanvas; const Text: UnicodeString): TSize;
 begin
-{$IFDEF SYN_CLX}
-  Result := ACanvas.TextExtent(Text);
-{$ELSE}
   with TAccessCanvas(ACanvas) do
   begin
     RequiredState([csHandleValid, csFontValid]);
     Result := GetTextSize(Handle, PWideChar(Text), Length(Text));
   end;
-{$ENDIF}
 end;
 
 function TextWidth(ACanvas: TCanvas; const Text: UnicodeString): Integer;
 begin
-{$IFDEF SYN_CLX}
-  Result := ACanvas.TextExtent(Text).cX;
-{$ELSE}
   Result := TextExtent(ACanvas, Text).cX;
-{$ENDIF}
 end;
 
 function TextHeight(ACanvas: TCanvas; const Text: UnicodeString): Integer;
 begin
-{$IFDEF SYN_CLX}
-  Result := ACanvas.TextExtent(Text).cY;
-{$ELSE}
   Result := TextExtent(ACanvas, Text).cY;
-{$ENDIF}
 end;
 
 procedure TextOut(ACanvas: TCanvas; X, Y: Integer; const Text: UnicodeString);
 begin
-{$IFDEF SYN_CLX}
-  ACanvas.TextOut(X, Y, Text);
-{$ELSE}
   with TAccessCanvas(ACanvas) do
   begin
     Changing;
@@ -2605,19 +2559,13 @@ begin
     MoveTo(X + SynUnicode.TextWidth(ACanvas, Text), Y);
     Changed;
   end;
-{$ENDIF}
 end;
 
 procedure TextRect(ACanvas: TCanvas; Rect: TRect; X, Y: Integer;
   const Text: UnicodeString);
-{$IFNDEF SYN_CLX}
 var
   Options: Longint;
-{$ENDIF}
 begin
-{$IFDEF SYN_CLX}
-  ACanvas.TextRect(Rect, X, Y, Text);
-{$ELSE}
   with TAccessCanvas(ACanvas) do
   begin
     Changing;
@@ -2633,7 +2581,6 @@ begin
       Length(Text), nil);
     Changed;
   end;
-{$ENDIF}
 end;
 
 {$IFNDEF UNICODE}
@@ -2641,7 +2588,7 @@ end;
 
 constructor TWideFileStream.Create(const FileName: UnicodeString; Mode: Word);
 begin
-{$IFDEF SYN_WIN32}
+{$IFDEF MSWINDOWS}
   Create(Filename, Mode, 0);
 {$ELSE}
   Create(Filename, Mode, FileAccessRights);
@@ -2710,7 +2657,7 @@ begin
 end;
 
 function WideFileOpen(const FileName: UnicodeString; Mode: LongWord): Integer;
-{$IFDEF SYN_WIN32}
+{$IFDEF MSWINDOWS}
 const
   AccessMode: array[0..2] of LongWord = (
     GENERIC_READ,
@@ -2782,7 +2729,7 @@ end;
 {$ENDIF}
 
 function WideFileCreate(const FileName: UnicodeString): Integer;
-{$IFDEF SYN_WIN32}
+{$IFDEF MSWINDOWS}
 begin
   if Win32PlatformIsUnicode then
     Result := Integer(CreateFileW(PWideChar(FileName), GENERIC_READ or GENERIC_WRITE,
@@ -2799,7 +2746,7 @@ end;
 {$ENDIF}
 
 function WideFileCreate(const FileName: UnicodeString; Rights: Integer): Integer;
-{$IFDEF SYN_WIN32}
+{$IFDEF MSWINDOWS}
 begin
   Result := WideFileCreate(FileName);
 end;
@@ -2812,7 +2759,7 @@ end;
 {$ENDIF}
 
 function IsAnsiOnly(const WS: UnicodeString): Boolean;
-{$IFDEF SYN_WIN32}
+{$IFDEF MSWINDOWS}
 begin
   Result := IsUnicodeStringMappableToAnsi(WS);
 end;
@@ -3273,19 +3220,10 @@ end;
 
 function ClipboardProvidesText: Boolean;
 begin
-{$IFDEF SYN_CLX}
-  Result := Clipboard.Provides('text/plain');
-{$ELSE}
   Result := IsClipboardFormatAvailable(CF_TEXT) or IsClipboardFormatAvailable(CF_UNICODETEXT);
-{$ENDIF}
 end;
 
 function GetClipboardText: UnicodeString;
-{$IFDEF SYN_CLX}
-begin
-  Result := Clipboard.AsText;
-end;
-{$ELSE}
 var
   Mem: HGLOBAL;
   LocaleID: LCID;
@@ -3329,14 +3267,8 @@ begin
     Clipboard.Close;
   end;
 end;
-{$ENDIF}
 
 procedure SetClipboardText(const Text: UnicodeString);
-{$IFDEF SYN_CLX}
-begin
-  Clipboard.AsText := Text;
-end;
-{$ELSE}
 var
   Mem: HGLOBAL;
   P: PByte;
@@ -3390,7 +3322,6 @@ begin
     Clipboard.Close;
   end;
 end;
-{$ENDIF}
 
 {$IFNDEF UNICODE}
 {$IFNDEF SYN_COMPILER_6_UP}
@@ -3746,7 +3677,7 @@ begin
 end;
 {$ENDIF}
 
-{$IFDEF SYN_WIN32}
+{$IFDEF MSWINDOWS}
 function IsWideCharMappableToAnsi(const WC: WideChar): Boolean;
 var
   UsedDefaultChar: BOOL;
@@ -3767,7 +3698,7 @@ end;
 {$ENDIF}
 
 initialization
-{$IFDEF SYN_WIN32}
+{$IFDEF MSWINDOWS}
   Win32PlatformIsUnicode := (Win32Platform = VER_PLATFORM_WIN32_NT);
   {$IFNDEF UNICODE}
   DefaultSystemCodePage := GetACP;

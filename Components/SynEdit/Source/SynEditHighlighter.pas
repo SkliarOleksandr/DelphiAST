@@ -1,4 +1,4 @@
-{-------------------------------------------------------------------------------
+﻿{-------------------------------------------------------------------------------
 The contents of this file are subject to the Mozilla Public License
 Version 1.1 (the "License"); you may not use this file except in compliance
 with the License. You may obtain a copy of the License at
@@ -27,23 +27,13 @@ located at http://SynEdit.SourceForge.net
 Known Issues:
 -------------------------------------------------------------------------------}
 
-{$IFNDEF QSYNEDITHIGHLIGHTER}
 unit SynEditHighlighter;
-{$ENDIF}
 
-{$I SynEdit.Inc}
+{$I SynEdit.inc}
 
 interface
 
 uses
-{$IFDEF SYN_CLX}
-  kTextDrawer,
-  Types,
-  QGraphics,
-  QSynEditTypes,
-  QSynEditMiscClasses,
-  QSynUnicode,
-{$ELSE}
   Graphics,
   Windows,
   Registry,
@@ -51,15 +41,12 @@ uses
   SynEditTypes,
   SynEditMiscClasses,
   SynUnicode,
-{$ENDIF}
   SysUtils,
   Classes,
   SynEditHighlighterOptions;
 
-{$IFNDEF SYN_CLX}
 type
   TBetterRegistry = SynEditMiscClasses.TBetterRegistry;
-{$ENDIF}
 
 type
   TSynHighlighterAttributes = class(TPersistent)
@@ -88,14 +75,14 @@ type
     constructor Create(AName: string); overload;
     constructor Create(AName: string; AFriendlyName: UnicodeString); overload;
     procedure InternalSaveDefaultValues;
-{$IFNDEF SYN_CLX}
+
     function LoadFromBorlandRegistry(RootKey: HKEY; AttrKey, AttrName: string;
       OldStyle: Boolean): Boolean; virtual;
     function LoadFromRegistry(Reg: TBetterRegistry): Boolean;
     function SaveToRegistry(Reg: TBetterRegistry): Boolean;
-    function LoadFromFile(Ini: TIniFile): Boolean;
-    function SaveToFile(Ini: TIniFile): Boolean;
-{$ENDIF}
+//Fix type changed to TCustomIniFile for use both TMemIniFile and TIniFile
+    function LoadFromFile(Ini: TCustomIniFile): Boolean;
+    function SaveToFile(Ini: TCustomIniFile): Boolean;
   public
     procedure SetColors(Foreground, Background: TColor);
     property FriendlyName: UnicodeString read FFriendlyName;
@@ -213,12 +200,12 @@ type
     procedure ResetRange; virtual;
     function UseUserSettings(settingIndex: Integer): Boolean; virtual;
     procedure EnumUserSettings(Settings: TStrings); virtual;
-{$IFNDEF SYN_CLX}
+
     function LoadFromRegistry(RootKey: HKEY; Key: string): Boolean; virtual;
     function SaveToRegistry(RootKey: HKEY; Key: string): Boolean; virtual;
     function LoadFromFile(AFileName: string): Boolean;
     function SaveToFile(AFileName: string): Boolean;
-{$ENDIF}
+
     procedure HookAttrChangeEvent(ANotifyEvent: TNotifyEvent);
     procedure UnhookAttrChangeEvent(ANotifyEvent: TNotifyEvent);
     function IsIdentChar(AChar: WideChar): Boolean; virtual;
@@ -284,11 +271,7 @@ uses
 {$IFDEF UNICODE}
   WideStrUtils,
 {$ENDIF}
-{$IFDEF SYN_CLX}
-  QSynEditStrConst;
-{$ELSE}
   SynEditStrConst;
-{$ENDIF}
 
 {$IFNDEF SYN_CPPB_1}
 { THighlighterList }
@@ -455,7 +438,6 @@ begin
   FStyleDefault := FStyle;
 end;
 
-{$IFNDEF SYN_CLX}
 function TSynHighlighterAttributes.LoadFromBorlandRegistry(RootKey: HKEY;
   AttrKey, AttrName: string; OldStyle: Boolean): Boolean;
   // How the highlighting information is stored:
@@ -643,7 +625,6 @@ begin
   else
     Result := LoadNewStyle(RootKey, AttrKey, AttrName);
 end; { TSynHighlighterAttributes.LoadFromBorlandRegistry }
-{$ENDIF}
 
 procedure TSynHighlighterAttributes.SetBackground(Value: TColor);
 begin
@@ -682,7 +663,6 @@ begin
   end;
 end;
 
-{$IFNDEF SYN_CLX}
 function TSynHighlighterAttributes.LoadFromRegistry(Reg: TBetterRegistry): Boolean;
 var
   Key: string;
@@ -725,7 +705,7 @@ begin
     Result := False;
 end;
 
-function TSynHighlighterAttributes.LoadFromFile(Ini : TIniFile): Boolean;
+function TSynHighlighterAttributes.LoadFromFile(Ini : TCustomIniFile): boolean;
 var
   S: TStringList;
 begin
@@ -749,15 +729,13 @@ begin
   end;
 end;
 
-function TSynHighlighterAttributes.SaveToFile(Ini : TIniFile): Boolean;
+function TSynHighlighterAttributes.SaveToFile(Ini : TCustomIniFile): boolean;
 begin
   Ini.WriteInteger(Name, 'Background', Background);
   Ini.WriteInteger(Name, 'Foreground', Foreground);
   Ini.WriteInteger(Name, 'Style', IntegerStyle);
   Result := True;
 end;
-
-{$ENDIF}
 
 function TSynHighlighterAttributes.GetStyleFromInt: Integer;
 begin
@@ -873,7 +851,6 @@ begin
   Result := False;
 end;
 
-{$IFNDEF SYN_CLX}
 function TSynCustomHighlighter.LoadFromRegistry(RootKey: HKEY;
   Key: string): Boolean;
 var
@@ -953,8 +930,6 @@ begin
     AIni.Free;
   end;
 end;
-
-{$ENDIF}
 
 procedure TSynCustomHighlighter.AddAttribute(Attri: TSynHighlighterAttributes);
 begin

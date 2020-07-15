@@ -32,99 +32,13 @@ located at http://SynEdit.SourceForge.net
 Known Issues:
 -------------------------------------------------------------------------------}
 
-{$IFNDEF QSYNEDITREG}
 unit SynEditReg;
-{$ENDIF}
 
 {$I SynEdit.inc}
 
 interface
 
 uses
-{$IFDEF SYN_CLX}
-  // SynEdit components
-  QSynEdit,
-  QSynMemo,
-  {$IFNDEF SYN_DELPHI_PE}
-  QSynDBEdit,
-  {$ENDIF}
-  QSynEditStrConst,
-  QSynEditHighlighter,
-  QSynEditMiscClasses,
-  QSynEditPlugins,
-  QSynEditExport,
-  QSynExportHTML,
-  QSynExportRTF,
-  QSynExportTeX,
-  QSynHighlighterMulti,
-  QSynCompletionProposal,
-  QSynEditPythonBehaviour,
-  QSynEditPrint,
-  QSynEditPrintPreview,
-  QSynMacroRecorder,
-  QSynAutoCorrect,
-  QSynEditSearch,
-  QSynEditRegexSearch,
-  QSynHighlighterManager,
-  QSynEditOptionsDialog,
-  QSynHighlighterADSP21xx,
-  QSynHighlighterAsm,
-  QSynHighlighterAsmMASM,
-  QSynHighlighterAWK,
-  QSynHighlighterBaan,
-  QSynHighlighterBat,
-  QSynHighlighterCAC,
-  QSynHighlighterCache,
-  QSynHighlighterCobol,
-  QSynHighlighterCpp,
-  QSynHighlighterCS,
-  QSynHighlighterCss,
-  QSynHighlighterDfm,
-  QSynHighlighterDml,
-  QSynHighlighterDOT,
-  QSynHighlighterEiffel,
-  QSynHighlighterFortran,
-  QSynHighlighterFoxpro,
-  QSynHighlighterGalaxy,
-  QSynHighlighterGeneral,
-  QSynHighlighterHaskell,
-  QSynHighlighterHC11,
-  QSynHighlighterHP48,
-  QSynHighlighterHtml,
-  QSynHighlighterIni,
-  QSynHighlighterInno,
-  QSynHighlighterJava,
-  QSynHighlighterJScript,
-  QSynHighlighterKix,
-  QSynHighlighterModelica,
-  QSynHighlighterM3,
-  QSynHighlighterPas,
-  QSynHighlighterPerl,
-  QSynHighlighterPHP,
-  QSynHighlighterProgress,
-  QSynHighlighterPython,
-  QSynHighlighterRC,
-  QSynHighlighterRuby,
-  QSynHighlighterSml,
-  QSynHighlighterSQL,
-  QSynHighlighterTclTk,
-  QSynHighlighterTeX,
-  QSynHighlighterUNIXShellScript,
-  QSynHighlighterURI,
-  QSynHighlighterVB,
-  QSynHighlighterVBScript,
-  QSynHighlighterVrml97,
-  QSynHighlighterGWS,
-  QSynHighlighterCPM,
-  QSynHighlighterSDD,
-  QSynHighlighterXML,
-  QSynHighlighterMsg,
-  QSynHighlighterIDL,
-  QSynHighlighterUnreal,
-  QSynHighlighterST,
-  QSynHighlighterLDraw,
-  QSynURIOpener,
-{$ELSE}
   // SynEdit components
   SynEdit,
   SynMemo,
@@ -173,12 +87,14 @@ uses
   {$ifdef SYN_DELPHI_2009_UP}
   SynHighlighterDWS,
   {$endif}
+  //SynHighlighterECMAScript,
   SynHighlighterEiffel,
   SynHighlighterFortran,
   SynHighlighterFoxpro,
   SynHighlighterGalaxy,
   SynHighlighterGeneral,
   SynHighlighterGo,
+  SynHighlighterGLSL,
   SynHighlighterHaskell,
   SynHighlighterHC11,
   SynHighlighterHP48, 
@@ -217,7 +133,6 @@ uses
   SynHighlighterST,
   SynHighlighterLDraw,   
   SynURIOpener,
-{$ENDIF}
   Classes;
 
 procedure Register;
@@ -268,13 +183,13 @@ begin
     TSynM3Syn, TSynPasSyn, TSynVBSyn, TSynCobolSyn, TSynCSSyn, TSynGoSyn,
     // internet
     TSynCssSyn, TSynHTMLSyn, TSynJScriptSyn, TSynPHPSyn, TSynVBScriptSyn,
-    TSynXMLSyn, TSynJSONSyn, TSynVrml97Syn,
+    TSynXMLSyn, TSynJSONSyn, TSynVrml97Syn, {TSynECMAScriptSyn,}
     //interpreted
     TSynAWKSyn, TSynBATSyn,
     {$ifdef SYN_DELPHI_2009_UP}
     TSynDWSSyn,
     {$endif}
-    TSynKixSyn, TSynPerlSyn, TSynPythonSyn,
+    TSynKixSyn, TSynPerlSyn, TSynPythonSyn, TSynGLSLSyn,
     TSynTclTkSyn, TSynGWScriptSyn, TSynRubySyn, TSynUNIXShellScriptSyn,
     //database
     TSynCACSyn, TSynCacheSyn, TSynFoxproSyn, TSynSQLSyn, TSynSDDSyn,

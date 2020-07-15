@@ -12,7 +12,7 @@ The Original Code is: SynDBEdit.pas, released 2000-05-05.
 The Original Code is based on DBmwEdit.pas by Vladimir Kuznetsov, part of
 the mwEdit component suite.
 Portions created by Vladimir Kuznetsov are Copyright (C) 1999 Vladimir Kuznetsov.
-Unicode translation by Maël Hörz.
+Unicode translation by MaÃ«l HÃ¶rz.
 All Rights Reserved.
 
 Contributors to the SynEdit and mwEdit projects are listed in the
@@ -48,20 +48,12 @@ uses
 {$IFNDEF SYN_COMPILER_3_UP}
   DbTables,
 {$ENDIF}
-{$IFDEF SYN_CLX}
-  Qt,
-  QControls,
-  QDBCtrls,
-  QSynEdit,
-  QSynEditKeyCmds,
-{$ELSE}
   Windows,
   Messages,
   Controls,
   DbCtrls,
   SynEdit,
   SynEditKeyCmds,
-{$ENDIF}
   SysUtils,
   Classes,
   DB;
@@ -83,11 +75,9 @@ type
     procedure SetEditing(Value: Boolean);
     procedure UpdateData(Sender: TObject);
   private
-  {$IFNDEF SYN_CLX}
     procedure CMEnter(var Msg: TCMEnter); message CM_ENTER;
     procedure CMExit(var Msg: TCMExit); message CM_EXIT;
     procedure CMGetDataLink(var Msg: TMessage); message CM_GETDATALINK;
-  {$ENDIF}
   protected
     function GetReadOnly: Boolean; override;
     procedure Loaded; override;
@@ -102,9 +92,6 @@ type
     procedure LoadMemo;
     procedure Notification(AComponent: TComponent; Operation: TOperation);
       override;
-  {$IFDEF SYN_CLX}
-    function EventFilter(Sender: QObjectH; Event: QEventH): Boolean; override;
-  {$ENDIF}
   protected
     property DataField: string read GetDataField write SetDataField;
     property DataSource: TDataSource read GetDataSource write SetDataSource;
@@ -127,17 +114,13 @@ type
     property Constraints;
   {$ENDIF}
     property Color;
-  {$IFNDEF SYN_CLX}
     property Ctl3D;
-  {$ENDIF}
     property Enabled;
     property Font;
     property Height;
     property Name;
     property ParentColor;
-  {$IFNDEF SYN_CLX}
     property ParentCtl3D;
-  {$ENDIF}
     property ParentFont;
     property ParentShowHint;
     property PopupMenu;
@@ -153,9 +136,7 @@ type
     property OnDragDrop;
     property OnDragOver;
   {$IFDEF SYN_COMPILER_4_UP}
-  {$IFNDEF SYN_CLX}
     property OnEndDock;
-  {$ENDIF}
   {$ENDIF}
     property OnEndDrag;
     property OnEnter;
@@ -167,9 +148,7 @@ type
     property OnMouseMove;
     property OnMouseUp;
   {$IFDEF SYN_COMPILER_4_UP}
-  {$IFNDEF SYN_CLX}
     property OnStartDock;
-  {$ENDIF}
   {$ENDIF}
     property OnStartDrag;
     // TCustomSynEdit properties
@@ -179,10 +158,8 @@ type
     property Gutter;
     property HideSelection;
     property Highlighter;
-{$IFNDEF SYN_CLX}
     property ImeMode;
     property ImeName;
-{$ENDIF}
     property InsertCaret;
     property InsertMode;
     property Keystrokes;
@@ -235,7 +212,6 @@ begin
   inherited Destroy;
 end;
 
-{$IFNDEF SYN_CLX}
 procedure TCustomDBSynEdit.CMEnter(var Msg: TCMEnter);
 begin
   SetEditing(True);
@@ -258,7 +234,6 @@ procedure TCustomDBSynEdit.CMGetDataLink(var Msg: TMessage);
 begin
   Msg.Result := LRESULT(FDataLink);
 end;
-{$ENDIF}
 
 procedure TCustomDBSynEdit.DataChange(Sender: TObject);
 begin
@@ -345,6 +320,10 @@ begin
 end;
 
 procedure TCustomDBSynEdit.LoadMemo;
+{$IFDEF UNICODE}
+const
+ BlobFieldWideText = [ftWideMemo,ftWideString];
+{$ENDIF}
 {$IFDEF SYN_COMPILER_3_UP}
 var
   BlobStream: TStream;
@@ -362,18 +341,29 @@ begin
     BlobStream := TBlobStream.Create(BlobField, bmRead);
 {$ENDIF}
     Lines.BeginUpdate;
-    Lines.LoadFromStream(BlobStream{$IFDEF UNICODE}, TEncoding.Default{$ENDIF});
+{$IFDEF UNICODE}
+//03.12.2019 fix for unicode
+//Tested on UTF8 TEXT Sqlite3 & Zeos Unicode (UTF16) v7.2.6
+//For UTF8 use: System.SysUtils.TEncoding.UTF8
+    if ((FDataLink.Field is  TBlobField) and
+	(TBlobField(FDataLink.Field).BlobType in BlobFieldWideText)) then
+      Lines.LoadFromStream(BlobStream, TEncoding.Unicode)
+    else Lines.LoadFromStream(BlobStream, TEncoding.Default);
+{$ELSE} //Non Unicode
+    Lines.LoadFromStream(BlobStream);
+{$ENDIF}
     Lines.EndUpdate;
     BlobStream.Free;
     Modified := False;
     ClearUndo;
   except
-    // Memo too large 
+    // Memo too large
     on E: EInvalidOperation do
       Lines.Text := Format('(%s)', [E.Message]);
   end;
   EditingChange(Self);
 end;
+
 
 procedure TCustomDBSynEdit.DoChange;
 begin
@@ -436,19 +426,5 @@ begin
 {$ENDIF}
     FDataLink.Field.AsString := Text;
 end;
-
-{$IFDEF SYN_CLX}
-function TCustomDBSynEdit.EventFilter(Sender: QObjectH;
-  Event: QEventH): Boolean;
-begin
-  Result := inherited EventFilter(Sender, Event);
-  case QEvent_type(Event) of
-    QEventType_FocusIn:
-      SetEditing(True);
-    QEventType_FocusOut:
-      SetEditing(False);
-  end;
-end;
-{$ENDIF}
 
 end.
