@@ -246,8 +246,8 @@ type
     function ParseSetType(Scope: TScope; Decl: TIDSet): TTokenID;
     function ParsePointerType(Scope: TScope; const ID: TIdentifier; out Decl: TIDPointer): TTokenID;
     function ParseProcType(Scope: TScope; const ID: TIdentifier; ProcType: TProcType; out Decl: TIDProcType): TTokenID;
-    function ParseRecordType(Scope: TScope; Decl: TIDStructure): TTokenID;
-    function ParseCaseRecord(Scope: TScope; Decl: TIDStructure): TTokenID;
+    function ParseRecordType(Scope: TScope; Decl: TIDRecord): TTokenID;
+    function ParseCaseRecord(Scope: TScope; Decl: TIDRecord): TTokenID;
     function ParseClassAncestorType(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; ClassDecl: TIDClass): TTokenID;
     function ParseClassType(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier; out Decl: TIDClass): TTokenID;
     function ParseTypeMember(Scope: TScope; Struct: TIDStructure): TTokenID;
@@ -312,15 +312,15 @@ type
     function ParseVarRecordDefaultValue(Scope: TScope; Struct: TIDStructure; out DefaultValue: TIDExpression): TTokenID;
     function ParseRecordInitValue(Scope: TRecordInitScope; var FirstField: TIDExpression): TTokenID;
     function ParseConstSection(Scope: TScope): TTokenID;
-    function ParseVarSection(Scope: TScope; Visibility: TVisibility; IsWeak: Boolean = False; isRef: Boolean = False): TTokenID;
+    function ParseVarSection(Scope: TScope; Visibility: TVisibility; IsWeak: Boolean = False): TTokenID;
     function ParseFieldsSection(Scope: TScope; Visibility: TVisibility; Struct: TIDStructure; IsClass: Boolean): TTokenID;
-    function ParseVarInCaseRecord(Scope: TScope; Visibility: TVisibility; Struct: TIDStructure): TTokenID;
+    function ParseFieldsInCaseRecord(Scope: TScope; Visibility: TVisibility; Struct: TIDStructure): TTokenID;
     function ParseParameters(Scope: TScope; InMacro: Boolean = False): TTokenID;
     function ParseAnonymousProc(Scope: TScope; var EContext: TEContext; const SContext: TSContext; ProcType: TTokenID): TTokenID;
     function ParseInitSection: TTokenID;
     function ParseFinalSection: TTokenID;
     function ParsePlatform(Scope: TScope): TTokenID;
-    function ParseDeprecated(Scope: TScope; out &Deprecated: TIDExpression): TTokenID;
+    function ParseDeprecated(Scope: TScope; out DeprecatedExpr: TIDExpression): TTokenID;
     function CheckAndMakeClosure(const SContext: TSContext; const ProcDecl: TIDProcedure): TIDClosure;
     function EmitCreateClosure(const SContext: TSContext; Closure: TIDClosure): TIDExpression;
     function CheckAndParseDeprecated(Scope: TScope; CurrToken: TTokenID): TTokenID;
@@ -555,7 +555,7 @@ begin
             var LExpr := LEContext.Result;
             CheckLabelExpression(LExpr);
             var KW := SContext.Add<TASTKWLabel>;
-            KW.&Label := LExpr.Declaration;
+            KW.LabelDecl := LExpr.Declaration;
             Result := Lexer_NextToken(Scope);
             Continue;
           end else
@@ -4908,18 +4908,18 @@ begin
   Result := Lexer_NextToken(Scope);
 end;
 
-function TASTDelphiUnit.ParseDeprecated(Scope: TScope; out Deprecated: TIDExpression): TTokenID;
+function TASTDelphiUnit.ParseDeprecated(Scope: TScope; out DeprecatedExpr: TIDExpression): TTokenID;
 begin
   Result := Lexer_NextToken(Scope);
   if Result = token_identifier then
   begin
-    Result := ParseConstExpression(Scope, &Deprecated, TExpessionPosition.ExprRValue);
-    CheckStringExpression(&Deprecated);
+    Result := ParseConstExpression(Scope, DeprecatedExpr, TExpessionPosition.ExprRValue);
+    CheckStringExpression(DeprecatedExpr);
   end else
-    &Deprecated  := TIDExpression.Create(Sys._DeprecatedDefaultStr, Lexer_Position);
+    DeprecatedExpr := TIDExpression.Create(Sys._DeprecatedDefaultStr, Lexer_Position);
 end;
 
-function TASTDelphiUnit.ParseCaseRecord(Scope: TScope; Decl: TIDStructure): TTokenID;
+function TASTDelphiUnit.ParseCaseRecord(Scope: TScope; Decl: TIDRecord): TTokenID;
 var
   Expr: TIDExpression;
 begin
@@ -4942,7 +4942,7 @@ begin
       Result := Lexer_NextToken(Scope);
     end else
     if Result <> token_closeround then
-      Result := ParseVarInCaseRecord(Scope, vPublic, Decl);
+      Result := ParseFieldsInCaseRecord(Scope, vPublic, Decl);
 
     if Result = token_closeround then
     begin
@@ -6047,7 +6047,7 @@ begin
   LDecl := FindID(Scope, ID);
   CheckLabelExpression(LDecl);
   KW := SContext.Add<TASTKWGoTo>;
-  KW.&Label := LDecl;
+  KW.LabelDecl := LDecl;
   Result := Lexer_NextToken(Scope);
 end;
 
@@ -7165,7 +7165,7 @@ begin
     Result := Lexer_NextToken(Scope);
 end;
 
-function TASTDelphiUnit.ParseRecordType(Scope: TScope; Decl: TIDStructure): TTokenID;
+function TASTDelphiUnit.ParseRecordType(Scope: TScope; Decl: TIDRecord): TTokenID;
 var
   Visibility: TVisibility;
 begin
@@ -8315,11 +8315,10 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.ParseVarInCaseRecord(Scope: TScope; Visibility: TVisibility; Struct: TIDStructure): TTokenID;
+function TASTDelphiUnit.ParseFieldsInCaseRecord(Scope: TScope; Visibility: TVisibility; Struct: TIDStructure): TTokenID;
 var
   i, c: Integer;
   DataType: TIDType;
-  DefaultValue: TIDExpression;
   Field: TIDVariable;
   Names: TIdentifiersPool;
   VarFlags: TVariableFlags;
@@ -8341,31 +8340,12 @@ begin
     Lexer_MatchToken(Result, token_colon);
     // парсим тип
     Result := ParseTypeSpec(Scope, DataType);
-    DefaultValue := nil;
-    // спецификатор NOT NULL/NULLABLE
-//    case Result of
-//      token_exclamation: begin
-//        Include(VarFlags, VarNotNull);
-//        Result := Lexer_NextToken(Scope);
-//      end;
-//      token_question: begin
-//        Exclude(VarFlags, VarNotNull);
-//        Result := Lexer_NextToken(Scope);
-//      end;
-//    end;
-    case Result of
-      // значение по умолчанию
-      token_equal: Result := ParseVarDefaultValue(Scope, DataType, DefaultValue);
-    end;
 
     for i := 0 to c do begin
-      if not Assigned(Struct) then
-        Field := TIDVariable.Create(Scope, Names.Items[i])
-      else
-        Field := TIDField.Create(Struct, Names.Items[i]);
+      Field := TIDField.Create(Struct, Names.Items[i]);
       Field.DataType := DataType;
       Field.Visibility := Visibility;
-      Field.DefaultValue := DefaultValue;
+      Field.DefaultValue := nil;
       Field.Flags := Field.Flags + VarFlags;
       Scope.AddVariable(Field);
     end;
@@ -8414,7 +8394,7 @@ begin
   Result := Lexer_NextToken(Scope);
 end;
 
-function TASTDelphiUnit.ParseVarSection(Scope: TScope; Visibility: TVisibility; IsWeak, isRef: Boolean): TTokenID;
+function TASTDelphiUnit.ParseVarSection(Scope: TScope; Visibility: TVisibility; IsWeak: Boolean): TTokenID;
 var
   i, c: Integer;
   DataType: TIDType;

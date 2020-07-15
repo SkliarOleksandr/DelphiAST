@@ -321,7 +321,7 @@ type
   protected
     function GetDisplayName: string; override;
   public
-    property &Label: TASTDeclaration read fLabel write fLabel;
+    property LabelDecl: TASTDeclaration read fLabel write fLabel;
   end;
 
   TASTKWLabel = class(TASTKeyword)
@@ -330,7 +330,7 @@ type
   protected
     function GetDisplayName: string; override;
   public
-    property &Label: TASTDeclaration read fLabel write fLabel;
+    property LabelDecl: TASTDeclaration read fLabel write fLabel;
   end;
 
   TASTCall = class(TASTExpression)

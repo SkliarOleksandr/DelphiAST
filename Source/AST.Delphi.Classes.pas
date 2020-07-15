@@ -582,7 +582,7 @@ type
     procedure CreateStandardOperators; override;
     property StaticConstructor: TIDProcedure read FStaticConstructor write FStaticConstructor;
     property StaticDestructor: TIDProcedure read FStaticDestructor write FStaticDestructor;
-    function AddCaseSpace: PVarSpace;
+    function AddCase: PVarSpace;
   end;
 
   TIDMethods = array of TIDProcedure;
@@ -4422,7 +4422,7 @@ begin
   fSysExplicitFromAny := TSysExplicitRecordFromAny.Instance;
 end;
 
-function TIDRecord.AddCaseSpace: PVarSpace;
+function TIDRecord.AddCase: PVarSpace;
 var
   Len: Integer;
 begin
