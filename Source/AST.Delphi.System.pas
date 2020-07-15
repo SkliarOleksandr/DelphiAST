@@ -14,7 +14,6 @@ uses Classes, SysUtils,
      AST.Classes,
      AST.Intf,
      AST.Delphi.Contexts,
-     AST.Delphi.SysOperators,
      AST.Delphi.Parser, AST.Delphi.Intf;
      // System
 
@@ -61,6 +60,29 @@ type
   TIDSysRuntimeFunctionClass = class of TIDSysRuntimeFunction;
 //  TIDSysCompileFunctionClass = class of TIDSysCompileFunction;
 
+  TSystemOperatos = record
+  public
+    // implicits
+    ImplicitAnyToVariant,
+    ImplicitVariantToAny,
+    ImplicitStringFromAny,
+    ImplicitCharToAnsiChar,
+    ImplicitCharToString
+    : TIDOperator;
+    // explicits
+    ExplicitStringFromAny,
+    ExplicitAnsiStringFromAny
+    : TIDOperator;
+    // in
+    Ordinal_In,
+    AnsiChar_In
+    : TIDOperator;
+    // add
+    StaticArray_Add
+    : TIDOperator;
+    procedure Init(Scope: TScope);
+  end;
+
 
   TSYSTEMUnit = class(TASTDelphiUnit, IASTDelphiSystemUnit)
   type
@@ -75,10 +97,9 @@ type
     fDateType: TIDType;
     fTimeType: TIDType;
     fTypeIDType: TIDType;
-    fImplicitAnyToVariant: TSysOpImplicit;
-    fImplicitVariantToAny: TSysOpImplicit;
     fAsserProc: TIDProcedure;
     fOpenString: TIDType;
+    fSysOperators: TSystemOperatos;
     procedure AddImplicists;
     procedure AddExplicists;
     procedure AddNegOperators;
@@ -170,6 +191,7 @@ type
     property _AnyArrayType: TIDArray read fArrayType;
     property _MetaType: TIDType read fDecls._MetaType;
     property _Void: TIDType read fDecls._Void;
+    property SysOperators: TSystemOperatos read fSysOperators;
   end;
 
   TDlphDeclarationHelper = class helper for TIDDeclaration
@@ -185,6 +207,7 @@ implementation
 uses AST.Parser.Errors,
      AST.Delphi.Errors,
      AST.Delphi.SysFunctions,
+     AST.Delphi.SysOperators,
      AST.Targets,
      AST.Lexer;
 
@@ -267,7 +290,7 @@ procedure TSYSTEMUnit.AddImplicists;
   begin
     for i := dtInt8 to dtFloat64 do
       DataType.OverloadImplicitTo(DataTypes[i]);
-    DataType.OverloadImplicitTo(_Variant, FImplicitAnyToVariant);
+    DataType.OverloadImplicitTo(_Variant, fSysOperators.ImplicitAnyToVariant);
   end;
 var
   i: TDataTypeID;
@@ -286,20 +309,20 @@ begin
 
   // Variant
   for i := dtInt8 to dtVariant do
-    _Variant.OverloadImplicitTo(DataTypes[i], FImplicitVariantToAny);
+    _Variant.OverloadImplicitTo(DataTypes[i], SysOperators.ImplicitVariantToAny);
 
   // float32
   with _Float32 do begin
     OverloadImplicitTo(_Float32);
     OverloadImplicitTo(_Float64);
-    OverloadImplicitTo(_Variant, FImplicitAnyToVariant);
+    OverloadImplicitTo(_Variant, SysOperators.ImplicitAnyToVariant);
   end;
 
   // Float64
   with _Float64 do begin
     OverloadImplicitTo(_Float32);
     OverloadImplicitTo(_Float64);
-    OverloadImplicitTo(_Variant, FImplicitAnyToVariant);
+    OverloadImplicitTo(_Variant, SysOperators.ImplicitAnyToVariant);
   end;
 
   // Char
@@ -307,7 +330,7 @@ begin
     OverloadImplicitTo(_Char);
     //OverloadImplicitTo(_AnsiChar);
     //OverloadImplicitTo(_String);
-    OverloadImplicitTo(_Variant, FImplicitAnyToVariant);
+    OverloadImplicitTo(_Variant, SysOperators.ImplicitAnyToVariant);
   end;
 
   // AnsiChar
@@ -316,23 +339,23 @@ begin
     OverloadImplicitTo(_AnsiChar);
     //OverloadImplicitTo(_String);
     //OverloadImplicitTo(_AnsiString);
-    OverloadImplicitTo(_Variant, FImplicitAnyToVariant);
+    OverloadImplicitTo(_Variant, SysOperators.ImplicitAnyToVariant);
   end;
 
   // String
-  _String.OverloadImplicitTo(_Variant, FImplicitAnyToVariant);
+  _String.OverloadImplicitTo(_Variant, SysOperators.ImplicitAnyToVariant);
   _String.OverloadImplicitTo(_AnsiString, TIDOpImplicitStringToAnsiString.CreateInternal(_AnsiString));
   _String.OverloadImplicitTo(_TGuid, TIDOpImplicitStringToGUID.CreateInternal(_TGuid));
   _String.OverloadImplicitTo(_PCharType, TIDOpImplicitStringToPChar.CreateInternal(_PCharType));
   _String.OverloadImplicitTo(_PAnsiCharType, TIDOpImplicitStringToPChar.CreateInternal(_PAnsiCharType));
   _String.OverloadImplicitTo(_WideString);
   _String.OverloadImplicitFrom(_PCharType);
-  _String.OverloadImplicitFromAny(TSysImplicitStringFromAny.Instance);
+  _String.OverloadImplicitFromAny(SysOperators.ImplicitStringFromAny);
 
 
   // ShortString
   _ShortString.OverloadImplicitTo(_AnsiString);
-  _ShortString.OverloadImplicitTo(_Variant, FImplicitAnyToVariant);
+  _ShortString.OverloadImplicitTo(_Variant, SysOperators.ImplicitAnyToVariant);
   _ShortString.OverloadImplicitTo(_PCharType, TIDOpImplicitStringToPChar.CreateInternal(_PCharType));
   _ShortString.OverloadImplicitTo(_PAnsiCharType, TIDOpImplicitStringToPChar.CreateInternal(_PAnsiCharType));
   _ShortString.OverloadImplicitTo(_String, TIDOpImplicitAnsiStringToString.CreateInternal(_String));
@@ -340,7 +363,7 @@ begin
   _ShortString.OverloadImplicitFrom(_PAnsiCharType);
 
   // AnsiString
-  _AnsiString.OverloadImplicitTo(_Variant, FImplicitAnyToVariant);
+  _AnsiString.OverloadImplicitTo(_Variant, SysOperators.ImplicitAnyToVariant);
   _AnsiString.OverloadImplicitTo(_PCharType, TIDOpImplicitStringToPChar.CreateInternal(_PCharType));
   _AnsiString.OverloadImplicitTo(_PAnsiCharType, TIDOpImplicitStringToPChar.CreateInternal(_PAnsiCharType));
   _AnsiString.OverloadImplicitTo(_String, TIDOpImplicitAnsiStringToString.CreateInternal(_String));
@@ -353,9 +376,9 @@ begin
   _WideString.OverloadImplicitTo(_String);
 
   // Char
-  _Char.OverloadImplicitTo(_String, TIDOpImplicitCharToString.CreateInternal(_String));
+  _Char.OverloadImplicitTo(_String, SysOperators.ImplicitCharToString);
   _Char.OverloadImplicitTo(_AnsiString, TIDOpImplicitCharToAnsiString.CreateInternal(_AnsiString));
-  _Char.OverloadImplicitTo(_AnsiChar, TIDOpImplicitCharToAnsiChar.CreateInternal(_AnsiChar));
+  _Char.OverloadImplicitTo(_AnsiChar, SysOperators.ImplicitCharToAnsiChar);
 
   // AnsiChar
   _AnsiChar.OverloadImplicitTo(_AnsiString, TIDOpImplicitAnsiCharToAnsiString.CreateInternal(_AnsiString));
@@ -366,7 +389,7 @@ begin
 
   // Boolean
   _Boolean.OverloadImplicitTo(_Boolean);
-  _Boolean.OverloadImplicitTo(_Variant, FImplicitAnyToVariant);
+  _Boolean.OverloadImplicitTo(_Variant, SysOperators.ImplicitAnyToVariant);
 
 end;
 
@@ -422,7 +445,7 @@ begin
   _String.OverloadExplicitTo(_WideString);
   _String.OverloadExplicitTo(_AnsiString);
   _String.OverloadExplicitTo(_ShortString);
-  _String.OverloadExplicitFromAny(TSysExplicitStringFromAny.Instance);
+  _String.OverloadExplicitFromAny(SysOperators.ExplicitStringFromAny);
 
   // AnsiString
   _AnsiString.OverloadExplicitTo(_Pointer);
@@ -430,7 +453,7 @@ begin
   _AnsiString.OverloadExplicitTo(_NativeUInt);
   _AnsiString.OverloadExplicitTo(_PAnsiCharType);
   _AnsiString.OverloadExplicitTo(_ShortString);
-  _AnsiString.OverloadExplicitFromAny(TSysExplicitAnsiStringFromAny.Instance);
+  _AnsiString.OverloadExplicitFromAny(SysOperators.ExplicitAnsiStringFromAny);
 
   // WideString
   _WideString.OverloadExplicitTo(_String);
@@ -564,17 +587,17 @@ end;
 procedure TSYSTEMUnit.AddSystemOperators;
 begin
   // IN operator
-  _AnsiChar.AddBinarySysOperator(opIn, TSysAnsiChar_In.Instance);
-  _Char.AddBinarySysOperator(opIn, TSysAnsiChar_In.Instance);
+  _AnsiChar.AddBinarySysOperator(opIn, SysOperators.AnsiChar_In);
+  _Char.AddBinarySysOperator(opIn, SysOperators.AnsiChar_In);
 
   // system IN operator for ordinal types
-  _Int8.AddBinarySysOperator(opIn, TSysOrdinal_In.Instance);
-  _Int16.AddBinarySysOperator(opIn, TSysOrdinal_In.Instance);
-  _Int32.AddBinarySysOperator(opIn, TSysOrdinal_In.Instance);
-  _UInt8.AddBinarySysOperator(opIn, TSysOrdinal_In.Instance);
-  _UInt16.AddBinarySysOperator(opIn, TSysOrdinal_In.Instance);
-  _UInt32.AddBinarySysOperator(opIn, TSysOrdinal_In.Instance);
-  _Boolean.AddBinarySysOperator(opIn, TSysOrdinal_In.Instance);
+  _Int8.AddBinarySysOperator(opIn, SysOperators.Ordinal_In);
+  _Int16.AddBinarySysOperator(opIn, SysOperators.Ordinal_In);
+  _Int32.AddBinarySysOperator(opIn, SysOperators.Ordinal_In);
+  _UInt8.AddBinarySysOperator(opIn, SysOperators.Ordinal_In);
+  _UInt16.AddBinarySysOperator(opIn, SysOperators.Ordinal_In);
+  _UInt32.AddBinarySysOperator(opIn, SysOperators.Ordinal_In);
+  _Boolean.AddBinarySysOperator(opIn, SysOperators.Ordinal_In);
 
   // IntDiv
   _Int8.AddBinarySysOperatorFor(opIntDiv, TSys_Ptr_IntDiv_Int.Instance);
@@ -797,27 +820,20 @@ begin
   //===============================================================
   _ShortString := RegisterType('ShortString', TIDString, dtShortString);
   TIDString(_ShortString).ElementDataType := _AnsiChar;
-  TIDString(_ShortString).AddBound(TIDOrdinal(_NativeUInt));
   //===============================================================
   _AnsiString := RegisterType('AnsiString', TIDString, dtAnsiString);
   TIDString(_AnsiString).ElementDataType := _AnsiChar;
-  TIDString(_AnsiString).AddBound(TIDOrdinal(_NativeUInt));
   //===============================================================
   _String := RegisterType('String', TIDString, dtString);
   TIDString(_String).ElementDataType := _Char;
-  TIDString(_String).AddBound(TIDOrdinal(_NativeUInt));
   //===============================================================
   _Variant := RegisterType('Variant', TIDVariant, dtVariant);
-  FImplicitAnyToVariant := TIDOpImplicitAnyToVariant.CreateInternal(_Variant);
-  FImplicitVariantToAny := TIDOpImplicitVariantToAny.CreateInternal(nil);
   //===============================================================
   _WideString := RegisterType('WideString', TIDString, dtWideString);
   TIDString(_WideString).ElementDataType := _Char;
-  TIDString(_WideString).AddBound(TIDOrdinal(_NativeUInt));
   //===============================================================
   fOpenString := RegisterTypeCustom('OpenString', TIDString, dtString);
   TIDString(fOpenString).ElementDataType := _Char;
-  TIDString(fOpenString).AddBound(TIDOrdinal(_NativeUInt));
   //===============================================================
   // TObject ========================================================
   {FTObject := TIDClass.CreateAsSystem(UnitInterface, 'TObject');
@@ -1053,6 +1069,8 @@ begin
 
   fDecls._OrdinalType := TIDOrdinal.CreateAsSystem(IntfScope, 'ordinal');
 
+  fSysOperators.Init(IntfScope);
+
   RegisterTypes;
   fDecls._PointerType.CreateStandardOperators;
   fDecls._PAnsiChar.CreateStandardOperators;
@@ -1112,6 +1130,26 @@ begin
   Result.ReferenceType := TargetType;
   InsertToScope(Result);
   AddType(Result);
+end;
+
+{ TSystemOperatos }
+
+procedure TSystemOperatos.Init(Scope: TScope);
+begin
+  // implicit
+  ImplicitAnyToVariant := TIDOpImplicitAnyToVariant.CreateAsSystem(Scope);
+  ImplicitVariantToAny := TIDOpImplicitVariantToAny.CreateAsSystem(Scope);
+  ImplicitStringFromAny := TSysImplicitStringFromAny.CreateAsSystem(Scope);
+  ImplicitCharToAnsiChar := TIDOpImplicitCharToAnsiChar.CreateAsSystem(Scope);
+  ImplicitCharToString := TIDOpImplicitCharToString.CreateAsSystem(Scope);
+  // explicit
+  ExplicitStringFromAny := TSysExplicitStringFromAny.CreateAsSystem(Scope);
+  ExplicitAnsiStringFromAny := TSysExplicitAnsiStringFromAny.CreateAsSystem(Scope);
+  // in
+  Ordinal_In := TSysOrdinal_In.CreateAsSystem(Scope);
+  AnsiChar_In := TSysOrdinal_In.CreateAsSystem(Scope);
+  // add
+  StaticArray_Add := TSys_StaticArray_Add.CreateAsSystem(Scope);
 end;
 
 initialization

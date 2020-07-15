@@ -264,7 +264,7 @@ begin
       end else
         SysSource := 'unit system; end.';
 
-      fSysUnit := GetSystemUnitClass.Create(Self, GetSystemUnitFileName, SysSource);
+      fSysUnit := GetSystemUnitClass.Create(Self, SysFileName, SysSource);
       FUnits.Insert(0, fSysUnit);
     end;
   except

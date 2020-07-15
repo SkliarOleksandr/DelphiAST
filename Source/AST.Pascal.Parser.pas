@@ -132,7 +132,6 @@ type
     function GetDefinesAsString: string;
     property _ID: TIdentifier read FUnitName;
     property UnitID: Integer read FID write FID;
-    property Name: string read FUnitName.Name;
     property Messages: ICompilerMessages read FMessages;
     property MessagesText: string read GetMessagesText;
     property IntfScope: TScope read FIntfScope;    // Interface section scope
@@ -180,6 +179,7 @@ end;
 constructor TNPUnit.Create(const Project: IASTProject; const FileName: string; const Source: string = '');
 begin
   inherited Create(Project, FileName, Source);
+  fSysUnit := (Project as IASTPascalProject).SysUnit;
   fLexer := TDelphiLexer.Create(Source);
   FMessages := TCompilerMessages.Create;
   //FVisibility := vPublic;
@@ -279,7 +279,7 @@ function TNPUnit.GetModuleName: string;
 begin
   Result := fUnitName.Name;
   if Result = '' then
-    Result := inherited GetModuleName();
+    Result := ChangeFileExt(inherited GetModuleName(), '');
 end;
 
 function TNPUnit.GetPublicClass(const Name: string): TIDClass;

@@ -1367,7 +1367,7 @@ type
     function GetRightOperand: TIDType;
   public
     constructor Create(Scope: TScope; const ID: TIdentifier; &Operator: TOperatorID); reintroduce;
-    constructor CreateInternal(Op: TOperatorID);
+    constructor CreateAsSystem(Scope: TScope); reintroduce;
     /////////////////////////////////////////////////////////////////////////////////////////
     property RightOperand: TIDType read GetRightOperand;
     property OperatorID: TOperatorID read FOperator;
@@ -3566,10 +3566,10 @@ begin
   FOperator := &Operator;
 end;
 
-constructor TIDOperator.CreateInternal(Op: TOperatorID);
+constructor TIDOperator.CreateAsSystem(Scope: TScope);
 begin
-  CreateFromPool;
-  FOperator := Op;
+  inherited CreateAsSystem(Scope, '');
+  ItemType := itSysOperator;
 end;
 
 function TIDOperator.GetRightOperand: TIDType;
@@ -5879,7 +5879,7 @@ end;
 procedure TIDStaticArray.CreateStandardOperators;
 begin
   inherited;
-  AddBinarySysOperator(opAdd, TSys_StaticArray_Add.Instance);
+  AddBinarySysOperator(opAdd, SYSUnit.SysOperators.StaticArray_Add);
 end;
 
 initialization
