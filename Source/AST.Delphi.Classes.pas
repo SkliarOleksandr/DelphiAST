@@ -520,9 +520,12 @@ type
   TIDStructure = class(TIDType)
   private
     FAncestor: TIDStructure;
-    FMembers: TStructScope;  // члены структуры
-    FVarSpace: TVarSpace;
-    FProcSpace: TProcSpace;
+    FStaticMembers: TStructScope;  // class (static) members
+    FMembers: TStructScope;        // instance members
+    fVarSpace: TVarSpace;
+    fProcSpace: TProcSpace;
+    fStaticVarSpace: TVarSpace;
+    fStaticProcSpace: TProcSpace;
     FStrucFlags: TStructFlags;
     FDefaultProperty: TIDProperty;
     FClassOfType: TIDClassOf;
@@ -537,12 +540,14 @@ type
     function GetIsManaged: Boolean; override;
     function GetExtraFlags: Byte; virtual;
     procedure SetGenericDescriptor(const Value: PGenericDescriptor); override;
+    procedure DoCreateStructure;
   public
     constructor Create(Scope: TScope; const Name: TIdentifier); override;
     constructor CreateAsAnonymous(Scope: TScope); override;
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
     ////////////////////////////////////////////////////////////////////////////
     property Members: TStructScope read FMembers;
+    property StaticMembers: TStructScope read FStaticMembers;
     property HasInitFiels: Boolean read GetHasInitFiels;
     property StructFlags: TStructFlags read FStrucFlags write FStrucFlags;
     property Ancestor: TIDStructure read FAncestor write SetAncestor;
@@ -1191,14 +1196,16 @@ type
   {поле структуры}
   TIDField = class(TIDVariable)
   private
-    FStruct: TIDStructure;
+    fStruct: TIDStructure;
+    fIsClass: Boolean;
     function GetFieldIndex: Integer;
   protected
     function GetIndex: Integer; override;
   public
     constructor Create(Struct: TIDStructure; const Identifier: TIdentifier); reintroduce;
-    property Struct: TIDStructure read FStruct;
+    property Struct: TIDStructure read fStruct;
     property FieldIndex: Integer read GetFieldIndex;
+    property IsClass: Boolean read fIsClass;
   end;
 
   {свойство структуры}
@@ -3619,22 +3626,19 @@ end;
 constructor TIDStructure.Create(Scope: TScope; const Name: TIdentifier);
 begin
   inherited Create(Scope, Name);
-  FMembers := TStructScope.CreateAsStruct(Scope, Self, @FVarSpace, @FProcSpace, Scope.DeclUnit);
-  {$IFDEF DEBUG}FMembers.Name := Name.Name + '.members';{$ENDIF}
+  DoCreateStructure;
 end;
 
 constructor TIDStructure.CreateAsAnonymous(Scope: TScope);
 begin
   inherited CreateAsAnonymous(Scope);
-  FMembers := TStructScope.CreateAsStruct(Scope, Self, @FVarSpace, @FProcSpace, Scope.DeclUnit);
-  {$IFDEF DEBUG}FMembers.Name := 'members';{$ENDIF}
+  DoCreateStructure;
 end;
 
 constructor TIDStructure.CreateAsSystem(Scope: TScope; const Name: string);
 begin
   inherited;
-  FMembers := TStructScope.CreateAsStruct(Scope, Self, @FVarSpace, @FProcSpace, Scope.DeclUnit);
-  {$IFDEF DEBUG}FMembers.Name := FID.Name + '.members';{$ENDIF}
+  DoCreateStructure;
   OverloadImplicitTo(Self);
   OverloadExplicitTo(Self);
 end;
@@ -3846,6 +3850,14 @@ begin
     Proc.DecTypesReadCountInSignature(RCPath);
     Proc := TIDProcedure(Proc.NextItem);
   end;
+end;
+
+procedure TIDStructure.DoCreateStructure;
+begin
+  fMembers := TStructScope.CreateAsStruct(Scope, Self, @fVarSpace, @fProcSpace, Scope.DeclUnit);
+  {$IFDEF DEBUG}fMembers.Name := ID.Name + '.members';{$ENDIF}
+  fStaticMembers := TStructScope.CreateAsStruct(Scope, Self, @fStaticVarSpace, @fStaticProcSpace, Scope.DeclUnit);
+  {$IFDEF DEBUG}fStaticMembers.Name := ID.Name + '.staticmembers';{$ENDIF}
 end;
 
 function TIDStructure.IsInheritsForm(Ancestor: TIDStructure): Boolean;
@@ -5346,8 +5358,8 @@ end;
 constructor TIDField.Create(Struct: TIDStructure; const Identifier: TIdentifier);
 begin
   inherited Create(Struct.Members, Identifier);
-  Include(FFlags, VarIsField);
-  FStruct := Struct;
+  Include(fFlags, VarIsField);
+  fStruct := Struct;
 end;
 
 function TIDField.GetFieldIndex: Integer;

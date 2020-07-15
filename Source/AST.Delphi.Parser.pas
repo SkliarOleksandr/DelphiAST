@@ -312,7 +312,8 @@ type
     function ParseVarRecordDefaultValue(Scope: TScope; Struct: TIDStructure; out DefaultValue: TIDExpression): TTokenID;
     function ParseRecordInitValue(Scope: TRecordInitScope; var FirstField: TIDExpression): TTokenID;
     function ParseConstSection(Scope: TScope): TTokenID;
-    function ParseVarSection(Scope: TScope; Visibility: TVisibility; Struct: TIDStructure; IsWeak: Boolean = False; isRef: Boolean = False): TTokenID;
+    function ParseVarSection(Scope: TScope; Visibility: TVisibility; IsWeak: Boolean = False; isRef: Boolean = False): TTokenID;
+    function ParseFieldsSection(Scope: TScope; Visibility: TVisibility; Struct: TIDStructure; IsClass: Boolean): TTokenID;
     function ParseVarInCaseRecord(Scope: TScope; Visibility: TVisibility; Struct: TIDStructure): TTokenID;
     function ParseParameters(Scope: TScope; InMacro: Boolean = False): TTokenID;
     function ParseAnonymousProc(Scope: TScope; var EContext: TEContext; const SContext: TSContext; ProcType: TTokenID): TTokenID;
@@ -886,7 +887,7 @@ begin
     token_operator: Result := ParseOperator(Struct.Members, Struct);
     token_var: begin
       Lexer_NextToken(Scope);
-      Result := ParseVarSection(Struct.Members, vLocal, Struct);
+      Result := ParseFieldsSection(Struct.Members, vLocal, Struct, True);
     end
   else
     ERRORS.PROC_OR_PROP_OR_VAR_REQUIRED;
@@ -2242,17 +2243,17 @@ begin
         token_weak: begin
           CheckIntfSectionMissing(Scope);
           Lexer_NextToken(Scope);
-          Token := ParseVarSection(Scope, vLocal, nil, True);
+          Token := ParseVarSection(Scope, vLocal, True);
         end;
         token_var: begin
           CheckIntfSectionMissing(Scope);
           Lexer_NextToken(Scope);
-          Token := ParseVarSection(Scope, vLocal, nil, False);
+          Token := ParseVarSection(Scope, vLocal, False);
         end;
         token_threadvar: begin
           CheckIntfSectionMissing(Scope);
           Lexer_NextToken(Scope);
-          Token := ParseVarSection(Scope, vLocal, nil, False);
+          Token := ParseVarSection(Scope, vLocal, False);
         end;
         token_exports: begin
           // todo:
@@ -2378,12 +2379,12 @@ begin
           token_weak: begin
             CheckIntfSectionMissing(Scope);
             Lexer_NextToken(Scope);
-            Token := ParseVarSection(Scope, vLocal, nil, True);
+            Token := ParseVarSection(Scope, vLocal, True);
           end;
           token_var: begin
             CheckIntfSectionMissing(Scope);
             Lexer_NextToken(Scope);
-            Token := ParseVarSection(Scope, vLocal, nil, False);
+            Token := ParseVarSection(Scope, vLocal, False);
           end;
           token_interface: begin
             Scope := IntfScope;
@@ -5263,7 +5264,7 @@ begin
       token_destructor: Result := ParseProcedure(Decl.Members, ptDestructor, Decl);
       token_var: begin
         Lexer_NextToken(Scope);
-        Result := ParseVarSection(Decl.Members, Visibility, Decl);
+        Result := ParseFieldsSection(Decl.Members, Visibility, Decl, False);
       end;
       token_const: Result := ParseConstSection(Decl.Members);
       token_type: Result := ParseNamedTypeDecl(Decl.Members);
@@ -5290,7 +5291,7 @@ begin
         Result := Lexer_NextToken(Scope);
       end;
       token_identifier: begin
-        Result := ParseVarSection(Decl.Members, Visibility, Decl);
+        Result := ParseFieldsSection(Decl.Members, Visibility, Decl, False);
       end
       else break;
     end;
@@ -6412,11 +6413,11 @@ begin
       token_eof: Exit;
       token_var: begin
         Lexer_NextToken(Scope);
-        Result := ParseVarSection(Scope, vLocal, nil, False);
+        Result := ParseVarSection(Scope, vLocal, False);
       end;
       token_weak: begin
         Lexer_NextToken(Scope);
-        Result := ParseVarSection(Scope, vLocal, nil, True);
+        Result := ParseVarSection(Scope, vLocal, True);
       end;
       token_label: Result := ParseLabelSection(Scope);
       token_const: Result := ParseConstSection(Scope);
@@ -7184,7 +7185,7 @@ begin
           token_destructor: Result := ParseProcedure(Decl.Members, ptClassDestructor, Decl);
           token_var: begin
              Lexer_NextToken(Scope);
-             Result := ParseVarSection(Decl.Members, Visibility, Decl {todo: IsClass});
+             Result := ParseFieldsSection(Decl.Members, Visibility, Decl, True);
           end;
         else
           AbortWork('Class members can be: PROCEDURE, FUNCTION, OPERATOR, CONSTRUCTOR, DESTRUCTOR, PROPERTY, VAR', Lexer_Position);
@@ -7215,11 +7216,12 @@ begin
       end;
       token_var: begin
         Lexer_NextToken(Scope);
-        Result := ParseVarSection(Decl.Members, Visibility, Decl);
+        Result := ParseFieldsSection(Decl.Members, Visibility, Decl, False);
       end;
       token_const: Result := ParseConstSection(Decl.Members);
       token_type: Result := ParseNamedTypeDecl(Decl.Members);
-      token_identifier, token_name: Result := ParseVarSection(Decl.Members, Visibility, Decl); // необходимо оптимизировать парсинг ключевых слов как идентификаторов
+      // необходимо оптимизировать парсинг ключевых слов как идентификаторов
+      token_identifier, token_name: Result := ParseFieldsSection(Decl.Members, Visibility, Decl, False);
     else
       break;
     end;
@@ -8412,14 +8414,14 @@ begin
   Result := Lexer_NextToken(Scope);
 end;
 
-function TASTDelphiUnit.ParseVarSection(Scope: TScope; Visibility: TVisibility; Struct: TIDStructure; IsWeak, isRef: Boolean): TTokenID;
+function TASTDelphiUnit.ParseVarSection(Scope: TScope; Visibility: TVisibility; IsWeak, isRef: Boolean): TTokenID;
 var
   i, c: Integer;
   DataType: TIDType;
   DefaultValue: TIDExpression;
   DeclAbsolute: TIDDeclaration;
   ID: TIdentifier;
-  Field: TIDVariable;
+  Variable: TIDVariable;
   Names: TIdentifiersPool;
   VarFlags: TVariableFlags;
   DeprecatedText: TIDExpression;
@@ -8471,20 +8473,73 @@ begin
     Result := CheckAndParseProcTypeCallConv(Scope, Result, DataType);
 
     for i := 0 to c do begin
-      if not Assigned(Struct) then
-        Field := TIDVariable.Create(Scope, Names.Items[i])
-      else
-        Field := TIDField.Create(Struct, Names.Items[i]);
+      Variable := TIDVariable.Create(Scope, Names.Items[i]);
       // если это слабая ссылка - получаем соответствующий тип
       if IsWeak then
         DataType := GetWeakRefType(Scope, DataType);
-      Field.DataType := DataType;
-      Field.Visibility := Visibility;
-      Field.DefaultValue := DefaultValue;
-      Field.Absolute := TIDVariable(DeclAbsolute);
-      Field.Flags := Field.Flags + VarFlags;
+      Variable.DataType := DataType;
+      Variable.Visibility := Visibility;
+      Variable.DefaultValue := DefaultValue;
+      Variable.Absolute := TIDVariable(DeclAbsolute);
+      Variable.Flags := Variable.Flags + VarFlags;
 //      if isRef then
 //        Field.Flags := Field.Flags + [VarNotNull];
+      Scope.AddVariable(Variable);
+    end;
+    if Result <> token_identifier then
+      Exit;
+    c := 0;
+  end;
+end;
+
+function TASTDelphiUnit.ParseFieldsSection(Scope: TScope; Visibility: TVisibility; Struct: TIDStructure; IsClass: Boolean): TTokenID;
+var
+  i, c: Integer;
+  DataType: TIDType;
+  ID: TIdentifier;
+  Field: TIDVariable;
+  Names: TIdentifiersPool;
+  VarFlags: TVariableFlags;
+  DeprecatedText: TIDExpression;
+begin
+  c := 0;
+  Names := TIdentifiersPool.Create(2);
+  while True do begin
+    VarFlags := [];
+    Result := CheckAndParseAttribute(Scope);
+    Lexer_MatchIdentifier(Result);
+    Names.Add;
+    Lexer_ReadCurrIdentifier(Names.Items[c]);
+    Result := Lexer_NextToken(Scope);
+    if Result = token_Coma then begin
+      Inc(c);
+      Lexer_NextToken(Scope);
+      Continue;
+    end;
+    Lexer_MatchToken(Result, token_colon);
+    // парсим тип
+    Result := ParseTypeSpec(Scope, DataType);
+
+    // platform declaration
+    if Result = token_platform then
+      Result := ParsePlatform(Scope);
+
+    // deprecated
+    if Result = token_deprecated then
+      Result := ParseDeprecated(Scope, DeprecatedText);
+
+    // check and parse procedural type call convention
+    Result := CheckAndParseProcTypeCallConv(Scope, Result, DataType);
+
+    for i := 0 to c do begin
+      Field := TIDField.Create(Struct, Names.Items[i]);
+//      // если это слабая ссылка - получаем соответствующий тип
+//      if IsWeak then
+//        DataType := GetWeakRefType(Scope, DataType);
+      Field.DataType := DataType;
+      Field.Visibility := Visibility;
+      Field.DefaultValue := nil;
+      Field.Flags := Field.Flags + VarFlags;
       Scope.AddVariable(Field);
     end;
     if Result <> token_identifier then
