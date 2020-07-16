@@ -12,6 +12,7 @@ object frmTestAppMain: TfrmTestAppMain
   Font.Style = []
   OldCreateOrder = False
   Position = poScreenCenter
+  OnCreate = FormCreate
   PixelsPerInch = 96
   TextHeight = 13
   object Splitter1: TSplitter
@@ -65,18 +66,10 @@ object frmTestAppMain: TfrmTestAppMain
           ''
           'interface'
           ''
-          'implementation'
-          ''
-          'procedure AAA; overload; begin end;'
-          'procedure AAA(i: Byte); overload; begin end;'
-          'procedure AAA(i: shortint); overload; begin end;'
-          'procedure AAA(i: Integer); overload; begin end;'
-          'procedure AAA(i: int64); overload; begin end;'
-          ''
-          'var i8: Byte = 5;'
-          ''
-          'initialization'
-          '  AAA(i8);'
+          'type'
+          '  TRec<T> = record'
+          '  end;'
+          '  TA = TRec<Integer>;'
           ''
           'end.'
           ''
@@ -90,6 +83,10 @@ object frmTestAppMain: TfrmTestAppMain
     object tsAST: TTabSheet
       Caption = 'AST'
       ImageIndex = 1
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object tvAST: TTreeView
         Left = 0
         Top = 0
@@ -103,6 +100,10 @@ object frmTestAppMain: TfrmTestAppMain
     object tsNameSpace: TTabSheet
       Caption = 'NameSpace'
       ImageIndex = 2
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       object edAllItems: TSynEdit
         Left = 0
         Top = 0
