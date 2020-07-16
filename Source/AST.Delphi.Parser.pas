@@ -4102,16 +4102,22 @@ begin
 
   // ищем явно определенный implicit у приемника
   Result := Dest.GetImplicitOperatorFrom(SDataType);
+  if Result is TSysOpImplicit then
+    Result := TSysOpImplicit(Result).Check(SContext, Source, Dest);
   if Assigned(Result) then
     Exit;
 
   // если не нашли точных имплиситов, ищем подходящий (у источника)
   Result := SDataType.FindImplicitOperatorTo(Dest);
+  if Result is TSysOpImplicit then
+    Result := TSysOpImplicit(Result).Check(SContext, Source, Dest);
   if Assigned(Result) then
     Exit;
 
   // если не нашли точных имплиситов, ищем подходящий (у приемника)
   Result := Dest.FindImplicitOperatorFrom(SDataType);
+  if Result is TSysOpImplicit then
+    Result := TSysOpImplicit(Result).Check(SContext, Source, Dest);
   if Assigned(Result) then
     Exit;
 
@@ -4922,10 +4928,11 @@ end;
 function TASTDelphiUnit.ParseCaseRecord(Scope: TScope; Decl: TIDRecord): TTokenID;
 var
   Expr: TIDExpression;
+  CaseSpace: PVarSpace;
 begin
   Lexer_NextToken(Scope);
   Result := ParseConstExpression(Scope, Expr, ExprNested);
-  Lexer_MatchToken(Result,  token_of);
+  Lexer_MatchToken(Result, token_of);
   Result := Lexer_NextToken(Scope);
   while Result <> token_eof do
   begin
@@ -4933,6 +4940,7 @@ begin
     Result := ParseConstExpression(Scope, Expr, ExprLValue);
     Lexer_MatchToken(Result, token_colon);
     Lexer_ReadToken(Scope, token_openround);
+    CaseSpace := Decl.AddCase();
     Result := Lexer_NextToken(Scope);
     if Result = token_case then
     begin
@@ -4942,7 +4950,10 @@ begin
       Result := Lexer_NextToken(Scope);
     end else
     if Result <> token_closeround then
+    begin
+      Scope.VarSpace := CaseSpace;
       Result := ParseFieldsInCaseRecord(Scope, vPublic, Decl);
+    end;
 
     if Result = token_closeround then
     begin
@@ -5011,8 +5022,8 @@ var
   end;
 var
   EContext: TEContext;
-  SExpression,
-  DExpression: TIDExpression;
+  CaseExpr,
+  ItemExpr: TIDExpression;
   TotalMICount, ItemsCount: Integer;
   ElsePresent: Boolean;
   SEConst: Boolean;
@@ -5032,15 +5043,15 @@ begin
   Lexer_NextToken(Scope);
   Result := ParseExpression(Scope, SContext, EContext, ASTExpr);
   KW.Expression := ASTExpr;
-  SExpression := EContext.RPNPopExpression();
-  CheckEmptyExpression(SExpression);
+  CaseExpr := EContext.RPNPopExpression();
+  CheckEmptyExpression(CaseExpr);
 
   var WasCall := False;
-  SExpression := CheckAndCallFuncImplicit(SContext, SExpression, WasCall);
+  CaseExpr := CheckAndCallFuncImplicit(SContext, CaseExpr, WasCall);
 
   {if Assigned(EContext.LastBoolNode) then
     Bool_CompleteImmediateExpression(EContext, SExpression);}
-  SEConst := SExpression.IsConstant;
+  SEConst := CaseExpr.IsConstant;
   Lexer_MatchToken(Result, token_of);
   ItemsCount := 0;
   TotalMICount := 0;
@@ -5060,22 +5071,23 @@ begin
         CaseItem := KW.AddItem(ASTExpr);
         MISContext := SContext.MakeChild(CaseItem.Body);
 
-        DExpression := EContext.RPNPopExpression();
-        CheckEmptyExpression(DExpression);
+        ItemExpr := EContext.RPNPopExpression();
+        CheckEmptyExpression(ItemExpr);
         // проверка на совпадение типа
-        if DExpression.DataTypeID = dtRange then
-          Implicit := CheckImplicit(SContext, SExpression, TIDRangeType(DExpression.DataType).ElementType)
+        if ItemExpr.DataTypeID = dtRange then
+          Implicit := CheckImplicit(SContext, CaseExpr, TIDRangeType(ItemExpr.DataType).ElementType)
         else
-          Implicit := CheckImplicit(SContext, SExpression, DExpression.DataType);
+          Implicit := CheckImplicit(SContext, ItemExpr, CaseExpr.DataType);
         if not Assigned(Implicit) then
-          AbortWork(sMatchExprTypeMustBeIdenticalToCaseExprFmt, [DExpression.DataTypeName, SExpression.DataTypeName], DExpression.TextPosition);
+          if not Assigned(Implicit) then
+            AbortWork(sMatchExprTypeMustBeIdenticalToCaseExprFmt, [ItemExpr.DataTypeName, CaseExpr.DataTypeName], ItemExpr.TextPosition);
 
         // проверяем на константу
-        if DExpression.IsConstant and SEConst then
+        if ItemExpr.IsConstant and SEConst then
         begin
           // если данное выражение истенно, то для остальных генерировать IL код не нужно
-          if ((DExpression.DataTypeID = dtRange) and IsConstValueInRange(SExpression, TIDRangeConstant(DExpression.Declaration)))
-              or IsConstEqual(SExpression, DExpression) then
+          if ((ItemExpr.DataTypeID = dtRange) and IsConstValueInRange(CaseExpr, TIDRangeConstant(ItemExpr.Declaration)))
+              or IsConstEqual(CaseExpr, ItemExpr) then
           begin
             NeedWriteIL := False;
           end else
@@ -5088,7 +5100,7 @@ begin
           begin
             SetLength(MatchItems, ItemsCount + 1);
             MatchItem := @MatchItems[ItemsCount];
-            MatchItem.Expression := DExpression;
+            MatchItem.Expression := ItemExpr;
 
             // код проверки условия
             {if DExpression.DataTypeID <> dtRange then
@@ -5099,7 +5111,7 @@ begin
             Inc(ItemsCount);
           end;
         end;
-        CheckUniqueMIExpression(DExpression);
+        CheckUniqueMIExpression(ItemExpr);
 
         {if Assigned(EContext.LastBoolNode) and Assigned(EContext.LastBoolNode.PrevNode) then
           Bool_AddExprNode(EContext, ntOr);}

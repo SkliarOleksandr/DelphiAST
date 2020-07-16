@@ -67,7 +67,8 @@ type
     ImplicitVariantToAny,
     ImplicitStringFromAny,
     ImplicitCharToAnsiChar,
-    ImplicitCharToString
+    ImplicitCharToString,
+    ImplicitRangeFromAny
     : TIDOperator;
     // explicits
     ExplicitStringFromAny,
@@ -1142,6 +1143,7 @@ begin
   ImplicitStringFromAny := TSysImplicitStringFromAny.CreateAsSystem(Scope);
   ImplicitCharToAnsiChar := TIDOpImplicitCharToAnsiChar.CreateAsSystem(Scope);
   ImplicitCharToString := TIDOpImplicitCharToString.CreateAsSystem(Scope);
+  ImplicitRangeFromAny := TSysImplicitRangeFromAny.CreateAsSystem(Scope);
   // explicit
   ExplicitStringFromAny := TSysExplicitStringFromAny.CreateAsSystem(Scope);
   ExplicitAnsiStringFromAny := TSysExplicitAnsiStringFromAny.CreateAsSystem(Scope);

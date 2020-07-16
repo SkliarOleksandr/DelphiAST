@@ -42,10 +42,12 @@ type
     procedure Button1Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
     procedure Button4Click(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
   private
     { Private declarations }
     //fPKG: INPPackage;
     fFiles: TStringDynArray;
+    fSettings: IASTProjectSettings;
     procedure OnProgress(const Module: IASTModule; Status: TASTProcessStatusClass);
   public
     { Public declarations }
@@ -150,9 +152,9 @@ var
   Msg: TStrings;
   Prj: IASTDelphiProject;
   CResult: TCompilerResult;
+  a: UInt32;
 begin
   Memo1.Clear;
-
   Prj := TASTDelphiProject.Create('test');
   Prj.AddUnitSearchPath(ExtractFilePath(Application.ExeName));
   Prj.Target := 'WIN-X86';
@@ -321,6 +323,11 @@ begin
   finally
     Msg.Free;
   end;
+end;
+
+procedure TfrmTestAppMain.FormCreate(Sender: TObject);
+begin
+  fSettings := TPascalProjectSettings.Create;
 end;
 
 end.

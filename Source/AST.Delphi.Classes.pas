@@ -492,11 +492,11 @@ type
     FRangeType: TIDType;
   protected
     function GetDisplayName: string; override;
+    procedure CreateStandardOperators; override;
   public
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
     constructor CreateAsAnonymous(Scope: TScope); override;
     constructor Create(Scope: TScope; const Identifier: TIdentifier); override;
-    procedure Init;
     property ElementType: TIDType read FRangeType write FRangeType;
   end;
 
@@ -577,6 +577,7 @@ type
     fStaticDestructor: TIDProcedure;
     fCases: array of TVarSpace;
   protected
+    function GetDataSize: Integer; override;
   public
     constructor Create(Scope: TScope; const Name: TIdentifier); override;
     procedure CreateStandardOperators; override;
@@ -4422,6 +4423,25 @@ begin
   fSysExplicitFromAny := TSysExplicitRecordFromAny.Instance;
 end;
 
+function TIDRecord.GetDataSize: Integer;
+begin
+  if Length(fCases) = 0 then
+    Exit(inherited GetDataSize);
+
+  Result := 0;
+  for var i := 0 to Length(fCases) - 1 do
+  begin
+    var CaseSize: Integer := 0;
+    var Field := TIDField(FCases[i].First);
+    while Assigned(Field) do begin
+      CaseSize := CaseSize + Field.DataType.DataSize;
+      Field := TIDField(Field.NextItem);
+    end;
+    if CaseSize > Result then
+      Result := CaseSize;
+  end;
+end;
+
 function TIDRecord.AddCase: PVarSpace;
 var
   Len: Integer;
@@ -5069,19 +5089,38 @@ end;
 constructor TIDRangeType.Create(Scope: TScope; const Identifier: TIdentifier);
 begin
   inherited;
-  Init;
+  fDataTypeID := dtRange;
+  if Assigned(SYSUnit) then
+    CreateStandardOperators;
 end;
 
 constructor TIDRangeType.CreateAsAnonymous;
 begin
   inherited;
-  Init;
+  fDataTypeID := dtRange;
+  if Assigned(SYSUnit) then
+    CreateStandardOperators;
 end;
 
 constructor TIDRangeType.CreateAsSystem(Scope: TScope; const Name: string);
 begin
   inherited;
-  Init;
+  fDataTypeID := dtRange;
+  if Assigned(SYSUnit) then
+    CreateStandardOperators;
+end;
+
+procedure TIDRangeType.CreateStandardOperators;
+begin
+  inherited;
+  OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
+  OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
+  OverloadBinarOperator2(opLess, Self, SYSUnit._Boolean);
+  OverloadBinarOperator2(opLessOrEqual, Self, SYSUnit._Boolean);
+  OverloadBinarOperator2(opGreater, Self, SYSUnit._Boolean);
+  OverloadBinarOperator2(opGreaterOrEqual, Self, SYSUnit._Boolean);
+  OverloadExplicitFromAny(TSysExplicitRangeFromAny.Instance);
+  OverloadImplicitFromAny(SYSUnit.SysOperators.ImplicitRangeFromAny);
 end;
 
 function TIDRangeType.GetDisplayName: string;
@@ -5091,19 +5130,6 @@ begin
     Result := FRangeType.DisplayName
   else
     Result := IntToStr(LowBound) + '..' + IntToStr(HighBound);
-end;
-
-procedure TIDRangeType.Init;
-begin
-  OverloadImplicitTo(Self);
-  OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
-  OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
-  OverloadBinarOperator2(opLess, Self, SYSUnit._Boolean);
-  OverloadBinarOperator2(opLessOrEqual, Self, SYSUnit._Boolean);
-  OverloadBinarOperator2(opGreater, Self, SYSUnit._Boolean);
-  OverloadBinarOperator2(opGreaterOrEqual, Self, SYSUnit._Boolean);
-  OverloadExplicitFromAny(TSysExplicitRangeFromAny.Instance);
-  FDataTypeID := dtRange;
 end;
 
 { TIDProcedureType }

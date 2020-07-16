@@ -186,6 +186,12 @@ type
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
+  {implicit Range <- Any}
+  TSysImplicitRangeFromAny = class(TSysOpImplicit<TSysImplicitRangeFromAny>)
+  public
+    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
   ///////////////////////////////////////////////////////////////////////////////////////////
   /// EXPLICIT
   ///////////////////////////////////////////////////////////////////////////////////////////
@@ -835,6 +841,13 @@ end;
 function TSysExplicitRecordFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
   Result := Dst.DataSize = Src.DataSize;
+end;
+
+{ TSysImplicitRangeFromAny }
+
+function TSysImplicitRangeFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
+begin
+  Result := Src.IsOrdinal;
 end;
 
 end.
