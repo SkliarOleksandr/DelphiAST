@@ -1046,6 +1046,8 @@ end;
 constructor TSYSTEMUnit.Create(const Project: IASTProject; const FileName: string; const Source: string);
 begin
   inherited Create(Project, FileName, Source);
+  fSysDecls := @fDecls;
+
   {$IFDEF DEBUG}
   SetUnitName('system');
   {$ENDIF}

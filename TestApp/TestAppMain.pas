@@ -198,7 +198,7 @@ end;
 const cRTLUsesSource =
 'unit RTLParseTest; '#10#13 +
 'interface'#10#13 +
-'uses System.UITypes;'#10#13 +
+'uses Winapi.Windows;'#10#13 +
 'implementation'#10#13 +
 'end.';
 
@@ -225,6 +225,7 @@ begin
   Prj.Defines.Add('CPU386');
   Prj.Defines.Add('MSWINDOWS');
   Prj.Defines.Add('ASSEMBLER');
+  Prj.OnProgress := OnProgress;
 
   UN := TASTDelphiUnit.Create(Prj, 'RTLParseTest', cRTLUsesSource);
   Prj.AddUnit(UN, nil);
@@ -254,7 +255,8 @@ begin
 
     CompilerMessagesToStrings(Prj.Messages, Msg);
 
-    Memo1.Lines := Msg;
+    for var str in Msg do
+      Memo1.Lines.Add(str);
   finally
     Msg.Free;
   end;

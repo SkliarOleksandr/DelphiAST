@@ -85,6 +85,7 @@ type
     Name: string;
     TextPosition: TTextPosition;
     class function Make(const Name: string): TIdentifier; static;
+    class function Combine(const Left, Right: TIdentifier): TIdentifier; static;
     class function Empty: TIdentifier; static;
   end;
 
@@ -918,6 +919,12 @@ begin
 end;
 
 { TIdentifier }
+
+class function TIdentifier.Combine(const Left, Right: TIdentifier): TIdentifier;
+begin
+  Result.Name := Left.Name + '.' + Right.Name;
+  Result.TextPosition := Right.TextPosition;
+end;
 
 class function TIdentifier.Empty: TIdentifier;
 begin

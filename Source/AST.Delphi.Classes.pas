@@ -959,10 +959,10 @@ type
   {выражение}
   TIDExpression = class(TPooledObject)
   private
-    FDeclaration: TIDDeclaration;     // декларация
-    FInstruction: TObject;            // иснтрукция результатом которой стало это выражение
+    fDeclaration: TIDDeclaration;     // декларация
+    fInstruction: TObject;            // иснтрукция результатом которой стало это выражение
                                       // необходима для дальнейшей оптимизации
-    FTextPosition: TTextPosition;     // позиция в тексте где встретилось выражение
+    fTextPosition: TTextPosition;     // позиция в тексте где встретилось выражение
     function GetItemType: TIDItemType; inline;
     function GetIsAnonymous: Boolean; inline;
     function GetIsConstant: Boolean; inline;
@@ -1119,6 +1119,17 @@ type
 
   {result of logical boolean expression lile: a < b, x = y, ... }
   TIDBoolResultExpression = class(TIDExpression)
+  end;
+
+  TUnknownIDExpression = class(TIDExpression)
+  private
+    fID: TIdentifier;
+  protected
+    function GetDataType: TIDType; override;
+    function GetDisplayName: string; override;
+  public
+    constructor Create(const ID: TIdentifier); reintroduce;
+    property ID: TIdentifier read fID;
   end;
 
   TVariableFlags = set of
@@ -5918,6 +5929,24 @@ procedure TIDStaticArray.CreateStandardOperators;
 begin
   inherited;
   AddBinarySysOperator(opAdd, SYSUnit.SysOperators.StaticArray_Add);
+end;
+
+{ TUnknownIDExpression }
+
+constructor TUnknownIDExpression.Create(const ID: TIdentifier);
+begin
+  fID := ID;
+  fTextPosition := ID.TextPosition;
+end;
+
+function TUnknownIDExpression.GetDataType: TIDType;
+begin
+  Result := nil;
+end;
+
+function TUnknownIDExpression.GetDisplayName: string;
+begin
+  Result := Format('Unknown identifier at %d : %d', [FTextPosition.Row, FTextPosition.Col]);
 end;
 
 initialization
