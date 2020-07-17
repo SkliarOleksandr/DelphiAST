@@ -152,7 +152,6 @@ var
   Msg: TStrings;
   Prj: IASTDelphiProject;
   CResult: TCompilerResult;
-  a: UInt32;
 begin
   Memo1.Clear;
   Prj := TASTDelphiProject.Create('test');

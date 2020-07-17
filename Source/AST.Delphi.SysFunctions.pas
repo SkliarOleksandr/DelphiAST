@@ -315,7 +315,7 @@ type
 
 implementation
 
-uses AST.Delphi.Errors;
+uses AST.Delphi.Errors, AST.Lexer;
 
 { TSF_Now }
 
@@ -403,8 +403,8 @@ var
 begin
   Expr := Ctx.EContext.RPNPopExpression();
 
-  if Expr.DataTypeID <> dtString then
-    AbortWork('DEFINE String expected', Expr.TextPosition);
+  if not Assigned(Expr) then
+    AbortWork('DEFINE String expected', TTextPosition.Empty);
 
   if Ctx.Scope.FindIDRecurcive(Expr.AsStrConst.Value) <> nil then
     Result := SYSUnit._TrueExpression
