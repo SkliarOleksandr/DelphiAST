@@ -816,6 +816,9 @@ begin
 
   //===============================================================
   _Boolean := RegisterOrdinal('Boolean', dtBoolean, 0, 1);
+
+  RegisterPointer('ByteBool', _Boolean);
+
   _AnsiChar := RegisterOrdinal('AnsiChar', dtAnsiChar, 0, MaxUInt8);
   _Char := RegisterOrdinal('Char', dtChar, 0, MaxUInt16);
   //===============================================================

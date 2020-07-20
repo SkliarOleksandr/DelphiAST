@@ -6536,8 +6536,11 @@ begin
   end else
     ResultType := nil;
 
-  Lexer_MatchToken(Result, token_semicolon);
-  Result := Lexer_NextToken(Scope);
+  if Result = token_semicolon then
+    Result := Lexer_NextToken(Scope)
+  else
+  if not (Result in [token_overload, token_stdcall, token_cdecl]) then
+    ERRORS.SEMICOLON_EXPECTED;
 
   case ProcType of
     ptClassFunc,
@@ -6825,10 +6828,8 @@ begin
   end else
     Decl.IsStatic := True;
 
-  if ID.Name <> '' then begin
-    Lexer_MatchToken(Result, token_semicolon);
+  if ID.Name <> '' then
     InsertToScope(Scope, Decl);
-  end;
 end;
 
 function TASTDelphiUnit.ParseGenericProcRepeatedly(Scope: TScope; GenericProc, Proc: TASTDelphiProc; Struct: TIDStructure): TTokenID;
@@ -8050,8 +8051,6 @@ begin
     Result := ParseTypeDecl(Scope, nil, GDescriptor, ID, Decl);
     if not Assigned(Decl) then
       ERRORS.INVALID_TYPE_DECLARATION;
-
-    Lexer_MatchToken(Result, token_semicolon);
 
     // check and parse procedural type call convention
     Result := CheckAndParseProcTypeCallConv(Scope, Result,  Decl)
