@@ -78,7 +78,7 @@ resourcestring
   sExpressionMustBeBoolean = 'Type of expression must be BOOLEAN';
   sExpressionMustBeConstant = 'Expression must be a CONSTANT';
   sDeclarationHasNoDataTypeFmt = 'Declaration "%s" has no data type';
-  sInvalidTypeDeclaration = 'Invalid type declaration';
+  sInvalidTypeDeclarationFmt = '%s Invalid type declaration';
   sTypeKeywordRequred = 'The TYPE keyword required';
   sConstValueOverflowFmt = 'CONST value "%s" exceeds values range for "%s" data type';
 
@@ -278,7 +278,7 @@ type
     procedure DEFAULT_PROP_MUST_BE_ARRAY_PROP;
     procedure DEFAULT_PROP_ALREADY_EXIST(Prop: TIDProperty);
     procedure IMPORT_FUNCTION_CANNOT_BE_INLINE;
-    procedure INVALID_TYPE_DECLARATION;
+    procedure INVALID_TYPE_DECLARATION(const ID: TIdentifier);
     procedure EXPECTED_TOKEN(Token: TTokenID; ActulToken: TTokenID = token_unknown);
     procedure EXPECTED_KEYWORD_OR_ID;
     procedure IDENTIFIER_EXPECTED(ActualToken: TTokenID); overload;
@@ -597,9 +597,9 @@ begin
   AbortWork(sInvalidTypecastFmt, [Src.DataTypeName, Dst.DisplayName], Src.TextPosition);
 end;
 
-procedure TASTDelphiErrors.INVALID_TYPE_DECLARATION;
+procedure TASTDelphiErrors.INVALID_TYPE_DECLARATION(const ID: TIdentifier);
 begin
-  AbortWork(sInvalidTypeDeclaration, Lexer.PrevPosition);
+  AbortWork(sInvalidTypeDeclarationFmt, [ID.Name], ID.TextPosition);
 end;
 
 class procedure TASTDelphiErrors.ID_REDECLARATED(Decl: TIDDeclaration);

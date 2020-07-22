@@ -22,6 +22,7 @@ uses
      AST.Delphi.Intf;
      // system
      // sysinit
+     // Windows
 
 type
 
@@ -81,7 +82,7 @@ type
     function GetCurrentParsedFileName(OnlyFileName: Boolean): string;
     class function CreateRangeType(Scope: TScope; LoBound, HiBound: Integer): TIDRangeType; static;
     class procedure AddSelfParameter(Params: TScope; Struct: TIDStructure; ClassMethod: Boolean); static; inline;
-    class function AddResultParameter(Params: TScope): TIDVariable; static; inline;
+    function AddResultParameter(Params: TScope; DataType: TIDType): TIDVariable;
     procedure CheckCorrectEndCondStatemet(var Token: TTokenID);
   public
     property Package: IASTDelphiProject read fPackage;
@@ -998,7 +999,7 @@ begin
           continue;
         end;
       else
-        ERRORS.INVALID_TYPE_DECLARATION;
+        ERRORS.INVALID_TYPE_DECLARATION(ID);
       end;
       Exit;
     end;
@@ -1006,7 +1007,7 @@ begin
   end;
   Result := ParseTypeDecl(Scope, nil, nil, Empty, DataType);
   if not Assigned(DataType) then
-    ERRORS.INVALID_TYPE_DECLARATION;
+    ERRORS.INVALID_TYPE_DECLARATION(ID);
 end;
 
 procedure TASTDelphiUnit.ParseUnitDecl(Scope: TScope);
@@ -3985,12 +3986,23 @@ begin
   end;
 end;
 
-class function TASTDelphiUnit.AddResultParameter(Params: TScope): TIDVariable;
+function TASTDelphiUnit.AddResultParameter(Params: TScope; DataType: TIDType): TIDVariable;
+var
+  Decl: TIDDeclaration;
 begin
   Result := TIDVariable.CreateAsAnonymous(Params);
-  Result.Name := 'Result';
+
+  Decl := Params.FindID('Result');
+  if Assigned(Decl) then
+    Result.Name := '$Result' // just a flag that Result was redeclared, should be cheched later
+  else
+    Result.Name := 'Result';
+
   Result.Flags := [VarParameter, VarOut, VarHiddenParam, VarResult];
-  Params.AddVariable(Result);
+  Result.DataType := DataType;
+  Result.TextPosition := Lexer_Position;
+  Params.InsertID(Result);
+  Params.VarSpace.InsertFirst(Result);
 end;
 
 class procedure TASTDelphiUnit.AddSelfParameter(Params: TScope; Struct: TIDStructure; ClassMethod: Boolean);
@@ -4192,7 +4204,6 @@ var
   Parameters: TProcScope;
   GenericsArgs: TIDTypeList;
   ResultType: TIDType;
-  ResultParam: TIDVariable;
   ProcDecl: TASTDelphiProc;
   VarSpace: TVarSpace;
   Closure: TIDClosure;
@@ -4202,10 +4213,6 @@ begin
   Parameters := TProcScope.CreateInDecl(Scope, @VarSpace, nil);
 
   // создаем Result переменную (тип будет определен позже)
-  if ProcType = token_function then
-    ResultParam := AddResultParameter(Parameters)
-  else
-    ResultParam := nil;
 
   Result := Lexer_NextToken(Scope);
 
@@ -4225,8 +4232,7 @@ begin
     Lexer_MatchToken(Result, token_colon);
     // парсим тип возвращаемого значения
     Result := ParseTypeSpec(Parameters, ResultType);
-    ResultParam.DataType := ResultType;
-    ResultParam.TextPosition := Lexer_Position;
+    AddResultParameter(Parameters, ResultType);
   end else
     ResultType := nil;
 
@@ -6483,9 +6489,9 @@ type
   TFwdDeclState = (dsNew, dsDifferent, dsSame);
 var
   ID: TIdentifier;
+  ProcScope: TScope;
   Parameters: TProcScope;
   ResultType: TIDType;
-  ResultParam: TIDVariable;
   VarSpace: TVarSpace;
   GenericsParams: TIDTypeList;
   Proc, ForwardDecl: TASTDelphiProc;
@@ -6503,16 +6509,10 @@ begin
   VarSpace.Initialize;
   Parameters.VarSpace := addr(VarSpace);
 
-  // создаем Result переменную (тип будет определен позже)
-  if ProcType < ptProc then
-    ResultParam := AddResultParameter(Parameters)
-  else
-    ResultParam := nil;
-
   if Assigned(Struct) then
     AddSelfParameter(Parameters, Struct, (ProcType = ptClassProc) or (ProcType = ptClassFunc))
-  else
-    Parameters.OuterScope := Scope;
+  {else
+      Parameters.OuterScope := Scope};
 
   Lexer.SaveState(SRCProcPos);
 
@@ -6529,8 +6529,7 @@ begin
     begin
       Lexer_MatchToken(Result, token_colon);
       Result := ParseTypeSpec(Parameters, ResultType);
-      ResultParam.DataType := ResultType;
-      ResultParam.TextPosition := Lexer_Position;
+      AddResultParameter(Parameters, ResultType);
     end else
       ResultType := nil;
   end else
@@ -6867,7 +6866,7 @@ begin
 
   // создаем Result переменную (пока без имени) и добовляем ее в VarSpace чтобы зарезервировать индекс
   if Assigned(GenericProc.ResultType) then
-    RetVar := AddResultParameter(Parameters)
+    RetVar := AddResultParameter(Parameters, nil)
   else
     RetVar := nil;
 
@@ -6949,7 +6948,6 @@ var
   ID: TIdentifier;
   Parameters: TProcScope;
   ResultType: TIDType;
-  ResultParam: TIDVariable;
   VarSpace: TVarSpace;
   GenericsParams: TIDTypeList;
   Proc, ForwardDecl: TASTDelphiProc;
@@ -6973,9 +6971,6 @@ begin
   VarSpace.Initialize;
   Parameters.VarSpace := @VarSpace;
 
-  // создаем Result переменную
-  ResultParam := AddResultParameter(Parameters);
-
   // если generic
   Lexer.SaveState(SRCProcPos);
 
@@ -6986,14 +6981,14 @@ begin
 
   // проверка на кол-во необходимых параметров
   ParamCount := IfThen(OperatorID < OpIn, 1, 2);
-  if ParamCount <> (Parameters.Count - 1) then
+  if ParamCount <> Parameters.Count then
     AbortWork(sOperatorNeedNCountOfParameters, [ID.Name, ParamCount], ID.TextPosition);
 
   // парсим тип возвращаемого значения
   Lexer_MatchToken(Result, token_colon);
   Result := ParseTypeSpec(Parameters, ResultType);
-  ResultParam.DataType := ResultType;
-  ResultParam.TextPosition := Lexer_Position;
+  // создаем Result переменную
+  AddResultParameter(Parameters, ResultType);
   Lexer_MatchToken(Result, token_semicolon);
 
   // ищем ранее обьявленную декларацию с таким же именем
@@ -8050,7 +8045,7 @@ begin
 
     Result := ParseTypeDecl(Scope, nil, GDescriptor, ID, Decl);
     if not Assigned(Decl) then
-      ERRORS.INVALID_TYPE_DECLARATION;
+      ERRORS.INVALID_TYPE_DECLARATION(ID);
 
     // check and parse procedural type call convention
     Result := CheckAndParseProcTypeCallConv(Scope, Result,  Decl)
