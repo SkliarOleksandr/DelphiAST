@@ -949,9 +949,14 @@ begin
         Decl := SearchScope.FindMembers(ID.Name);
 
       if not Assigned(Decl) then
-      begin
-        Decl := FindIDNoAbort(Scope, ID);
         ERRORS.UNDECLARED_ID(ID);
+
+      // workaround for a case when param or field can be named as type
+      if Decl.ItemType = itVar then
+      begin
+        var OuterDecl := FindIDNoAbort(Scope.Parent, ID);
+        if Assigned(OuterDecl) then
+          Decl := OuterDecl;
       end;
 
       case Decl.ItemType of
@@ -6489,7 +6494,6 @@ type
   TFwdDeclState = (dsNew, dsDifferent, dsSame);
 var
   ID: TIdentifier;
-  ProcScope: TScope;
   Parameters: TProcScope;
   ResultType: TIDType;
   VarSpace: TVarSpace;
@@ -6510,9 +6514,7 @@ begin
   Parameters.VarSpace := addr(VarSpace);
 
   if Assigned(Struct) then
-    AddSelfParameter(Parameters, Struct, (ProcType = ptClassProc) or (ProcType = ptClassFunc))
-  {else
-      Parameters.OuterScope := Scope};
+    AddSelfParameter(Parameters, Struct, (ProcType = ptClassProc) or (ProcType = ptClassFunc));
 
   Lexer.SaveState(SRCProcPos);
 
@@ -6736,7 +6738,8 @@ begin
     CheckDestructorSignature(Proc);
 end;
 
-function TASTDelphiUnit.ParseProcName(var Scope: TScope; out Name: TIdentifier; var Struct: TIDStructure; out ProcScope: TProcScope;
+function TASTDelphiUnit.ParseProcName(var Scope: TScope; out Name: TIdentifier; var Struct: TIDStructure;
+                                      out ProcScope: TProcScope;
                                       out GenericParams: TIDTypeList): TTokenID;
 var
   Decl: TIDDeclaration;
