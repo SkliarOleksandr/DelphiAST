@@ -766,6 +766,9 @@ begin
       fIdentifireType := itIdentifier;
       Exit(fIdentifireId);
     end;
+    TTokenClass.AmbiguousPriorityKeyword: begin
+      fIdentifireType := itIdentifier;
+    end;
     TTokenClass.Ambiguous: begin
       fCurrentTokenId := fAmbiguousId;
       Exit(fAmbiguousId);

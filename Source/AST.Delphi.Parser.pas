@@ -189,14 +189,15 @@ type
     procedure Lexer_ReadSemicolon(Scope: TScope); inline;
     procedure Lexer_MatchIdentifier(const ActualToken: TTokenID); inline;
     procedure Lexer_MatchToken(const ActualToken, ExpectedToken: TTokenID); inline;
+    procedure Lexer_MatchCurToken(const ExpectedToken: TTokenID); inline;
     procedure Lexer_MatchSemicolon(const ActualToken: TTokenID); inline;
     procedure Lexer_ReadCurrIdentifier(var Identifier: TIdentifier); inline;
     procedure Lexer_ReadTokenAsID(var Identifier: TIdentifier);
     procedure Lexer_ReadNextIdentifier(Scope: TScope; var Identifier: TIdentifier); inline;
     procedure Lexer_ReadNextIFDEFLiteral(Scope: TScope; var Identifier: TIdentifier); inline;
     procedure Lexer_MatchParamNameIdentifier(ActualToken: TTokenID); inline;
-    function Lexer_CurTokenID: TTokenID; overload; inline;
-    function Lexer_AmbiguousId: TTokenID; overload; inline;
+    function Lexer_CurTokenID: TTokenID; inline;
+    function Lexer_AmbiguousId: TTokenID; inline;
     function Lexer_ReadSemicolonAndToken(Scope: TScope): TTokenID; inline;
     function Lexer_NextToken(Scope: TScope): TTokenID; overload; inline;
     function Lexer_Position: TTextPosition; inline;
@@ -206,6 +207,9 @@ type
     function Lexer_Line: Integer; inline;
     function Lexer_SkipBlock(StopToken: TTokenID): TTokenID;
     function Lexer_SkipTo(Scope: TScope; StopToken: TTokenID): TTokenID;
+    function Lexer_NotEof: boolean; inline;
+    function Lexer_IsCurrentIdentifier: boolean; inline;
+
 
     procedure PutMessage(Message: TCompilerMessage); overload;
     procedure PutMessage(MessageType: TCompilerMessageType; const MessageText: string); overload;
@@ -2759,6 +2763,12 @@ begin
     ERRORS.EXPECTED_TOKEN(ExpectedToken, ActualToken);
 end;
 
+procedure TASTDelphiUnit.Lexer_MatchCurToken(const ExpectedToken: TTokenID);
+begin
+  if Lexer_CurTokenID <> ExpectedToken then
+    ERRORS.EXPECTED_TOKEN(ExpectedToken, Lexer_CurTokenID);
+end;
+
 procedure TASTDelphiUnit.Lexer_MatchIdentifier(const ActualToken: TTokenID);
 begin
   if ActualToken <> token_Identifier then
@@ -2816,6 +2826,16 @@ end;
 function TASTDelphiUnit.Lexer_IdentifireType: TIdentifierType;
 begin
   Result := Lexer.IdentifireType;
+end;
+
+function TASTDelphiUnit.Lexer_IsCurrentIdentifier: boolean;
+begin
+  Result := Lexer.IdentifireType = itIdentifier;
+end;
+
+function TASTDelphiUnit.Lexer_NotEOF: boolean;
+begin
+  Result := Lexer_CurTokenID <> token_eof;
 end;
 
 function TASTDelphiUnit.Lexer_Line: Integer;
@@ -4916,7 +4936,7 @@ begin
     end;
     c := 0;
     Result := Lexer_NextToken(Scope);
-  until Result <> token_identifier;
+  until (not Lexer_IsCurrentIdentifier);
 end;
 
 function TASTDelphiUnit.ParseContinueStatement(Scope: TScope; const SContext: TSContext): TTokenID;
@@ -7914,6 +7934,9 @@ var
 begin
   Left := EContext.RPNPopExpression();
   Decl := Left.Declaration;
+  if not Assigned(Decl) then
+    sleep(1);
+
   if Decl.ItemType = itUnit then
     SearchScope := TIDNameSpace(Decl).Members
   else begin
@@ -8317,10 +8340,10 @@ begin
   case DataType.DataTypeID of
     dtStaticArray: Result := ParseVarStaticArrayDefaultValue(Scope, DataType as TIDArray, DefaultValue);
     dtRecord: begin
-      if (DataType.Module = SYSUnit) and (DataType.Name = 'TGUID') then
+      Result := Lexer_NextToken(Scope);
+      if (DataType.Module = SYSUnit) and (DataType.Name = 'TGUID') and (Result <> token_openround) then
       begin
-        Lexer_NextToken(Scope);
-        Result := ParseConstExpression(Scope, DefaultValue, ExprRValue)
+        Result := ParseConstExpression(Scope, DefaultValue, ExprRValue);
       end else
         Result := ParseVarRecordDefaultValue(Scope, DataType as TIDStructure, DefaultValue);
     end
@@ -8402,21 +8425,35 @@ var
   ID: TIdentifier;
   Expr: TIDExpression;
   Decl: TIDDeclaration;
+  Field: TIDField;
   Expressions: TIDRecordConstantFields;
 begin
   i := 0;
-  Lexer_ReadToken(Scope, token_openround);
+  Lexer_MatchCurToken(token_openround);
   SetLength(Expressions, Struct.FieldsCount);
+
   while True do begin
     Lexer_ReadNextIdentifier(Scope, ID);
     Lexer_ReadToken(Scope, token_colon);
-    Lexer_NextToken(Scope);
-    Result := ParseConstExpression(Scope, Expr, ExprRValue);
-    Expressions[i].Field := Struct.FindField(ID.Name);
+    Field := Struct.FindField(ID.Name);
+    if not Assigned(Field) then
+      ERRORS.UNDECLARED_ID(ID);
+
+    if Field.DataType.DataTypeID = dtStaticArray then
+      Result := ParseVarStaticArrayDefaultValue(Scope, TIDArray(Field.DataType), Expr)
+    else begin
+      Result := Lexer_NextToken(Scope);
+      Result := ParseConstExpression(Scope, Expr, ExprRValue);
+    end;
+
+    Expressions[i].Field := Field;
     Expressions[i].Value := Expr;
     Inc(i);
     if Result = token_semicolon then
+    begin
+      Field := TIDField(Field.NextItem);
       Continue;
+    end;
     Break;
   end;
   // create anonymous record constant

@@ -1094,7 +1094,7 @@ begin
   // read arguments
   AValue := EContext.RPNPopExpression();
   ATarget := EContext.RPNPopExpression();
-  Result := nil;
+  Result := AValue;
 end;
 
 { TSF_AtomicIncrement }
@@ -1113,7 +1113,7 @@ begin
   // read arguments
   AValue := EContext.RPNPopExpression();
   ATarget := EContext.RPNPopExpression();
-  Result := nil;
+  Result := AValue;
 end;
 
 

@@ -4760,8 +4760,10 @@ procedure TSpace<T>.Add(const Declaration: T);
 begin
   Assert(FLast <> Declaration);
   if Assigned(FLast) then
+  begin
+    Assert(not Assigned(TIDDeclaration(FLast).FNext));
     TIDDeclaration(FLast).FNext := TIDDeclaration(Declaration)
-  else
+  end else
     FFirst := Declaration;
   FLast := Declaration;
   Inc(FCount);

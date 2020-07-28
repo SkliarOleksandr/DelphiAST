@@ -367,7 +367,7 @@ begin
   RegisterToken('^', token_caret);
   RegisterToken('@', token_address);
   RegisterToken(':=', token_assign);
-  RegisterToken('absolute', token_absolute);
+  RegisterToken('absolute', token_absolute, TTokenClass.AmbiguousPriorityKeyword);
   RegisterToken('abstract', token_abstract);
   RegisterToken('as', token_as);
   RegisterToken('asm', token_asm);
