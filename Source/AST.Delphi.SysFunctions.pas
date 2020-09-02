@@ -649,15 +649,9 @@ begin
       end;
     end;
     // pchar, pansichar
-    dtPointer: begin
-      if (DataType = SYSUnit._PCharType) or (DataType = SYSUnit._PAnsiCharType) then
-      begin
-        var TMPVar := EContext.Proc.GetTMPVar(SYSUnit._NativeUInt);
-        Result := TIDExpression.Create(TMPVar, Expr.TextPosition);
-      end else begin
-        AbortWork(sArrayOrStringTypeRequired, Expr.TextPosition);
-        Result := nil;
-      end;
+    dtPAnsiChar, dtPWideChar: begin
+      var TMPVar := EContext.Proc.GetTMPVar(SYSUnit._NativeUInt);
+      Result := TIDExpression.Create(TMPVar, Expr.TextPosition);
     end
   else
     AbortWork(sArrayOrStringTypeRequired, Expr.TextPosition);

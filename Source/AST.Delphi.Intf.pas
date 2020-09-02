@@ -101,6 +101,8 @@ begin
     dtAnsiString: Result := _AnsiString;
     dtString: Result := _String;
     dtWideString: Result := _WideString;
+    dtPAnsiChar: Result := _PAnsiChar;
+    dtPWideChar: Result := _PChar;
     dtVariant: Result := _Variant;
     dtGuid: Result := _GuidType;
     dtPointer: Result := _PointerType;

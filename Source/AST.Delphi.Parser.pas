@@ -274,14 +274,14 @@ type
     function ParseConstExpression(Scope: TScope; out Expr: TIDExpression; EPosition: TExpessionPosition): TTokenID;
     function ParseMemberCall(Scope: TScope; var EContext: TEContext; const ASTE: TASTExpression): TTokenID;
     function ParseMember(Scope: TScope; var EContext: TEContext; const ASTE: TASTExpression): TTokenID;
-    function ParseIdentifier(Scope, SearchScope: TScope; out Expression: TIDExpression; var EContext: TEContext;
-                             const ASTE: TASTExpression): TTokenID;
+    function ParseIdentifier(Scope, SearchScope: TScope; out Expression: TIDExpression;
+                             var EContext: TEContext; const PrevExpr: TIDExpression; const ASTE: TASTExpression): TTokenID;
     function ParseArrayMember(Scope: TScope; var EContext: TEContext; ASTE: TASTExpression): TTokenID;
     function ParsePropertyMember(var PMContext: TPMContext; Scope: TScope; Prop: TIDProperty; out Expression: TIDExpression;
                                  var EContext: TEContext): TTokenID;
     function ParseIndexedPropertyArgs(Scope: TScope; out ArgumentsCount: Integer; var EContext: TEContext): TTokenID;
     procedure ParseVector(Scope: TScope; var EContext: TEContext);
-    function ParseEntryCall(Scope: TScope; CallExpr: TIDCallExpression; var EContext: TEContext; const ASTE: TASTExpression): TTokenID;
+    function ParseEntryCall(Scope: TScope; CallExpr: TIDCallExpression; const EContext: TEContext; const ASTE: TASTExpression): TTokenID;
     function ParseBuiltinCall(Scope: TScope; CallExpr: TIDExpression; var EContext: TEContext): TTokenID;
     function ParseExplicitCast(Scope: TScope; const SContext: TSContext; var DstExpression: TIDExpression): TTokenID;
     function ParseProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure = nil): TTokenID;
@@ -299,7 +299,7 @@ type
     function ParseCaseStatement(Scope: TScope; const SContext: TSContext): TTokenID;
     function ParseBreakStatement(Scope: TScope; const SContext: TSContext): TTokenID;
     function ParseContinueStatement(Scope: TScope; const SContext: TSContext): TTokenID;
-    function ParseInheritedStatement(Scope: TScope; var EContext: TEContext): TTokenID;
+    function ParseInheritedStatement(Scope: TScope; const EContext: TEContext): TTokenID;
     function ParseImmVarStatement(Scope: TScope; const SContext: TSContext): TTokenID;
     function ParseTrySection(Scope: TScope; const SContext: TSContext): TTokenID;
     function ParseExceptOnSection(Scope: TScope; KW: TASTKWTryBlock; const SContext: TSContext): TTokenID;
@@ -321,6 +321,7 @@ type
     function ParseInitSection: TTokenID;
     function ParseFinalSection: TTokenID;
     function ParsePlatform(Scope: TScope): TTokenID;
+    function ParseUnknownID(Scope: TScope; const PrevExpr: TIDExpression; ID: TIdentifier; out Decl: TIDDeclaration): TTokenID;
     function ParseDeprecated(Scope: TScope; out DeprecatedExpr: TIDExpression): TTokenID;
     function CheckAndMakeClosure(const SContext: TSContext; const ProcDecl: TIDProcedure): TIDClosure;
     function EmitCreateClosure(const SContext: TSContext; Closure: TIDClosure): TIDExpression;
@@ -1074,7 +1075,6 @@ begin
     if not UUnit.Compiled then
     begin
       if UUnit.Compile() = CompileFail then begin
-        Messages.CopyFrom(UUnit.Messages);
         StopCompile(False);
       end;
     end;
@@ -1099,7 +1099,7 @@ begin
   Result := Lexer_NextToken(Scope);
 end;
 
-function TASTDelphiUnit.ParseEntryCall(Scope: TScope; CallExpr: TIDCallExpression; var EContext: TEContext;
+function TASTDelphiUnit.ParseEntryCall(Scope: TScope; CallExpr: TIDCallExpression; const EContext: TEContext;
                                        const ASTE: TASTExpression): TTokenID;
 var
   ArgumentsCount: Integer;
@@ -3748,7 +3748,7 @@ begin
               end else begin
                   var dataLoss: Boolean;
                   curRate := GetImplicitRate(SrcDataTypeID, DstDataTypeID, dataLoss);  // todo
-                  if dataLoss  then
+                  if dataLoss then
                     curLevel := TASTArgMatchLevel.MatchImplicitAndDataLoss
                   else
                     curLevel := TASTArgMatchLevel.MatchImplicit;
@@ -4304,7 +4304,7 @@ begin
   ArrDecl := ArrExpr.Declaration;
   DeclType := ArrExpr.DataType;
 
-  if DeclType.DataTypeID = dtPointer then
+  if DeclType.DataTypeID in [dtPointer, dtPAnsiChar, dtPWideChar] then
   begin
     DeclType := TIDPointer(DeclType).ReferenceType;
     if DeclType is TIDArray then
@@ -4963,8 +4963,19 @@ function TASTDelphiUnit.ParseCaseRecord(Scope: TScope; Decl: TIDRecord): TTokenI
 var
   Expr: TIDExpression;
   CaseSpace: PVarSpace;
+  CaseTypeDecl: TIDDeclaration;
+  ID: TIdentifier;
 begin
-  Lexer_NextToken(Scope);
+  // todo: fix
+  Lexer_ReadNextIdentifier(Scope, ID);
+  CaseTypeDecl := FindIDNoAbort(Scope, ID);
+  if not Assigned(CaseTypeDecl) then
+  begin
+    Result := Lexer_NextToken(Scope);
+    Lexer_MatchToken(Result, token_colon);
+    Result := Lexer_NextToken(Scope);
+  end;
+
   Result := ParseConstExpression(Scope, Expr, ExprNested);
   Lexer_MatchToken(Result, token_of);
   Result := Lexer_NextToken(Scope);
@@ -5643,7 +5654,7 @@ begin
         if Lexer_IdentifireType = itIdentifier then
         begin
           Expr := nil;
-          Result := ParseIdentifier(Scope, nil, Expr, EContext, ASTE);
+          Result := ParseIdentifier(Scope, nil, Expr, EContext, nil, ASTE);
           // если результат = nil значит это был вызов функции и все
           // необходимые параметры погружены в стек, поэтому идем дальше
           if not Assigned(Expr) then
@@ -7746,8 +7757,35 @@ begin
     ERRORS.FEATURE_NOT_SUPPORTED;
 end;
 
+function TASTDelphiUnit.ParseUnknownID(Scope: TScope; const PrevExpr: TIDExpression; ID: TIdentifier; out Decl: TIDDeclaration): TTokenID;
+var
+  PrevDecl: TIDUnit;
+  FullID, NextID: TIdentifier;
+begin
+  if Assigned(PrevExpr) and (PrevExpr.ItemType = itUnit) then
+    FullID := PrevExpr.Declaration.ID;
+
+  Result := Lexer_CurTokenID;
+  while True do begin
+    FullID := TIdentifier.Combine(FullID, ID);
+    Decl := FindIDNoAbort(Scope, FullID);
+    if Assigned(Decl) then
+      Exit;
+
+    if Result = token_dot then
+    begin
+      Lexer_ReadNextIdentifier(Scope, ID);
+      Result := Lexer_NextToken(Scope);
+      continue;
+    end;
+    break;
+  end;
+
+  ERRORS.UNDECLARED_ID(ID);
+end;
+
 function TASTDelphiUnit.ParseIdentifier(Scope, SearchScope: TScope; out Expression: TIDExpression; var EContext: TEContext;
-                                        const ASTE: TASTExpression): TTokenID;
+                                        const PrevExpr: TIDExpression; const ASTE: TASTExpression): TTokenID;
 var
   Decl: TIDDeclaration;
   DataType: TIDType;
@@ -7785,11 +7823,7 @@ begin
     end;
 
     if not Assigned(Decl) then
-    begin
-      Expression := TUnknownIDExpression.Create(PMContext.ID);
-      Exit;
-    end;
-
+      Result := ParseUnknownID(Scope, PrevExpr, PMContext.ID, Decl);
   end;
 
   // если Scope порожден конструкцией WITH
@@ -7934,8 +7968,7 @@ var
 begin
   Left := EContext.RPNPopExpression();
   Decl := Left.Declaration;
-  if not Assigned(Decl) then
-    sleep(1);
+  // todo: system fail if decl is not assigned
 
   if Decl.ItemType = itUnit then
     SearchScope := TIDNameSpace(Decl).Members
@@ -7968,30 +8001,9 @@ begin
   ASTE.AddOperation<TASTOpMemberAccess>;
 
   Lexer_NextToken(Scope);
-  Result := ParseIdentifier(Scope, SearchScope, Right, EContext, ASTE);
-
+  Result := ParseIdentifier(Scope, SearchScope, Right, EContext, Left, ASTE);
   if Assigned(Right) then
-  begin
-    if Right is TUnknownIDExpression then
-    begin
-      var UnknownExpr := TUnknownIDExpression(Right);
-      if Decl.ItemType = itUnit then
-      begin
-        Decl := FindIDNoAbort(Scope, TIdentifier.Combine(Decl.ID, UnknownExpr.ID));
-        if Assigned(Decl) then
-          Right := TIDExpression.Create(Decl, UnknownExpr.ID.TextPosition)
-        else
-        if Result = token_dot then
-        begin
-          // todo:
-          ERRORS.FEATURE_NOT_SUPPORTED;
-        end else
-          ERRORS.UNDECLARED_ID(UnknownExpr.ID);
-      end;
-    end;
-
     EContext.RPNPushExpression(Right);
-  end;
 end;
 
 function TASTDelphiUnit.ParseMemberCall(Scope: TScope; var EContext: TEContext; const ASTE: TASTExpression): TTokenID;
@@ -8121,7 +8133,7 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.ParseInheritedStatement(Scope: TScope; var EContext: TEContext): TTokenID;
+function TASTDelphiUnit.ParseInheritedStatement(Scope: TScope; const EContext: TEContext): TTokenID;
 var
   Proc, PrevProc: TIDProcedure;
   CallExpr: TIDCallExpression;
@@ -8924,7 +8936,7 @@ end;
 
 class procedure TASTDelphiUnit.CheckPointerType(Expression: TIDExpression);
 begin
-  if (Expression.DataTypeID <> dtPointer) then
+  if not (Expression.DataTypeID in [dtPointer, dtPAnsiChar, dtPWideChar]) then
     AbortWork(sPointerTypeRequired, Expression.TextPosition);
 end;
 

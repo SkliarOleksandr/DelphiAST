@@ -667,7 +667,7 @@ end;
 
 function TIDOpImplicitPointerToAny.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
-  if Dst.DataTypeID = dtPointer then
+  if Dst.DataTypeID in [dtPointer, dtPAnsiChar, dtPWideChar] then
     Result := Dst
   else
     Result := nil;
@@ -692,7 +692,7 @@ var
   ElType: TIDType;
 begin
   ElType := (Src as TIDArray).ElementDataType;
-  Result := (Dst.DataTypeID = dtPointer);
+  Result := (Dst.DataTypeID in [dtPointer, dtPAnsiChar, dtPWideChar]);
 end;
 
 { TSysExplictPointerFromAny }
@@ -724,8 +724,11 @@ end;
 
 function TSysExplicitStringFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
-  Result := (Src.DataTypeID = dtAnsiString) or (Src.DataTypeID = dtPointer) or
-            ((Src.DataTypeID = dtStaticArray) and (TIDArray(Src).ElementDataType.DataTypeID = dtChar)) ;
+  Result := (Src.DataTypeID = dtAnsiString) or
+            (Src.DataTypeID in [dtPointer, dtPAnsiChar, dtPWideChar]) or
+            (
+              (Src.DataTypeID = dtStaticArray) and (TIDArray(Src).ElementDataType.DataTypeID = dtChar)
+            );
 end;
 
 { TSysExplictPointerToAny }
@@ -733,14 +736,16 @@ end;
 function TSysExplictPointerToAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
   Result := Dst.IsOrdinal or (Dst.DataTypeID in [dtPointer,
-                                               dtProcType,
-                                               dtRecord,
-                                               dtClass,
-                                               dtInterface,
-                                               dtDynArray,
-                                               dtAnsiString,
-                                               dtString,
-                                               dtWideString]);
+                                                 dtPAnsiChar,
+                                                 dtPWideChar,
+                                                 dtProcType,
+                                                 dtRecord,
+                                                 dtClass,
+                                                 dtInterface,
+                                                 dtDynArray,
+                                                 dtAnsiString,
+                                                 dtString,
+                                                 dtWideString]);
 end;
 
 { TSysAnsiChar_In }

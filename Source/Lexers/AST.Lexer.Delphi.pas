@@ -36,6 +36,8 @@ type
     token_slash,                    // /
     token_caret,                    // ^
     token_address,                  // @
+    token_ampersand,                // &
+
 
     token_coma,                     // ,
     token_dot,                      // .
@@ -252,9 +254,18 @@ end;
 function TDelphiLexer.NextToken: TTokenID;
 begin
   Result := TTokenID(GetNextTokenId());
-  if Result = token_identifier then
-    fOriginalToken := CurrentToken;
-
+  case Result of
+    token_identifier: fOriginalToken := CurrentToken;
+    token_ampersand: begin
+      if not GetNextCharIsSeparator then
+      begin
+        Result := TTokenID(GetNextTokenId());
+        fOriginalToken := TokenLexem(Result);
+        fCurrentTokenID := ord(token_identifier);
+        Result := token_identifier;
+      end;
+    end;
+  end;
   if CurToken.TokenID = ord(token_quote) then
     ParseChainedString()
   else
@@ -366,6 +377,7 @@ begin
   RegisterToken('/', token_slash);
   RegisterToken('^', token_caret);
   RegisterToken('@', token_address);
+  RegisterToken('&', token_ampersand);
   RegisterToken(':=', token_assign);
   RegisterToken('absolute', token_absolute, TTokenClass.AmbiguousPriorityKeyword);
   RegisterToken('abstract', token_abstract);

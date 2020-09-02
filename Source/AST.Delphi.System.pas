@@ -889,8 +889,16 @@ begin
   RegisterTypeAlias('LongBool', _Boolean);
   RegisterTypeAlias('OleVariant', _Variant);
 
-  fDecls._PAnsiChar := RegisterPointer('PAnsiChar', _AnsiChar);
-  fDecls._PChar := RegisterPointer('PWideChar', _Char);
+  fDecls._PAnsiChar := RegisterType('PAnsiChar', TIDPointer, dtPAnsiChar);
+  TIDPointer(fDecls._PAnsiChar).ReferenceType := _AnsiChar;
+
+  fDecls._PChar := RegisterType('PWideChar', TIDPointer, dtPWideChar);
+  TIDPointer(fDecls._PChar).ReferenceType := _Char;
+
+  _AnsiChar.DefaultReference := _PAnsiCharType;
+  _Char.DefaultReference := _PCharType;
+
+
   RegisterTypeAlias('PChar', _PCharType);
   RegisterTypeAlias('Text', _Pointer);
 

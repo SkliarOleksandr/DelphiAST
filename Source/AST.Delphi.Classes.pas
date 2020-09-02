@@ -307,7 +307,7 @@ type
     destructor Destroy; override;
     ////////////////////////////////////////////////////////////////////////////
     function GetDefaultReference(Scope: TScope): TIDType;
-    property DefaultReference: TIDType read FDefaultReference;
+    property DefaultReference: TIDType read fDefaultReference write fDefaultReference;
     property WeakRefType: TIDWeekRef read FWeakType write FWeakType;
     property DataTypeID: TDataTypeID read FDataTypeID write FDataTypeID;
     property Elementary: Boolean read FElementary write FElementary;
@@ -998,6 +998,7 @@ type
     procedure SetCValue(Value: TIDConstant); inline;
     function GetIsParam: Boolean;
     function GetText: string;
+    function GetAsUnit: TIDUnit; inline;
   protected
     function GetDataType: TIDType; virtual;
   public
@@ -1042,6 +1043,7 @@ type
     property AsArrayConst: TIDDynArrayConstant read GetAsArrayConst;
     property AsRangeConst: TIDRangeConstant read GetAsRangeConst;
     property AsClosure: TIDClosure read GetAsClosure;
+    property AsUnit: TIDUnit read GetAsUnit;
     property CValue: TIDConstant read GetCValue write SetCValue;
     property Text: string read GetText;
   end;
@@ -2742,48 +2744,13 @@ begin
 end;
 
 function TIDType.GetDataSize: Integer;
-const
-  cDataTypeSizes: array [TDataTypeID] of Integer = (
-    {dtInt8}        1,
-    {dtInt16}       2,
-    {dtInt32}       4,
-    {dtInt64}       8,
-    {dtUint8}       1,
-    {dtUint16}      2,
-    {dtUint32}      4,
-    {dtUint64}      8,
-    {dtNativeInt}  -1,
-    {dtNativeUInt} -1,
-    {dtFloat32}     4,
-    {dtFloat64}     8,
-    {dtBoolean}     1,
-    {dtAnsiChar}    1,
-    {dtChar}        2,
-    {dtShortString}-1,
-    {dtAnsiString} -1,
-    {dtString}     -1,
-    {dtWideString} -1,
-    {dtVariant}    16,
-    {dtGeneric}     0,
-    {dtPointer}    -1,
-    {dtWeakRef}    -1,
-    {dtRange}      -1,
-    {dtEnum}        0,
-    {dtSet}         0,
-    {dtArray}       0,
-    {dtDynArray}   -1,
-    {dtOpenArray}  -1,
-    {dtProcType}    0,
-    {dtRecord}      0,
-    {dtClass}       0,
-    {dtClassOf}    -1,
-    {dtInterface}   0,
-    {dtGuid}        Sizeof(TGUID)
-  );
 begin
   case DataTypeID of
-    dtPointer: Result := Package.PointerSize;
-    dtNativeInt, dtNativeUInt: Result := Package.NativeIntSize;
+    dtPointer,
+    dtPAnsiChar,
+    dtPWideChar: Result := Package.PointerSize;
+    dtNativeInt,
+    dtNativeUInt: Result := Package.NativeIntSize;
   else
     Result := cDataTypeSizes[DataTypeID];
   end;
@@ -3445,6 +3412,11 @@ end;
 function TIDExpression.GetAsType: TIDType;
 begin
   Result := TIDType(FDeclaration);
+end;
+
+function TIDExpression.GetAsUnit: TIDUnit;
+begin
+  Result := TIDUnit(fDeclaration);
 end;
 
 function TIDExpression.GetAsVariable: TIDVariable;

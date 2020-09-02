@@ -111,7 +111,6 @@ type
     fSrcPos: Integer;                  // Current position in the source string
 
     fCutToken: PCharToken;             // The current token structure
-    fCurrentTokenId: Integer;          // The current token Id
     fAmbiguousTokenId: Integer;        // The current ambiguous token Id
 
     fRow: Integer;                     // Номер строки текущей позиции (начинается с единицы)
@@ -140,6 +139,7 @@ type
     function MoveNextInternal: Integer;
   protected
     fCurrentToken: string;
+    fCurrentTokenId: Integer;          // The current token Id
     property AmbiguousId: Integer read fAmbiguousId write fAmbiguousId;
     procedure RegisterToken(const Token: string; aTokenID: Integer; aTokenType: TTokenType; const TokenCaption: string = ''); overload;
     procedure RegisterToken(const Token: string; aTokenID: Integer; aTokenType: TTokenType;
@@ -168,6 +168,7 @@ type
     function GetNextToken: PCharToken;
     function GetNextChar: Char; inline;
     function GetNextTokenId: Integer;
+    function GetNextCharIsSeparator: Boolean; inline;
   public
     constructor Create(const Source: string); virtual;
     destructor Destroy; override;
@@ -198,6 +199,20 @@ implementation
 function TGenericLexer.GetNextChar: Char;
 begin
   Result := fSource[fSrcPos];
+end;
+
+function TGenericLexer.GetNextCharIsSeparator: Boolean;
+var
+  NextChar: Char;
+  Token: PCharToken;
+begin
+  Result := False;
+  NextChar := GetNextChar;
+  if NextChar <= MaxTokenChar then
+  begin
+    Token := addr(fTokens[GetNextChar]);
+    Result := tfSeparator in Token.Flags;
+  end;
 end;
 
 function TGenericLexer.GetNextToken: PCharToken;
@@ -925,7 +940,10 @@ end;
 
 class function TIdentifier.Combine(const Left, Right: TIdentifier): TIdentifier;
 begin
-  Result.Name := Left.Name + '.' + Right.Name;
+  if Left.Name <> '' then
+    Result.Name := Left.Name + '.' + Right.Name
+  else
+    Result.Name := Right.Name;
   Result.TextPosition := Right.TextPosition;
 end;
 

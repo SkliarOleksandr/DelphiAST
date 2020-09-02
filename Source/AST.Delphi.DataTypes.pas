@@ -36,44 +36,46 @@ type
 
   TDataTypeID =
   (
-    dtInt8,
-    dtInt16,
-    dtInt32,
-    dtInt64,
-    dtUInt8,
-    dtUInt16,
-    dtUInt32,
-    dtUInt64,
-    dtNativeInt,
-    dtNativeUInt,
-    dtFloat32,
-    dtFloat64,
-    dtBoolean,      // булевый тип
-    dtAnsiChar,     // ansi-символ
-    dtChar,         // utf16-символ
-    dtShortString,  // ansi-строка
-    dtAnsiString,   // ansi-строка
+    dtInt8,         // Int8
+    dtInt16,        // Int16
+    dtInt32,        // Int32
+    dtInt64,        // Int64
+    dtUInt8,        // UInt8
+    dtUInt16,       // UInt16
+    dtUInt32,       // UInt32
+    dtUInt64,       // UInt64
+    dtNativeInt,    // NativeInt
+    dtNativeUInt,   // NativeUInt
+    dtFloat32,      // Single
+    dtFloat64,      // Double
+    dtBoolean,      // Boolean
+    dtAnsiChar,     // ansi char
+    dtChar,         // utf16 char
+    dtShortString,  // ansi short string
+    dtAnsiString,   // ansi string
     dtString,       // unicode string
     dtWideString,   // WideString
-    dtVariant,      // тип вариант
-    dtGuid,         // GUID
-    dtPointer,      // указатель (любой)
-    dtWeakRef,      // слабая ссылка
-    dtGeneric,      // обобщенный тип
-    dtRange,        // диаппазоный тип (тип с ограниченным диаппазоном)
-    dtEnum,         // перечисление
-    dtSet,
-    dtStaticArray,  // статический массив
-    dtDynArray,     // динамический массив
-    dtOpenArray,
-    dtProcType,     // процедурная ссылка
-    dtRecord,       // структура
-    dtClass,        // класс
-    dtClassOf,      // метакласс
-    dtInterface     // интерфейс
+    dtPAnsiChar,    // PAnsiChar
+    dtPWideChar,    // PWideChar
+    dtVariant,      // Variant
+    dtGuid,         // TGUID
+    dtPointer,      // Pointer
+    dtWeakRef,      //
+    dtGeneric,      // any generic type (generic type parameter)
+    dtRange,        // any range type
+    dtEnum,         // any enum type
+    dtSet,          // any set type
+    dtStaticArray,  // any staic array
+    dtDynArray,     // any dynamic array
+    dtOpenArray,    // any open array
+    dtProcType,     // any procedural type
+    dtRecord,       // record
+    dtClass,        // class
+    dtClassOf,      // class of
+    dtInterface     // interface
   );
 
-    TASTArgMatchRate = Integer;
+  TASTArgMatchRate = Integer;
 
 const
 
@@ -101,6 +103,8 @@ const
     {dtAnsiString}  True,
     {dtString}      True,
     {dtWideString}  True,
+    {dtPAnsiChar}   False,
+    {dtPWideChar}   False,
     {dtVariant}     True,
     {dtGuid}        False,
     {dtPointer}     False,
@@ -150,6 +154,8 @@ const
     {dtAnsiString}  'AnsiString',
     {dtString}      'String',
     {dtWideString}  'WideString',
+    {dtPAnsiChar}   'PAnsiChar',
+    {dtPWideChar}   'PWideChar',
     {dtVariant}     'Variant',
     {dtGuid}        'Guid',
     {dtPointer}     'Pointer',
@@ -189,6 +195,8 @@ const
     {dtAnsiString}  True,
     {dtString}      True,
     {dtWideString}  True,
+    {dtPAnsiChar}   False,
+    {dtPWideChar}   False,
     {dtVariant}     True,
     {dtGuid}        False,
     {dtPointer}     True,
@@ -229,6 +237,8 @@ const
     {dtWideString}  SizeOf(Pointer), // refernce type
     {dtVariant}     16,
     {dtGuid}        SizeOf(TGUID),
+    {dtPAnsiChar}   SizeOf(Pointer),
+    {dtPWideChar}   SizeOf(Pointer),
     {dtPointer}     SizeOf(Pointer),
     {dtWeakRef}     SizeOf(Pointer),
     {dtGeneric}     0,
@@ -250,7 +260,7 @@ implementation
 uses SysUtils;
 
 var
-  implicitRates: array [dtInt8..dtVariant, dtInt8..dtVariant] of Integer;
+  implicitRates: array [dtInt8..dtPointer, dtInt8..dtPointer] of Integer;
 
 function IsDataTypeReferenced(DataType: TDataTypeID): Boolean;
 begin
@@ -284,7 +294,7 @@ end;
 
 function GetImplicitRate(const Src, Dst: TDataTypeID; out DataLoss: Boolean): TASTArgMatchRate;
 begin
-  if (Src <= dtVariant) and (Dst <= dtVariant) then
+  if (Src <= dtPointer) and (Dst <= dtPointer) then
   begin
     var RValue := implicitRates[Src, Dst];
     DataLoss := RValue < 0;
@@ -358,16 +368,20 @@ begin
   // ShortString /////////////////////////////////////////
   Rate(dtShortString, [dtShortString, dtAnsiString, dtVariant, dtString, dtWideString]);
   // AnsiString /////////////////////////////////////////
-  Rate(dtAnsiString, [dtAnsiString, dtVariant, dtString, dtWideString]);
+  Rate(dtAnsiString, [dtAnsiString, dtPAnsiChar, dtVariant, dtString, dtWideString, dtPWideChar]);
   // String /////////////////////////////////////////
-  Rate(dtString, [dtString, dtWideString, dtVariant]);
+  Rate(dtString, [dtString, dtWideString, dtPWideChar, dtVariant, dtPAnsiChar]);
   RateWDL(dtString, [dtAnsiString]);
   // WideString /////////////////////////////////////////
   Rate(dtWideString, [dtWideString, dtString, dtVariant]);
+  // PAnsiChar /////////////////////////////////////////
+  Rate(dtPAnsiChar, [dtPAnsiChar, dtPointer, dtAnsiString, dtString]);
+  // PWideChar /////////////////////////////////////////
+  Rate(dtPWideChar, [dtPWideChar, dtPointer, dtWideString, dtString, dtAnsiString]);
   // Variant /////////////////////////////////////////
   Rate(dtVariant, [dtVariant]); // todo
+  // Variant /////////////////////////////////////////
 end;
-
 
 initialization
   InitImplicitRates();
