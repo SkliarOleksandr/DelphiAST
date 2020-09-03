@@ -11,7 +11,7 @@ type
     constructor CreateAsIntOp; reintroduce;
   end;
 
-  TSysOpImplicit = class(TSysOperator)
+  TSysTypeCast = class(TSysOperator)
   public
     constructor CreateInternal(ResultType: TIDType); reintroduce;
     function Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean; overload; virtual;
@@ -19,35 +19,22 @@ type
     function Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; virtual;
   end;
 
-  // Singleton ancestor
-  TSysOpImplicit<TInstanceClass: class> = class(TSysOpImplicit)
-  private
-    class var fInstance: TInstanceClass;
-  public
-    class function Instance: TInstanceClass;
+  TSysOpImplicit = class(TSysTypeCast)
   end;
 
-  TSysOpExplisit = class(TSysOpImplicit)
-  end;
-
-  // Singleton ancestor
-  TSysOpExplisit<TInstanceClass: class> = class(TSysOpExplisit)
-  private
-    class var fInstance: TInstanceClass;
-  public
-    class function Instance: TInstanceClass;
+  TSysOpExplisit = class(TSysTypeCast)
   end;
 
   TSysOpBinary = class(TSysOperator)
     function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; virtual; abstract;
   end;
 
-  // Singleton ancestor
-  TSysOpBinary<TInstanceClass: class> = class(TSysOpBinary)
-  private
-    class var fInstance: TInstanceClass;
-  public
-    class function Instance: TInstanceClass;
+
+  ///////////////////////////////////////////////////////////////////////////////////////////
+  /// ANY TYPE CAST
+  ///////////////////////////////////////////////////////////////////////////////////////////
+  TSysTypeCast_IsOrdinal = class(TSysTypeCast)
+    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
   ///////////////////////////////////////////////////////////////////////////////////////////
@@ -55,139 +42,128 @@ type
   ///////////////////////////////////////////////////////////////////////////////////////////
 
   {implicit String -> AnsiString}
-  TIDOpImplicitStringToAnsiString = class(TSysOpImplicit<TIDOpImplicitStringToAnsiString>)
+  TSysImplicitStringToAnsiString = class(TSysOpImplicit)
   public
     function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
   end;
 
-  {implicit AnsiString -> String}
-  TIDOpImplicitAnsiStringToString = class(TSysOpImplicit<TIDOpImplicitAnsiStringToString>)
+  {implicit Class -> Class}
+  TSysImplicitClassToClass = class(TSysOpImplicit)
   public
-    function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
+    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
-  {implicit Char -> String}
-  TIDOpImplicitCharToString = class(TSysOpImplicit<TIDOpImplicitCharToString>)
+  {implicit String -> PChar}
+  TSysImplicitStringToPChar = class(TSysOpImplicit)
   public
     function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
-  end;
-
-  {implicit Char -> AnsiString}
-  TIDOpImplicitCharToAnsiString = class(TSysOpImplicit<TIDOpImplicitCharToAnsiString>)
-  public
-    function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
-  end;
-
-  {implicit Char -> AnsiChar}
-  TIDOpImplicitCharToAnsiChar = class(TSysOpImplicit<TIDOpImplicitCharToAnsiChar>)
-  public
-    function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
-    function Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; override;
-  end;
-
-  {implicit AnsiChar -> AnsiString}
-  TIDOpImplicitAnsiCharToAnsiString = class(TSysOpImplicit<TIDOpImplicitAnsiCharToAnsiString>)
-  public
-    function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
-  end;
-
-  {implicit AnsiChar -> String}
-  TIDOpImplicitAnsiCharToString = class(TSysOpImplicit<TIDOpImplicitAnsiCharToString>)
-  public
-    function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
-  end;
-
-  {implicit AnsiChar -> Char}
-  TIDOpImplicitAnsiCharToChar = class(TSysOpImplicit<TIDOpImplicitAnsiCharToChar>)
-  public
-    function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
-  end;
-
-  {implicit String -> AnsiString}
-  TIDOpImplicitStringToPChar = class(TSysOpImplicit<TIDOpImplicitStringToPChar>)
-  public
-    function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
-    function Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; override;
   end;
 
   {implicit String <- PChar}
-  TIDOpImplicitStringFromPChar = class(TSysOpImplicit<TIDOpImplicitStringToPChar>)
-  public
-    function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
-  end;
-
-  {implicit MetaClass -> TGUID}
-  TIDOpImplicitMetaClassToGUID = class(TSysOpImplicit<TIDOpImplicitMetaClassToGUID>)
+  TSysImplicitStringFromPChar = class(TSysOpImplicit)
   public
     function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
   end;
 
   {implicit String -> TGUID}
-  TIDOpImplicitStringToGUID = class(TSysOpImplicit<TIDOpImplicitStringToGUID>)
+  TSysImplicitStringToGUID = class(TSysOpImplicit)
   public
-    function Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; override;
+    function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
+  end;
+
+  {implicit String <- Any}
+  TSysImplicitStringFromAny = class(TSysOpImplicit)
+  public
+    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
+  {implicit AnsiString -> String}
+  TSysImplicitAnsiStringToString = class(TSysOpImplicit)
+  public
+    function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
+  end;
+
+  {implicit Char -> String}
+  TSysImplicitCharToString = class(TSysOpImplicit)
+  public
+    function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
+  end;
+
+  {implicit Char -> AnsiString}
+  TSysImplicitCharToAnsiString = class(TSysOpImplicit)
+  public
+    function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
+  end;
+
+  {implicit Char -> AnsiChar}
+  TSysImplicitCharToAnsiChar = class(TSysOpImplicit)
+  public
+    function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
+  end;
+
+  {implicit AnsiChar -> AnsiString}
+  TSysImplicitAnsiCharToAnsiString = class(TSysOpImplicit)
+  public
+    function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
+  end;
+
+  {implicit AnsiChar -> String}
+  TSysImplicitAnsiCharToString = class(TSysOpImplicit)
+  public
+    function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
+  end;
+
+  {implicit AnsiChar -> Char}
+  TSysImplicitAnsiCharToChar = class(TSysOpImplicit)
+  public
+    function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
+  end;
+
+  {implicit MetaClass -> TGUID}
+  TSysImplicitMetaClassToGUID = class(TSysOpImplicit)
+  public
     function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
   end;
 
   {implicit Closure -> TMethod}
-  TIDOpImplicitClosureToTMethod = class(TSysOpImplicit<TIDOpImplicitClosureToTMethod>)
+  TSysImplicitClosureToTMethod = class(TSysOpImplicit)
   public
     function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
   end;
 
-  {implicit DynArray -> Set}
-  TIDOpImplicitDynArrayToSet = class(TSysOpImplicit<TIDOpImplicitDynArrayToSet>)
-  public
-    function Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; override;
-    function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
-  end;
-
-  {implicit Any -> Variant}
-  TIDOpImplicitAnyToVariant = class(TSysOpImplicit<TIDOpImplicitAnyToVariant>)
+  {implicit Variant <- Any}
+  TSysImplicitVariantFromAny = class(TSysOpImplicit)
   public
     function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
   end;
 
   {implicit Variant -> Any}
-  TIDOpImplicitVariantToAny = class(TSysOpImplicit<TIDOpImplicitVariantToAny>)
+  TSysImplicitVariantToAny = class(TSysOpImplicit)
   public
     function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
   end;
 
-  {implicit Variant -> Untyped}
-  TIDOpImplicitAnyToUntyped = class(TSysOpImplicit<TIDOpImplicitAnyToUntyped>)
+  {implicit Untyped <- Any}
+  TSysImplicitUntypedFromAny = class(TSysOpImplicit)
   public
-    function Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; override;
-    function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
+    function Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean; override;
   end;
 
   {implicit Array -> Any}
-  TSysImplicitArrayToAny = class(TSysOpImplicit<TSysImplicitArrayToAny>)
+  TSysImplicitArrayToAny = class(TSysOpImplicit)
   public
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
   {implicit Pointer -> Any}
-  TIDOpImplicitPointerToAny = class(TSysOpImplicit<TIDOpImplicitPointerToAny>)
+  TSysImplicitPointerToAny = class(TSysOpImplicit)
   public
     function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
-  {implicit String <- Any}
-  TSysImplicitStringFromAny = class(TSysOpImplicit<TSysImplicitStringFromAny>)
-  public
-    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
-  end;
-
-  {implicit String <- PChar}
-  TSysImplicitClassToClass = class(TSysOpImplicit<TSysImplicitClassToClass>)
-  public
-    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
-  end;
-
   {implicit Range <- Any}
-  TSysImplicitRangeFromAny = class(TSysOpImplicit<TSysImplicitRangeFromAny>)
+  TSysImplicitRangeFromAny = class(TSysOpImplicit)
   public
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
@@ -196,83 +172,83 @@ type
   /// EXPLICIT
   ///////////////////////////////////////////////////////////////////////////////////////////
 
-  {explicit Int -> Enum}
-  TIDOpExplicitIntToEnum = class(TSysOpImplicit<TIDOpExplicitIntToEnum>)
+  {explicit Enum -> Any}
+  TSysExplicitEnumToAny = class(TSysOpExplisit)
   public
-    function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
+    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
-  {explicit Any -> TProc}
-  TIDOpExplicitTProcFromAny = class(TSysOpImplicit<TIDOpExplicitTProcFromAny>)
+  {explicit Enum <- Any}
+  TSysExplicitEnumFromAny = class(TSysOpExplisit)
+  public
+    function Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean; override;
+  end;
+
+  {explicit TProc <- Any}
+  TSysExplicitTProcFromAny = class(TSysOpImplicit)
   public
     function Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; override;
     function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
-  {explicit Class of -> Pointer type}
-  TIDOpExplicitClassOfToAny = class(TSysOpImplicit<TIDOpExplicitClassOfToAny>)
+  {explicit Class of -> Any}
+  TSysExplicitClassOfToAny = class(TSysOpImplicit)
   public
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
   {explicit Class of <- Any}
-  TSysExplicitClassOfFromAny = class(TSysOpExplisit<TSysExplicitClassOfFromAny>)
-  public
-    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
-  end;
-
-  {explicit Enum -> Any}
-  TSysExplicitEnumToAny = class(TSysOpExplisit<TSysExplicitEnumToAny>)
+  TSysExplicitClassOfFromAny = class(TSysOpExplisit)
   public
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
   {explicit AnsiString <- Any}
-  TSysExplicitAnsiStringFromAny = class(TSysOpExplisit<TSysExplicitAnsiStringFromAny>)
+  TSysExplicitAnsiStringFromAny = class(TSysOpExplisit)
   public
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
     function Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; override;
   end;
 
   {explicit String <- Any}
-  TSysExplicitStringFromAny = class(TSysOpExplisit<TSysExplicitStringFromAny>)
+  TSysExplicitStringFromAny = class(TSysOpExplisit)
   public
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
   {explicit Pointer -> Any}
-  TSysExplictPointerToAny = class(TSysOpExplisit<TSysExplictPointerToAny>)
+  TSysExplictPointerToAny = class(TSysOpExplisit)
   public
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
   {explicit Pointer <- Any}
-  TSysExplictPointerFromAny = class(TSysOpExplisit<TSysExplictPointerFromAny>)
+  TSysExplictPointerFromAny = class(TSysOpExplisit)
   public
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
   {explicit Untyped -> Any}
-  TSysExplicitUntypedToAny = class(TSysOpExplisit<TSysExplicitUntypedToAny>)
+  TSysExplicitUntypedToAny = class(TSysOpExplisit)
   public
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
   {explicit Char -> Any}
-  TSysExplicitCharToAny = class(TSysOpExplisit<TSysExplicitCharToAny>)
+  TSysExplicitCharToAny = class(TSysOpExplisit)
   public
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
   {explicit Range <- Any}
-  TSysExplicitRangeFromAny = class(TSysOpExplisit<TSysExplicitRangeFromAny>)
+  TSysExplicitRangeFromAny = class(TSysOpExplisit)
   public
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
   {explicit Record <- Any}
-  TSysExplicitRecordFromAny = class(TSysOpExplisit<TSysExplicitRecordFromAny>)
+  TSysExplicitRecordFromAny = class(TSysOpExplisit)
   public
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
@@ -282,26 +258,26 @@ type
   ///////////////////////////////////////////////////////////////////////////////////////////
 
   {operator Char IN Any}
-  TSysAnsiChar_In = class(TSysOpBinary<TSysAnsiChar_In>)
+  TSysAnsiChar_In = class(TSysOpBinary)
   public
     function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; override;
   end;
 
   {operator Ordinal IN any}
-  TSysOrdinal_In = class(TSysOpBinary<TSysOrdinal_In>)
+  TSysOrdinal_In = class(TSysOpBinary)
   public
     function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; override;
   end;
 
 
   {operator ptr IntDiv int}
-  TSys_Ptr_IntDiv_Int = class(TSysOpBinary<TSys_Ptr_IntDiv_Int>)
+  TSys_Ptr_IntDiv_Int = class(TSysOpBinary)
   public
     function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; override;
   end;
 
   {operator ptr IntDiv int}
-  TSys_StaticArray_Add = class(TSysOpBinary<TSys_StaticArray_Add>)
+  TSys_StaticArray_Add = class(TSysOpBinary)
   public
     function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; override;
   end;
@@ -316,7 +292,7 @@ uses AST.Delphi.DataTypes,
      AST.Pascal.Parser,
      AST.Delphi.System;
 
-{ TIDInternalOperator }
+{ TSysOperator }
 
 constructor TSysOperator.CreateAsIntOp;
 begin
@@ -324,45 +300,9 @@ begin
   ItemType := itSysOperator;
 end;
 
-{ TSysOpImplicit<TInstanceClass> }
+{ TSysTypeCast }
 
-class function TSysOpImplicit<TInstanceClass>.Instance: TInstanceClass;
-begin
-  Result := fInstance;
-  if not Assigned(Result) then
-  begin
-    TObject(Result) := Self.CreateAsIntOp();
-    fInstance := Result;
-  end;
-end;
-
-{ TSysOpExplisit<TInstanceClass> }
-
-class function TSysOpExplisit<TInstanceClass>.Instance: TInstanceClass;
-begin
-  Result := fInstance;
-  if not Assigned(Result) then
-  begin
-    TObject(Result) := Self.CreateAsIntOp();
-    fInstance := Result;
-  end;
-end;
-
-{ TSysOpBinary<TInstanceClass> }
-
-class function TSysOpBinary<TInstanceClass>.Instance: TInstanceClass;
-begin
-  Result := fInstance;
-  if not Assigned(Result) then
-  begin
-    TObject(Result) := Self.CreateAsIntOp();
-    fInstance := Result;
-  end;
-end;
-
-{ TIDInternalOpImplicit }
-
-function TSysOpImplicit.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+function TSysTypeCast.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
   if Check(SContext, Src.DataType, Dst) then
     Result := Dst
@@ -370,19 +310,19 @@ begin
     Result := nil;
 end;
 
-function TSysOpImplicit.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
+function TSysTypeCast.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
   Result := False;
 end;
 
-constructor TSysOpImplicit.CreateInternal(ResultType: TIDType);
+constructor TSysTypeCast.CreateInternal(ResultType: TIDType);
 begin
   CreateFromPool;
   ItemType := itSysOperator;
   Self.DataType := ResultType;
 end;
 
-function TSysOpImplicit.Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
+function TSysTypeCast.Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
 begin
   if Check(SContext, Src.DataType, Dst) then
     Result := TIDCastExpression.Create(Src, Dst)
@@ -390,9 +330,9 @@ begin
     Result := nil;
 end;
 
-{ TIDIntOpImplicitStringToAnsiString }
+{ TSysImplicitStringToAnsiString }
 
-function TIDOpImplicitStringToAnsiString.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+function TSysImplicitStringToAnsiString.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
   if Src.IsConstant then
   begin
@@ -402,16 +342,16 @@ begin
   Result := nil;
 end;
 
-{ TIDOpImplicitAnsiStringToString }
+{ TSysImplicitAnsiStringToString }
 
-function TIDOpImplicitAnsiStringToString.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+function TSysImplicitAnsiStringToString.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
   Result := Self;
 end;
 
-{ TIDOpImplicitCharToString }
+{ TSysImplicitCharToString }
 
-function TIDOpImplicitCharToString.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+function TSysImplicitCharToString.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
   if Src.IsConstant then
     Exit(SYSUnit._String)
@@ -419,9 +359,9 @@ begin
     Result := Self;
 end;
 
-{ TIDOpImplicitCharToAnsiString }
+{ TSysImplicitCharToAnsiString }
 
-function TIDOpImplicitCharToAnsiString.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+function TSysImplicitCharToAnsiString.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
   if Src.IsConstant then
     Exit(SYSUnit._AnsiString)
@@ -429,9 +369,9 @@ begin
     Result := Self;
 end;
 
-{ TIDOpImplicitCharToAnsiChar }
+{ TSysImplicitCharToAnsiChar }
 
-function TIDOpImplicitCharToAnsiChar.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+function TSysImplicitCharToAnsiChar.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
   if Src.IsConstant then
     Exit(SYSUnit._AnsiChar)
@@ -439,49 +379,30 @@ begin
     Result := Self;
 end;
 
-function TIDOpImplicitCharToAnsiChar.Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
-var
-  Chr: Char;
-  Constant: TIDCharConstant;
-begin
-  if Src.IsConstant then
-  begin
-    Constant := Src.AsCharConst;
-    Chr := Constant.Value;
-    if IsAnsiString(Chr) then
-    begin
-      Constant := TIDCharConstant.CreateAsAnonymous(Constant.Scope, SYSUnit._AnsiChar, Chr);
-      Result := TIDExpression.Create(Constant, Src.TextPosition);
-      Exit(Result);
-    end;
-  end;
-  Result := nil;
-end;
+{ TSysImplicitAnsiCharToAnsiString }
 
-{ TIDOpImplicitAnsiCharToAnsiString }
-
-function TIDOpImplicitAnsiCharToAnsiString.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+function TSysImplicitAnsiCharToAnsiString.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
   Result := nil;
 end;
 
-{ TIDOpImplicitAnsiCharToString }
+{ TSysImplicitAnsiCharToString }
 
-function TIDOpImplicitAnsiCharToString.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+function TSysImplicitAnsiCharToString.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
   Result := nil;
 end;
 
-{ TIDOpImplicitAnsiCharToChar }
+{ TSysImplicitAnsiCharToChar }
 
-function TIDOpImplicitAnsiCharToChar.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+function TSysImplicitAnsiCharToChar.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
   Result := nil;
 end;
 
-{ TIDInternalCastOperator }
+{ TSysImplicitMetaClassToGUID }
 
-function TIDOpImplicitMetaClassToGUID.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+function TSysImplicitMetaClassToGUID.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
   if Src.AsType.DataTypeID <> dtInterface then
     TASTDelphiErrors.INTF_TYPE_REQUIRED(Src);
@@ -489,9 +410,9 @@ begin
   Result := Dst;
 end;
 
-{ TIDIntOpImplicitStringToGUID }
+{ TSysImplicitStringToGUID }
 
-function TIDOpImplicitStringToGUID.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+function TSysImplicitStringToGUID.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 var
   GUID: TGUID;
 begin
@@ -505,61 +426,16 @@ begin
   Result := nil;
 end;
 
-function TIDOpImplicitStringToGUID.Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
-//var
-//  GUID: TGUID;
-//  Constant: TIDGuidConstant;
-//  UN: TNPUnit;
-begin
-  Assert(False);
-//  UN := GetUnit(SContext);
-//  if Src.IsConstant then
-//  begin
-//    if TryStrToGUID(Src.AsStrConst.Value, GUID) then
-//    begin
-//      Constant := TIDGuidConstant.CreateAnonymous(UN.ImplSection, SYSUnit._TGuid, GUID);
-//      UN.AddConstant(Constant);
-//      Result := TIDExpression.Create(Constant, Src.TextPosition);
-//      Exit(Result);
-//    end;
-//  end;
-  Result := nil;
-end;
+{ TSysImplicitClosureToTMethod }
 
-
-{ TIDIntOpImplicitClosureToTMethod }
-
-function TIDOpImplicitClosureToTMethod.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+function TSysImplicitClosureToTMethod.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
   Result := nil;
 end;
 
-{ TIDOpImplicitDynArrayToSet }
+{ TSysImplicitVariantFromAny }
 
-function TIDOpImplicitDynArrayToSet.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
-var
-  Expr: TIDExpression;
-begin
-  if Src.IsDynArrayConst then
-  begin
-    Expr := TASTDelphiUnit.ConstDynArrayToSet(SContext, Src, Dst as TIDSet);
-    Result := Expr.DataType;
-  end else
-    Result := nil;
-end;
-
-function TIDOpImplicitDynArrayToSet.Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
-begin
-  if Src.IsDynArrayConst then
-  begin
-    Result := TASTDelphiUnit.ConstDynArrayToSet(SContext, Src, Dst as TIDSet);
-  end else
-    Result := nil;
-end;
-
-{ TIDOpImplicitAnyToVariant }
-
-function TIDOpImplicitAnyToVariant.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+function TSysImplicitVariantFromAny.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
   if Src.DataTypeID in [dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean,
                         dtFloat32, dtFloat64, dtNativeInt, dtNativeUInt, dtChar, dtAnsiChar,
@@ -569,9 +445,9 @@ begin
     Result := nil;
 end;
 
-{ TIDOpImplicitVariantToAny }
+{ TSysImplicitVariantToAny }
 
-function TIDOpImplicitVariantToAny.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+function TSysImplicitVariantToAny.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
   if Dst.DataTypeID in [dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean,
                         dtFloat32, dtFloat64, dtNativeInt, dtNativeUInt, dtChar, dtAnsiChar,
@@ -581,24 +457,24 @@ begin
     Result := nil;
 end;
 
-{ TIDOpExplicitIntToEnum }
+{ TSysExplicitEnumFromAny }
 
-function TIDOpExplicitIntToEnum.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+function TSysExplicitEnumFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
-  if Src.DataTypeID in [dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64] then
-    Result := Dst
-  else
-    Result := nil;
+  Result := Src.IsOrdinal;
 end;
 
-{ TIDOpExplicitTProcFromAny }
+{ TSysExplicitTProcFromAny }
 
-function TIDOpExplicitTProcFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
+function TSysExplicitTProcFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
-  Result := (Dst.DataTypeID = dtPointer) and (Src as TIDProcType).IsStatic;
+  Result := (Src.DataTypeID = dtProcType) or
+            (
+              (Src.DataTypeID = dtPointer) and (Dst as TIDProcType).IsStatic
+            );
 end;
 
-function TIDOpExplicitTProcFromAny.Match(const SContext: TSContext; const Src: TIDExpression;
+function TSysExplicitTProcFromAny.Match(const SContext: TSContext; const Src: TIDExpression;
                                          const Dst: TIDType): TIDExpression;
 begin
   if Src.ItemType = itProcedure then
@@ -617,7 +493,7 @@ begin
     Result := nil;
 end;
 
-function TIDOpExplicitTProcFromAny.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+function TSysExplicitTProcFromAny.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
   if (Src.DataTypeID = dtPointer) and (Dst as TIDProcType).IsStatic then
     Result := Dst
@@ -632,40 +508,30 @@ begin
   Result := Dst.IsOrdinal;
 end;
 
-{ TIDOpImplicitStringToPChar }
+{ TSysImplicitStringToPChar }
 
-function TIDOpImplicitStringToPChar.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+function TSysImplicitStringToPChar.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
   Result := Dst;
 end;
 
-function TIDOpImplicitStringToPChar.Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
-begin
-  Result := Src;
-end;
+{ TSysImplicitUntypedFromAny }
 
-{ TIDOpImplicitAnyToUntyped }
-
-function TIDOpImplicitAnyToUntyped.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+function TSysImplicitUntypedFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
-  Result := Dst;
-end;
-
-function TIDOpImplicitAnyToUntyped.Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
-begin
-  Result := TIDCastExpression.Create(Src.Declaration, Dst, Src.TextPosition);
+  Result := True;
 end;
 
 { TIDOpExplicitClassOfToPointer }
 
-function TIDOpExplicitClassOfToAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
+function TSysExplicitClassOfToAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
-  Result := Dst.DataTypeID = dtPointer;
+  Result := Dst.DataTypeID in [dtClassOf, dtPointer];
 end;
 
-{ TIDOpImplicitPointerToAny }
+{ TSysImplicitPointerToAny }
 
-function TIDOpImplicitPointerToAny.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+function TSysImplicitPointerToAny.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
   if Dst.DataTypeID in [dtPointer, dtPAnsiChar, dtPWideChar] then
     Result := Dst
@@ -673,7 +539,7 @@ begin
     Result := nil;
 end;
 
-function TIDOpImplicitPointerToAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
+function TSysImplicitPointerToAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
   Result := Dst.DataTypeID = dtPointer;
 end;
@@ -709,7 +575,7 @@ end;
 
 function TSysExplicitAnsiStringFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
-  Result := SYSUnit._PAnsiCharType = Src;
+  Result := SYSUnit._PAnsiChar = Src;
 end;
 
 function TSysExplicitAnsiStringFromAny.Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
@@ -767,9 +633,9 @@ begin
 end;
 
 
-{ TIDOpImplicitStringFromPChar }
+{ TSysImplicitStringFromPChar }
 
-function TIDOpImplicitStringFromPChar.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+function TSysImplicitStringFromPChar.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
   Result := Src.DataType;
 end;
@@ -824,7 +690,11 @@ end;
 
 function TSysImplicitStringFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
-  Result := TSysExplicitStringFromAny.Instance.Check(SContext, Src, Dst);
+  Result := (Src.DataTypeID = dtAnsiString) or
+            (Src.DataTypeID in [dtPointer, dtPAnsiChar, dtPWideChar]) or
+            (
+              (Src.DataTypeID = dtStaticArray) and (TIDArray(Src).ElementDataType.DataTypeID = dtChar)
+            );
 end;
 
 { TSysImplicitClassToClass }
@@ -855,5 +725,14 @@ begin
   Result := Src.IsOrdinal;
 end;
 
+{ TSysTypeCast_IsOrdinal }
+
+function TSysTypeCast_IsOrdinal.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
+begin
+  Result := Src.IsOrdinal;
+end;
+
+
 end.
+
 

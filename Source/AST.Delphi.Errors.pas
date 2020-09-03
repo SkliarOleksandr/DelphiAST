@@ -38,7 +38,7 @@ resourcestring
     // overload:
   sOverloadedMustBeMarked = 'Overloaded entry "%s" must be marked with the "overload" directive';
   sErrorOverload = '%s: There is no overload version with such parameters';
-  sAmbiguousOverloadedCallFmt = 'Ambiguous overloaded call "%s"';
+  sAmbiguousOverloadedCallFmt = 'Ambiguous overloaded call, declarations: %s';
   sInvalidIndex = 'Index is out of bounds';
   sNotAllowedHere = 'Not allowed here: "%s"';
   sUnexpectedEndOfFile = 'Unexpected end of file';
@@ -241,8 +241,8 @@ type
     class procedure PROC_OR_TYPE_REQUIRED(const ID: TIdentifier); static;
     class procedure CANNOT_ACCESS_TO_WRITEONLY_PROPERTY(const Expr: TIDExpression); static;
     class procedure CANNOT_MODIFY_READONLY_PROPERTY(const Expr: TIDExpression); static;
-    class procedure OVERLOAD(CallExpr: TIDExpression); static;
-    class procedure AMBIGUOUS_OVERLOAD_CALL(CallExpr: TIDExpression); static;
+    class procedure NO_OVERLOAD(CallExpr: TIDExpression); static;
+    class procedure AMBIGUOUS_OVERLOAD_CALL(CallExpr: TIDExpression); overload; static;
     class procedure INCOMPLETE_PROC(Decl: TIDDeclaration); static;
     class procedure NO_OVERLOAD_OPERATOR_FOR_TYPES(Op: TOperatorID; Left, Right: TIDExpression); overload; static;
     class procedure NO_OVERLOAD_OPERATOR_FOR_TYPES(Op: TOperatorID; Right: TIDExpression); overload;
@@ -875,7 +875,7 @@ begin
   AbortWork(sIdentifierHasNoMembersFmt, [Decl.DisplayName], Lexer.PrevPosition);
 end;
 
-class procedure TASTDelphiErrors.OVERLOAD(CallExpr: TIDExpression);
+class procedure TASTDelphiErrors.NO_OVERLOAD(CallExpr: TIDExpression);
 begin
   AbortWork(sErrorOverload, [CallExpr.Declaration.Name], CallExpr.TextPosition);
 end;

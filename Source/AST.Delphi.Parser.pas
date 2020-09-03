@@ -3313,9 +3313,9 @@ begin
 
   // ищем явно определенный implicit у источника
   Decl := SDataType.GetImplicitOperatorTo(Dest);
-  if Decl is TSysOpImplicit then
+  if Decl is TSysTypeCast then
   begin
-    Decl := TSysOpImplicit(Decl).Check(SContext, Source, Dest);
+    Decl := TSysTypeCast(Decl).Check(SContext, Source, Dest);
     if Assigned(Decl) then
       Exit(Source);
     Decl := nil;
@@ -3396,9 +3396,9 @@ begin
         end;
       end;
     end else
-    if Decl is TSysOpImplicit then
+    if Decl is TSysTypeCast then
     begin
-      Result := TSysOpImplicit(Decl).Match(SContext, Source, Dest);
+      Result := TSysTypeCast(Decl).Match(SContext, Source, Dest);
       if Assigned(Result) then
         Exit;
     end;
@@ -3687,6 +3687,26 @@ begin
 end;
 
 function TASTDelphiUnit.MatchOverloadProc(Item: TIDExpression; const CallArgs: TIDExpressions; CallArgsCount: Integer): TIDProcedure;
+
+  procedure AbortWithAmbiguousOverload(AmbiguousCnt: Integer; AmbiguousRate: Integer);
+  var
+    Str, Args: string;
+    ProcItem: PASTProcMatchItem;
+  begin
+    for var i := 0 to AmbiguousCnt - 1 do
+    begin
+      ProcItem := Addr(fProcMatches[i]);
+      if ProcItem.TotalRate = AmbiguousRate then
+        Str := Str + #13#10'  ' + ProcItem.Decl.DisplayName;
+    end;
+    for var i := 0 to CallArgsCount - 1 do
+      Args := AddStringSegment(Args, CallArgs[i].DataType.DisplayName, ', ');
+
+    Str := Str + #13#10'  Arguments: (' + Args + ')';
+
+    AbortWork(sAmbiguousOverloadedCallFmt, [Str], Item.TextPosition);
+  end;
+
 const
   cRateFactor = 1000000;                // multiplication factor for total rate calculdation
 var
@@ -3826,12 +3846,10 @@ begin
         AmbiguousRate := curProcMatchItem.TotalRate;
       end;
     end;
-    // todo: using AmbiguousRate as key we can log all ambiguous decls
     if AmbiguousRate > 0 then
-      ERRORS.AMBIGUOUS_OVERLOAD_CALL(Item);
-
+      AbortWithAmbiguousOverload(MatchedCount, AmbiguousRate);
   end else
-    ERRORS.OVERLOAD(Item)
+    ERRORS.NO_OVERLOAD(Item)
 end;
 
 function TASTDelphiUnit.MatchBinarOperatorWithImplicit(const SContext: TSContext; Op: TOperatorID; var Left,
@@ -3907,9 +3925,9 @@ begin
   Result := SrcDataType.GetExplicitOperatorTo(DstDataType);
   if Assigned(Result) then
   begin
-    if Result is TSysOpImplicit then
+    if Result is TSysTypeCast then
     begin
-      Result := TSysOpImplicit(Result).Check(SContext, Source, DstDataType);
+      Result := TSysTypeCast(Result).Check(SContext, Source, DstDataType);
       if Assigned(Result) then
         Exit;
     end else
@@ -3921,9 +3939,9 @@ begin
     Result := DstDataType.GetExplicitOperatorFrom(SrcDataType);
     if Assigned(Result) then
     begin
-      if Result is TSysOpImplicit then
+      if Result is TSysTypeCast then
       begin
-        if TSysOpImplicit(Result).Check(Scontext, DstDataType, SrcDataType) then
+        if TSysTypeCast(Result).Check(Scontext, DstDataType, SrcDataType) then
           Exit(SrcDataType);
       end;
     end;
@@ -3947,9 +3965,9 @@ begin
   ExplicitOp := SrcDataType.GetExplicitOperatorTo(DstDataType);
   if Assigned(ExplicitOp) then
   begin
-    if ExplicitOp is TSysOpExplisit then
+    if ExplicitOp is TSysTypeCast then
     begin
-      if TSysOpExplisit(ExplicitOp).Check(SContext, SrcDataType, DstDataType) then
+      if TSysTypeCast(ExplicitOp).Check(SContext, SrcDataType, DstDataType) then
         Exit(True);
     end else
       Exit(True);
@@ -3960,9 +3978,9 @@ begin
     ExplicitOp := DstDataType.GetExplicitOperatorFrom(SrcDataType);
     if Assigned(ExplicitOp) then
     begin
-      if ExplicitOp is TSysOpExplisit then
+      if ExplicitOp is TSysTypeCast then
       begin
-        if TSysOpExplisit(ExplicitOp).Check(SContext, SrcDataType, DstDataType) then
+        if TSysTypeCast(ExplicitOp).Check(SContext, SrcDataType, DstDataType) then
           Exit(True);
       end else
         Exit(True);
@@ -4134,30 +4152,30 @@ begin
 
   // ищем явно определенный implicit у источника
   Result := SDataType.GetImplicitOperatorTo(Dest);
-  if Result is TSysOpImplicit then
-    Result := TSysOpImplicit(Result).Check(SContext, Source, Dest);
+  if Result is TSysTypeCast then
+    Result := TSysTypeCast(Result).Check(SContext, Source, Dest);
 
   if Assigned(Result) then
     Exit;
 
   // ищем явно определенный implicit у приемника
   Result := Dest.GetImplicitOperatorFrom(SDataType);
-  if Result is TSysOpImplicit then
-    Result := TSysOpImplicit(Result).Check(SContext, Source, Dest);
+  if Result is TSysTypeCast then
+    Result := TSysTypeCast(Result).Check(SContext, Source, Dest);
   if Assigned(Result) then
     Exit;
 
   // если не нашли точных имплиситов, ищем подходящий (у источника)
   Result := SDataType.FindImplicitOperatorTo(Dest);
-  if Result is TSysOpImplicit then
-    Result := TSysOpImplicit(Result).Check(SContext, Source, Dest);
+  if Result is TSysTypeCast then
+    Result := TSysTypeCast(Result).Check(SContext, Source, Dest);
   if Assigned(Result) then
     Exit;
 
   // если не нашли точных имплиситов, ищем подходящий (у приемника)
   Result := Dest.FindImplicitOperatorFrom(SDataType);
-  if Result is TSysOpImplicit then
-    Result := TSysOpImplicit(Result).Check(SContext, Source, Dest);
+  if Result is TSysTypeCast then
+    Result := TSysTypeCast(Result).Check(SContext, Source, Dest);
   if Assigned(Result) then
     Exit;
 
@@ -5435,7 +5453,7 @@ begin
     end else
     if OperatorDecl.ItemType = itSysOperator then
     begin
-      ResExpr := TSysOpExplisit(OperatorDecl).Match(SContext, SrcExpr, DstExpression.AsType);
+      ResExpr := TSysTypeCast(OperatorDecl).Match(SContext, SrcExpr, TargetType);
       if not Assigned(ResExpr) then
         ERRORS.INVALID_EXPLICIT_TYPECAST(SrcExpr, TargetType);
     end;
@@ -8744,7 +8762,6 @@ begin
   // создаем анонимный тип константного массива
   AType := TIDDynArray.CreateAsAnonymous(Scope);
   AType.ElementDataType := ElDt;
-  AType.OverloadImplicitTo(dtSet, TIDOpImplicitDynArrayToSet.CreateInternal(nil));
   // добовляем его в пул
   AddType(AType);
   // создаем анонимный константный динамический массив

@@ -701,29 +701,13 @@ end;
 
 function GetValueDataType(const Value: Int64): TDataTypeID;
 begin
-  if Value >= 0 then begin
-    if Value <= MaxUInt8 then
-      Result := dtUInt8
-    else
-    if Value <= MaxUInt16 then
-      Result := dtUInt16
-    else
-    if Value <= MaxUInt32 then
-      Result := dtUInt32
-    else
-      Result := dtUInt64;
-  end else begin
-    if Value >= MinInt8 then
-      Result := dtInt8
-    else
-    if Value >= MinInt16 then
-      Result := dtInt16
-    else
-    if Value >= MinInt32 then
-      Result := dtInt32
-    else
-      Result := dtInt64;
-  end;
+  if Value > MaxUInt32 then
+    Result := dtInt64
+  else
+  if Value > MaxInt32 then
+    Result := dtUInt32
+  else
+    Result := dtInt32;
 end;
 
 function GetValueDataType(const Value: Double): TDataTypeID;

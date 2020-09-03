@@ -197,7 +197,7 @@ end;
 const cRTLUsesSource =
 'unit RTLParseTest; '#10#13 +
 'interface'#10#13 +
-'uses Winapi.Windows;'#10#13 +
+'uses Winapi.Messages;'#10#13 +
 'implementation'#10#13 +
 'end.';
 

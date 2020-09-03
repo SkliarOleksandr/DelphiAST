@@ -337,8 +337,8 @@ begin
   Rate(dtInt16, [dtInt16, dtInt32, dtInt64, dtFloat32, dtFloat64, dtVariant]);
   RateWDL(dtInt16, [dtUInt32, dtUInt64, dtUInt16, dtInt8, dtUInt8]);
   // Int32 //////////////////////////////////////////
-  Rate(dtInt32, [dtInt32, dtInt64, dtFloat64, dtVariant]);
-  RateWDL(dtInt32, [dtUInt32, dtFloat32, dtUInt64, dtInt16, dtUInt16, dtInt8, dtUInt8]);
+  Rate(dtInt32, [dtInt32, dtNativeInt, dtInt64, dtFloat64, dtVariant]);
+  RateWDL(dtInt32, [dtUInt32, dtNativeUInt, dtFloat32, dtUInt64, dtInt16, dtUInt16, dtInt8, dtUInt8]);
   // Int64 //////////////////////////////////////////
   Rate(dtInt64, [dtInt64, dtVariant]);
   RateWDL(dtInt64, [dtUInt64, dtFloat64, dtInt32, dtFloat32, dtUInt32, dtInt16, dtUInt16, dtInt8, dtUInt8]);
@@ -349,11 +349,17 @@ begin
   Rate(dtUInt16, [dtUInt16, dtUInt32, dtInt32, dtInt64, dtUInt64, dtFloat32, dtFloat64, dtVariant]);
   RateWDL(dtUInt16, [dtInt16, dtUInt8, dtInt8]);
   // UInt32 //////////////////////////////////////////
-  Rate(dtUInt32, [dtUInt32, dtInt64, dtUInt64, dtFloat64, dtVariant]);
-  RateWDL(dtUInt32, [dtInt32, dtFloat32, dtUInt16, dtInt16, dtUInt8, dtInt8]);
+  Rate(dtUInt32, [dtUInt32, dtNativeUInt, dtInt64, dtUInt64, dtFloat64, dtVariant]);
+  RateWDL(dtUInt32, [dtInt32, dtNativeInt, dtFloat32, dtUInt16, dtInt16, dtUInt8, dtInt8]);
   // UInt64 //////////////////////////////////////////
   Rate(dtUInt64, [dtUInt64, dtVariant]);
   RateWDL(dtUInt64, [dtInt64, dtFloat64, dtInt32, dtUInt32, dtFloat32, dtInt16, dtUInt16, dtInt8, dtUInt8]);
+  // NativeInt //////////////////////////////////////////
+  Rate(dtNativeInt, [dtNativeInt, dtInt32, dtInt64]);
+  RateWDL(dtNativeInt, [dtNativeUInt, dtUInt32, dtUInt64, dtInt16, dtUInt16, dtInt8, dtUInt8, dtFloat64, dtFloat32]);
+  // NativeUInt //////////////////////////////////////////
+  Rate(dtNativeUInt, [dtNativeUInt, dtUInt32, dtUInt64]);
+  RateWDL(dtNativeUInt, [dtInt64, dtNativeInt, dtInt32, dtInt16, dtUInt16, dtInt8, dtUInt8, dtFloat64, dtFloat32]);
   // Float32 /////////////////////////////////////////
   Rate(dtFloat32, [dtFloat32, dtFloat64, dtVariant]);
   // Float64 /////////////////////////////////////////

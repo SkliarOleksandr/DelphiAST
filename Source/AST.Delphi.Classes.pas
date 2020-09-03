@@ -370,7 +370,6 @@ type
 
     procedure CreateStandardOperators; virtual;
 
-
     property GenericDescriptor: PGenericDescriptor read FGenericDescriptor write SetGenericDescriptor;
     property GenericNextOverload: TIDType read FGenericNextOverload write FGenericNextOverload;
     property InitProc: TIDProcedure read FInitProc write FInitProc;
@@ -766,6 +765,7 @@ type
     constructor CreateAsAnonymous(Scope: TScope); override;
     ////////////////////////////////////////////////////////////////////////
     procedure AddParam(const ID: TIdentifier; DataType: TIDType);
+    procedure CreateStandardOperators; override;
     property Params: TVariableList read FParams write FParams;
     property ResultType: TIDType read FResultType write FResultType;
     property IsStatic: Boolean read FIsStatic write FIsStatic;
@@ -4132,7 +4132,7 @@ begin
   OverloadImplicitTo(Self);
   OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
   OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
-  OverloadImplicitToAny(TSysImplicitArrayToAny.Instance);
+  OverloadImplicitToAny(SYSUnit.Operators.ImplicitArrayToAny);
 end;
 
 constructor TIDArray.CreateAnonymousStatic1Dim(Scope: TScope; ElementDataType: TIDType; Length: Integer; out BoundType: TIDOrdinal);
@@ -4388,10 +4388,9 @@ begin
   OverloadBinarOperator2(opSubtract, SYSUnit._UInt64, Self);
   OverloadBinarOperator2(opSubtract, SYSUnit._NativeUInt, Self);
 
-  OverloadImplicitToAny(TIDOpImplicitPointerToAny.Instance);
-
-  OverloadExplicitToAny(TSysExplictPointerToAny.Instance);
-  OverloadExplicitFromAny(TSysExplictPointerFromAny.Instance);
+  OverloadImplicitToAny(SYSUnit.Operators.ImplicitPointerToAny);
+  OverloadExplicitToAny(SYSUnit.Operators.ExplicitPointerToAny);
+  OverloadExplicitFromAny(SYSUnit.Operators.ExplicitPointerFromAny);
 end;
 
 { TIDRecordType }
@@ -4402,8 +4401,7 @@ begin
   OverloadImplicitTo(Self);
   OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
   OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
-
-  fSysExplicitFromAny := TSysExplicitRecordFromAny.Instance;
+  fSysExplicitFromAny := SYSUnit.Operators.ExplicitRecordFromAny;
 end;
 
 function TIDRecord.GetDataSize: Integer;
@@ -4467,8 +4465,8 @@ begin
   OverloadBinarOperator2(opLessOrEqual, Self, SYSUnit._Boolean);
   OverloadBinarOperator2(opGreater, Self, SYSUnit._Boolean);
   OverloadBinarOperator2(opGreaterOrEqual, Self, SYSUnit._Boolean);
-  OverloadExplicitFromAny(TIDOpExplicitIntToEnum.Instance);
-  OverloadExplicitToAny(TSysExplicitEnumToAny.Instance);
+  OverloadExplicitFromAny(SYSUnit.Operators.ExplicitEnumFromAny);
+  OverloadExplicitToAny(SYSUnit.Operators.ExplicitEnumToAny);
 end;
 
 function TIDEnum.GetDataSize: Integer;
@@ -5104,8 +5102,8 @@ begin
   OverloadBinarOperator2(opLessOrEqual, Self, SYSUnit._Boolean);
   OverloadBinarOperator2(opGreater, Self, SYSUnit._Boolean);
   OverloadBinarOperator2(opGreaterOrEqual, Self, SYSUnit._Boolean);
-  OverloadExplicitFromAny(TSysExplicitRangeFromAny.Instance);
-  OverloadImplicitFromAny(SYSUnit.SysOperators.ImplicitRangeFromAny);
+  OverloadExplicitFromAny(SYSUnit.Operators.ExplicitRangeFromAny);
+  OverloadImplicitFromAny(SYSUnit.Operators.ImplicitRangeFromAny);
 end;
 
 function TIDRangeType.GetDisplayName: string;
@@ -5131,19 +5129,22 @@ end;
 constructor TIDProcType.Create(Scope: TScope; const Identifier: TIdentifier);
 begin
   inherited Create(Scope, Identifier);
-  fSysExplicitFromAny := TIDOpExplicitTProcFromAny.Instance;
-  FSysImplicitFromAny := TIDOpExplicitTProcFromAny.Instance;
-
+  CreateStandardOperators;
   FDataTypeID := dtProcType;
 end;
 
 constructor TIDProcType.CreateAsAnonymous(Scope: TScope);
 begin
   inherited CreateAsAnonymous(Scope);
-  fSysExplicitFromAny := TIDOpExplicitTProcFromAny.Instance;
-  FSysImplicitFromAny := TIDOpExplicitTProcFromAny.Instance;
-
+  CreateStandardOperators;
   FDataTypeID := dtProcType;
+end;
+
+procedure TIDProcType.CreateStandardOperators;
+begin
+  inherited;
+  fSysExplicitFromAny := SYSUnit.Operators.ExplicitTProcFromAny;
+  FSysImplicitFromAny := SYSUnit.Operators.ExplicitTProcFromAny;
 end;
 
 function TIDProcType.GetDisplayName: string;
@@ -5292,7 +5293,7 @@ begin
     OverloadExplicitTo(SYSUnit._NativeUInt);
     OverloadExplicitFrom(SYSUnit._NativeUInt);
     OverloadExplicitFrom(SYSUnit._NativeInt);
-    OverloadImplicitTo(dtClass, TSysImplicitClassToClass.Instance);
+    OverloadImplicitTo(dtClass, SYSUnit.Operators.ImplicitClassToClass);
   end;
 end;
 
@@ -5587,8 +5588,8 @@ begin
   if not Assigned(SYSUnit) then
     Exit;
   inherited CreateStandardOperators;
-  OverloadExplicitToAny(TIDOpExplicitClassOfToAny.Instance);
-  OverloadExplicitFromAny(TSysExplicitClassOfFromAny.Instance);
+  OverloadExplicitToAny(SYSUnit.Operators.ExplicitClassOfToAny);
+  OverloadExplicitFromAny(SYSUnit.Operators.ExplicitClassOfFromAny);
 end;
 
 function TIDClassOf.GetDisplayName: string;
@@ -5770,7 +5771,7 @@ begin
   FDeclProc := DeclProc;
   FCapturedVars := TCapturedVars.Create(IDVarCompare);
   AddMethod(RunProc);
-  OverloadImplicitTo(dtProcType, TIDOpImplicitClosureToTMethod.Instance);
+  OverloadImplicitTo(dtProcType, SYSUnit.Operators.ImplicitClosureToTMethod);
 end;
 
 destructor TIDClosure.Destroy;
@@ -5902,7 +5903,7 @@ end;
 procedure TIDStaticArray.CreateStandardOperators;
 begin
   inherited;
-  AddBinarySysOperator(opAdd, SYSUnit.SysOperators.StaticArray_Add);
+  AddBinarySysOperator(opAdd, SYSUnit.Operators.StaticArray_Add);
 end;
 
 { TUnknownIDExpression }

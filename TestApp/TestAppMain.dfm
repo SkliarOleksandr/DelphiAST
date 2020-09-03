@@ -78,15 +78,12 @@ object frmTestAppMain: TfrmTestAppMain
           ''
           '')
         FontSmoothing = fsmNone
+        ExplicitLeft = -1
       end
     end
     object tsAST: TTabSheet
       Caption = 'AST'
       ImageIndex = 1
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object tvAST: TTreeView
         Left = 0
         Top = 0
@@ -100,10 +97,6 @@ object frmTestAppMain: TfrmTestAppMain
     object tsNameSpace: TTabSheet
       Caption = 'NameSpace'
       ImageIndex = 2
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 0
-      ExplicitHeight = 0
       object edAllItems: TSynEdit
         Left = 0
         Top = 0
