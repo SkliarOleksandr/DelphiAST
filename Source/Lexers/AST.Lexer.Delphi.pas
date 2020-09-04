@@ -156,6 +156,7 @@ type
     token_threadvar,                // keyword: threadvar
     token_label,                    // keyword: label
     token_goto,                     // keyword: goto
+    token_resourcestring,           // keyword: resourcestring
 
     token_cond_define,              // {$DEFINE...
     token_cond_else,                // {$ELSE...
@@ -452,6 +453,7 @@ begin
   RegisterToken('read', token_read);
   RegisterToken('record', token_record);
   RegisterToken('repeat', token_repeat);
+  RegisterToken('resourcestring', token_resourcestring);
   RegisterToken('reintroduce', token_reintroduce);
   RegisterToken('rol', token_rol);
   RegisterToken('ror', token_ror);

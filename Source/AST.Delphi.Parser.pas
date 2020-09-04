@@ -892,6 +892,8 @@ begin
     token_function: Result := ParseProcedure(Struct.Members, ptClassFunc, Struct);
     token_property: Result := ParseProperty(Struct);
     token_operator: Result := ParseOperator(Struct.Members, Struct);
+    token_constructor: Result := ParseProcedure(Struct.StaticMembers, ptClassConstructor, Struct);
+    token_destructor: Result := ParseProcedure(Struct.StaticMembers, ptClassDestructor, Struct);
     token_var: begin
       Lexer_NextToken(Scope);
       Result := ParseFieldsSection(Struct.Members, vLocal, Struct, True);
@@ -2238,6 +2240,11 @@ begin
         end;
         token_const: begin
           CheckIntfSectionMissing(Scope);
+          Token := ParseConstSection(Scope);
+        end;
+        token_resourcestring: begin
+          CheckIntfSectionMissing(Scope);
+          // todo: parse resourcestring
           Token := ParseConstSection(Scope);
         end;
         token_class: begin
@@ -5001,6 +5008,12 @@ begin
   begin
     // parse case lable const expression: (example: ... 1: (a: integer; b: integer ...
     Result := ParseConstExpression(Scope, Expr, ExprLValue);
+    if Result = token_coma then
+    begin
+      Result := Lexer_NextToken(Scope);
+      // just parse all lables for now
+      Continue;
+    end;
     Lexer_MatchToken(Result, token_colon);
     Lexer_ReadToken(Scope, token_openround);
     CaseSpace := Decl.AddCase();

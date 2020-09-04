@@ -181,6 +181,7 @@ begin
         procedure(const Module: TASTModule; const Decl: TASTDeclaration)
         begin
           edAllItems.Lines.Add(format('%s - %s.%s', [GetItemTypeName(TIDDeclaration(Decl).ItemType), Module.Name, GetDeclName(Decl)]));
+          Application.ProcessMessages;
         end);
     finally
       edAllItems.EndUpdate;
@@ -195,11 +196,11 @@ begin
 end;
 
 const cRTLUsesSource =
-'unit RTLParseTest; '#10#13 +
-'interface'#10#13 +
-'uses Winapi.Messages;'#10#13 +
-'implementation'#10#13 +
-'end.';
+  'unit RTLParseTest; '#10#13 +
+  'interface'#10#13 +
+  'uses System.SysUtils;'#10#13 +
+  'implementation'#10#13 +
+  'end.';
 
 
 procedure TfrmTestAppMain.OnProgress(const Module: IASTModule; Status: TASTProcessStatusClass);
@@ -247,6 +248,7 @@ begin
         procedure(const Module: TASTModule; const Decl: TASTDeclaration)
         begin
           edAllItems.Lines.Add(format('%s - %s.%s', [GetItemTypeName(TIDDeclaration(Decl).ItemType), Module.Name, GetDeclName(Decl)]));
+          Application.ProcessMessages;
         end);
     finally
       edAllItems.EndUpdate;
@@ -313,6 +315,7 @@ begin
         procedure(const Module: TASTModule; const Decl: TASTDeclaration)
         begin
           edAllItems.Lines.Add(format('%s - %s.%s', [GetItemTypeName(TIDDeclaration(Decl).ItemType), Module.Name, GetDeclName(Decl)]));
+          Application.ProcessMessages;
         end);
     finally
       edAllItems.EndUpdate;
