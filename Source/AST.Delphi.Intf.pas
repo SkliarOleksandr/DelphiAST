@@ -29,6 +29,8 @@ type
     _NativeUInt: TIDType;
     _Float32: TIDType;
     _Float64: TIDType;
+    _Float80: TIDType;
+    _Currency: TIDType;
     _Boolean: TIDType;
     _AnsiChar: TIDType;
     _Char: TIDType;
@@ -94,6 +96,8 @@ begin
     dtNativeUInt: Result := _NativeUInt;
     dtFloat32: Result := _Float32;
     dtFloat64: Result := _Float64;
+    dtFloat80: Result := _Float80;
+    dtCurrency: Result := _Currency;
     dtBoolean: Result := _Boolean;
     dtAnsiChar: Result := _AnsiChar;
     dtChar: Result := _Char;
@@ -107,6 +111,7 @@ begin
     dtGuid: Result := _GuidType;
     dtPointer: Result := _PointerType;
   else
+    Assert(False, 'Data Type is unknown');
     Result := nil;
   end;
 end;

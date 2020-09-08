@@ -5799,7 +5799,7 @@ var
   i: Integer;
   IntValue: Int64;
   Int32Value: Int32;
-  FltValue: Double;
+  FltValue: Extended;
   DataType: TIDType;
   Value: string;
   CItem: TIDConstant;
@@ -5842,6 +5842,8 @@ begin
       end;
     end;
     itFloat: begin
+      if Lexer_Line = 16131 then
+        sleep(1);
       FltValue := StrToFloat(Value);
       DataType := Sys.DataTypes[GetValueDataType(FltValue)];
       CItem := TIDFloatConstant.CreateAsAnonymous(Scope, DataType, FltValue);

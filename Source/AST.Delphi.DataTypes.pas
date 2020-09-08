@@ -48,6 +48,8 @@ type
     dtNativeUInt,   // NativeUInt
     dtFloat32,      // Single
     dtFloat64,      // Double
+    dtFloat80,      // Extended
+    dtCurrency,     // Currency
     dtBoolean,      // Boolean
     dtAnsiChar,     // ansi char
     dtChar,         // utf16 char
@@ -96,6 +98,8 @@ const
     {dtNativeUInt}  False,
     {dtFloat32}     False,
     {dtFloat64}     False,
+    {dtFloat80}     False,
+    {dtCurrency}    False,
     {dtBoolean}     False,
     {dtAnsiChar}    False,
     {dtChar}        False,
@@ -147,6 +151,8 @@ const
     {dtNativeUInt}  'NativeUInt',
     {dtFloat32}     'Float32',
     {dtFloat64}     'Float64',
+    {dtFloat80}     'Extended',
+    {dtCurrency}    'Currency',
     {dtBoolean}     'Boolean',
     {dtAnsiChar}    'AnsiChar',
     {dtChar}        'Char',
@@ -188,6 +194,8 @@ const
     {dtNativeUInt}  False,
     {dtFloat32}     False,
     {dtFloat64}     False,
+    {dtFloat80}     False,
+    {dtCurrency}    False,
     {dtBoolean}     False,
     {dtAnsiChar}    False,
     {dtChar}        False,
@@ -228,6 +236,8 @@ const
     {dtNativeUInt}  SizeOf(Pointer),
     {dtFloat32}     4,
     {dtFloat64}     8,
+    {dtFloat80}     10,
+    {dtCurrency}    8,
     {dtBoolean}     1,
     {dtAnsiChar}    1,
     {dtChar}        2, // UTF16
@@ -361,10 +371,15 @@ begin
   Rate(dtNativeUInt, [dtNativeUInt, dtUInt32, dtUInt64]);
   RateWDL(dtNativeUInt, [dtInt64, dtNativeInt, dtInt32, dtInt16, dtUInt16, dtInt8, dtUInt8, dtFloat64, dtFloat32]);
   // Float32 /////////////////////////////////////////
-  Rate(dtFloat32, [dtFloat32, dtFloat64, dtVariant]);
+  Rate(dtFloat32, [dtFloat32, dtFloat64, dtFloat80, dtCurrency, dtVariant]);
   // Float64 /////////////////////////////////////////
-  Rate(dtFloat64, [dtFloat64, dtVariant]);
-  RateWDL(dtFloat64, [dtFloat32]);
+  Rate(dtFloat64, [dtFloat64, dtFloat80, dtVariant]);
+  RateWDL(dtFloat64, [dtCurrency, dtFloat32]);
+  // Float80 /////////////////////////////////////////
+  Rate(dtFloat80, [dtFloat80, dtVariant]);
+  RateWDL(dtFloat80, [dtFloat64, dtCurrency, dtFloat32]);
+  // Currency /////////////////////////////////////////
+  Rate(dtCurrency, [dtFloat80, dtFloat64, dtFloat32, dtVariant]);
   // Boolean /////////////////////////////////////////
   Rate(dtBoolean, [dtBoolean, dtVariant]);
   // AnsiChar /////////////////////////////////////////

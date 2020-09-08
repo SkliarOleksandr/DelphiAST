@@ -842,7 +842,7 @@ type
   end;
 
   {константа с плавоющей запятой}
-  TIDFloatConstant = class(TIDXXXConstant<Double>)
+  TIDFloatConstant = class(TIDXXXConstant<Extended>)
   public
     //procedure WriteToStream(Stream: TStream; const Package: INPPackage); override;
     function ValueDataType: TDataTypeID; override;

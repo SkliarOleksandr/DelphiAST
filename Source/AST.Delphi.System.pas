@@ -183,6 +183,8 @@ type
     property _NativeUInt: TIDType read fDecls._NativeUInt write fDecls._NativeUInt;
     property _Float32: TIDType read fDecls._Float32 write fDecls._Float32;
     property _Float64: TIDType read fDecls._Float64 write fDecls._Float64;
+    property _Float80: TIDType read fDecls._Float80 write fDecls._Float80;
+    property _Currency: TIDType read fDecls._Currency write fDecls._Currency;
     property _Boolean: TIDType read fDecls._Boolean write fDecls._Boolean;
     property _AnsiChar: TIDType read fDecls._AnsiChar write fDecls._AnsiChar;
     property _Char: TIDType read fDecls._Char write fDecls._Char;
@@ -344,6 +346,8 @@ begin
   with _Float32 do begin
     OverloadImplicitTo(_Float32);
     OverloadImplicitTo(_Float64);
+    OverloadImplicitTo(_Float80);
+    OverloadImplicitTo(_Currency);
     OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   end;
 
@@ -351,6 +355,24 @@ begin
   with _Float64 do begin
     OverloadImplicitTo(_Float32);
     OverloadImplicitTo(_Float64);
+    OverloadImplicitTo(_Float80);
+    OverloadImplicitTo(_Currency);
+    OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
+  end;
+
+  // Float80
+  with _Float80 do begin
+    OverloadImplicitTo(_Float32);
+    OverloadImplicitTo(_Float64);
+    OverloadImplicitTo(_Currency);
+    OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
+  end;
+
+  // Currency
+  with _Currency do begin
+    OverloadImplicitTo(_Float32);
+    OverloadImplicitTo(_Float64);
+    OverloadImplicitTo(_Float80);
     OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   end;
 
@@ -845,6 +867,8 @@ begin
   _NativeUInt := RegisterOrdinal('NativeUInt', dtNativeUInt, 0, MaxUInt64);
   _Float32 := RegisterType('Single', TIDType, dtFloat32);
   _Float64 := RegisterType('Double', TIDType, dtFloat64);
+  _Float80 := RegisterType('Extended', TIDType, dtFloat80);
+  _Currency := RegisterType('Currency', TIDType, dtCurrency);
 
   //===============================================================
   _Boolean := RegisterOrdinal('Boolean', dtBoolean, 0, 1);
@@ -902,9 +926,6 @@ begin
   //===============================================================
 
   // Delphi system aliases
-  RegisterTypeAlias('Extended', _Float64);
-  RegisterTypeAlias('Currency', _Float64); // Let it be for now
-
   RegisterTypeAlias('LongInt', _Int32);
   RegisterTypeAlias('LongWord', _UInt32);
   RegisterTypeAlias('ShortInt', _Int8);

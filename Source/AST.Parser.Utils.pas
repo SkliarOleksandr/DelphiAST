@@ -32,6 +32,8 @@ const
   MinFloat32 = MinSingle;
   MaxFloat64 = MaxDouble;
   MinFloat64 = MinDouble;
+  MaxFloat80 = MaxExtended80;
+  MinFloat80 = MinExtended80;
 
   PTR_SIZE = Sizeof(Pointer);
 
@@ -191,7 +193,7 @@ function GetValueByteSize(const Value: Int64): Integer;
 function GetRangeByteSize(const HiBound: UInt64; const LoBound: Int64): Integer;
 
 function GetValueDataType(const Value: Int64): TDataTypeID; overload; inline;
-function GetValueDataType(const Value: Double): TDataTypeID; overload; inline;
+function GetValueDataType(const Value: Extended): TDataTypeID; overload; inline;
 function GetValueDataType(const Value: Char): TDataTypeID; overload; inline;
 
 function GetOffset(Base, Member: Pointer): NativeUint; inline;
@@ -710,12 +712,15 @@ begin
     Result := dtInt32;
 end;
 
-function GetValueDataType(const Value: Double): TDataTypeID;
+function GetValueDataType(const Value: Extended): TDataTypeID;
 begin
-  if (Value > MaxFloat32) or (Abs(Value) < MinFloat32) then
+  if Value = 0 then
     Result := dtFloat64
   else
-    Result := dtFloat32;
+  if (Value > MaxFloat64) or (Value < MinFloat64) then
+    Result := dtFloat80
+  else
+    Result := dtFloat64
 end;
 
 function GetValueDataType(const Value: Char): TDataTypeID;
