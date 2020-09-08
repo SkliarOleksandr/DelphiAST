@@ -855,13 +855,13 @@ end;
 procedure TSYSTEMUnit.RegisterTypes;
 begin
   //===============================================================
-  _Int8 := RegisterOrdinal('_Int8', dtInt8, MinInt8, MaxInt8);
-  _Int16 := RegisterOrdinal('_Int16', dtInt16, MinInt16, MaxInt16);
-  _Int32 := RegisterOrdinal('_Int32', dtInt32, MinInt32, MaxInt32);
+  _Int8 := RegisterOrdinal('ShortInt', dtInt8, MinInt8, MaxInt8);
+  _Int16 := RegisterOrdinal('SmallInt', dtInt16, MinInt16, MaxInt16);
+  _Int32 := RegisterOrdinal('Integer', dtInt32, MinInt32, MaxInt32);
   _Int64 := RegisterOrdinal('Int64', dtInt64, MinInt64, MaxInt64);
-  _UInt8 := RegisterOrdinal('_UInt8', dtUInt8, 0, MaxUInt8);
-  _UInt16 := RegisterOrdinal('_UInt16', dtUInt16, 0, MaxUInt16);
-  _UInt32 := RegisterOrdinal('_UInt32', dtUInt32, 0, MaxUInt32);
+  _UInt8 := RegisterOrdinal('Byte', dtUInt8, 0, MaxUInt8);
+  _UInt16 := RegisterOrdinal('Word', dtUInt16, 0, MaxUInt16);
+  _UInt32 := RegisterOrdinal('Cardinal', dtUInt32, 0, MaxUInt32);
   _UInt64 := RegisterOrdinal('UInt64', dtUInt64, 0, MaxUInt64);
   _NativeInt := RegisterOrdinal('NativeInt', dtNativeInt, MinInt64, MaxInt64);
   _NativeUInt := RegisterOrdinal('NativeUInt', dtNativeUInt, 0, MaxUInt64);
@@ -928,13 +928,7 @@ begin
   // Delphi system aliases
   RegisterTypeAlias('LongInt', _Int32);
   RegisterTypeAlias('LongWord', _UInt32);
-  RegisterTypeAlias('ShortInt', _Int8);
-  RegisterTypeAlias('SmallInt', _Int16);
-  RegisterTypeAlias('Integer', _Int32);
-  RegisterTypeAlias('Cardinal', _UInt32);
   RegisterTypeAlias('Comp', _Int64);
-  RegisterTypeAlias('Byte', _UInt8);
-  RegisterTypeAlias('Word', _UInt16);
   RegisterTypeAlias('_ShortString', _ShortString);
   RegisterTypeAlias('UnicodeString', _String);
   RegisterTypeAlias('WideChar', _Char);
