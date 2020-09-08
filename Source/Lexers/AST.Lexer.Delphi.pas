@@ -399,7 +399,7 @@ begin
   RegisterToken('div', token_div);
   RegisterToken('destructor', token_destructor);
   RegisterToken('deprecated', token_deprecated);
-  RegisterToken('default', token_default);
+  RegisterToken('default', token_default, TTokenClass.AmbiguousPriorityIdentifier);
   RegisterToken('dynamic', token_dynamic);
   RegisterToken('delayed', token_delayed);
   RegisterToken('end', token_end);

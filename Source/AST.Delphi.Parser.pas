@@ -721,6 +721,12 @@ begin
         InsertToScope(Scope, Decl);
     end;
     Result := ParseTypeSpec(TypeScope, DataType);
+    // case: array of const
+    if (DataType = nil) and (Result = token_const) then
+    begin
+      DataType := TSYSTEMUnit(SysUnit)._Variant;
+      Result := Lexer_NextToken(Scope);
+    end;
     TIDDynArray(Decl).ElementDataType := DataType;
   end;
 end;
@@ -830,6 +836,7 @@ begin
     Decl.IsPacked := IsPacked;
     AddType(Decl);
   end;
+  Result := CheckAndParseDeprecated(Scope, Result);
 end;
 
 function TASTDelphiUnit.ParseTypeDeclOther(Scope: TScope; const ID: TIdentifier; out Decl: TIDType): TTokenID;
@@ -930,7 +937,6 @@ end;
 
 function TASTDelphiUnit.ParseTypeSpec(Scope: TScope; out DataType: TIDType): TTokenID;
 var
-  ID: TIdentifier;
   Decl: TIDDeclaration;
   Empty: TIdentifier;
   SearchScope: TScope;
@@ -940,6 +946,7 @@ begin
   begin
     SearchScope := nil;
     while True do begin
+      var ID: TIdentifier;
       Lexer_ReadCurrIdentifier(ID);
       Result := Lexer_NextToken(Scope);
 
@@ -1016,10 +1023,15 @@ begin
       Exit;
     end;
     Exit;
+  end else
+  if Result = token_const then begin
+    // case: array of const
+    DataType := nil;
+    Exit;
   end;
   Result := ParseTypeDecl(Scope, nil, nil, Empty, DataType);
   if not Assigned(DataType) then
-    ERRORS.INVALID_TYPE_DECLARATION(ID);
+    ERRORS.INVALID_TYPE_DECLARATION;
 end;
 
 procedure TASTDelphiUnit.ParseUnitDecl(Scope: TScope);
@@ -5349,7 +5361,11 @@ begin
       token_property: Result := ParseProperty(Decl);
       token_operator: Result := ParseOperator(Decl.Members, Decl);
       token_constructor: Result := ParseProcedure(Decl.Members, ptConstructor, Decl);
-      token_destructor: Result := ParseProcedure(Decl.Members, ptDestructor, Decl);
+      token_destructor: begin
+        if Lexer_Line = 352 then
+          sleep(1);
+        Result := ParseProcedure(Decl.Members, ptDestructor, Decl);
+      end;
       token_var: begin
         Lexer_NextToken(Scope);
         Result := ParseFieldsSection(Decl.Members, Visibility, Decl, False);
@@ -6728,7 +6744,7 @@ begin
     begin
       if Assigned(Struct) then begin
         // метод
-        Struct.Members.AddProcedure(Proc);
+        Scope.AddProcedure(Proc);
         Proc.Struct := Struct;
         if Struct.DataTypeID = dtRecord then
         case ProcType of

@@ -278,7 +278,8 @@ type
     procedure DEFAULT_PROP_MUST_BE_ARRAY_PROP;
     procedure DEFAULT_PROP_ALREADY_EXIST(Prop: TIDProperty);
     procedure IMPORT_FUNCTION_CANNOT_BE_INLINE;
-    procedure INVALID_TYPE_DECLARATION(const ID: TIdentifier);
+    procedure INVALID_TYPE_DECLARATION(const ID: TIdentifier); overload;
+    procedure INVALID_TYPE_DECLARATION; overload;
     procedure EXPECTED_TOKEN(Token: TTokenID; ActulToken: TTokenID = token_unknown);
     procedure EXPECTED_KEYWORD_OR_ID;
     procedure IDENTIFIER_EXPECTED(ActualToken: TTokenID); overload;
@@ -600,6 +601,11 @@ end;
 procedure TASTDelphiErrors.INVALID_TYPE_DECLARATION(const ID: TIdentifier);
 begin
   AbortWork(sInvalidTypeDeclarationFmt, [ID.Name], ID.TextPosition);
+end;
+
+procedure TASTDelphiErrors.INVALID_TYPE_DECLARATION;
+begin
+  AbortWork('Invalid type declaration', Lexer.Position);
 end;
 
 class procedure TASTDelphiErrors.ID_REDECLARATED(Decl: TIDDeclaration);
