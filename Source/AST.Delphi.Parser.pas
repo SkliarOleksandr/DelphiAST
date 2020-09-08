@@ -8660,11 +8660,16 @@ begin
 end;
 
 function TASTDelphiUnit.ParseVarStaticArrayDefaultValue(Scope: TScope; ArrType: TIDArray; out DefaultValue: TIDExpression): TTokenID;
-  function DoParse(ArrType: TIDArray; DimIndex: Integer; const CArray: TIDDynArrayConstant): TTokenID;
+type
+  TDimensionsArray = array of Integer;
+
+  function DoParse(ArrType: TIDArray; const Dimensions: TDimensionsArray;
+                   DimIndex: Integer; const CArray: TIDDynArrayConstant): TTokenID;
   var
     i, c: Integer;
     Expr: TIDExpression;
     NewScope: TScope;
+    DimensionsCount: Integer;
   begin
     Result := Lexer_NextToken(Scope);
     // first element initializer
@@ -8682,19 +8687,21 @@ function TASTDelphiUnit.ParseVarStaticArrayDefaultValue(Scope: TScope; ArrType: 
     end else
       NewScope := Scope;
 
+    DimensionsCount := Length(Dimensions);
+
     Lexer_MatchToken(Result, token_openround);
-    c := ArrType.Dimensions[DimIndex].ElementsCount - 1;
+    c := Dimensions[DimIndex] - 1;
     for i := 0 to c do
     begin
-      if ArrType.DimensionsCount > (DimIndex + 1) then
-        Result := DoParse(ArrType, DimIndex + 1, CArray)
+      if DimensionsCount > (DimIndex + 1) then
+        Result := DoParse(ArrType, Dimensions, DimIndex + 1, CArray)
       else begin
         Lexer_NextToken(Scope);
         Result := ParseConstExpression(NewScope, Expr, ExprNested);
         CheckEmptyExpression(Expr);
-        if CheckImplicit(fUnitSContext, Expr, ArrType.ElementDataType) = nil then
-          ERRORS.INCOMPATIBLE_TYPES(Expr, ArrType.ElementDataType);
-        Expr.Declaration.DataType := ArrType.ElementDataType;
+        if CheckImplicit(fUnitSContext, Expr, CArray.ElementType) = nil then
+          ERRORS.INCOMPATIBLE_TYPES(Expr, CArray.ElementType);
+        Expr.Declaration.DataType := CArray.ElementType;
         CArray.AddItem(Expr);
       end;
       if i < c  then
@@ -8703,9 +8710,26 @@ function TASTDelphiUnit.ParseVarStaticArrayDefaultValue(Scope: TScope; ArrType: 
     Lexer_MatchToken(Result, token_closeround);
     Result := Lexer_NextToken(Scope);
   end;
+
+  function GetTotalDimensionsCount(ArrayType: TIDArray; out ElementType: TIDType): TDimensionsArray;
+  begin
+    SetLength(Result, ArrayType.DimensionsCount);
+    for var i := 0 to ArrayType.DimensionsCount - 1 do
+      Result[i] := ArrayType.Dimensions[i].ElementsCount;
+
+    ElementType := ArrayType.ElementDataType;
+
+    if ArrayType.ElementDataType.DataTypeID = dtStaticArray then
+      Result := Result + GetTotalDimensionsCount(TIDArray(ArrayType.ElementDataType), ElementType);
+  end;
+
+var
+  ElementType: TIDType;
+  Dimensions: TDimensionsArray;
 begin
-  DefaultValue := CreateAnonymousConstTuple(Scope, ArrType.ElementDataType);
-  Result := DoParse(ArrType, 0, DefaultValue.AsDynArrayConst);
+  Dimensions := GetTotalDimensionsCount(ArrType, ElementType);
+  DefaultValue := CreateAnonymousConstTuple(Scope, ElementType);
+  Result := DoParse(ArrType, Dimensions, 0, DefaultValue.AsDynArrayConst);
 end;
 
 procedure TASTDelphiUnit.ParseVector(Scope: TScope; var EContext: TEContext);

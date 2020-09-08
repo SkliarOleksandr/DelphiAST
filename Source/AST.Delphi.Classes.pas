@@ -892,7 +892,8 @@ type
   TIDDynArrayConstant = class(TIDXXXConstant<TIDExpressions>)
   private
     FStatic: Boolean;
-    function GetLength: Integer;
+    function GetLength: Integer; inline;
+    function GetElementType: TIDType; inline;
   public
     //procedure WriteToStream(Stream: TStream; const Package: INPPackage); override;
     function ValueDataType: TDataTypeID; override;
@@ -902,6 +903,7 @@ type
     function AsVariant: Variant; override;
     function CompareTo(Constant: TIDConstant): Integer; override;
     property ArrayLength: Integer read GetLength;
+    property ElementType: TIDType read GetElementType;
     {статический массив полностью состоит из констант и может размещатся в статической памяти}
     {не статический массив содержит переменные, поэтому может размещатся только в динамической (стек или куча) памяти}
     property ArrayStatic: Boolean read FStatic write FStatic;
@@ -4636,6 +4638,11 @@ begin
     end;
   end else
     Result := -1;
+end;
+
+function TIDDynArrayConstant.GetElementType: TIDType;
+begin
+  Result := TIDArray(FDataType).ElementDataType;
 end;
 
 function TIDDynArrayConstant.GetLength: Integer;
