@@ -299,7 +299,6 @@ end;
 
 procedure TDelphiLexer.ParseCharCodeSymbol;
 var
-  Token: PCharToken;
   HexStr: string;
 begin
   if Length(fOriginalToken) > 1 then

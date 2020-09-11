@@ -103,8 +103,7 @@ type
     // any cast
     IsOrdinal: TIDOperator;
     // in
-    Ordinal_In,
-    AnsiChar_In
+    Ordinal_In_Set
     : TIDOperator;
     // add
     StaticArray_Add
@@ -147,7 +146,6 @@ type
     procedure RegisterTypes;
     procedure RegisterBuiltinFunctions;
     procedure SystemFixup;
-    procedure AddSystemOperators;
     procedure InsertToScope(Declaration: TIDDeclaration); overload;
     function RegisterType(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
     function RegisterTypeCustom(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
@@ -639,30 +637,6 @@ begin
   AddBinarOperator(opSubtract, _Variant, _Variant, _Variant);
 end;
 
-procedure TSYSTEMUnit.AddSystemOperators;
-begin
-  // IN operator
-  _AnsiChar.AddBinarySysOperator(opIn, Operators.AnsiChar_In);
-  _Char.AddBinarySysOperator(opIn, Operators.AnsiChar_In);
-
-  // system IN operator for ordinal types
-  _Int8.AddBinarySysOperator(opIn, Operators.Ordinal_In);
-  _Int16.AddBinarySysOperator(opIn, Operators.Ordinal_In);
-  _Int32.AddBinarySysOperator(opIn, Operators.Ordinal_In);
-  _UInt8.AddBinarySysOperator(opIn, Operators.Ordinal_In);
-  _UInt16.AddBinarySysOperator(opIn, Operators.Ordinal_In);
-  _UInt32.AddBinarySysOperator(opIn, Operators.Ordinal_In);
-  _Boolean.AddBinarySysOperator(opIn, Operators.Ordinal_In);
-
-  // IntDiv
-  _Int8.AddBinarySysOperatorFor(opIntDiv, Operators.Ptr_IntDiv_Int);
-  _Int16.AddBinarySysOperatorFor(opIntDiv, Operators.Ptr_IntDiv_Int);
-  _Int32.AddBinarySysOperatorFor(opIntDiv, Operators.Ptr_IntDiv_Int);
-  _UInt8.AddBinarySysOperatorFor(opIntDiv, Operators.Ptr_IntDiv_Int);
-  _UInt16.AddBinarySysOperatorFor(opIntDiv, Operators.Ptr_IntDiv_Int);
-  _UInt32.AddBinarySysOperatorFor(opIntDiv, Operators.Ptr_IntDiv_Int);
-end;
-
 procedure TSYSTEMUnit.AddAddOperators;
 begin
   AddBinarOperator(opAdd, _Int8, [_Int8, _UInt8], _Int8);
@@ -981,7 +955,6 @@ begin
   AddLogicalOperators;
   AddBitwiseOperators;
   AddCompareOperators;
-  AddSystemOperators;
 end;
 
 function TSYSTEMUnit.RegisterVariable(Scope: TScope; const Name: string; DataType: TIDType): TIDVariable;
@@ -1237,8 +1210,7 @@ begin
   IsOrdinal := TSysTypeCast_IsOrdinal.CreateAsSystem(Scope);
 
   // in
-  Ordinal_In := TSysOrdinal_In.CreateAsSystem(Scope);
-  AnsiChar_In := TSysOrdinal_In.CreateAsSystem(Scope);
+  Ordinal_In_Set := TSysOrdinalInSet.CreateAsSystem(Scope);
   // add
   StaticArray_Add := TSys_StaticArray_Add.CreateAsSystem(Scope);
   Ptr_IntDiv_Int := TSys_Ptr_IntDiv_Int.CreateAsSystem(Scope);

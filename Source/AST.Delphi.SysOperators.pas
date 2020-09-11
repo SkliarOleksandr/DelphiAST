@@ -257,14 +257,8 @@ type
   /// BINARY
   ///////////////////////////////////////////////////////////////////////////////////////////
 
-  {operator Char IN Any}
-  TSysAnsiChar_In = class(TSysOpBinary)
-  public
-    function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; override;
-  end;
-
-  {operator Ordinal IN any}
-  TSysOrdinal_In = class(TSysOpBinary)
+  {operator Ordinal IN Set}
+  TSysOrdinalInSet = class(TSysOpBinary)
   public
     function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; override;
   end;
@@ -614,18 +608,11 @@ begin
                                                  dtWideString]);
 end;
 
-{ TSysAnsiChar_In }
+{ TSysOrdinalInSet }
 
-function TSysAnsiChar_In.Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression;
+function TSysOrdinalInSet.Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression;
 begin
-  Result := SYSUnit._TrueExpression; // tmp
-end;
-
-{ TSysOrdinal_In }
-
-function TSysOrdinal_In.Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression;
-begin
-  if Right.DataType is TIDArray then
+  if (Right.Declaration is TIDDynArrayConstant) or (Right.DataTypeID = dtSet) then
   begin
     Result := SYSUnit._TrueExpression; // tmp
   end else

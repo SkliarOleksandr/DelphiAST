@@ -253,6 +253,7 @@ type
   type
     TUnarOperators = array [opAssignment..opNot] of TIDDeclaration;
     TBinarOperators = array [opIn..High(TOperatorID)] of TIDPairList;
+    TSysBinaryOperators = array [opIn..High(TOperatorID)] of TIDOperator;
     TExplistIDList = TAVLTree<TDataTypeId, TIDDeclaration>;
   private
     fElementary: Boolean;
@@ -278,6 +279,7 @@ type
     fUnarOperators: TUnarOperators;
     fBinarOperators: TBinarOperators;
     fBinarOperatorsFor: TBinarOperators;
+    fSysBinaryOperators: TSysBinaryOperators;
     fGenericDescriptor: PGenericDescriptor; // содерижт всю информацию по generic-типу/процедуре
     fGenericNextOverload: TIDType;
     /////////////////////////////////////////////////////////
@@ -366,7 +368,6 @@ type
     procedure OverloadBinarOperator(Op: TOperatorID; Declaration: TIDOperator); overload; inline;
 
     procedure AddBinarySysOperator(Op: TOperatorID; Decl: TIDOperator);
-    procedure AddBinarySysOperatorFor(Op: TOperatorID; Decl: TIDOperator);
 
     procedure CreateStandardOperators; virtual;
 
@@ -380,6 +381,7 @@ type
     property SysExplicitFromAny: TIDOperator read fSysExplicitFromAny;
     property SysImplicitToAny: TIDOperator read FSysImplicitToAny;
     property SysImplicitFromAny: TIDOperator read fSysImplicitFromAny;
+    property SysBinayOperator: TSysBinaryOperators read fSysBinaryOperators;
   end;
 
   {тип - специальный, для обобщенных типов}
@@ -3000,33 +3002,11 @@ begin
 end;
 
 procedure TIDType.AddBinarySysOperator(Op: TOperatorID; Decl: TIDOperator);
-var
-  List: TIDPairList;
-  ExistKey: TIDPairList.PAVLNode;
 begin
-  List := FBinarOperators[Op];
-  if not Assigned(List) then begin
-    List := TIDPairList.Create;
-    FBinarOperators[Op] := List;
-  end;
-  ExistKey := List.InsertNode(nil, Decl);
-  if Assigned(ExistKey) and (TIDDeclaration(ExistKey.Data) <> SYSUnit._Boolean) then
+  if Assigned(fSysBinaryOperators[Op]) then
     ERROR_OPERATOR_ALREADY_OVERLOADED(Op, Self, nil, TTextPosition.Empty);
-end;
 
-procedure TIDType.AddBinarySysOperatorFor(Op: TOperatorID; Decl: TIDOperator);
-var
-  List: TIDPairList;
-  ExistKey: TIDPairList.PAVLNode;
-begin
-  List := FBinarOperatorsFor[Op];
-  if not Assigned(List) then begin
-    List := TIDPairList.Create;
-    FBinarOperatorsFor[Op] := List;
-  end;
-  ExistKey := List.InsertNode(nil, Decl);
-  if Assigned(ExistKey) and (TIDDeclaration(ExistKey.Data) <> SYSUnit._Boolean) then
-    ERROR_OPERATOR_ALREADY_OVERLOADED(Op, Self, nil, TTextPosition.Empty);
+  fSysBinaryOperators[Op] := Decl;
 end;
 
 function TIDType.BinarOperator(Op: TOperatorID; Right: TIDType): TIDType;
@@ -4135,6 +4115,7 @@ begin
   OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
   OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
   OverloadImplicitToAny(SYSUnit.Operators.ImplicitArrayToAny);
+  AddBinarySysOperator(opIn, SYSUnit.Operators.Ordinal_In_Set);
 end;
 
 constructor TIDArray.CreateAnonymousStatic1Dim(Scope: TScope; ElementDataType: TIDType; Length: Integer; out BoundType: TIDOrdinal);

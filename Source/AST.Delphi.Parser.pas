@@ -164,6 +164,7 @@ type
     procedure CheckConstExpression(Expression: TIDExpression); inline;
     procedure CheckIntExpression(Expression: TIDExpression); inline;
     procedure CheckOrdinalExpression(Expression: TIDExpression); inline;
+    procedure CheckOrdinalType(DataType: TIDType); inline;
     class procedure CheckNumericExpression(Expression: TIDExpression); static; inline;
     procedure CheckBooleanExpression(Expression: TIDExpression); inline;
     procedure CheckVarExpression(Expression: TIDExpression; VarModifyPlace: TVarModifyPlace);
@@ -438,29 +439,8 @@ var
 begin
   Lexer_MatchToken(Lexer_NextToken(Scope), token_of);
   Result := Lexer_NextToken(Scope);
-  case Result of
-    token_identifier: begin
-      Result := ParseConstExpression(Scope, Expression, ExprRValue);
-      if Expression.ItemType = itType then begin
-        Base := Expression.AsType;
-        if not Base.IsOrdinal then
-          AbortWork(sOrdinalTypeRequired, Lexer_PrevPosition);
-      end else begin
-        ParseRangeType(Scope, Expression, ID, TIDRangeType(Base));
-        AddType(Base);
-      end;
-    end;
-    token_openround: begin
-      Base := TIDEnum.CreateAsAnonymous(Scope);
-      ParseEnumType(Scope, TIDEnum(Base));
-      Result := Lexer_NextToken(Scope);
-      AddType(Base);
-    end;
-    else begin
-      ERRORS.ORDINAL_TYPE_REQUIRED(Lexer_PrevPosition);
-      Exit;
-    end;
-  end;
+  Result := ParseTypeDecl(Scope, nil, nil, TIdentifier.Empty, Base);
+  CheckOrdinalType(Base);
   Decl.AddBound(TIDOrdinal(Base));
   Decl.BaseType := TIDOrdinal(Base);
   Decl.BaseType.OverloadBinarOperator2(opIn, Decl, Sys._Boolean);
@@ -3622,6 +3602,14 @@ begin
     Exit;
   // поиск оператора (у правого операнда)
   Result := RightDT.BinarOperatorFor(Op, LeftDT);
+  if Assigned(Result) then
+    Exit;
+
+  Result := LeftDT.SysBinayOperator[Op];
+  if Assigned(Result) then
+    Exit;
+
+  Result := RightDT.SysBinayOperator[Op];
   if Assigned(Result) then
     Exit;
 
@@ -7837,12 +7825,10 @@ function TASTDelphiUnit.ParseIdentifier(Scope, SearchScope: TScope; out Expressi
                                         const PrevExpr: TIDExpression; const ASTE: TASTExpression): TTokenID;
 var
   Decl: TIDDeclaration;
-  DataType: TIDType;
   Indexes: TIDExpressions;
   i: Integer;
   Expr, NExpr: TIDExpression;
   GenericArgs: TIDExpressions;
-  CallExpr: TIDCallExpression;
   PMContext: TPMContext;
   WasProperty, StrictSearch: Boolean;
 begin
@@ -8607,7 +8593,6 @@ function TASTDelphiUnit.ParseFieldsSection(Scope: TScope; Visibility: TVisibilit
 var
   i, c: Integer;
   DataType: TIDType;
-  ID: TIdentifier;
   Field: TIDVariable;
   Names: TIdentifiersPool;
   VarFlags: TVariableFlags;
@@ -8998,6 +8983,12 @@ procedure TASTDelphiUnit.CheckOrdinalExpression(Expression: TIDExpression);
 begin
   if not Expression.DataType.IsOrdinal then
     ERRORS.ORDINAL_TYPE_REQUIRED(Expression.TextPosition);
+end;
+
+procedure TASTDelphiUnit.CheckOrdinalType(DataType: TIDType);
+begin
+  if not DataType.IsOrdinal then
+    ERRORS.ORDINAL_TYPE_REQUIRED(Lexer_Position);
 end;
 
 class procedure TASTDelphiUnit.CheckNumericExpression(Expression: TIDExpression);
