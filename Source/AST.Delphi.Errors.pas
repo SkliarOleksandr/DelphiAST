@@ -232,6 +232,8 @@ type
     class procedure TOO_MANY_ACTUAL_PARAMS(CallExpr: TIDExpression); static;
     class procedure OVERLOADED_MUST_BE_MARKED(const ID: TIdentifier); static;
     class procedure DECL_DIFF_WITH_PREV_DECL(const ID: TIdentifier); static;
+
+    class procedure TYPE_REQUIRED(const TextPosition: TTextPosition); static;
     class procedure STRUCT_TYPE_REQUIRED(const TextPosition: TTextPosition); static;
     class procedure ARRAY_TYPE_REQUIRED(const ID: TIdentifier; const TextPosition: TTextPosition); static;
     class procedure INTEGER_TYPE_REQUIRED(const Pos: TTextPosition); static;
@@ -239,6 +241,11 @@ type
     class procedure PROC_OR_PROCVAR_REQUIRED(const ID: TIdentifier); static;
     class procedure PROC_REQUIRED(const Position: TTextPosition); static;
     class procedure PROC_OR_TYPE_REQUIRED(const ID: TIdentifier); static;
+    class procedure CLASS_TYPE_REQUIRED(const TextPosition: TTextPosition); static;
+    class procedure CLASS_OR_INTF_TYPE_REQUIRED(const TextPosition: TTextPosition); static;
+    class procedure INTF_TYPE_REQUIRED(Expr: TIDExpression);
+    class procedure REFERENCE_TYPE_EXPECTED(const Expr: TIDExpression);
+
     class procedure CANNOT_ACCESS_TO_WRITEONLY_PROPERTY(const Expr: TIDExpression); static;
     class procedure CANNOT_MODIFY_READONLY_PROPERTY(const Expr: TIDExpression); static;
     class procedure NO_OVERLOAD(CallExpr: TIDExpression); static;
@@ -252,9 +259,6 @@ type
     class procedure GETTER_MUST_BE_SUCH(const Getter: TIDProcedure; const DeclString: string); static;
     class procedure DIVISION_BY_ZERO(Expr: TIDExpression); static;
     class procedure CONST_VALUE_OVERFLOW(Expr: TIDExpression; DstDataType: TIDType); static;
-    class procedure CLASS_TYPE_REQUIRED(const TextPosition: TTextPosition); static;
-    class procedure TYPE_REQUIRED(const TextPosition: TTextPosition); static;
-    class procedure CLASS_OR_INTF_TYPE_REQUIRED(const TextPosition: TTextPosition); static;
     class procedure CLASS_NOT_IMPLEMENT_INTF(const Src: TIDExpression; Dest: TIDType); static;
     class procedure METHOD_NOT_DECLARED_IN_CLASS(const ID: TIdentifier; Struct: TIDStructure); static;
     class procedure INPLACEVAR_ALLOWED_ONLY_FOR_OUT_PARAMS(Variable: TIDVariable);
@@ -262,7 +266,7 @@ type
     class procedure REF_PARAM_MUST_BE_IDENTICAL(Expr: TIDExpression);
     class procedure UNKNOWN_OPTION(const ID: TIdentifier);
     class procedure CANNOT_ASSIGN_TEMPORARRY_OBJECT(Expr: TIDExpression);
-    class procedure INTF_TYPE_REQUIRED(Expr: TIDExpression);
+
     class procedure INTF_ALREADY_IMPLEMENTED(Expr: TIDExpression);
     class procedure INTF_METHOD_NOT_IMPLEMENTED(ClassType: TIDClass; Proc: TIDProcedure);
     class procedure RECORD_STATIC_CONSTRUCTOR_ALREADY_EXIST(const Proc: TIDProcedure);
@@ -271,7 +275,6 @@ type
     class procedure OPERATOR_MUST_BE_DECLARED_IN_STRUCT(const Position: TTextPosition);
     class procedure CANNOT_ASSIGN_NULL_TO_NOTNULL(const Src: TIDExpression);
     class procedure ORDINAL_OR_SET_REQUIRED(const Src: TIDExpression);
-    class procedure REFERENCE_TYPE_EXPECTED(const Expr: TIDExpression);
     class procedure STRING_CONST_IS_NOT_ANSI(const Src: TIDExpression);
     class procedure VAR_IS_NOT_INITIALIZED(const Variable: TIDExpression);
     procedure NO_METHOD_IN_BASE_CLASS(Proc: TIDProcedure);

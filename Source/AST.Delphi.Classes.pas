@@ -18,7 +18,7 @@ uses System.SysUtils, System.Classes, System.StrUtils, System.Math, System.Gener
      AST.Intf;
 type
 
-  TExpessionPosition = (ExprNested, ExprLValue, ExprRValue, ExprNestedGeneric);
+  TExpessionPosition = (ExprNested, ExprLValue, ExprRValue, ExprNestedGeneric, ExprType);
 
   TProcSpecification = (
     PS_FORWARD,

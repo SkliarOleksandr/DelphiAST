@@ -172,6 +172,7 @@ type
     class procedure CheckReferenceType(Expression: TIDExpression); static; inline;
     class procedure CheckRecordType(Expression: TIDExpression); static; inline;
     class procedure CheckStructType(Expression: TIDExpression); static; inline;
+    procedure CheckType(Expression: TIDExpression); inline;
     procedure CheckClassType(Expression: TIDExpression); inline;
     procedure CheckClassExpression(Expression: TIDExpression); inline;
     class procedure CheckSetType(Expression: TIDExpression); static; inline;
@@ -271,8 +272,10 @@ type
     function ParseGenericsHeader(Params: TScope; out Args: TIDTypeList): TTokenID;
     function ParseGenericsArgs(Scope: TScope; const SContext: TSContext; out Args: TIDExpressions): TTokenID;
     function ParseStatements(Scope: TScope; const SContext: TSContext; IsBlock: Boolean): TTokenID; overload;
+
     function ParseExpression(Scope: TScope; const SContext: TSContext; var EContext: TEContext; out ASTE: TASTExpression): TTokenID; overload;
     function ParseConstExpression(Scope: TScope; out Expr: TIDExpression; EPosition: TExpessionPosition): TTokenID;
+
     function ParseMemberCall(Scope: TScope; var EContext: TEContext; const ASTE: TASTExpression): TTokenID;
     function ParseMember(Scope: TScope; var EContext: TEContext; const ASTE: TASTExpression): TTokenID;
     function ParseIdentifier(Scope, SearchScope: TScope; out Expression: TIDExpression;
@@ -837,7 +840,7 @@ begin
         InsertToScope(Scope, Decl);
     end;
     token_identifier: begin
-      Result := ParseConstExpression(Scope, Expr, ExprRValue);
+      Result := ParseConstExpression(Scope, Expr, ExprType);
       {alias type}
       if Expr.ItemType = itType then begin
         Decl := TIDAliasType.CreateAlias(Scope, ID, Expr.AsType);
@@ -2469,7 +2472,6 @@ var
   CArray: TIDDynArrayConstant;
   SExpr: TIDExpression;
   ImplicitCast: TIDDeclaration;
-  //NeedCallImplicits: Boolean;
   EnumDecl: TIDType;
   ItemValue, SetValue: Int64;
 begin
@@ -2482,14 +2484,13 @@ begin
     if not Assigned(ImplicitCast) then
       SContext.ERRORS.INCOMPATIBLE_TYPES(SExpr, EnumDecl);
 
-    {if ImplicitCast.ItemType = itProcedure then
-      NeedCallImplicits := True;}
-
     ItemValue := SExpr.AsIntConst.Value;
 
     SetValue := SetValue or (1 shl ItemValue);
   end;
-  Result := TIDExpression.Create(TIDIntConstant.CreateAsAnonymous(nil, SContext.SysUnit._Int32, SetValue), Source.TextPosition);
+  var Scope := TASTDelphiUnit(SContext.Module).ImplScope;
+
+  Result := TIDExpression.Create(TIDIntConstant.CreateAsAnonymous(Scope, SContext.SysUnit._Int32, SetValue), Source.TextPosition);
 end;
 
 function TASTDelphiUnit.GetCurrentParsedFileName(OnlyFileName: Boolean): string;
@@ -4897,8 +4898,7 @@ begin
   Expr := EContext.Result;
   if not Assigned(Expr) then
     Exit;
-  if Expr.IsAnonymous then
-    Expr.TextPosition := Lexer_PrevPosition;
+
   if (Expr.ItemType <> itType) and (Expr.DataTypeID <> dtGeneric) then
     CheckConstExpression(Expr);
 end;
@@ -5553,6 +5553,9 @@ begin
         ASTE.AddSubItem(TASTOpMinus);
       end;
       token_equal: begin
+        if EContext.EPosition = ExprType then
+          break;
+
         CheckLeftOperand(Status);
 
         Status := EContext.RPNPushOperator(opEqual);
@@ -5736,7 +5739,6 @@ begin
 
   EContext.RPNFinish();
 end;
-
 
 constructor TASTDelphiUnit.Create(const Project: IASTProject; const FileName: string; const Source: string);
 var
@@ -9064,6 +9066,12 @@ begin
   Decl := Expression.Declaration;
   if not (Decl is TIDStructure) then
     AbortWork(sStructTypeRequired, Expression.TextPosition);
+end;
+
+procedure TASTDelphiUnit.CheckType(Expression: TIDExpression);
+begin
+  if Expression.ItemType <> itType then
+    ERRORS.TYPE_REQUIRED(Expression.TextPosition);
 end;
 
 class procedure TASTDelphiUnit.CheckInterfaceType(Expression: TIDExpression);
