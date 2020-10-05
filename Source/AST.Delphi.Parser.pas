@@ -260,7 +260,8 @@ type
     //=======================================================================================================================
     function ParseTypeRecord(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
     function ParseTypeArray(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
-    function ParseTypeHelper(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
+    function ParseTypeHelper(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier;
+                             out Decl: TIDHelper): TTokenID;
     // функция парсинга анонимного типа
     function ParseTypeDecl(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
     function ParseTypeDeclOther(Scope: TScope; const ID: TIdentifier; out Decl: TIDType): TTokenID;
@@ -753,10 +754,6 @@ begin
     /////////////////////////////////////////////////////////////////////////
     token_caret: Result := ParsePointerType(Scope, ID, TIDPointer(Decl));
     /////////////////////////////////////////////////////////////////////////
-    // helper type
-    /////////////////////////////////////////////////////////////////////////
-    token_helper: Result := ParseTypeHelper(Scope, GenericScope, GDescriptor, ID, Decl);
-    /////////////////////////////////////////////////////////////////////////
     // array type
     /////////////////////////////////////////////////////////////////////////
     token_array: Result := ParseTypeArray(Scope, GenericScope, GDescriptor, ID, Decl);
@@ -858,19 +855,62 @@ begin
 end;
 
 function TASTDelphiUnit.ParseTypeHelper(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier;
-  out Decl: TIDType): TTokenID;
+  out Decl: TIDHelper): TTokenID;
 var
-  HelpedID: TIdentifier;
-  HelpedDecl: TIDType;
+  TargetID: TIdentifier;
+  TargetDecl: TIDType;
+  Visibility: TVisibility;
 begin
   Lexer_ReadToken(Scope, token_for);
-
-  Lexer_ReadNextIdentifier(Scope, HelpedID);
-  HelpedDecl := TIDType(FindID(Scope, HelpedID));
-  if HelpedDecl.ItemType <> itType then
+  Lexer_ReadNextIdentifier(Scope, TargetID);
+  TargetDecl := TIDType(FindID(Scope, TargetID));
+  if TargetDecl.ItemType <> itType then
     ERRORS.TYPE_REQUIRED(Lexer_PrevPosition);
 
-  Lexer_ReadToken(Scope, token_end);
+  Decl.Target := TargetDecl;
+
+  Result := Lexer_NextToken(Scope);
+  while True do begin
+    case Result of
+      token_class: begin
+        Result := Lexer_NextToken(scope);
+        case Result of
+          token_procedure: Result := ParseProcedure(Decl.Members, ptClassProc, Decl);
+          token_function: Result := ParseProcedure(Decl.Members, ptClassFunc, Decl);
+          token_operator: Result := ParseOperator(Decl.Members, Decl);
+          token_property: Result := ParseProperty(Decl);
+        else
+          AbortWork('PROCEDURE, FUNCTION and PROPERIES are allowed in helpers only', Lexer_Position);
+        end;
+      end;
+      token_procedure: Result := ParseProcedure(Decl.Members, ptProc, Decl);
+      token_function: Result := ParseProcedure(Decl.Members, ptFunc, Decl);
+      token_property: Result := ParseProperty(Decl);
+      token_public: begin
+        Visibility := vPublic;
+        Result := Lexer_NextToken(Scope);
+      end;
+      token_private: begin
+        Visibility := vPrivate;
+        Result := Lexer_NextToken(Scope);
+      end;
+      token_strict: begin
+        Result := Lexer_NextToken(Scope);
+        case Result of
+          token_private: Visibility := vStrictPrivate;
+          token_protected: Visibility := vStrictProtected;
+        else
+          ERRORS.EXPECTED_TOKEN(token_private, Result);
+        end;
+        Result := Lexer_NextToken(Scope);
+      end;
+      token_const: Result := ParseConstSection(Decl.Members);
+      token_type: Result := ParseNamedTypeDecl(Decl.Members);
+      token_end: break;
+    else
+      AbortWork('PROCEDURE, FUNCTION and PROPERIES are allowed in helpers only', Lexer_Position);
+    end;
+  end;
   Result := Lexer_NextToken(Scope);
 end;
 
@@ -902,6 +942,13 @@ begin
     TypeScope := GDescriptor.Scope
   else
     TypeScope := Scope;}
+
+  Result := Lexer_NextToken(Scope);
+  if Result = token_helper then
+  begin
+    Result := ParseTypeHelper(Scope, GenericScope, GDescriptor, ID, TIDHelper(Decl));
+    Exit;
+  end;
 
   Decl := TIDRecord.Create(Scope, ID);
   Decl.GenericDescriptor := GDescriptor;
@@ -7253,7 +7300,7 @@ var
   Visibility: TVisibility;
 begin
   Visibility := vPublic;
-  Result := Lexer_NextToken(Scope);
+  Result := Lexer_CurTokenID;
   while True do begin
     case Result of
       token_case: Result := ParseCaseRecord(Decl.Members, Decl);

@@ -112,7 +112,7 @@ type
 
   TIDDeclarationClass = class of TIDDeclaration;
 
-  {The base Declaration class}
+  {base declaration class}
   TIDDeclaration = class(TASTDeclaration)
   private
     FItemType: TIDItemType;
@@ -231,7 +231,7 @@ type
     function FindType(const Name: string): TIDGenericType; inline;
   end;
 
-  {пространство имен}
+  {namespace}
   TIDNameSpace = class(TIDDeclaration)
   private
     FMembers: TScope;
@@ -240,7 +240,7 @@ type
     property Members: TScope read FMembers;
   end;
 
-  {модуль}
+  {unit}
   TIDUnit = class(TIDNameSpace)
   private
     FUnit: TObject;
@@ -248,7 +248,7 @@ type
     constructor Create(Scope: TScope; AUnit: TObject);
   end;
 
-  {тип - базовый класс}
+  {base type class}
   TIDType = class(TIDDeclaration)
   type
     TUnarOperators = array [opAssignment..opNot] of TIDDeclaration;
@@ -384,7 +384,7 @@ type
     property SysBinayOperator: TSysBinaryOperators read fSysBinaryOperators;
   end;
 
-  {тип - специальный, для обобщенных типов}
+  {special generic type}
   TIDGenericType = class(TIDType)
   private
     FDefaultValue: TIDExpression;
@@ -411,7 +411,7 @@ type
     property Original: TIDType read FOriginalType;
   end;
 
-  {base referenced type}
+  {base referenced type class}
   TIDRefType = class(TIDType)
   private
     FReferenceType: TIDType;
@@ -455,11 +455,11 @@ type
     constructor CreateAsAnonymous(Scope: TScope; ReferenceType: TIDType); override;
   end;
 
-  {тип - специальный, только для константы nullptr}
+  {special nullptr type}
   TIDNullPointerType = class(TIDPointer)
   end;
 
-  {тип - ordinal}
+  {base ordinal type class}
   TIDOrdinal = class(TIDType)
   private
     FSignedBound: Boolean;
@@ -476,7 +476,7 @@ type
     property ElementsCount: UInt64 read GetElementsCount;
   end;
 
-  {алиас}
+  {alias (for generics parameters)}
   TIDAlias = class(TIDDeclaration)
   private
     FOriginalDecl: TIDDeclaration;   // оригинальная декларация (не псевдоним)
@@ -487,7 +487,7 @@ type
     property Original: TIDDeclaration read FOriginalDecl;
   end;
 
-  {тип - диаппазон}
+  {range type}
   TIDRangeType = class(TIDOrdinal)
   private
     FRangeType: TIDType;
@@ -501,7 +501,7 @@ type
     property ElementType: TIDType read FRangeType write FRangeType;
   end;
 
-  {тип - перечисление}
+  {enum type}
   TIDEnum = class(TIDOrdinal)
   private
     FItems: TScope;
@@ -517,7 +517,7 @@ type
 
   TStructFlags = set of (StructCompleted);
 
-  {тип - структура (базовый класс)}
+  {base structure type}
   TIDStructure = class(TIDType)
   private
     FAncestor: TIDStructure;
@@ -571,7 +571,7 @@ type
     procedure DecRefCount(RCPath: UInt32); override;
   end;
 
-  {тип - структура}
+  {record type}
   TIDRecord = class(TIDStructure)
   private
     fStaticConstructor: TIDProcedure;
@@ -589,7 +589,7 @@ type
 
   TIDMethods = array of TIDProcedure;
 
-  {тип - класс}
+  {class}
   TIDClass = class(TIDStructure)
   private
     FInterfaces: TList<TIDInterface>;
@@ -614,7 +614,16 @@ type
     procedure CreateStandardOperators; override;
   end;
 
-  {тип - замыкание}
+  {helper type}
+  TIDHelper = class(TIDStructure)
+  private
+    fTarget: TIDType;
+    procedure SetTarget(const Value: TIDType);
+  public
+    property Target: TIDType read fTarget write SetTarget;
+  end;
+
+  {closure}
   TIDClosure = class(TIDClass)
   public type
     TCapturedVarRec = record
@@ -638,7 +647,7 @@ type
 
   end;
 
-  {тип - интрефейс}
+  {interface}
   TIDInterface = class(TIDStructure)
   private
     FGUID: TGUID;
@@ -649,7 +658,7 @@ type
     property GUID: TGUID read FGUID write FGUID;
   end;
 
-  {тип - массив (базовый класс)}
+  {base array type}
   TIDArray = class(TIDType)
   public
   type
@@ -676,7 +685,7 @@ type
     procedure DecRefCount(RCPath: UInt32); override;
   end;
 
-  {тип - битовый набор}
+  {set}
   TIDSet = class(TIDArray)
   private
     FBaseType: TIDType;
@@ -693,6 +702,7 @@ type
     procedure IncRefCount(RCPath: UInt32); override;
   end;
 
+  {static array}
   TIDStaticArray = class(TIDArray)
   public
     constructor CreateAnonymous(Scope: TScope; BaseType: TIDType); reintroduce;
@@ -701,7 +711,7 @@ type
   end;
 
 
-  {тип - динамический массив}
+  {dynamic array}
   TIDDynArray = class(TIDArray)
   private
     function GetDimension(Index: Integer): TIDOrdinal; override;
@@ -713,17 +723,17 @@ type
     ////////////////////////////////////////////////////////////////////////////
   end;
 
-  {тип - строка}
+  {string}
   TIDString = class(TIDDynArray)
   public
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
   end;
 
-  {тип - вариант}
+  {variant}
   TIDVariant = class(TIDType)
   end;
 
-  {тип - открытый массив}
+  {open array}
   TIDOpenArray = class(TIDDynArray)
   strict private
     {$HINTS OFF}
@@ -753,7 +763,7 @@ type
 
   TCallConvention = (ConvNative, ConvRegister, ConvStdCall, ConvCDecl, ConvFastCall);
 
-  {процедурный тип}
+  {procedural type}
   TIDProcType = class(TIDType)
   private
     FParams: TVariableList;
@@ -779,7 +789,7 @@ type
     HBExpression: TIDExpression;
   end;
 
-  {константа (базовый класс)}
+  {base constant class}
   TIDConstant = class(TIDDeclaration)
   private
     FExplicitDataType: TIDType;
@@ -791,8 +801,6 @@ type
   public
     constructor Create(Scope: TScope; const Identifier: TIdentifier); override;
     procedure AssignValue(Source: TIDConstant); virtual; abstract;
-    // WriteToStream пишет значение константы в Stream фиксированного размера (согласно типу)
-    //procedure WriteToStream(Stream: TStream; const Package: INPPackage); virtual; abstract;
     property ExplicitDataType: TIDType read FExplicitDataType write SetExplicitDataType;
     function ValueDataType: TDataTypeID; virtual; abstract;
     function ValueByteSize: Integer; virtual; abstract;
@@ -806,7 +814,7 @@ type
     procedure DecRefCount(RCPath: UInt32); override;
   end;
 
-  {константа - базовый класс}
+  {base generic constant class}
   TIDXXXConstant<T> = class(TIDConstant)
   private
     FValue: T;
@@ -816,11 +824,10 @@ type
     constructor CreateAsAnonymous(Scope: TScope; DataType: TIDType; Value: T);
     constructor CreateWithoutScope(DataType: TIDType; Value: T);
     procedure AssignValue(Source: TIDConstant); override;
-    //procedure WriteToStream(Stream: TStream; const Package: INPPackage); override;
     property Value: T read FValue write FValue;
   end;
 
-  {константа целочисленная}
+  {int constant}
   TIDIntConstant = class(TIDXXXConstant<Int64>)
   public
     function ValueDataType: TDataTypeID; override;
@@ -831,7 +838,7 @@ type
     function CompareTo(Constant: TIDConstant): Integer; override;
   end;
 
-  {константа специальная = размер обьекта}
+  {todo: deprecated}
   TIDSizeofConstant = class(TIDXXXConstant<TIDType>)
     function ValueByteSize: Integer; override;
     function ValueDataType: TDataTypeID; override;
@@ -843,10 +850,9 @@ type
     procedure DecRefCount(RCPath: UInt32); override;
   end;
 
-  {константа с плавоющей запятой}
+  {float constant}
   TIDFloatConstant = class(TIDXXXConstant<Extended>)
   public
-    //procedure WriteToStream(Stream: TStream; const Package: INPPackage); override;
     function ValueDataType: TDataTypeID; override;
     function ValueByteSize: Integer; override;
     function AsInt64: Int64; override;
@@ -855,10 +861,9 @@ type
     function CompareTo(Constant: TIDConstant): Integer; override;
   end;
 
-  {константа строковая}
+  {string constant}
   TIDStringConstant = class(TIDXXXConstant<string>)
   public
-    //procedure WriteToStream(Stream: TStream; const Package: INPPackage); override;
     function ValueByteSize: Integer; override;
     function ValueDataType: TDataTypeID; override;
     function AsInt64: Int64; override;
@@ -871,7 +876,6 @@ type
   {константа символьная}
   TIDCharConstant = class(TIDXXXConstant<char>)
   public
-    //procedure WriteToStream(Stream: TStream; const Package: INPPackage); override;
     function ValueDataType: TDataTypeID; override;
     function ValueByteSize: Integer; override;
     function AsInt64: Int64; override;
@@ -880,7 +884,7 @@ type
     function CompareTo(Constant: TIDConstant): Integer; override;
   end;
 
-  {константа булева}
+  {boolean constant}
   TIDBooleanConstant = class(TIDXXXConstant<Boolean>)
     function ValueDataType: TDataTypeID; override;
     function ValueByteSize: Integer; override;
@@ -890,14 +894,13 @@ type
     function CompareTo(Constant: TIDConstant): Integer; override;
   end;
 
-  {константа массив}
+  {array constant}
   TIDDynArrayConstant = class(TIDXXXConstant<TIDExpressions>)
   private
     FStatic: Boolean;
     function GetLength: Integer; inline;
     function GetElementType: TIDType; inline;
   public
-    //procedure WriteToStream(Stream: TStream; const Package: INPPackage); override;
     function ValueDataType: TDataTypeID; override;
     function ValueByteSize: Integer; override;
     function AsInt64: Int64; override;
@@ -914,7 +917,7 @@ type
 
   TConstSpace = TSpace<TIDConstant>;
 
-  {константа диаппазон}
+  {range constant}
   TIDRangeConstant = class(TIDXXXConstant<TIDRangeExpression>)
   protected
     function GetDisplayName: string; override;
@@ -927,7 +930,7 @@ type
     function CompareTo(Constant: TIDConstant): Integer; override;
   end;
 
-  {константа GUID}
+  {guid constant}
   TIDGuidConstant = class(TIDXXXConstant<TGUID>)
   public
     function ValueDataType: TDataTypeID; override;
@@ -936,7 +939,6 @@ type
     function AsInt64: Int64; override;
     function AsVariant: Variant; override;
     function CompareTo(Constant: TIDConstant): Integer; override;
-    //procedure WriteToStream(Stream: TStream; const Package: INPPackage); override;
   end;
 
   TIDRecordConstantField = record
@@ -945,6 +947,7 @@ type
   end;
   TIDRecordConstantFields = array of TIDRecordConstantField;
 
+  {record constant}
   TIDRecordConstant = class(TIDXXXConstant<TIDRecordConstantFields>)
   public
     function ValueDataType: TDataTypeID; override;
@@ -960,7 +963,7 @@ type
     etExpressionList
   );
 
-  {выражение}
+  {expression}
   TIDExpression = class(TPooledObject)
   private
     fDeclaration: TIDDeclaration;     // декларация
@@ -5910,6 +5913,13 @@ end;
 function TUnknownIDExpression.GetDisplayName: string;
 begin
   Result := Format('Unknown identifier at %d : %d', [FTextPosition.Row, FTextPosition.Col]);
+end;
+
+{ TIDHelper }
+
+procedure TIDHelper.SetTarget(const Value: TIDType);
+begin
+  fTarget := Value;
 end;
 
 initialization
