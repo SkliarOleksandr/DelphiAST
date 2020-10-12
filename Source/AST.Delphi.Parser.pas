@@ -211,6 +211,7 @@ type
     function Lexer_SkipTo(Scope: TScope; StopToken: TTokenID): TTokenID;
     function Lexer_NotEof: boolean; inline;
     function Lexer_IsCurrentIdentifier: boolean; inline;
+    function Lexer_IsCurrentToken(TokenID: TTokenID): boolean; inline;
 
 
     procedure PutMessage(Message: TCompilerMessage); overload;
@@ -867,6 +868,7 @@ begin
   if TargetDecl.ItemType <> itType then
     ERRORS.TYPE_REQUIRED(Lexer_PrevPosition);
 
+  Decl := TIDHelper.Create(Scope, ID);
   Decl.Target := TargetDecl;
 
   Result := Lexer_NextToken(Scope);
@@ -2880,6 +2882,11 @@ begin
   Result := Lexer.IdentifireType = itIdentifier;
 end;
 
+function TASTDelphiUnit.Lexer_IsCurrentToken(TokenID: TTokenID): boolean;
+begin
+  Result := Lexer.AmbiguousTokenId = Ord(TokenID);
+end;
+
 function TASTDelphiUnit.Lexer_NotEOF: boolean;
 begin
   Result := Lexer_CurTokenID <> token_eof;
@@ -4178,18 +4185,21 @@ begin
   case Result of
     token_stdcall: begin
       TIDProcType(TypeDecl).CallConv := ConvStdCall;
-      Lexer_ReadSemicolon(Scope);
       Result := Lexer_NextToken(Scope);
+      if Result = token_semicolon then
+        Result := Lexer_NextToken(Scope);
     end;
     token_fastcall: begin
       TIDProcType(TypeDecl).CallConv := ConvFastCall;
-      Lexer_ReadSemicolon(Scope);
       Result := Lexer_NextToken(Scope);
+      if Result = token_semicolon then
+        Result := Lexer_NextToken(Scope);
     end;
     token_cdecl: begin
       TIDProcType(TypeDecl).CallConv := ConvCDecl;
-      Lexer_ReadSemicolon(Scope);
       Result := Lexer_NextToken(Scope);
+      if Result = token_semicolon then
+        Result := Lexer_NextToken(Scope);
     end;
   end;
 end;
@@ -4535,14 +4545,14 @@ begin
   end else
     PropParams := nil;
 
-  // парсим тип свойства
+  // property type
   Lexer_MatchToken(Result, token_colon);
   Result := ParseTypeSpec(Scope, PropDataType);
   Prop.DataType := PropDataType;
 
   SContext := fUnitSContext;
 
-  // геттер
+  // getter
   if Result = token_read then
   begin
     InitEContext(EContext, SContext, ExprRValue);
@@ -4566,7 +4576,7 @@ begin
     Prop.Getter := Expr.Declaration;
   end;
 
-  // сеттер
+  // setter
   if Result = token_write then
   begin
     InitEContext(EContext, SContext, ExprRValue);
@@ -4583,8 +4593,9 @@ begin
   Lexer_MatchToken(Result, token_semicolon);
   Result := Lexer_NextToken(Scope);
 
-  // default - спецификатор
-  if Result = token_default then begin
+  // default propery (note: default is ambiguous keyword)
+  if Lexer_IsCurrentToken(token_default) then
+  begin
     if Prop.ParamsCount = 0 then
       ERRORS.DEFAULT_PROP_MUST_BE_ARRAY_PROP;
     if not Assigned(Struct.DefaultProperty) then
@@ -8170,8 +8181,7 @@ begin
       ERRORS.INVALID_TYPE_DECLARATION(ID);
 
     // check and parse procedural type call convention
-    Result := CheckAndParseProcTypeCallConv(Scope, Result,  Decl)
-
+    Result := CheckAndParseProcTypeCallConv(Scope, Result,  Decl);
   until Result <> token_identifier;
 end;
 
@@ -8596,6 +8606,9 @@ begin
     if Result = token_platform then
       Result := ParsePlatform(Scope);
 
+    // check and parse procedural type call convention
+    Result := CheckAndParseProcTypeCallConv(Scope, Result, DataType);
+
     case Result of
       // значение по умолчанию
       token_equal: Result := ParseVarDefaultValue(Scope, DataType, DefaultValue);
@@ -8615,9 +8628,6 @@ begin
     if Result = token_deprecated then
       Result := ParseDeprecated(Scope, DeprecatedText);
 
-    // check and parse procedural type call convention
-    Result := CheckAndParseProcTypeCallConv(Scope, Result, DataType);
-
     for i := 0 to c do begin
       Variable := TIDVariable.Create(Scope, Names.Items[i]);
       // если это слабая ссылка - получаем соответствующий тип
@@ -8632,6 +8642,10 @@ begin
 //        Field.Flags := Field.Flags + [VarNotNull];
       Scope.AddVariable(Variable);
     end;
+
+    if Result = token_semicolon then
+      Result := Lexer_NextToken(Scope);
+
     if Result <> token_identifier then
       Exit;
     c := 0;
@@ -8661,6 +8675,7 @@ begin
       Lexer_NextToken(Scope);
       Continue;
     end;
+
     Lexer_MatchToken(Result, token_colon);
     // парсим тип
     Result := ParseTypeSpec(Scope, DataType);

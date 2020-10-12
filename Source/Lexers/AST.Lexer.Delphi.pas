@@ -12,7 +12,7 @@ type
     token_unknown {= -1},           // unknown token
     token_eof {= 0},                // end of file
     token_identifier,               // some id
-    token_ambiguous,                // ambiguous token: id or keyword
+    token_id_keyword,               // ambiguous token: id or keyword
 
     token_numbersign,               // #
     token_semicolon,                // ;
@@ -336,7 +336,7 @@ begin
   inherited Create(Source);
   IdentifireID := ord(token_identifier);
   EofID := ord(token_eof);
-  AmbiguousId := ord(token_ambiguous);
+  AmbiguousId := ord(token_id_keyword);
   TokenCaptions.AddObject('end of file', TObject(token_eof));
   TokenCaptions.AddObject('identifier', TObject(token_identifier));
   SeparatorChars := '#$ '''#9#10#13'%^&*@()+-{}[]\/,.;:<>=~!?';
@@ -398,7 +398,7 @@ begin
   RegisterToken('div', token_div);
   RegisterToken('destructor', token_destructor);
   RegisterToken('deprecated', token_deprecated);
-  RegisterToken('default', token_default, TTokenClass.AmbiguousPriorityIdentifier);
+  RegisterToken('default', token_default, TTokenClass.Ambiguous);
   RegisterToken('dynamic', token_dynamic);
   RegisterToken('delayed', token_delayed);
   RegisterToken('end', token_end);

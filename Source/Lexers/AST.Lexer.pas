@@ -842,6 +842,8 @@ function TGenericLexer.TokenLexem(TokenID: Integer): string;
 var
   i: Integer;
 begin
+  if TokenID = fAmbiguousId then
+    TokenID := fAmbiguousTokenId;
   i := fTokenCaptions.IndexOfObject(TObject(TokenID));
   if i <> -1 then
     Result := fTokenCaptions[i]
