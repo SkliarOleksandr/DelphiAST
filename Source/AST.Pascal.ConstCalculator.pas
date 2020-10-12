@@ -297,7 +297,7 @@ function TExpressionCalculator.ProcessConstOperation(Left, Right: TIDExpression;
           if LValue = 0 then
             fValue := System.Math.NaN
           else
-          if fValue < 0 then
+          if LValue < 0 then
             fValue := System.Math.NegInfinity
           else
             fValue := System.Math.Infinity;
