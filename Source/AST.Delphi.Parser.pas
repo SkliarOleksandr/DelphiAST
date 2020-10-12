@@ -5846,6 +5846,7 @@ function TASTDelphiUnit.CreateAnonymousConstant(Scope: TScope; var EContext: TEC
 var
   i: Integer;
   IntValue: Int64;
+  UInt64Value: UInt64;
   Int32Value: Int32;
   FltValue: Extended;
   DataType: TIDType;
@@ -5882,6 +5883,10 @@ begin
               EContext.RPNEraiseTopOperator
             else
               AbortWork('Invalid decimal value: %s', [Value], Lexer_Position);
+          end else
+          if TryStrToUInt64(Value, UInt64Value) then
+          begin
+            IntValue := Int64(UInt64Value);
           end else
             AbortWork('Invalid decimal value: %s', [Value], Lexer_Position);
         end;
