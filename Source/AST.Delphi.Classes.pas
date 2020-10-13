@@ -761,15 +761,23 @@ type
     ptClassDestructor     // классовый деструктор
   );
 
+  TProcTypeClass = (
+    procStatic,           // simple static proc type, TProc = procedure(...)
+    procMethod,           // method proc type, TProc = procedure(...) of object
+    procReference         // referenced proc type, TProc = reference to procedure(...)
+  );
+
+
   TCallConvention = (ConvNative, ConvRegister, ConvStdCall, ConvCDecl, ConvFastCall);
 
   {procedural type}
   TIDProcType = class(TIDType)
   private
-    FParams: TVariableList;
-    FIsStatic: Boolean;
-    FResultType: TIDType;
-    FCallConv: TCallConvention;
+    fParams: TVariableList;
+    fResultType: TIDType;
+    fCallConv: TCallConvention;
+    fProcClass: TProcTypeClass;
+    function GetIsStatic: Boolean; inline;
   protected
     function GetDisplayName: string; override;
   public
@@ -778,10 +786,11 @@ type
     ////////////////////////////////////////////////////////////////////////
     procedure AddParam(const ID: TIdentifier; DataType: TIDType);
     procedure CreateStandardOperators; override;
-    property Params: TVariableList read FParams write FParams;
-    property ResultType: TIDType read FResultType write FResultType;
-    property IsStatic: Boolean read FIsStatic write FIsStatic;
+    property Params: TVariableList read fParams write fParams;
+    property ResultType: TIDType read fResultType write fResultType;
+    property IsStatic: Boolean read GetIsStatic;
     property CallConv: TCallConvention read FCallConv write FCallConv;
+    property ProcClass: TProcTypeClass read fProcClass write fProcClass;
   end;
 
   TIDRangeExpression  = record
@@ -2412,10 +2421,11 @@ procedure TIDProcedure.CreateProcedureTypeIfNeed(Scope: TScope);
 begin
   if not Assigned(FDataType) then
   begin
-    FDataType := TIDProcType.CreateAsAnonymous(Scope);
-    TIDProcType(FDataType).FParams := ExplicitParams;
-    TIDProcType(FDataType).FResultType := ResultType;
-    TIDProcType(FDataType).IsStatic := not Assigned(Struct);
+    fDataType := TIDProcType.CreateAsAnonymous(Scope);
+    TIDProcType(fDataType).fParams := ExplicitParams;
+    TIDProcType(fDataType).fResultType := ResultType;
+    if Assigned(Struct) then
+      TIDProcType(fDataType).ProcClass := procMethod;
   end;
 end;
 
@@ -5156,9 +5166,16 @@ begin
     else
       Result := 'procedure(' + Result + ')';
 
-    if not FIsStatic then
-      Result := Result + ' of object';
+    case fProcClass of
+      procMethod: Result := Result + ' of object';
+      procReference: Result := 'reference to ' + Result;
+    end;
   end;
+end;
+
+function TIDProcType.GetIsStatic: Boolean;
+begin
+  Result := fProcClass = procStatic;
 end;
 
 { TIDRangeConstant }

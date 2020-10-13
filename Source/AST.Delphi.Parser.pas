@@ -249,7 +249,10 @@ type
     function ParseStaticArrayType(Scope: TScope; Decl: TIDArray): TTokenID;
     function ParseSetType(Scope: TScope; Decl: TIDSet): TTokenID;
     function ParsePointerType(Scope: TScope; const ID: TIdentifier; out Decl: TIDPointer): TTokenID;
-    function ParseProcType(Scope: TScope; const ID: TIdentifier; ProcType: TProcType; out Decl: TIDProcType): TTokenID;
+
+    function ParseProcType(Scope: TScope; const ID: TIdentifier;
+                           GDescriptor: PGenericDescriptor; out Decl: TIDProcType): TTokenID;
+
     function ParseRecordType(Scope: TScope; Decl: TIDRecord): TTokenID;
     function ParseCaseRecord(Scope: TScope; Decl: TIDRecord): TTokenID;
     function ParseClassAncestorType(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; ClassDecl: TIDClass): TTokenID;
@@ -761,8 +764,9 @@ begin
     /////////////////////////////////////////////////////////////////////////
     // procedural type
     /////////////////////////////////////////////////////////////////////////
-    token_function: Result := ParseProcType(Scope, ID, TProcType.ptFunc, TIDProcType(Decl));
-    token_procedure: Result := ParseProcType(Scope, ID, TProcType.ptProc, TIDProcType(Decl));
+    token_id_keyword: if Lexer_AmbiguousId = token_reference then
+        Result := ParseProcType(Scope, ID, GDescriptor, TIDProcType(Decl));
+    token_procedure, token_function: Result := ParseProcType(Scope, ID, GDescriptor, TIDProcType(Decl));
     /////////////////////////////////////////////////////////////////////////
     // set
     /////////////////////////////////////////////////////////////////////////
@@ -6935,15 +6939,33 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.ParseProcType(Scope: TScope; const ID: TIdentifier; ProcType: TProcType; out Decl: TIDProcType): TTokenID;
+function TASTDelphiUnit.ParseProcType(Scope: TScope; const ID: TIdentifier;
+                                      GDescriptor: PGenericDescriptor; out Decl: TIDProcType): TTokenID;
 var
   Params: TScope;
   VarSpace: TVarSpace;
   ResultType: TIDType;
+  ProcClass: TProcTypeClass;
+  IsFunction: Boolean;
 begin
+  ProcClass := procStatic;
+  Result := Lexer_AmbiguousId;
+  if Result = token_reference then
+  begin
+    ProcClass := procReference;
+    Lexer_ReadToken(Scope, token_to);
+    Result := Lexer_NextToken(Scope);
+  end;
+  case Result of
+    token_procedure: IsFunction := False;
+    token_function: IsFunction := True;
+  else
+    AbortWork('PROCEDURE or FUNCTION required', Lexer_Position);
+  end;
+
   Decl := TIDProcType.Create(Scope, ID);
   Result := Lexer_NextToken(Scope);
-  // если есть параметры
+  // parsing params
   if Result = token_openround then
   begin
     VarSpace.Initialize;
@@ -6952,22 +6974,22 @@ begin
     Result := Lexer_NextToken(Scope);
     Decl.Params := ScopeToVarList(Params, 0);
   end;
-
-  if ProcType = ptFunc then
+  // parsing result if this is function
+  if IsFunction then
   begin
     Lexer_MatchToken(Result, token_colon);
     Result := ParseTypeSpec(Scope, ResultType);
     Decl.ResultType := ResultType;
   end;
-
+  // parsing of object
   if Result = token_of then
   begin
     Lexer_ReadToken(Scope, token_object);
     Result := Lexer_NextToken(Scope);
-    Decl.IsStatic := False;
-  end else
-    Decl.IsStatic := True;
+    ProcClass := procMethod;
+  end;
 
+  Decl.ProcClass := ProcClass;
   if ID.Name <> '' then
     InsertToScope(Scope, Decl);
 end;

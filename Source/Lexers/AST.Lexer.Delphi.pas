@@ -111,8 +111,6 @@ type
     token_mod,                      // keyword: mod
     token_shl,                      // keyword: shl
     token_shr,                      // keyword: shr
-    token_rol,                      // keyword: rol
-    token_ror,                      // keyword: ror
 
     token_as,                       // keyword: as
     token_for,                      // keyword: for
@@ -122,6 +120,7 @@ type
     token_deprecated,               // keyword: depricated
     token_while,                    // keyword: while
     token_weak,                     // keyword: weak
+    token_reference,                // keyword: reference
     token_repeat,                   // keyword: repeat
     token_reintroduce,              // keyword: reintroduce
     token_until,                    // keyword: until
@@ -451,11 +450,10 @@ begin
   RegisterToken('raise', token_raise);
   RegisterToken('read', token_read);
   RegisterToken('record', token_record);
+  RegisterToken('reference', token_reference, TTokenClass.Ambiguous);
   RegisterToken('repeat', token_repeat);
   RegisterToken('resourcestring', token_resourcestring);
   RegisterToken('reintroduce', token_reintroduce);
-  RegisterToken('rol', token_rol);
-  RegisterToken('ror', token_ror);
   RegisterToken('set', token_set);
   RegisterToken('shl', token_shl);
   RegisterToken('shr', token_shr);
