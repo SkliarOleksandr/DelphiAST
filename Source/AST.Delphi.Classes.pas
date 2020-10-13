@@ -2237,7 +2237,7 @@ begin
     AType2 := Decl2.DataType.ActualDataType;
     if AType1 <> AType2 then
     begin
-      if (AType1.DataTypeID = dtDynArray) and (AType2.DataTypeID = dtDynArray) then
+      if (AType1.DataTypeID = dtOpenArray) and (AType2.DataTypeID = dtOpenArray) then
       begin
         if TIDArray(AType1).ElementDataType <> TIDArray(AType2).ElementDataType then
           Exit(False);

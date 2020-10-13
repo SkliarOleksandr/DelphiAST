@@ -6433,7 +6433,8 @@ begin
     end;
     Lexer_MatchIdentifier(Result);
     while True do begin
-      Lexer_ReadCurrIdentifier(CNItem.ID); // read name
+      // read param name
+      Lexer_ReadCurrIdentifier(CNItem.ID);
       Result := Lexer_NextToken(Scope);
       if Result = token_coma then begin
         Result := Lexer_NextToken(Scope);
@@ -6447,8 +6448,12 @@ begin
       end;
       if Result = token_colon then
       begin
+        // parse param type
         Result := ParseTypeSpec(Scope, DataType);
-        // парсим значение по умолчанию
+        // open array case
+        if DataType.IsAnonymous and (DataType.DataTypeID = dtDynArray) then
+          DataType.DataTypeID := dtOpenArray;
+        // parse default value
         if Result = token_equal then
         begin
           Lexer_NextToken(Scope);
@@ -6457,7 +6462,7 @@ begin
           DefaultExpr := nil;
       end else begin
 
-        // если тип не указан, то это нетепизированная ссылка
+        // if type is not specified then it is untyped reference
         if (VarConst in VarFlags) or
            (VarInOut in VarFlags) or
            (VarOut in VarFlags) or

@@ -500,7 +500,7 @@ begin
   if DataType.DataTypeID in [dtString, dtShortString, dtAnsiString] then
     Exit(SYSUnit._OneExpression)
   else
-  if DataType.DataTypeID in [dtDynArray, dtWideString] then
+  if DataType.DataTypeID in [dtDynArray, dtOpenArray, dtWideString] then
   begin
     Exit(SYSUnit._ZeroIntExpression);
   end else
@@ -550,7 +550,7 @@ begin
     DataType := (DataType as TIDArray).Dimensions[0];
     Decl := TIDIntConstant.CreateAsAnonymous(UN.IntfScope, SYSUnit._Int32, (DataType as TIDOrdinal).HighBound);
   end else
-  if DataType.DataTypeID in [dtDynArray, dtString, dtShortString, dtAnsiString] then
+  if DataType.DataTypeID in [dtDynArray, dtOpenArray, dtString, dtShortString, dtAnsiString] then
   begin
     // Lenght - 1
     Decl := EContext.Proc.GetTMPVar(SYSUnit._NativeUInt); // tmp
