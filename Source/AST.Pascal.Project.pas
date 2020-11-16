@@ -53,7 +53,7 @@ type
     function RefCount: Integer;
     function GetRTTICharset: TRTTICharset;
     function GetUnitsCount: Integer;
-    function GetUnit(Index: Integer): TObject; overload;
+    function GetUnit(Index: Integer): TASTModule; overload;
     function GetUnit(const UnitName: string): TObject; overload;
     function GetSearchPathes: TStrings;
     function GetOptions: TPackageOptions;
@@ -201,7 +201,7 @@ begin
   Result := FTargetName;
 end;
 
-function TPascalProject.GetUnit(Index: Integer): TObject;
+function TPascalProject.GetUnit(Index: Integer): TASTModule;
 begin
   Result := FUnits[Index];
 end;
@@ -368,7 +368,7 @@ function TPascalProject.Compile: TCompilerResult;
 var
   i: Integer;
 begin
-  Result := CompileSuccess;
+  Result := CompileInProgress;
   // компиляция модулей
   InitSystemUnit;
   for i := 0 to FUnits.Count - 1 do

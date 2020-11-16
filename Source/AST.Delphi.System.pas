@@ -1057,7 +1057,7 @@ end;
 
 function TSYSTEMUnit.Compile(RunPostCompile: Boolean = True): TCompilerResult;
 begin
-  Result := CompileFail;
+  Result := CompileInProgress;
   try
     RegisterBuiltinFunctions;
     SystemFixup;
@@ -1065,7 +1065,7 @@ begin
     if Result = CompileSuccess then
     begin
       SearchSystemTypes;
-      fCompiled := true;
+      fCompiled := CompileSuccess;
     end;
   except
     on e: ECompilerStop do Exit;

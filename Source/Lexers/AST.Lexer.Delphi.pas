@@ -446,7 +446,7 @@ begin
   RegisterToken('public', token_public);
   RegisterToken('published', token_published);
   RegisterToken('packed', token_packed);
-  RegisterToken('platform', token_platform);
+  RegisterToken('platform', token_platform, TTokenClass.Ambiguous);
   RegisterToken('raise', token_raise);
   RegisterToken('read', token_read);
   RegisterToken('record', token_record);

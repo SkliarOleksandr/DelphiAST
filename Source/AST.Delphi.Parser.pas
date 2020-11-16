@@ -1079,6 +1079,7 @@ begin
   Token := ParseUnitName(Scope, fUnitName);
   Lexer_MatchSemicolon(Token);
   Decl := TIDUnit.Create(Scope, Self);
+  // add itself to the intf scope
   InsertToScope(Scope, Decl);
 end;
 
@@ -1122,7 +1123,7 @@ begin
       ERRORS.UNIT_NOT_FOUND(ID);
 
     // если модуль используется первый раз - компилируем
-    if not UUnit.Compiled then
+    if UUnit.Compiled = CompileNone then
     begin
       if UUnit.Compile() = CompileFail then begin
         StopCompile(False);
@@ -2357,7 +2358,7 @@ begin
       end;
     end;
     Result := CompileSuccess;
-    FCompiled := True;
+    FCompiled := Result;
     Progress(TASTStatusParseSuccess);
   except
     on e: ECompilerStop do Exit();
@@ -5010,7 +5011,7 @@ begin
 
    // AddConstant(Expr.AsConst);
 
-    if Result = token_platform then
+    if Lexer_IsCurrentToken(token_platform) then
       Result := ParsePlatform(Scope);
 
     Result := CheckAndParseDeprecated(Scope, Result);
@@ -6728,9 +6729,12 @@ begin
         Result := CheckAndParseDeprecated(Scope, token_deprecated);
         Result := Lexer_NextToken(Scope);
       end;
-      token_platform: begin
-        Result := ParsePlatform(Scope);
-        Result := Lexer_NextToken(Scope);
+      token_id_keyword: begin
+        if Lexer_AmbiguousId = token_platform then
+        begin
+          Result := ParsePlatform(Scope);
+          Result := Lexer_NextToken(Scope);
+        end;
       end;
     else
       break;
@@ -6942,7 +6946,7 @@ end;
 function TASTDelphiUnit.ParseProcType(Scope: TScope; const ID: TIdentifier;
                                       GDescriptor: PGenericDescriptor; out Decl: TIDProcType): TTokenID;
 var
-  Params: TScope;
+  Params, ParentScope: TScope;
   VarSpace: TVarSpace;
   ResultType: TIDType;
   ProcClass: TProcTypeClass;
@@ -6965,11 +6969,19 @@ begin
 
   Decl := TIDProcType.Create(Scope, ID);
   Result := Lexer_NextToken(Scope);
+
+
+
+  if Assigned(GDescriptor) then
+    ParentScope := GDescriptor.Scope
+  else
+    ParentScope := Scope;
+
   // parsing params
   if Result = token_openround then
   begin
     VarSpace.Initialize;
-    Params := TScope.Create(stLocal, @VarSpace, nil, Scope, Self);
+    Params := TScope.Create(stLocal, @VarSpace, nil, ParentScope, Self);
     ParseParameters(Params);
     Result := Lexer_NextToken(Scope);
     Decl.Params := ScopeToVarList(Params, 0);
@@ -6978,7 +6990,7 @@ begin
   if IsFunction then
   begin
     Lexer_MatchToken(Result, token_colon);
-    Result := ParseTypeSpec(Scope, ResultType);
+    Result := ParseTypeSpec(ParentScope, ResultType);
     Decl.ResultType := ResultType;
   end;
   // parsing of object
@@ -6991,7 +7003,10 @@ begin
 
   Decl.ProcClass := ProcClass;
   if ID.Name <> '' then
-    InsertToScope(Scope, Decl);
+    if Assigned(GDescriptor) then
+      InsertToScope(Scope, GDescriptor.SearchName, Decl)
+    else
+      InsertToScope(Scope, Decl);
 end;
 
 function TASTDelphiUnit.ParseGenericProcRepeatedly(Scope: TScope; GenericProc, Proc: TASTDelphiProc; Struct: TIDStructure): TTokenID;
@@ -7405,8 +7420,8 @@ begin
   Lexer_MatchToken(Result, token_end);
   Result := Lexer_NextToken(Scope);
 
-  if Result = token_platform then
-    Result := Lexer_NextToken(Scope);
+  if Lexer_IsCurrentToken(token_platform) then
+    Result := ParsePlatform(Scope);
 
   Result := CheckAndParseDeprecated(Scope, Result);
 end;
@@ -8635,7 +8650,7 @@ begin
     DefaultValue := nil;
 
     // platform declaration
-    if Result = token_platform then
+    if Lexer_IsCurrentToken(token_platform) then
       Result := ParsePlatform(Scope);
 
     // check and parse procedural type call convention
@@ -8713,7 +8728,7 @@ begin
     Result := ParseTypeSpec(Scope, DataType);
 
     // platform declaration
-    if Result = token_platform then
+    if Lexer_IsCurrentToken(token_platform) then
       Result := ParsePlatform(Scope);
 
     // deprecated

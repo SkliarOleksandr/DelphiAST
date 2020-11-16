@@ -20,6 +20,8 @@ type
   TASTUnitClass = class of TASTModule;
 
   TCompilerResult = (
+    CompileNone,
+    CompileInProgress,
     CompileSuccess,
     CompileFail,
     CompileSkip

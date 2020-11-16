@@ -24,7 +24,7 @@ type
     function GetStringConstant(const Value: string): Integer; overload;
     function GetIncludeDebugInfo: Boolean;
     function GetUnitsCount: Integer;
-    function GetUnit(Index: Integer): TObject; overload;
+    function GetUnit(Index: Integer): TASTModule; overload;
     function GetSearchPathes: TStrings;
     function GetOptions: TPackageOptions;
     function GetTarget: string;
@@ -54,7 +54,7 @@ type
     property RTTICharset: TRTTICharset read GetRTTICharset write SetRTTICharset;
     property IncludeDebugInfo: Boolean read GetIncludeDebugInfo write SetIncludeDebugInfo;
     property UnitsCount: Integer read GetUnitsCount;
-    property Units[Index: Integer]: TObject read GetUnit;
+    property Units[Index: Integer]: TASTModule read GetUnit;
     property SearchPathes: TStrings read GetSearchPathes;
     property Options: TPackageOptions read GetOptions;
     property Target: string read GetTarget write SetTarget;

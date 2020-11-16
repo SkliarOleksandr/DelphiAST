@@ -98,7 +98,7 @@ type
     fConsts: TConstSpace;              // список нетривиальных констант (массивы, структуры)
     function GetMessagesText: string;
   protected
-    fCompiled: Boolean;
+    fCompiled: TCompilerResult;
     fUnitName: TIdentifier;            // the Unit declaration name
     fSysUnit: TASTModule;
     fProcMatches: TASTProcMachArray;
@@ -139,7 +139,7 @@ type
     property IntfImportedUnits: TUnitList read fIntfImportedUnits;
     property ImplImportedUnits: TUnitList read fImplImportedUnits;
 
-    property Compiled: Boolean read FCompiled;
+    property Compiled: TCompilerResult read FCompiled;
     property TypeSpace: TTypeSpace read FTypeSpace;
     property VarSpace: TVarSpace read FVarSpace;
     property ProcSpace: TProcSpace read FProcSpace;
@@ -163,7 +163,7 @@ end;
 
 function TNPUnit.Compile(RunPostCompile: Boolean = True): TCompilerResult;
 begin
-  Result := TCompilerResult.CompileFail;
+  Result := TCompilerResult.CompileInProgress;
 
   fSysUnit := (Project as IASTPascalProject).SysUnit;
 
