@@ -615,7 +615,6 @@ var
   Expr: TIDExpression;
   DataType: TIDType;
   Decl: TIDDeclaration;
-  ParamName: string;
 begin
   // read argument
   Expr := EContext.RPNPopExpression();
@@ -629,11 +628,7 @@ begin
       if Decl.ItemType = itConst then
         Result := IntConstExpression(EContext.SContext, TIDDynArrayConstant(Decl).ArrayLength)
       else begin
-        ParamName := Decl.Name + '$Length';
-        Decl := Expr.Declaration.Scope.FindID(ParamName);
-        if not Assigned(Decl) then
-          AbortWorkInternal('%s param is not forund', [ParamName], Expr.TextPosition);
-        Result := TIDExpression.Create(Decl, Expr.TextPosition);
+        Result := IntConstExpression(EContext.SContext, 0); // todo:
       end;
     end;
     // dynamic array, string

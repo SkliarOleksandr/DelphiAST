@@ -135,7 +135,7 @@ type
     class function MatchOperatorIn(const SContext: TSContext; const Left, Right: TIDExpression): TIDDeclaration; static;
     class function MatchConstDynArrayImplicit(const SContext: TSContext; Source: TIDExpression; Destination: TIDType): TIDType; static;
     class function MatchDynArrayImplicit(Source: TIDExpression; Destination: TIDType): TIDType; static;
-    function MatchOverloadProc(Item: TIDExpression; const CallArgs: TIDExpressions; CallArgsCount: Integer): TIDProcedure;
+    function MatchOverloadProc(const SContext: TSContext; Item: TIDExpression; const CallArgs: TIDExpressions; CallArgsCount: Integer): TIDProcedure;
     class function MatchImplicitClassOf(Source: TIDExpression; Destination: TIDClassOf): TIDDeclaration; static;
     class function MatchProcedureTypes(Src: TIDProcType; Dst: TIDProcType): TIDType; static;
     procedure MatchPropSetter(Prop: TIDProperty; Setter: TIDExpression; PropParams: TScope);
@@ -1537,7 +1537,7 @@ begin
 
     {поиск подходящей декларации}
     if Assigned(ProcDecl.NextOverload) then begin
-      ProcDecl := MatchOverloadProc(PExpr, UserArguments, ArgsCount);
+      ProcDecl := MatchOverloadProc(EContext.SContext, PExpr, UserArguments, ArgsCount);
       ProcParams := ProcDecl.ExplicitParams;
       PExpr.Declaration := ProcDecl;
     end else begin
@@ -1658,15 +1658,6 @@ begin
       end;
 
       CallArguments[PIndex] := AExpr;
-
-      {если параметр открытый массив}
-      if Param.DataTypeID = dtOpenArray then
-      begin
-        {добовляем скрытй аргумент}
-        EContext.RPNPushExpression(AExpr);
-        Inc(PIndex);
-        //CallArguments[PIndex] := ProcessBuiltin_Length(EContext); todo:
-      end;
 
       Inc(PIndex);
       {если параметр передается по ссылке, проверяем что аргумент можно менять}
@@ -3753,7 +3744,7 @@ begin
   // пока без проверки на пользовательские операторы
 end;
 
-function TASTDelphiUnit.MatchOverloadProc(Item: TIDExpression; const CallArgs: TIDExpressions; CallArgsCount: Integer): TIDProcedure;
+function TASTDelphiUnit.MatchOverloadProc(const SContext: TSContext; Item: TIDExpression; const CallArgs: TIDExpressions; CallArgsCount: Integer): TIDProcedure;
 
   procedure AbortWithAmbiguousOverload(AmbiguousCnt: Integer; AmbiguousRate: Integer);
   var
@@ -3823,7 +3814,7 @@ begin
             curLevel := TASTArgMatchLevel.MatchStrict
           else begin
             // find implicit type cast
-            ImplicitCast := MatchImplicit(ArgDataType, ParamDataType);
+            ImplicitCast := CheckImplicit(SContext, CallArgs[i], ParamDataType);
             if Assigned(ImplicitCast) then
             begin
               SrcDataTypeID := ArgDataType.DataTypeID;
@@ -6509,14 +6500,6 @@ begin
     begin
       Param := NextItem.Param;
       Scope.AddVariable(Param);
-      {если параметр - открытй массив, то добавляем скрытый параметр "Длинна массива"}
-      if Param.DataType.DataTypeID = dtOpenArray then
-      begin
-        Param := TIDVariable.CreateAsSystem(Scope, NextItem.ID.Name + '$Length');
-        Param.DataType := Sys._UInt32;
-        Param.Flags := [VarParameter, VarHiddenParam, VarConst];
-        Scope.AddVariable(Param);
-      end;
       NextItem := NextItem.NextItem;
     end;
     // disposing items
@@ -9163,7 +9146,6 @@ end;
 
 class procedure TASTDelphiUnit.CheckStringExpression(Expression: TIDExpression);
 begin
-
   if MatchImplicit(Expression.DataType, Expression.Declaration.SysUnit._String) = nil then
     AbortWork(sStringExpressionRequired, Expression.TextPosition);
 end;

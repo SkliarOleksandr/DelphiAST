@@ -164,6 +164,7 @@ end;
 function TNPUnit.Compile(RunPostCompile: Boolean = True): TCompilerResult;
 begin
   Result := TCompilerResult.CompileInProgress;
+  FCompiled := Result;
 
   fSysUnit := (Project as IASTPascalProject).SysUnit;
 
