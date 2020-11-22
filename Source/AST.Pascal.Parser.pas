@@ -24,7 +24,7 @@ uses SysUtils, Math, Classes, StrUtils, Types, IOUtils, Generics.Collections,
 
 type
 
-  TNPUnit = class;
+  TPascalUnit = class;
   TUnitSection = (usInterface, usImplementation);
 
   {parse members context - контекст парсинга выражений вид a.b.c или a[1, 2, 3].b...}
@@ -80,7 +80,7 @@ type
 
   TASTProcMachArray = array of TASTProcMatchItem;
 
-  TNPUnit = class(TASTModule)
+  TPascalUnit = class(TASTModule)
   type
     TVarModifyPlace = (vmpAssignment, vmpPassArgument);
     TIdentifiersPool = TPool<TIdentifier>;
@@ -156,12 +156,12 @@ uses AST.Delphi.System,
      AST.Pascal.ConstCalculator;
 
 
-procedure TNPUnit.SetUnitName(const Name: string);
+procedure TPascalUnit.SetUnitName(const Name: string);
 begin
   FUnitName.Name := Name;
 end;
 
-function TNPUnit.Compile(RunPostCompile: Boolean = True): TCompilerResult;
+function TPascalUnit.Compile(RunPostCompile: Boolean = True): TCompilerResult;
 begin
   Result := TCompilerResult.CompileInProgress;
   FCompiled := Result;
@@ -172,12 +172,12 @@ begin
     fIntfImportedUnits.AddObject('system', fSysUnit);
 end;
 
-function TNPUnit.CompileIntfOnly: TCompilerResult;
+function TPascalUnit.CompileIntfOnly: TCompilerResult;
 begin
   Result := TCompilerResult.CompileFail;
 end;
 
-constructor TNPUnit.Create(const Project: IASTProject; const FileName: string; const Source: string = '');
+constructor TPascalUnit.Create(const Project: IASTProject; const FileName: string; const Source: string = '');
 begin
   inherited Create(Project, FileName, Source);
   fSysUnit := (Project as IASTPascalProject).SysUnit;
@@ -203,7 +203,7 @@ begin
 //  fCondStack.OnPopError := procedure begin ERROR_INVALID_COND_DIRECTIVE() end;
 end;
 
-constructor TNPUnit.CreateFromFile(const Project: IASTProject; const FileName: string);
+constructor TPascalUnit.CreateFromFile(const Project: IASTProject; const FileName: string);
 var
   Stream: TStringStream;
 begin
@@ -216,7 +216,7 @@ begin
   end;
 end;
 
-destructor TNPUnit.Destroy;
+destructor TPascalUnit.Destroy;
 begin
   FIntfScope.Free;
   FImplScope.Free;
@@ -226,12 +226,12 @@ begin
   inherited;
 end;
 
-function TNPUnit.FindPublicDecl(const Name: string): TIDDeclaration;
+function TPascalUnit.FindPublicDecl(const Name: string): TIDDeclaration;
 begin
   Result := fIntfScope.FindID(Name);
 end;
 
-function TNPUnit.UsedUnit(const UnitName: string): Boolean;
+function TPascalUnit.UsedUnit(const UnitName: string): Boolean;
 var
   i: Integer;
 begin
@@ -246,7 +246,7 @@ begin
     Exit(False);
 end;
 
-procedure TNPUnit.AddConstant(const Decl: TIDConstant);
+procedure TPascalUnit.AddConstant(const Decl: TIDConstant);
 var
   Item: TIDConstant;
 begin
@@ -262,7 +262,7 @@ begin
   FConsts.Add(Decl);
 end;
 
-procedure TNPUnit.AddType(const Decl: TIDType);
+procedure TPascalUnit.AddType(const Decl: TIDType);
 begin
   if not (Decl is TIDAliasType) and not Decl.IsPooled then
   begin
@@ -271,19 +271,19 @@ begin
   end;
 end;
 
-function TNPUnit.GetMessagesText: string;
+function TPascalUnit.GetMessagesText: string;
 begin
   Result := FMessages.GetAsString;
 end;
 
-function TNPUnit.GetModuleName: string;
+function TPascalUnit.GetModuleName: string;
 begin
   Result := fUnitName.Name;
   if Result = '' then
     Result := ChangeFileExt(inherited GetModuleName(), '');
 end;
 
-function TNPUnit.GetPublicClass(const Name: string): TIDClass;
+function TPascalUnit.GetPublicClass(const Name: string): TIDClass;
 var
   Res: TIDDeclaration;
 begin
@@ -293,28 +293,28 @@ end;
 
 {parser methods}
 
-procedure TNPUnit.SaveConstsToStream(Stream: TStream);
+procedure TPascalUnit.SaveConstsToStream(Stream: TStream);
 begin
   Assert(False);
 end;
 
-procedure TNPUnit.SaveMethodBodies(Stream: TStream);
+procedure TPascalUnit.SaveMethodBodies(Stream: TStream);
 begin
   Assert(False);
 end;
 
 
-procedure TNPUnit.SaveTypesToStream(Stream: TStream);
+procedure TPascalUnit.SaveTypesToStream(Stream: TStream);
 begin
   Assert(False);
 end;
 
-procedure TNPUnit.SaveDeclToStream(Stream: TStream);
+procedure TPascalUnit.SaveDeclToStream(Stream: TStream);
 begin
   Assert(False);
 end;
 
-procedure TNPUnit.SaveBodyToStream(Stream: TStream);
+procedure TPascalUnit.SaveBodyToStream(Stream: TStream);
 begin
   Assert(False);
 end;
@@ -348,7 +348,7 @@ begin
   DataType := nil;
 end;
 
-function TNPUnit.GetDefinesAsString: string;
+function TPascalUnit.GetDefinesAsString: string;
 begin
 //  Result := FDefines.Text;
 end;

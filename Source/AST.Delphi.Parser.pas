@@ -3,30 +3,31 @@
 interface
 
 uses 
-     AST.Pascal.Parser,
-     AST.Lexer,
-     AST.Classes,
-     AST.Parser.Messages,
-     AST.Delphi.Operators,
-     AST.Delphi.Errors,
-     AST.Lexer.Delphi,
-     AST.Delphi.Classes,
-     AST.Parser.Utils,
-     AST.Parser.Contexts,
-     AST.Delphi.Contexts,
-     AST.Parser.Options,
-     AST.Intf,
-     AST.Pascal.ConstCalculator,
-     AST.Delphi.Options,
-     AST.Delphi.Project,
-     AST.Delphi.Intf;
-     // system
-     // sysinit
-     // Windows
+  AST.Pascal.Parser,
+  AST.Lexer,
+  AST.Classes,
+  AST.Parser.Messages,
+  AST.Delphi.Operators,
+  AST.Delphi.Errors,
+  AST.Lexer.Delphi,
+  AST.Delphi.Classes,
+  AST.Parser.Utils,
+  AST.Parser.Contexts,
+  AST.Delphi.Contexts,
+  AST.Parser.Options,
+  AST.Intf,
+  AST.Pascal.ConstCalculator,
+  AST.Delphi.Options,
+  AST.Delphi.Project,
+  AST.Delphi.Intf;
+ // system
+ // sysutils
+ // sysinit
+ // Windows
 
 type
 
-  TASTDelphiUnit = class(TNPUnit, IASTDelphiUnit)
+  TASTDelphiUnit = class(TPascalUnit, IASTDelphiUnit)
   type
     TVarModifyPlace = (vmpAssignment, vmpPassArgument);
   var
@@ -265,7 +266,7 @@ type
     function ParseTypeRecord(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
     function ParseTypeArray(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
     function ParseTypeHelper(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier;
-                             out Decl: TIDHelper): TTokenID;
+                             out Decl: TDlphHelper): TTokenID;
     // функция парсинга анонимного типа
     function ParseTypeDecl(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
     function ParseTypeDeclOther(Scope: TScope; const ID: TIdentifier; out Decl: TIDType): TTokenID;
@@ -860,7 +861,7 @@ begin
 end;
 
 function TASTDelphiUnit.ParseTypeHelper(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier;
-  out Decl: TIDHelper): TTokenID;
+  out Decl: TDlphHelper): TTokenID;
 var
   TargetID: TIdentifier;
   TargetDecl: TIDType;
@@ -872,8 +873,21 @@ begin
   if TargetDecl.ItemType <> itType then
     ERRORS.TYPE_REQUIRED(Lexer_PrevPosition);
 
-  Decl := TIDHelper.Create(Scope, ID);
+  Decl := TDlphHelper.Create(Scope, ID);
   Decl.Target := TargetDecl;
+
+  if Assigned(TargetDecl.Helper) then
+    Warning('Helper for %s was reassigned from %s to %s',
+      [TargetDecl.Name, TargetDecl.Helper.Name, ID.Name], ID.TextPosition);
+
+  TargetDecl.Helper := Decl;
+
+  if ID.Name <> '' then begin
+    if Assigned(GDescriptor) then
+      InsertToScope(Scope, GDescriptor.SearchName, Decl)
+    else
+      InsertToScope(Scope, Decl);
+  end;
 
   Result := Lexer_NextToken(Scope);
   while True do begin
@@ -952,7 +966,7 @@ begin
   Result := Lexer_NextToken(Scope);
   if Result = token_helper then
   begin
-    Result := ParseTypeHelper(Scope, GenericScope, GDescriptor, ID, TIDHelper(Decl));
+    Result := ParseTypeHelper(Scope, GenericScope, GDescriptor, ID, TDlphHelper(Decl));
     Exit;
   end;
 
@@ -1109,7 +1123,7 @@ function TASTDelphiUnit.ParseUsesSection(Scope: TScope): TTokenID;
 var
   Token: TTokenID;
   ID: TIdentifier;
-  UUnit: TNPUnit;
+  UUnit: TPascalUnit;
   Idx: Integer;
 begin
   while true do begin
@@ -1118,7 +1132,7 @@ begin
     if ID.Name = Self.FUnitName.Name then
       ERRORS.UNIT_RECURSIVELY_USES_ITSELF(ID);
 
-    UUnit := Package.UsesUnit(ID.Name, nil) as TNPUnit;
+    UUnit := Package.UsesUnit(ID.Name, nil) as TPascalUnit;
     if not Assigned(UUnit) then
       ERRORS.UNIT_NOT_FOUND(ID);
 
@@ -2999,7 +3013,7 @@ begin
   with IntfImportedUnits do
   begin
     for i := Count - 1 downto 0 do begin
-      Result := TNPUnit(Objects[i]).IntfScope.FindID(IDName);
+      Result := TPascalUnit(Objects[i]).IntfScope.FindID(IDName);
       if Assigned(Result) then
         Exit;
     end;
@@ -3018,7 +3032,7 @@ begin
     Exit;
   for i := IntfImportedUnits.Count - 1 downto 0 do
   begin
-    var UN := TNPUnit(IntfImportedUnits.Objects[i]);
+    var UN := TPascalUnit(IntfImportedUnits.Objects[i]);
     Result := UN.IntfScope.FindID(IDName);
     if Assigned(Result) then
       Exit;
@@ -3035,7 +3049,7 @@ begin
     Exit;
   with IntfImportedUnits do
     for i := Count - 1 downto 0 do begin
-      Result := TNPUnit(Objects[i]).IntfScope.FindID(ID);
+      Result := TPascalUnit(Objects[i]).IntfScope.FindID(ID);
       if Assigned(Result) then
         Exit;
     end;
@@ -3053,7 +3067,7 @@ begin
     Exit;
   for i := IntfImportedUnits.Count - 1 downto 0 do
   begin
-    var un := TNPUnit(IntfImportedUnits.Objects[i]);
+    var un := TPascalUnit(IntfImportedUnits.Objects[i]);
     Result := un.IntfScope.FindID(IDName);
     if Assigned(Result) then
       Exit;
@@ -8106,12 +8120,15 @@ begin
     if DataType.ClassType = TIDAliasType then
       DataType := TIDAliasType(DataType).Original;
 
-    if DataType.DataTypeID in [dtStaticArray, dtDynArray] then
-      DataType := TIDArray(DataType).ElementDataType;
+//    if DataType.DataTypeID in [dtStaticArray, dtDynArray] then            ???
+//      DataType := TIDArray(DataType).ElementDataType;
 
     if DataType.DataTypeID in [dtPointer, dtClassOf] then
       DataType := TIDPointer(DataType).ReferenceType.ActualDataType;
 
+    if Assigned(Decl.DataType.Helper) then
+      SearchScope := Decl.DataType.Helper.Members
+    else
     if DataType is TIDStructure then
       SearchScope := TIDStructure(DataType).Members
     else

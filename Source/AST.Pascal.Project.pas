@@ -124,11 +124,11 @@ end;
 function TPascalProject.GetMessages: ICompilerMessages;
 var
   i: Integer;
-  Module: TNPUnit;
+  Module: TPascalUnit;
 begin
   Result := TCompilerMessages.Create;
   for i := 0 to FUnits.Count - 1 do begin
-    Module := TNPUnit(FUnits[i]);
+    Module := TPascalUnit(FUnits[i]);
     Result.CopyFrom(Module.Messages);
   end;
 end;
@@ -213,7 +213,7 @@ begin
   for i := 0 to FUnits.Count - 1 do
   begin
     Result := FUnits[i];
-    if TNPUnit(Result).Name = UnitName then
+    if TPascalUnit(Result).Name = UnitName then
       Exit;
   end;
   Result := nil;
@@ -221,7 +221,7 @@ end;
 
 function TPascalProject.GetUnitClass: TASTUnitClass;
 begin
-  Result := TNPUnit;
+  Result := TPascalUnit;
 end;
 
 function TPascalProject.GetUnitsCount: Integer;
@@ -268,7 +268,7 @@ begin
     end;
   except
     on e: exception do
-      raise Exception.Create('Internal ERROR: ' + e.Message);
+      AbortWorkInternal('Internal ERROR: ' + e.Message);
   end;
 end;
 
@@ -277,9 +277,9 @@ var
   i: Integer;
 begin
   if FUnits.IndexOf(aUnit) > -1 then
-    raise ECompilerInternalError.CreateFmt(sUnitAlreadyExistFmt, [AnsiUpperCase(TNPUnit(aUnit).Name)]);
+    raise ECompilerInternalError.CreateFmt(sUnitAlreadyExistFmt, [AnsiUpperCase(TPascalUnit(aUnit).Name)]);
 
-  TNPUnit(aUnit).UnitID := FUnits.Count;
+  TPascalUnit(aUnit).UnitID := FUnits.Count;
 
   for i := 0 to FUnits.Count - 1 do
   begin
@@ -307,7 +307,7 @@ begin
   // поиск в текущем пакете
   for i := 0 to FUnits.Count - 1 do
   begin
-    SUnitName := TNPUnit(FUnits[i]).Name;
+    SUnitName := TPascalUnit(FUnits[i]).Name;
     if AnsiCompareText(SUnitName, UnitName) = 0 then
       Exit(FUnits[i]);
   end;
@@ -336,9 +336,9 @@ end;
 
 procedure TPascalProject.AddUnitSource(const Source: string);
 var
-  UN: TNPUnit;
+  UN: TPascalUnit;
 begin
-  UN := TNPUnit.Create(Self, Source);
+  UN := TPascalUnit.Create(Self, Source);
   AddUnit(UN, nil);
 end;
 
@@ -374,7 +374,7 @@ begin
   for i := 0 to FUnits.Count - 1 do
   begin
     var UN := FUnits[i];
-    Result := TNPUnit(UN).Compile;
+    Result := TPascalUnit(UN).Compile;
     if Result = CompileFail then
       Exit;
   end;
@@ -522,7 +522,7 @@ begin
   // компиляция модулей
   for i := 0 to FUnits.Count - 1 do
   begin
-    Result := TNPUnit(FUnits[i]).CompileIntfOnly;
+    Result := TPascalUnit(FUnits[i]).CompileIntfOnly;
     if Result = CompileFail then
       Exit;
   end;

@@ -60,6 +60,7 @@ type
   TIDStringConstant = class;
   TIDProcType = class;
   TASTDelphiProc = class;
+  TDlphHelper = class;
 
   TScope = class;
   TStructScope = class;
@@ -234,7 +235,7 @@ type
   {namespace}
   TIDNameSpace = class(TIDDeclaration)
   private
-    FMembers: TScope;
+    fMembers: TScope;
   public
     constructor Create(Scope: TScope; const Identifier: TIdentifier); override;
     property Members: TScope read FMembers;
@@ -243,9 +244,9 @@ type
   {unit}
   TIDUnit = class(TIDNameSpace)
   private
-    FUnit: TObject;
+    fModule: TASTModule;
   public
-    constructor Create(Scope: TScope; AUnit: TObject);
+    constructor Create(Scope: TScope; AUnit: TASTModule);
   end;
 
   {base type class}
@@ -289,6 +290,7 @@ type
     fInitProc: TIDProcedure;
     fCopyProc: TIDProcedure;
     fFinalProc: TIDProcedure;
+    fHelper: TDlphHelper;
     function GetOperators(const Op: TOperatorID): TIDPairList;
     function GetOperatorsFor(const Op: TOperatorID): TIDPairList;
     function GetIsReferenced: Boolean; inline;
@@ -382,12 +384,13 @@ type
     property SysImplicitToAny: TIDOperator read FSysImplicitToAny;
     property SysImplicitFromAny: TIDOperator read fSysImplicitFromAny;
     property SysBinayOperator: TSysBinaryOperators read fSysBinaryOperators;
+    property Helper: TDlphHelper read fHelper write fHelper;
   end;
 
   {special generic type}
   TIDGenericType = class(TIDType)
   private
-    FDefaultValue: TIDExpression;
+    fDefaultValue: TIDExpression;
   public
     constructor Create(Scope: TScope; const ID: TIdentifier); override;
     property DefaultValue: TIDExpression read FDefaultValue write FDefaultValue;
@@ -396,8 +399,8 @@ type
   {alias type}
   TIDAliasType = class(TIDType)
   private
-    FOriginalType: TIDType; // оригинальный тип (не алиас)
-    FLinkedType: TIDType;   // тип на который ссылается алиас
+    fOriginalType: TIDType; // оригинальный тип (не алиас)
+    fLinkedType: TIDType;   // тип на который ссылается алиас
   protected
     function GetActualDataType: TIDType; override;
     function GetOrdinal: Boolean; override;
@@ -414,7 +417,7 @@ type
   {base referenced type class}
   TIDRefType = class(TIDType)
   private
-    FReferenceType: TIDType;
+    fReferenceType: TIDType;
     function GetReferenceType: TIDType;
   protected
     function GetDisplayName: string; override;
@@ -520,16 +523,16 @@ type
   {base structure type}
   TIDStructure = class(TIDType)
   private
-    FAncestor: TIDStructure;
-    FStaticMembers: TStructScope;  // class (static) members
-    FMembers: TStructScope;        // instance members
+    fAncestor: TIDStructure;
+    fStaticMembers: TStructScope;  // class (static) members
+    fMembers: TStructScope;        // instance members
     fVarSpace: TVarSpace;
     fProcSpace: TProcSpace;
     fStaticVarSpace: TVarSpace;
     fStaticProcSpace: TProcSpace;
-    FStrucFlags: TStructFlags;
-    FDefaultProperty: TIDProperty;
-    FClassOfType: TIDClassOf;
+    fStrucFlags: TStructFlags;
+    fDefaultProperty: TIDProperty;
+    fClassOfType: TIDClassOf;
     function GetHasInitFiels: Boolean;
     procedure SetAncestor(const Value: TIDStructure);
     function GetProcSpace: PProcSpace; inline;
@@ -615,7 +618,7 @@ type
   end;
 
   {helper type}
-  TIDHelper = class(TIDStructure)
+  TDlphHelper = class(TIDStructure)
   private
     fTarget: TIDType;
     procedure SetTarget(const Value: TIDType);
@@ -1432,7 +1435,7 @@ type
 
   TScope = class(TIDList)
   private
-    fUnit: TASTModule;             // модуль (индекс модуля в пакете)
+    fUnit: TASTModule;          // модуль (индекс модуля в пакете)
     fParent: TScope;            // Parent scope
     fScopeType: TScopeType;     // Тип scope
     fVarSpace: PVarSpace;       // ссылка на список переменных
@@ -1477,7 +1480,7 @@ type
 
   TProcScope = class(TScope)
   private
-    FOuterScope: TScope; // внешняя по отношению к методу, область видимости (секция implementation реализации метода)
+    fOuterScope: TScope; // внешняя по отношению к методу, область видимости (секция implementation реализации метода)
   protected
     function GetScopeClass: TScopeClass; override;
   public
@@ -1488,8 +1491,8 @@ type
   end;
 
   TStructScope = class(TScope)
-    FAncestorScope: TScope;
-    FStruct: TIDStructure;
+    fAncestorScope: TScope;
+    fStruct: TIDStructure;
   public
     constructor CreateAsStruct(Parent: TScope; Struct: TIDStructure; VarSpace: PVarSpace; ProcSpace: PProcSpace; DeclUnit: TASTModule); reintroduce;
     function FindIDRecurcive(const ID: string; out Expression: TIDExpression): TIDDeclaration; override;
@@ -1527,7 +1530,7 @@ type
 
   TImplementationScope = class(TScope)
   private
-    FIntfScope: TScope;
+    fIntfScope: TScope;
   protected
     function GetScopeClass: TScopeClass; override;
   public
@@ -2076,7 +2079,7 @@ end;
 function TIDDeclaration.GetUnitID: Integer;
 begin
   if Assigned(FScope) then
-    Result := TNPUnit(FScope.DeclUnit).UnitID
+    Result := TPascalUnit(FScope.DeclUnit).UnitID
   else begin
     AbortWorkInternal('Scope not assigned');
     Result := -1;
@@ -5558,13 +5561,13 @@ end;
 
 { TIDUnit }
 
-constructor TIDUnit.Create(Scope: TScope; AUnit: TObject);
+constructor TIDUnit.Create(Scope: TScope; AUnit: TASTModule);
 begin
   CreateFromPool;
   FScope := Scope;
-  FID := TNPUnit(AUnit)._ID;
-  FUnit := AUnit;
-  FMembers := TNPUnit(AUnit).IntfScope;
+  FID := TPascalUnit(AUnit)._ID;
+  fModule := AUnit;
+  FMembers := TPascalUnit(AUnit).IntfScope;
   ItemType := itUnit;
 end;
 
@@ -5934,9 +5937,14 @@ end;
 
 { TIDHelper }
 
-procedure TIDHelper.SetTarget(const Value: TIDType);
+procedure TDlphHelper.SetTarget(const Value: TIDType);
 begin
   fTarget := Value;
+  if Value is TIDStructure then
+  begin
+    fMembers.FAncestorScope := TIDStructure(Value).Members;
+    fAncestor := TIDStructure(Value);
+  end;
 end;
 
 initialization
