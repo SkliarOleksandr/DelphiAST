@@ -67,14 +67,23 @@ object frmTestAppMain: TfrmTestAppMain
           'interface'
           ''
           'type'
-          '  TRec<T> = record'
+          '  TRec = record'
+          '    procedure P1(a: string); overload;    '
           '  end;'
-          '  TA = TRec<Integer>;'
+          ''
+          '  TRecHelper = record helper for TRec '
+          '     procedure P1(b: Integer); overload;'
+          '  end;'
+          ''
+          'implementation'
+          '  '
+          'var'
+          '  R:  TRec;'
+          ' '
+          'initialization'
+          '  R.P1('#39#39');'
           ''
           'end.'
-          ''
-          ''
-          ''
           ''
           '')
         FontSmoothing = fsmNone
@@ -92,6 +101,7 @@ object frmTestAppMain: TfrmTestAppMain
         Align = alClient
         Indent = 19
         TabOrder = 0
+        ExplicitLeft = -1
       end
     end
     object tsNameSpace: TTabSheet

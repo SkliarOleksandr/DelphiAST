@@ -1464,7 +1464,6 @@ type
     procedure RemoveVariable(Declaration: TIDVariable);
     function FindInChilds(const ID: string): TIDDeclaration;
     function FindIDRecurcive(const ID: string): TIDDeclaration; overload; virtual;
-    function FindIDRecurcive(const ID: string; out Expression: TIDExpression): TIDDeclaration; overload; virtual;
     function FindMembers(const ID: string): TIDDeclaration; virtual;
     function GetDeclArray(Recursively: Boolean = False): TIDDeclArray;
     function GetDeclNamesArray(Recursively: Boolean = False): TStrArray;
@@ -1487,7 +1486,7 @@ type
     constructor CreateInDecl(Parent: TScope; VarSpace: PVarSpace; ProcSpace: PProcSpace); reintroduce;
     constructor CreateInBody(Parent: TScope); reintroduce;
     property OuterScope: TScope read FOuterScope write FOuterScope;
-    function FindIDRecurcive(const ID: string; out Expression: TIDExpression): TIDDeclaration; override;
+    function FindIDRecurcive(const ID: string): TIDDeclaration; override;
   end;
 
   TStructScope = class(TScope)
@@ -1495,7 +1494,7 @@ type
     fStruct: TIDStructure;
   public
     constructor CreateAsStruct(Parent: TScope; Struct: TIDStructure; VarSpace: PVarSpace; ProcSpace: PProcSpace; DeclUnit: TASTModule); reintroduce;
-    function FindIDRecurcive(const ID: string; out Expression: TIDExpression): TIDDeclaration; override;
+    function FindIDRecurcive(const ID: string): TIDDeclaration; override;
     function FindMembers(const ID: string): TIDDeclaration; override;
     property Struct: TIDStructure read FStruct;
   end;
@@ -1509,12 +1508,12 @@ type
 
   TWithScope = class(TProcScope)
   private
-    FInnerScope: TScope;
-    FExpression: TIDExpression;       // выражение, которое породило данный Scope (то что написано в WITH ... DO)
+    fInnerScope: TScope;
+    fExpression: TIDExpression;       // выражение, которое породило данный Scope (то что написано в WITH ... DO)
   public
     constructor Create(Parent: TScope; Expression: TIDExpression); reintroduce;
     ///////////////////////////////////////
-    function FindIDRecurcive(const ID: string; out Expression: TIDExpression): TIDDeclaration; override;
+    function FindIDRecurcive(const ID: string): TIDDeclaration; override;
     property InnerScope: TScope read FInnerScope write FInnerScope;
     property Expression: TIDExpression read FExpression;
   end;
@@ -1525,7 +1524,7 @@ type
   public
     constructor CreateInDecl(OuterScope, Parent: TScope; VarSpace: PVarSpace; ProcSpace: PProcSpace); reintroduce; overload;
     constructor CreateInDecl(OuterScope, Parent: TScope); overload;
-    function FindIDRecurcive(const ID: string; out Expression: TIDExpression): TIDDeclaration; override;
+    function FindIDRecurcive(const ID: string): TIDDeclaration; override;
   end;
 
   TImplementationScope = class(TScope)
@@ -1820,20 +1819,6 @@ begin
   inherited;
 end;
 
-function TScope.FindIDRecurcive(const ID: string): TIDDeclaration;
-var
-  sc: TScope;
-begin
-  sc := Self;
-  repeat
-    Result := sc.FindID(ID);
-    if Assigned(Result) then Exit;
-    Result := sc.FindInChilds(ID);
-    if Assigned(Result) then Exit;
-    sc := sc.FParent;
-  until sc = nil;
-end;
-
 procedure TScope.AddScope(Scope: TScope);
 var
   c: Integer;
@@ -1893,10 +1878,8 @@ begin
   FVarSpace.Add(Declaration);
 end;
 
-function TScope.FindIDRecurcive(const ID: string; out Expression: TIDExpression): TIDDeclaration;
+function TScope.FindIDRecurcive(const ID: string): TIDDeclaration;
 begin
-  Expression := nil;
-
   // ищим только в себе
   Result := FindID(ID);
   if Assigned(Result) then
@@ -1909,7 +1892,7 @@ begin
 
   // если есть родитель - ищем в нем
   if Assigned(FParent) then
-    Result := FParent.FindIDRecurcive(ID, Expression);
+    Result := FParent.FindIDRecurcive(ID);
 end;
 
 function TScope.FindInChilds(const ID: string): TIDDeclaration;
@@ -5044,17 +5027,16 @@ begin
   Parent.AddChild(Self);
 end;
 
-function TWithScope.FindIDRecurcive(const ID: string; out Expression: TIDExpression): TIDDeclaration;
+function TWithScope.FindIDRecurcive(const ID: string): TIDDeclaration;
 begin
   Result := FInnerScope.FindMembers(ID);
   if Assigned(Result) then begin
-    Expression := FExpression;
+    //Expression := FExpression; todo: with !!!!
     Exit;
   end;
-  Expression := nil;
-  Result := FOuterScope.FindIDRecurcive(ID, Expression);
+  Result := FOuterScope.FindIDRecurcive(ID);
   if not Assigned(Result) then
-    Result := inherited FindIDRecurcive(ID, Expression);
+    Result := inherited FindIDRecurcive(ID);
 end;
 
 { TIDOpenArray }
@@ -5251,11 +5233,11 @@ begin
   Result := scProc;
 end;
 
-function TProcScope.FindIDRecurcive(const ID: string; out Expression: TIDExpression): TIDDeclaration;
+function TProcScope.FindIDRecurcive(const ID: string): TIDDeclaration;
 begin
-  Result := inherited FindIDRecurcive(ID, Expression);
+  Result := inherited FindIDRecurcive(ID);
   if not Assigned(Result) and Assigned(FOuterScope) then
-    Result := FOuterScope.FindIDRecurcive(ID, Expression);
+    Result := FOuterScope.FindIDRecurcive(ID);
 end;
 
 { TIDClassType }
@@ -5365,15 +5347,12 @@ begin
   FOuterScope := OuterScope;
 end;
 
-function TMethodScope.FindIDRecurcive(const ID: string; out Expression: TIDExpression): TIDDeclaration;
+function TMethodScope.FindIDRecurcive(const ID: string): TIDDeclaration;
 begin
-  Result := inherited FindIDRecurcive(ID, Expression);
+  Result := inherited FindIDRecurcive(ID);
   if Assigned(Result) then
-  begin
-    // Expression := FExpression; // ???????
     Exit;
-  end;
-  Result := FOuterScope.FindIDRecurcive(ID, Expression);
+  Result := FOuterScope.FindIDRecurcive(ID);
 end;
 
 { TIDField }
@@ -5648,11 +5627,11 @@ begin
     FAncestorScope := Struct.Ancestor.Members;
 end;
 
-function TStructScope.FindIDRecurcive(const ID: string; out Expression: TIDExpression): TIDDeclaration;
+function TStructScope.FindIDRecurcive(const ID: string): TIDDeclaration;
 begin
-  Result := inherited FindIDRecurcive(ID, Expression);
+  Result := inherited FindIDRecurcive(ID);
   if not Assigned(Result) and Assigned(FAncestorScope) then
-    Result := FAncestorScope.FindIDRecurcive(ID, Expression);
+    Result := FAncestorScope.FindIDRecurcive(ID);
 end;
 
 function TStructScope.FindMembers(const ID: string): TIDDeclaration;

@@ -173,6 +173,7 @@ type
     class procedure CheckReferenceType(Expression: TIDExpression); static; inline;
     class procedure CheckRecordType(Expression: TIDExpression); static; inline;
     class procedure CheckStructType(Expression: TIDExpression); static; inline;
+    class procedure CheckExprHasMembers(Expression: TIDExpression); static;
     procedure CheckType(Expression: TIDExpression); inline;
     procedure CheckClassType(Expression: TIDExpression); inline;
     procedure CheckClassExpression(Expression: TIDExpression); inline;
@@ -224,10 +225,8 @@ type
     procedure Hint(const Message: string; const Params: array of const); overload;
 
     function FindID(Scope: TScope; const ID: TIdentifier): TIDDeclaration; overload; inline;
-    function FindID(Scope: TScope; const ID: TIdentifier; out Expression: TIDExpression): TIDDeclaration; overload;
     function FindIDNoAbort(Scope: TScope; const ID: TIdentifier): TIDDeclaration; overload; inline;
     function FindIDNoAbort(Scope: TScope; const ID: string): TIDDeclaration; overload; inline;
-    function FindIDNoAbort(Scope: TScope; const ID: TIdentifier; out Expression: TIDExpression): TIDDeclaration; overload; inline;
 
     class function StrictMatchProcSingnatures(const SrcParams, DstParams: TVariableList; const SrcResultType, DstResultType: TIDType): Boolean;
     class function StrictMatchProc(const Src, Dst: TIDProcedure): Boolean;
@@ -1467,9 +1466,7 @@ begin
     KW.AddExpression(ASTExpr);
     Expression := EContext.Result;
 
-    // Проверка что тип сложный
-    if not Expression.DataType.InheritsFrom(TIDStructure) then
-      AbortWork(sStructTypeRequired, Lexer_PrevPosition);
+    CheckExprHasMembers(Expression);
 
     Decl := Expression.Declaration;
     // проверка на повторное выражение/одинаковый тип
@@ -2994,20 +2991,13 @@ begin
   PutMessage(cmtHint, Format(Message, Params));
 end;
 
-function TASTDelphiUnit.FindID(Scope: TScope; const ID: TIdentifier): TIDDeclaration;
-var
-  tmp: TIDExpression;
-begin
-  Result := FindID(Scope, ID, tmp);
-end;
-
-function TASTDelphiUnit.FindID(Scope: TScope; const ID: TIdentifier; out Expression: TIDExpression): TIDDeclaration;
+function TASTDelphiUnit.FindID(Scope: TScope; const ID: TIdentifier{; out Expression: TIDExpression}): TIDDeclaration;
 var
   i: Integer;
   IDName: string;
 begin
   IDName := ID.Name;
-  Result := Scope.FindIDRecurcive(IDName, Expression);
+  Result := Scope.FindIDRecurcive(IDName);
   if Assigned(Result) then
     Exit;
   with IntfImportedUnits do
@@ -3021,30 +3011,11 @@ begin
   ERRORS.UNDECLARED_ID(ID);
 end;
 
-function TASTDelphiUnit.FindIDNoAbort(Scope: TScope; const ID: TIdentifier; out Expression: TIDExpression): TIDDeclaration;
-var
-  i: Integer;
-  IDName: string;
-begin
-  IDName := ID.Name;
-  Result := Scope.FindIDRecurcive(IDName, Expression);
-  if Assigned(Result) then
-    Exit;
-  for i := IntfImportedUnits.Count - 1 downto 0 do
-  begin
-    var UN := TPascalUnit(IntfImportedUnits.Objects[i]);
-    Result := UN.IntfScope.FindID(IDName);
-    if Assigned(Result) then
-      Exit;
-  end;
-end;
-
 function TASTDelphiUnit.FindIDNoAbort(Scope: TScope; const ID: string): TIDDeclaration;
 var
   i: Integer;
-  Expr: TIDExpression;
 begin
-  Result := Scope.FindIDRecurcive(ID, Expr);
+  Result := Scope.FindIDRecurcive(ID);
   if Assigned(Result) then
     Exit;
   with IntfImportedUnits do
@@ -3058,11 +3029,10 @@ end;
 function TASTDelphiUnit.FindIDNoAbort(Scope: TScope; const ID: TIdentifier): TIDDeclaration;
 var
   i: Integer;
-  Expr: TIDExpression;
   IDName: string;
 begin
   IDName := ID.Name;
-  Result := Scope.FindIDRecurcive(IDName, Expr);
+  Result := Scope.FindIDRecurcive(IDName);
   if Assigned(Result) then
     Exit;
   for i := IntfImportedUnits.Count - 1 downto 0 do
@@ -4059,6 +4029,12 @@ begin
     end
   end;
   Result := False;
+end;
+
+class procedure TASTDelphiUnit.CheckExprHasMembers(Expression: TIDExpression);
+begin
+  if not (Expression.DataType is TIDStructure) and not Assigned(Expression.DataType.Helper) then
+    AbortWork('Expression has no members', Expression.TextPosition);
 end;
 
 class function TASTDelphiUnit.MatchExplicit2(const SContext: TSContext; const Source: TIDExpression; Destination: TIDType; out Explicit: TIDDeclaration): TIDExpression;
@@ -6741,7 +6717,7 @@ begin
   // ищем ранее обьявленную декларацию с таким же именем
   if Assigned(Struct) then
   begin
-    ForwardDecl := TASTDelphiProc(Struct.Members.FindID(ID.Name));
+    ForwardDecl := TASTDelphiProc(Struct.Members.FindID(ID.Name)); // todo: find for helpers
     if not Assigned(ForwardDecl) and (Scope.ScopeClass = scImplementation) then
       ERRORS.METHOD_NOT_DECLARED_IN_CLASS(ID, Struct);
   end else
@@ -7942,11 +7918,12 @@ begin
 
   Lexer_ReadCurrIdentifier(PMContext.ID);
 
+  Expr := nil; // todo: with
   if not Assigned(SearchScope) then
-    Decl := FindIDNoAbort(Scope, PMContext.ID, Expr)
+    Decl := FindIDNoAbort(Scope, PMContext.ID)
+
   else begin
     Decl := SearchScope.FindMembers(PMContext.ID.Name);
-    Expr := nil;
   end;
 
   StrictSearch := Assigned(SearchScope);
