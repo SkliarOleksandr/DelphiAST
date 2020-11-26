@@ -1547,7 +1547,7 @@ begin
     end;
 
     {поиск подходящей декларации}
-    if Assigned(ProcDecl.NextOverload) then begin
+    if Assigned(ProcDecl.PrevOverload) then begin
       ProcDecl := MatchOverloadProc(EContext.SContext, PExpr, UserArguments, ArgsCount);
       ProcParams := ProcDecl.ExplicitParams;
       PExpr.Declaration := ProcDecl;
@@ -3618,7 +3618,7 @@ begin
       if IsMatch then
         Exit;
     end;
-    Proc := Proc.NextOverload;
+    Proc := Proc.PrevOverload;
   end;
   if not Assigned(Proc) then
     ERRORS.SETTER_MUST_BE_SUCH(GetProcDeclSring(PropParams, nil), Setter.TextPosition);
@@ -3843,7 +3843,7 @@ begin
       end;
     end else begin
       // skip this declaration due to params length doesn't match
-      Declaration := Declaration.NextOverload;
+      Declaration := Declaration.PrevOverload;
       Continue;
     end;
 
@@ -3853,7 +3853,7 @@ begin
       Inc(MatchedCount);
     end;
     // take next declaration
-    Declaration := Declaration.NextOverload;
+    Declaration := Declaration.PrevOverload;
   until Declaration = nil;
 
   Declaration := nil;
@@ -6615,6 +6615,7 @@ var
   VarSpace: TVarSpace;
   GenericsParams: TIDTypeList;
   Proc, ForwardDecl: TASTDelphiProc;
+  ForwardDeclNode: TIDList.PAVLNode;
   FwdDeclState: TFwdDeclState;
   FirstSkipCnt: Integer;
   SRCProcPos: TParserPosition;
@@ -6717,11 +6718,20 @@ begin
   // ищем ранее обьявленную декларацию с таким же именем
   if Assigned(Struct) then
   begin
-    ForwardDecl := TASTDelphiProc(Struct.Members.FindID(ID.Name)); // todo: find for helpers
-    if not Assigned(ForwardDecl) and (Scope.ScopeClass = scImplementation) then
+//    var Struct
+    ForwardDeclNode := Struct.Members.Find(ID.Name); // todo: find for helpers
+     if not Assigned(ForwardDeclNode) and (Scope.ScopeClass = scImplementation) then
       ERRORS.METHOD_NOT_DECLARED_IN_CLASS(ID, Struct);
-  end else
-    ForwardDecl := TASTDelphiProc(ForwardScope.FindID(ID.Name));
+  end else begin
+    ForwardDeclNode := ForwardScope.Find(ID.Name);
+    if not Assigned(ForwardDeclNode) and (ForwardScope = ImplScope) then
+      ForwardDeclNode := IntfScope.Find(ID.Name);
+  end;
+
+   if Assigned(ForwardDeclNode) then
+     ForwardDecl := TASTDelphiProc(ForwardDeclNode.Data)
+   else
+     ForwardDecl := nil;
 
   Proc := nil;
   FwdDeclState := dsDifferent;
@@ -6733,27 +6743,27 @@ begin
       ERRORS.ID_REDECLARATED(ID);
 
     // The case when proc impl doesn't have params at all insted of decl
-    if (Parameters.Count = 0) and (ForwardDecl.NextOverload = nil) and (ForwardDecl.ParamsCount > 0)then
+    if (Parameters.Count = 0) and (ForwardDecl.PrevOverload = nil) and (ForwardDecl.ParamsCount > 0)then
     begin
       FwdDeclState := dsSame;
       Proc := ForwardDecl;
       Parameters.CopyFrom(ForwardDecl.ParamsScope);
     end else
-    // ищем подходящую декларацию в списке перегруженных:
-    while True do begin
-      if ForwardDecl.SameDeclaration(Parameters) then begin
-        // нашли подходящую декларацию
-        FwdDeclState := dsSame;
-        if Assigned(ForwardDecl.IL) or (Scope.ScopeClass = scInterface) then
-          ERRORS.ID_REDECLARATED(ID);
-        Proc := ForwardDecl;
-        Break;
+    begin
+      // search overload
+      var Decl := ForwardDecl;
+      while True do begin
+        if Decl.SameDeclaration(Parameters) then begin
+          FwdDeclState := dsSame;
+          if Assigned(Decl.IL) or (Scope.ScopeClass = scInterface) then
+            ERRORS.ID_REDECLARATED(ID);
+          Proc := Decl;
+          Break;
+        end;
+        if not Assigned(Decl.PrevOverload) then
+          Break;
+        Decl := TASTDelphiProc(Decl.PrevOverload);
       end;
-      // не нашли подходящую декларацию, будем создавать новую,
-      // проверку дерективы overload оставим на потом
-      if not Assigned(ForwardDecl.NextOverload) then
-        Break;
-      ForwardDecl := TASTDelphiProc(ForwardDecl.NextOverload);
     end;
   end else
     FwdDeclState := dsNew;
@@ -6809,7 +6819,8 @@ begin
         Scope.AddProcedure(Proc);
     end else begin
       // доавляем в список следующую перегруженную процедуру
-      ForwardDecl.NextOverload := Proc;
+      Proc.PrevOverload := ForwardDecl;
+      ForwardDeclNode.Data := Proc;
       if Assigned(Struct) then
       begin
         Struct.AddMethod(Proc);
@@ -7165,11 +7176,11 @@ begin
       end;
       // не нашли подходящую декларацию, создаем новую
       // проверку дерективы overload оставим на потом
-      if not Assigned(ForwardDecl.NextOverload) then
+      if not Assigned(ForwardDecl.PrevOverload) then
       begin
         Break;
       end;
-      ForwardDecl := ForwardDecl.NextOverload as TASTDelphiProc;
+      ForwardDecl := ForwardDecl.PrevOverload as TASTDelphiProc;
     end;
   end else
     FwdDeclState := dsNew;
@@ -7198,7 +7209,7 @@ begin
     begin
       Struct.Members.AddProcedure(Proc);
     end else begin
-      ForwardDecl.NextOverload := Proc;
+      ForwardDecl.PrevOverload := Proc;
       Struct.Members.ProcSpace.Add(Proc);
     end;
 

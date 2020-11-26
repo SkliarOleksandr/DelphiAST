@@ -482,12 +482,20 @@ type
   {alias (for generics parameters)}
   TIDAlias = class(TIDDeclaration)
   private
-    FOriginalDecl: TIDDeclaration;   // оригинальная декларация (не псевдоним)
+    FOriginalDecl: TIDDeclaration;
   protected
     function GetOriginalDecl: TIDDeclaration; override;
   public
     constructor CreateAlias(Scope: TScope; const ID: TIdentifier; Decl: TIDDeclaration);
     property Original: TIDDeclaration read FOriginalDecl;
+  end;
+
+  TWithAlias = class(TIDAlias)
+  private
+    fExpression: TIDExpression;
+  public
+    constructor CreateAlias(Scope: TScope; OriginalDecl: TIDDeclaration; Expression: TIDExpression);
+    property Expression: TIDExpression read fExpression;
   end;
 
   {range type}
@@ -1336,7 +1344,7 @@ type
     function GetTMPRef(DataType: TIDType): TIDVariable;
     property TempVars: TItemsStack read FTempVars;
 
-    property NextOverload: TIDProcedure read FNextOverload write FNextOverload;
+    property PrevOverload: TIDProcedure read FNextOverload write FNextOverload;
     property EntryScope: TScope read FEntryScope write SetEntryScope;
     property ParamsScope: TProcScope read FParamsScope write FParamsScope;
     property ParamsCount: Integer read FCount;
@@ -5924,6 +5932,16 @@ begin
     fMembers.FAncestorScope := TIDStructure(Value).Members;
     fAncestor := TIDStructure(Value);
   end;
+end;
+
+{ TWithAlias }
+
+constructor TWithAlias.CreateAlias(Scope: TScope; OriginalDecl: TIDDeclaration; Expression: TIDExpression);
+begin
+  inherited Create(Scope, OriginalDecl.ID);
+  fItemType := itAlias;
+  fOriginalDecl := OriginalDecl;
+  fExpression := Expression;
 end;
 
 initialization
