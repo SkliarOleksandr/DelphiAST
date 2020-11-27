@@ -287,7 +287,7 @@ type
                              var EContext: TEContext; const PrevExpr: TIDExpression; const ASTE: TASTExpression): TTokenID;
     function ParseArrayMember(Scope: TScope; var EContext: TEContext; ASTE: TASTExpression): TTokenID;
     function ParsePropertyMember(var PMContext: TPMContext; Scope: TScope; Prop: TIDProperty; out Expression: TIDExpression;
-                                 var EContext: TEContext): TTokenID;
+                                 var EContext: TEContext; const PrevExpr: TIDExpression): TTokenID;
     function ParseIndexedPropertyArgs(Scope: TScope; out ArgumentsCount: Integer; var EContext: TEContext): TTokenID;
     procedure ParseVector(Scope: TScope; var EContext: TEContext);
     function ParseEntryCall(Scope: TScope; CallExpr: TIDCallExpression; const EContext: TEContext; const ASTE: TASTExpression): TTokenID;
@@ -4101,15 +4101,18 @@ var
   SelfParam: TIDVariable;
   DataType: TIDType;
 begin
-  if ClassMethod then
-    DataType := Struct.ClassOfType
+  if Struct is TDlphHelper then
+    DataType := TDlphHelper(Struct).Target
   else
     DataType := Struct;
 
-  if Struct.DataTypeID = dtRecord then
-    SelfParam := TIDVariable.Create(Params, Identifier('Self'), DataType, [VarParameter, VarSelf, VarInOut, VarHiddenParam])
-  else
-    SelfParam := TIDVariable.Create(Params, Identifier('Self'), DataType, [VarParameter, VarSelf, VarHiddenParam]);
+  if ClassMethod and (DataType is TIDClass)  then
+    DataType := TIDClass(DataType).ClassOfType;
+
+//  if Struct.DataTypeID = dtRecord then
+//    SelfParam := TIDVariable.Create(Params, Identifier('Self'), DataType, [VarParameter, VarSelf, VarInOut, VarHiddenParam])
+//  else
+  SelfParam := TIDVariable.Create(Params, Identifier('Self'), DataType, [VarParameter, VarSelf, VarHiddenParam]);
 
   Params.AddVariable(SelfParam);
 end;
@@ -5437,28 +5440,6 @@ begin
   Lexer_MatchToken(Result, token_end);
   Result := Lexer_NextToken(Scope);
 end;
-
-{function TASTDelphiUnit.ParseExitStatement(Scope: TScope; const SContext: TSContext): TTokenID;
-var
-  ExitExpr: TASTExpression;
-  EContext: TEContext;
-  KW: TASTKWExit;
-begin
-  KW := SContext.Add<TASTKWExit>;
-  Result := Lexer_NextToken(Scope);
-  if Result = token_openround then
-  begin
-    if not Assigned(SContext.Proc.ResultType) then
-      AbortWork(sReturnValueNotAllowedForProc, Lexer_Position);
-
-    Lexer_NextToken(Scope);
-    InitEContext(EContext, SContext, ExprNested);
-    Result := ParseExpression(Scope, SContext, EContext, ExitExpr);
-    KW.Expression := ExitExpr;
-    Lexer_MatchToken(Result, token_closeround);
-    Result := Lexer_NextToken(Scope);
-  end;
-end;}
 
 procedure TASTDelphiUnit.CheckLeftOperand(const Status: TRPNStatus);
 begin
@@ -7867,7 +7848,11 @@ begin
   Result := Lexer_NextToken(Scope);
 end;
 
-function TASTDelphiUnit.ParseGenericMember(const PMContext: TPMContext; const SContext: TSContext; StrictSearch: Boolean; out Decl: TIDDeclaration; out WithExpression: TIDExpression): TTokenID;
+function TASTDelphiUnit.ParseGenericMember(const PMContext: TPMContext;
+                                           const SContext: TSContext;
+                                           StrictSearch: Boolean;
+                                           out Decl: TIDDeclaration;
+                                           out WithExpression: TIDExpression): TTokenID;
 var
   Scope: TScope;
   GenericArgs: TIDExpressions;
@@ -8064,7 +8049,7 @@ begin
     {property}
     itProperty: begin
       WasProperty := True;
-      Result := ParsePropertyMember(PMContext, Scope, TIDProperty(Decl), Expression, EContext);
+      Result := ParsePropertyMember(PMContext, Scope, TIDProperty(Decl), Expression, EContext, PrevExpr);
       // заменяем декларацию
       if Assigned(Expression) then
       begin
@@ -8234,7 +8219,7 @@ var
   ASTExpr: TASTExpression;
 begin
   ArgumentsCount := 0;
-  SContext := @EContext.SContext;
+  SContext := addr(EContext.SContext);
   InitEContext(InnerEContext, SContext^, ExprNested);
   {цикл парсинга аргументов}
   while true do begin
@@ -8937,7 +8922,12 @@ begin
    end;
 end;
 
-function TASTDelphiUnit.ParsePropertyMember(var PMContext: TPMContext; Scope: TScope; Prop: TIDProperty; out Expression: TIDExpression; var EContext: TEContext): TTokenID;
+function TASTDelphiUnit.ParsePropertyMember(var PMContext: TPMContext;
+                                            Scope: TScope;
+                                            Prop: TIDProperty;
+                                            out Expression: TIDExpression;
+                                            var EContext: TEContext;
+                                            const PrevExpr: TIDExpression): TTokenID;
 var
   CallExpr: TIDCallExpression;
   SelfExpr: TIDExpression;
@@ -8969,13 +8959,10 @@ begin
     itVar: Expression.Declaration := Accessor;
     itProperty: {продолжаем выполнение};
     itProcedure: begin
-      case PMContext.Count of
-        0: SelfExpr := TIDProcedure(EContext.Proc).SelfParamExpression;
-        1: SelfExpr := PMContext.Last;
+      if Assigned(PrevExpr) then
+        SelfExpr := PrevExpr
       else
-        SelfExpr := GetTMPRefExpr(EContext.SContext, PMContext.DataType);
-        SelfExpr.TextPosition := PMContext.ID.TextPosition;
-      end;
+        SelfExpr := TIDProcedure(EContext.Proc).SelfParamExpression;
 
       CallExpr := TIDCallExpression.Create(Accessor);
       CallExpr.TextPosition := Expression.TextPosition;
