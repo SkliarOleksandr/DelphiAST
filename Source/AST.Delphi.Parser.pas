@@ -6715,11 +6715,17 @@ begin
     end;
   end;
 
+  ForwardDeclNode := nil;
+
   // ищем ранее обьявленную декларацию с таким же именем
   if Assigned(Struct) then
   begin
-//    var Struct
-    ForwardDeclNode := Struct.Members.Find(ID.Name); // todo: find for helpers
+    if (Struct is TDlphHelper) and (TDlphHelper(Struct).Target is TIDStructure) then
+      ForwardDeclNode := TIDStructure(TDlphHelper(Struct).Target).Members.Find(ID.Name);
+
+    if not Assigned(ForwardDeclNode) then
+      ForwardDeclNode := Struct.Members.Find(ID.Name);
+
      if not Assigned(ForwardDeclNode) and (Scope.ScopeClass = scImplementation) then
       ERRORS.METHOD_NOT_DECLARED_IN_CLASS(ID, Struct);
   end else begin
@@ -6743,7 +6749,7 @@ begin
       ERRORS.ID_REDECLARATED(ID);
 
     // The case when proc impl doesn't have params at all insted of decl
-    if (Parameters.Count = 0) and (ForwardDecl.PrevOverload = nil) and (ForwardDecl.ParamsCount > 0)then
+    if (Parameters.Count = 0) and (ForwardDecl.PrevOverload = nil) then
     begin
       FwdDeclState := dsSame;
       Proc := ForwardDecl;

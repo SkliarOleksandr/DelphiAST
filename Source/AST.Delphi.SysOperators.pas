@@ -549,10 +549,18 @@ end;
 
 function TSysImplicitArrayToAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 var
-  ElType: TIDType;
+  SrcElType, DstElType: TIDType;
 begin
-  ElType := (Src as TIDArray).ElementDataType;
-  Result := (Dst.DataTypeID in [dtPointer, dtPAnsiChar, dtPWideChar]);
+  SrcElType := TIDArray(Src).ElementDataType;
+  if Dst is TIDArray then
+  begin
+    DstElType := TIDArray(Dst).ElementDataType;
+    Result := (Dst.DataTypeID = dtOpenArray) and (SrcElType = DstElType);
+  end else begin
+    Result :=
+      ((Dst = SYSUnit._PAnsiChar) and (SrcElType = SYSUnit._AnsiChar)) or
+      ((Dst = SYSUnit._PChar) and (SrcElType = SYSUnit._Char));
+  end;
 end;
 
 { TSysExplictPointerFromAny }

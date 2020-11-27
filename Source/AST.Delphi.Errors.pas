@@ -886,7 +886,8 @@ end;
 
 class procedure TASTDelphiErrors.NO_OVERLOAD(CallExpr: TIDExpression);
 begin
-  AbortWork(sErrorOverload, [CallExpr.Declaration.Name], CallExpr.TextPosition);
+  AbortWork(sErrorOverload + #13#10 + CallExpr.AsProcedure.GetAllOverloadSignatures,
+    [CallExpr.Declaration.Name], CallExpr.TextPosition);
 end;
 
 class procedure TASTDelphiErrors.AMBIGUOUS_OVERLOAD_CALL(CallExpr: TIDExpression);

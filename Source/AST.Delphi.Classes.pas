@@ -1399,6 +1399,7 @@ type
     function GetDebugIL: string;
     {функция выполняет IL код в compile-time и возвращает константное выражение}
     function CECalc(const Args: TIDExpressions): TIDConstant;
+    function GetAllOverloadSignatures(const LineSeparator: string = #13#10): string;
   end;
 
   TASTDelphiProc = class(TIDProcedure)
@@ -2304,6 +2305,18 @@ end;
 procedure TIDProcedure.Warning(const Message: string; const Params: array of const; const TextPosition: TTextPosition);
 begin
   TASTDelphiUnit(Module).Warning(Message, Params, TextPosition);
+end;
+
+function TIDProcedure.GetAllOverloadSignatures(const LineSeparator: string): string;
+var
+  Decl: TIDProcedure;
+begin
+  Result := DisplayName;
+  Decl := PrevOverload;
+  while Assigned(Decl) do begin
+    Result := Result + LineSeparator + Decl.DisplayName;
+    Decl := Decl.PrevOverload;
+  end;
 end;
 
 function TIDProcedure.GetDebugIL: string;
