@@ -405,6 +405,7 @@ type
     function GetActualDataType: TIDType; override;
     function GetOrdinal: Boolean; override;
     function GetIndex: Integer; override;
+    function GetDisplayName: string; override;
   public
     constructor CreateAlias(Scope: TScope; const ID: TIdentifier; OriginalType: TIDType);
     constructor CreateAliasAsSystem(Scope: TScope; const ID: string; SrcType: TIDType);
@@ -697,19 +698,20 @@ type
   end;
 
   {set}
-  TIDSet = class(TIDArray)
+  TIDSet = class(TIDType)
   private
-    FBaseType: TIDType;
+    fBaseType: TIDOrdinal;
     function GetBitsCount: UInt32; inline;
   protected
     function GetDisplayName: string; override;
     function GetDataSize: Integer; override;
   public
-    constructor CreateAnonymous(Scope: TScope; BaseType: TIDType); reintroduce;
+    constructor CreateAnonymous(Scope: TScope; BaseType: TIDOrdinal); reintroduce;
     constructor Create(Scope: TScope; const ID: TIdentifier); override;
+    procedure CreateStandardOperators; override;
     ////////////////////////////////////////////////////////////////////////////
     property BitsCount: UInt32 read GetBitsCount;
-    property BaseType: TIDType read FBaseType write FBaseType;
+    property BaseType: TIDOrdinal read fBaseType write FBaseType;
     procedure IncRefCount(RCPath: UInt32); override;
   end;
 
@@ -804,11 +806,6 @@ type
     property ProcClass: TProcTypeClass read fProcClass write fProcClass;
   end;
 
-  TIDRangeExpression  = record
-    LBExpression: TIDExpression;
-    HBExpression: TIDExpression;
-  end;
-
   {base constant class}
   TIDConstant = class(TIDDeclaration)
   private
@@ -893,7 +890,7 @@ type
     function CompareTo(Constant: TIDConstant): Integer; override;
   end;
 
-  {константа символьная}
+  {char constant}
   TIDCharConstant = class(TIDXXXConstant<char>)
   public
     function ValueDataType: TDataTypeID; override;
@@ -920,6 +917,7 @@ type
     FStatic: Boolean;
     function GetLength: Integer; inline;
     function GetElementType: TIDType; inline;
+    function CheckAsSet: Boolean; inline;
   public
     function ValueDataType: TDataTypeID; override;
     function ValueByteSize: Integer; override;
@@ -932,13 +930,20 @@ type
     {статический массив полностью состоит из констант и может размещатся в статической памяти}
     {не статический массив содержит переменные, поэтому может размещатся только в динамической (стек или куча) памяти}
     property ArrayStatic: Boolean read FStatic write FStatic;
+    property CabBeSet: Boolean read CheckAsSet;
     procedure AddItem(const Item: TIDExpression);
   end;
 
   TConstSpace = TSpace<TIDConstant>;
 
+  {subrange constant value record}
+  TSubRangeRecord = record
+    LBExpression: TIDExpression;
+    HBExpression: TIDExpression;
+  end;
+
   {range constant}
-  TIDRangeConstant = class(TIDXXXConstant<TIDRangeExpression>)
+  TIDRangeConstant = class(TIDXXXConstant<TSubRangeRecord>)
   protected
     function GetDisplayName: string; override;
   public
@@ -1026,6 +1031,7 @@ type
     function GetIsParam: Boolean;
     function GetText: string;
     function GetAsUnit: TIDUnit; inline;
+    function GetDeclClass: TIDDeclarationClass;
   protected
     function GetDataType: TIDType; virtual;
   public
@@ -1072,6 +1078,7 @@ type
     property AsClosure: TIDClosure read GetAsClosure;
     property AsUnit: TIDUnit read GetAsUnit;
     property CValue: TIDConstant read GetCValue write SetCValue;
+    property DeclClass: TIDDeclarationClass read GetDeclClass;
     property Text: string read GetText;
   end;
 
@@ -2942,16 +2949,16 @@ end;
 
 procedure TIDType.OverloadExplicitFromAny(const Op: TIDOperator);
 begin
-  if Assigned(fSysExplicitFromAny) then
-    ERROR_OPERATOR_ALREADY_OVERLOADED(opExplicit, Self, Op, TextPosition);
+//  if Assigned(fSysExplicitFromAny) then
+//    ERROR_OPERATOR_ALREADY_OVERLOADED(opExplicit, Self, Op, TextPosition);
 
   fSysExplicitFromAny := Op;
 end;
 
 procedure TIDType.OverloadExplicitToAny(const Op: TIDOperator);
 begin
-  if Assigned(fSysExplicitToAny) then
-    ERROR_OPERATOR_ALREADY_OVERLOADED(opExplicit, Self, Op, TextPosition);
+//  if Assigned(fSysExplicitToAny) then
+//    ERROR_OPERATOR_ALREADY_OVERLOADED(opExplicit, Self, Op, TextPosition);
 
   fSysExplicitToAny := Op;
 end;
@@ -2997,17 +3004,14 @@ end;
 
 procedure TIDType.OverloadImplicitToAny(const Op: TIDOperator);
 begin
-  if Assigned(FSysImplicitToAny) then
-    ERROR_OPERATOR_ALREADY_OVERLOADED(opImplicit, Self, Op, TextPosition);
+//  if Assigned(FSysImplicitToAny) then
+//    ERROR_OPERATOR_ALREADY_OVERLOADED(opImplicit, Self, Op, TextPosition);
 
   FSysImplicitToAny := Op;
 end;
 
 procedure TIDType.OverloadImplicitFromAny(const Op: TIDOperator);
 begin
-  if Assigned(FSysImplicitFromAny) then
-    ERROR_OPERATOR_ALREADY_OVERLOADED(opImplicit, Self, Op, TextPosition);
-
   FSysImplicitFromAny := Op;
 end;
 
@@ -3450,6 +3454,11 @@ begin
     Result := Dt.DisplayName
   else
     Result := '<NULL>';
+end;
+
+function TIDExpression.GetDeclClass: TIDDeclarationClass;
+begin
+  Result := TIDDeclarationClass(fDeclaration.ClassType);
 end;
 
 function TIDExpression.GetDisplayName: string;
@@ -4341,7 +4350,7 @@ end;
 constructor TIDPointer.Create(Scope: TScope; const ID: TIdentifier);
 begin
   inherited Create(Scope, ID);
-  DataTypeID := dtPointer;
+  fDataTypeID := dtPointer;
   TypeKind := tkRefernce;
   CreateStandardOperators;
 end;
@@ -4349,14 +4358,15 @@ end;
 constructor TIDPointer.CreateAsAnonymous(Scope: TScope; ReferenceType: TIDType);
 begin
   inherited CreateAsAnonymous(Scope, ReferenceType);
-  FDataTypeID := dtPointer;
+  fDataTypeID := dtPointer;
   CreateStandardOperators;
 end;
 
 constructor TIDPointer.CreateAsSystem(Scope: TScope; const Name: string);
 begin
   inherited;
-  FDataTypeID := dtPointer;
+  fDataTypeID := dtPointer;
+  CreateStandardOperators;
 end;
 
 procedure TIDPointer.CreateStandardOperators;
@@ -4393,6 +4403,8 @@ begin
 
   OverloadImplicitToAny(SYSUnit.Operators.ImplicitPointerToAny);
   OverloadExplicitToAny(SYSUnit.Operators.ExplicitPointerToAny);
+
+  OverloadImplicitFromAny(SYSUnit.Operators.ImplicitPointerFromAny);
   OverloadExplicitFromAny(SYSUnit.Operators.ExplicitPointerFromAny);
 end;
 
@@ -4533,21 +4545,34 @@ end;
 constructor TIDSet.Create(Scope: TScope; const ID: TIdentifier);
 begin
   inherited Create(Scope, ID);
-  FElementDataType := SYSUnit._Boolean;
-  FDataTypeID := dtSet;
+  fDataTypeID := dtSet;
+  if Assigned(SYSUnit) then
+    CreateStandardOperators;
 end;
 
-constructor TIDSet.CreateAnonymous(Scope: TScope; BaseType: TIDType);
+constructor TIDSet.CreateAnonymous(Scope: TScope; BaseType: TIDOrdinal);
 begin
   inherited CreateAsAnonymous(Scope);
-  FElementDataType := SYSUnit._Boolean;
-  FDataTypeID := dtSet;
-  FBaseType := BaseType;
+  fDataTypeID := dtSet;
+  fBaseType := BaseType;
+  if Assigned(SYSUnit) then
+    CreateStandardOperators;
+end;
+
+procedure TIDSet.CreateStandardOperators;
+begin
+  inherited;
+  OverloadImplicitTo(Self);
+  OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
+  OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
+  OverloadImplicitToAny(SYSUnit.Operators.ImplicitArrayToAny);
+  AddBinarySysOperator(opIn, SYSUnit.Operators.Ordinal_In_Set);
+//  OverloadExplicitFromAny(SYSUnit.Operators.ImplicitSetFromAny);
 end;
 
 function TIDSet.GetBitsCount: UInt32;
 begin
-  Result := FDimensions[0].ElementsCount;
+  Result := fBaseType.ElementsCount;
 end;
 
 function TIDSet.GetDataSize: Integer;
@@ -4616,6 +4641,12 @@ end;
 function TIDDynArrayConstant.ValueDataType: TDataTypeID;
 begin
   Result := dtStaticArray;
+end;
+
+function TIDDynArrayConstant.CheckAsSet: Boolean;
+begin
+  // todo: add check for unique values
+  Result := ElementType.IsOrdinal;
 end;
 
 function TIDDynArrayConstant.CompareTo(Constant: TIDConstant): Integer;
@@ -4838,6 +4869,12 @@ end;
 function TIDAliasType.GetActualDataType: TIDType;
 begin
   Result := FOriginalType;
+end;
+
+function TIDAliasType.GetDisplayName: string;
+begin
+  Result := inherited GetDisplayName;
+  Result := '(' + fOriginalType.DisplayName + ')';
 end;
 
 function TIDAliasType.GetIndex: Integer;

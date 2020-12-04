@@ -449,7 +449,6 @@ begin
   Result := Lexer_NextToken(Scope);
   Result := ParseTypeDecl(Scope, nil, nil, TIdentifier.Empty, Base);
   CheckOrdinalType(Base);
-  Decl.AddBound(TIDOrdinal(Base));
   Decl.BaseType := TIDOrdinal(Base);
   Decl.BaseType.OverloadBinarOperator2(opIn, Decl, Sys._Boolean);
 end;
@@ -1739,6 +1738,10 @@ begin
     PExpr.Declaration := ProcDecl;
   end;
 
+  if Lexer_Line = 5933 then
+    sleep(1);
+
+
   {если все аргументы явно указаны}
   for AIndex := 0 to ArgsCount - 1 do
   begin
@@ -2192,7 +2195,7 @@ var
   RangeType: TIDRangeType;
   Decl: TIDDeclaration;
   LB, HB: TIDExpression;
-  RExpression: TIDRangeExpression;
+  SRValue: TSubRangeRecord;
 begin
   HB := EContext.RPNPopExpression();
   LB := EContext.RPNPopExpression();
@@ -2207,7 +2210,7 @@ begin
   if not Assigned(ValueType) then
     AbortWork(sTypesMustBeIdentical, HB.TextPosition);
 
-  RangeType := TIDRangeType.CreateAsSystem(IntfScope, 'Range of ' + ValueType.Name);
+  RangeType := TIDRangeType.CreateAsAnonymous(IntfScope);
   RangeType.ElementType := ValueType as TIDType;
 
   if LB.IsConstant and HB.IsConstant then
@@ -2216,9 +2219,9 @@ begin
       AbortWork(sLowerBoundExceedsHigherBound, HB.TextPosition);
   end;
 
-  RExpression.LBExpression := LB;
-  RExpression.HBExpression := HB;
-  Decl := TIDRangeConstant.CreateAsAnonymous(IntfScope, RangeType, RExpression);
+  SRValue.LBExpression := LB;
+  SRValue.HBExpression := HB;
+  Decl := TIDRangeConstant.CreateAsAnonymous(IntfScope, RangeType, SRValue);
   Result := TIDExpression.Create(Decl, HB.TextPosition);
 end;
 
@@ -3514,7 +3517,7 @@ begin
           if Assigned(Implicit) then
             continue;
         end;
-
+        Implicit := CheckImplicit(SContext, Arg, Param.DataType);
         ERRORS.INCOMPATIBLE_TYPES(Arg, Param.DataType);
       end else
       if not Assigned(Param.DefaultValue) then
@@ -4954,7 +4957,7 @@ function TASTDelphiUnit.ParseConstSection(Scope: TScope): TTokenID;
 var
   i, c: Integer;
   DataType: TIDType;
-  Item: TIDDeclaration;
+  Item: TIDConstant;
   Expr: TIDExpression;
   Names: TIdentifiersPool;
 begin
@@ -4982,8 +4985,11 @@ begin
     if Assigned(DataType) then
     begin
       Result := ParseVarDefaultValue(Scope, DataType, Expr);
-      Expr.Declaration.DataType := DataType;
-      Expr.AsConst.ExplicitDataType := DataType;
+      if Expr.IsAnonymous then
+      begin
+        Expr.Declaration.DataType := DataType;
+        Expr.AsConst.ExplicitDataType := DataType;
+      end;
     end else begin
       // читаем значение константы
       Lexer_NextToken(Scope);
@@ -5001,10 +5007,18 @@ begin
     Result := CheckAndParseDeprecated(Scope, Result);
 
     Lexer_MatchToken(Result, token_semicolon);
-    for i := 0 to c do begin
-      // создаем алиас на константу
-      Item := TIDAlias.CreateAlias(Scope, Names.Items[i], Expr.Declaration);
+
+    if (c = 0) and Expr.IsAnonymous then begin
+      Item := Expr.AsConst;
+      Item.ID := Names.Items[0];
       InsertToScope(Scope, Item);
+      //AddConstant(Item);
+    end else
+    for i := 0 to c do begin
+      Item := Expr.DeclClass.Create(Scope, Names.Items[i]) as TIDConstant;
+      Item.AssignValue(Expr.AsConst);
+      InsertToScope(Scope, Item);
+      //AddConstant(Item);
     end;
     c := 0;
     Result := Lexer_NextToken(Scope);
@@ -5363,6 +5377,9 @@ begin
     else
       ERRORS.ID_REDECLARATED(FwdDecl);
   end;
+
+  if (Self = SYSUnit) and (ID.Name = 'TObject') then
+    Sys._TObject := Decl;
 
   Result := Lexer_CurTokenID;
   if Result = token_openround then

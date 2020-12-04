@@ -370,7 +370,12 @@ var
 begin
   Result := CompileInProgress;
   // компиляция модулей
-  InitSystemUnit;
+  try
+    InitSystemUnit;
+  except
+    on e: exception do
+      AbortWorkInternal('Init system unit ERROR: %s', [e.Message]);
+  end;
   for i := 0 to FUnits.Count - 1 do
   begin
     var UN := FUnits[i];

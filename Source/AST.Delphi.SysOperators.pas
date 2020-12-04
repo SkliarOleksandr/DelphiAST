@@ -162,8 +162,26 @@ type
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
+  {implicit Pointer <- Any}
+  TSysImplicitPointerFromAny = class(TSysOpImplicit)
+  public
+    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
   {implicit Range <- Any}
   TSysImplicitRangeFromAny = class(TSysOpImplicit)
+  public
+    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
+  {implicit Set <- Any}
+  TSysImplicitSetFromAny = class(TSysOpImplicit)
+  public
+    function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
+  end;
+
+  {implicit nil -> Any}
+  TSysImplicitNullPtrToAny = class(TSysOpImplicit)
   public
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
@@ -535,7 +553,8 @@ end;
 
 function TSysImplicitPointerToAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
-  Result := Dst.DataTypeID = dtPointer;
+  Result := (Dst.DataTypeID = dtPointer) or
+    ((Src.ClassType = TIDNullPointerType) and Dst.IsReferenced);
 end;
 
 { TSysExplicitClassOfFromAny }
@@ -727,6 +746,39 @@ begin
   Result := Src.IsOrdinal;
 end;
 
+
+{ TSysImplicitSetFromAny }
+
+function TSysImplicitSetFromAny.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+var
+  Vector: TIDDynArrayConstant;
+begin
+  Result := nil;
+  if Src.IsDynArrayConst then begin
+    Vector := Src.AsDynArrayConst;
+    if Vector.CabBeSet then
+      Result := Dst;
+    // and (Vector.ElementType = TIDSet(Dst).BaseType) then
+  end;
+
+end;
+
+{ TSysImplicitNullPtrToAny }
+
+function TSysImplicitNullPtrToAny.Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean;
+begin
+  Result := Dst.IsReferenced;
+end;
+
+{ TSysImplicitPointerFromAny }
+
+function TSysImplicitPointerFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
+begin
+  Result := (
+    ((Dst.DataTypeID in [dtPAnsiChar]) and (Src.DataTypeID = dtStaticArray) and (TIDStaticArray(Src).ElementDataType = SYSUnit._AnsiChar)) or
+    ((Dst.DataTypeID in [dtPWideChar]) and (Src.DataTypeID = dtStaticArray) and (TIDStaticArray(Src).ElementDataType = SYSUnit._Char))
+  );
+end;
 
 end.
 

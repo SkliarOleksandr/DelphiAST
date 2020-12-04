@@ -74,6 +74,7 @@ type
     ImplicitStringToPChar,
     ImplicitAnsiStringToString,
     ImplicitPointerToAny,
+    ImplicitPointerFromAny,
     ImplicitUntypedFromAny,
     ImplicitClosureToTMethod,
     ImplicitCharToAnsiString,
@@ -82,7 +83,9 @@ type
     ImplicitAnsiCharToChar,
     ImplicitMetaClassToGUID,
     ImplicitClassToClass,
-    ImplicitArrayToAny
+    ImplicitArrayToAny,
+    ImplicitSetFromAny,
+    ImplicitNullPtrToAny
 
     : TIDOperator;
     // explicits
@@ -899,6 +902,18 @@ begin
   fDecls._PointerType := RegisterPointer('Pointer', nil);
   //===============================================================
 
+  // nil constant
+  fDecls._NullPtrType := TIDNullPointerType.CreateAsSystem(IntfScope, 'null ptr');
+  fDecls._NullPtrConstant := TIDIntConstant.Create(IntfScope, Identifier('nil'), fDecls._NullPtrType, 0);
+  fDecls._NullPtrExpression := TIDExpression.Create(fDecls._NullPtrConstant);
+  IntfScope.InsertID(fDecls._NullPtrConstant);
+
+  // Untyped reference
+  fDecls._UntypedReference := TIDPointer.CreateAsSystem(IntfScope, 'Untyped reference');
+  IntfScope.InsertID(fDecls._UntypedReference);
+  fDecls._UntypedReference.OverloadImplicitFromAny(Operators.ImplicitUntypedFromAny);
+  fDecls._UntypedReference.OverloadExplicitToAny(Operators.ExplicitUntypedToAny);
+
   // Delphi system aliases
   RegisterTypeAlias('LongInt', _Int32);
   RegisterTypeAlias('LongWord', _UInt32);
@@ -966,7 +981,7 @@ end;
 
 procedure TSYSTEMUnit.SearchSystemTypes;
 begin
-  fDecls._TObject := GetPublicClass('TObject');
+//  fDecls._TObject := GetPublicClass('TObject');
 {  FException := GetPublicClass('Exception');
   FEAssertClass := GetPublicClass('EAssert');
   FTypeIDType := GetPublicType('TDataTypeID');}
@@ -1092,24 +1107,14 @@ begin
   fDecls._Void := TIDType.CreateAsSystem(IntfScope, 'Void');
   fDecls._Void.DataTypeID := TDataTypeID(dtUnknown);
 
-  // nil constant
-  fDecls._NullPtrType := TIDNullPointerType.CreateAsSystem(IntfScope, 'null ptr');
-  fDecls._NullPtrConstant := TIDIntConstant.Create(IntfScope, Identifier('nil'), fDecls._NullPtrType, 0);
-  fDecls._NullPtrExpression := TIDExpression.Create(fDecls._NullPtrConstant);
-  IntfScope.InsertID(fDecls._NullPtrConstant);
 
-  // Untyped reference
-  fDecls._UntypedReference := TIDPointer.CreateAsSystem(IntfScope, 'Untyped reference');
-  IntfScope.InsertID(fDecls._UntypedReference);
-  fDecls._UntypedReference.OverloadImplicitFromAny(Operators.ImplicitUntypedFromAny);
-  fDecls._UntypedReference.OverloadExplicitToAny(Operators.ExplicitUntypedToAny);
 
   fDecls._OrdinalType := TIDOrdinal.CreateAsSystem(IntfScope, 'ordinal');
 
   RegisterTypes;
-  fDecls._PointerType.CreateStandardOperators;
-  fDecls._PAnsiChar.CreateStandardOperators;
-  fDecls._PChar.CreateStandardOperators;
+//  fDecls._PointerType.CreateStandardOperators;
+//  fDecls._PAnsiChar.CreateStandardOperators;
+//  fDecls._PChar.CreateStandardOperators;
 
   fArrayType := TIDArray.CreateAsSystem(IntfScope, 'array');
 end;
@@ -1183,6 +1188,7 @@ begin
   ImplicitStringToPChar := TSysImplicitStringToPChar.CreateAsSystem(Scope);
   ImplicitAnsiStringToString := TSysImplicitAnsiStringToString.CreateAsSystem(Scope);
   ImplicitPointerToAny := TSysImplicitPointerToAny.CreateAsSystem(Scope);
+  ImplicitPointerFromAny := TSysImplicitPointerFromAny.CreateAsSystem(Scope);
   ImplicitUntypedFromAny := TSysImplicitUntypedFromAny.CreateAsSystem(Scope);
   ImplicitClosureToTMethod := TSysImplicitClosureToTMethod.CreateAsSystem(Scope);
   ImplicitCharToAnsiString := TSysImplicitCharToAnsiString.CreateAsSystem(Scope);
@@ -1192,6 +1198,8 @@ begin
   ImplicitMetaClassToGUID := TSysImplicitMetaClassToGUID.CreateAsSystem(Scope);
   ImplicitClassToClass := TSysImplicitClassToClass.CreateAsSystem(Scope);
   ImplicitArrayToAny := TSysImplicitArrayToAny.CreateAsSystem(Scope);
+  ImplicitArrayToAny := TSysImplicitSetFromAny.CreateAsSystem(Scope);
+  ImplicitNullPtrToAny := TSysImplicitNullPtrToAny.CreateAsSystem(Scope);
   // explicit
   ExplicitStringFromAny := TSysExplicitStringFromAny.CreateAsSystem(Scope);
   ExplicitAnsiStringFromAny := TSysExplicitAnsiStringFromAny.CreateAsSystem(Scope);

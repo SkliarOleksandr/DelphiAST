@@ -61,6 +61,8 @@ implementation
 
 uses
   System.IOUtils,
+  System.TypInfo,
+  System.Rtti,
   AST.Delphi.System,
   AST.Delphi.Parser,
   AST.Classes,
@@ -199,6 +201,7 @@ const cRTLUsesSource =
   'unit RTLParseTest; '#10#13 +
   'interface'#10#13 +
   'uses System.SysUtils;'#10#13 +
+//  'uses Winapi.Windows;'#10#13 +
   'implementation'#10#13 +
   'end.';
 
