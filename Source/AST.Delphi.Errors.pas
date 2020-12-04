@@ -248,7 +248,7 @@ type
 
     class procedure CANNOT_ACCESS_TO_WRITEONLY_PROPERTY(const Expr: TIDExpression); static;
     class procedure CANNOT_MODIFY_READONLY_PROPERTY(const Expr: TIDExpression); static;
-    class procedure NO_OVERLOAD(CallExpr: TIDExpression); static;
+    class procedure NO_OVERLOAD(CallExpr: TIDExpression; const CallArgs: TIDExpressions); static;
     class procedure AMBIGUOUS_OVERLOAD_CALL(CallExpr: TIDExpression); overload; static;
     class procedure INCOMPLETE_PROC(Decl: TIDDeclaration); static;
     class procedure NO_OVERLOAD_OPERATOR_FOR_TYPES(Op: TOperatorID; Left, Right: TIDExpression); overload; static;
@@ -884,9 +884,15 @@ begin
   AbortWork(sIdentifierHasNoMembersFmt, [Decl.DisplayName], Lexer.PrevPosition);
 end;
 
-class procedure TASTDelphiErrors.NO_OVERLOAD(CallExpr: TIDExpression);
+class procedure TASTDelphiErrors.NO_OVERLOAD(CallExpr: TIDExpression; const CallArgs: TIDExpressions);
+var
+  ArgStr: string;
 begin
-  AbortWork(sErrorOverload + #13#10 + CallExpr.AsProcedure.GetAllOverloadSignatures,
+  for var Item in CallArgs do
+    ArgStr := AddStringSegment(ArgStr, Item.DataTypeName, ',');
+
+  AbortWork(sErrorOverload + #13#10 + 'Call argumensts: ' + ArgStr +
+                             #13#10 + CallExpr.AsProcedure.GetAllOverloadSignatures,
     [CallExpr.Declaration.Name], CallExpr.TextPosition);
 end;
 

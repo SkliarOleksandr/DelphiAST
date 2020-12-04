@@ -553,8 +553,7 @@ end;
 
 function TSysImplicitPointerToAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
-  Result := (Dst.DataTypeID = dtPointer) or
-    ((Src.ClassType = TIDNullPointerType) and Dst.IsReferenced);
+  Result := (Dst.DataTypeID = dtPointer);
 end;
 
 { TSysExplicitClassOfFromAny }
@@ -767,7 +766,7 @@ end;
 
 function TSysImplicitNullPtrToAny.Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean;
 begin
-  Result := Dst.IsReferenced;
+  Result := Dst.IsReferenced or (Dst.DataTypeID = dtProcType);
 end;
 
 { TSysImplicitPointerFromAny }

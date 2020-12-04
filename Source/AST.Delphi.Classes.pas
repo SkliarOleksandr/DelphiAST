@@ -461,6 +461,8 @@ type
 
   {special nullptr type}
   TIDNullPointerType = class(TIDPointer)
+  public
+    procedure CreateStandardOperators; override;
   end;
 
   {base ordinal type class}
@@ -5992,6 +5994,14 @@ begin
   fItemType := itAlias;
   fOriginalDecl := OriginalDecl;
   fExpression := Expression;
+end;
+
+{ TIDNullPointerType }
+
+procedure TIDNullPointerType.CreateStandardOperators;
+begin
+  inherited;
+  OverloadImplicitToAny(SYSUnit.Operators.ImplicitNullPtrToAny);
 end;
 
 initialization

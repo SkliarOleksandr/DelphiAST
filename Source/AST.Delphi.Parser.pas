@@ -1738,9 +1738,8 @@ begin
     PExpr.Declaration := ProcDecl;
   end;
 
-  if Lexer_Line = 5933 then
-    sleep(1);
-
+   if Length(ProcParams) < ArgsCount then
+     AbortWorkInternal('Ivalid proc call: %s', [PExpr.Text], PExpr.TextPosition);
 
   {если все аргументы явно указаны}
   for AIndex := 0 to ArgsCount - 1 do
@@ -3338,16 +3337,6 @@ begin
   SrcDTID := SDataType.DataTypeID;
   DstDTID := Dest.DataTypeID;
 
-  // если источник элемент битового набора(dtSet[i])
-  if (SDataType.DataTypeID = dtBoolean) and (Dest.DataTypeID = dtBoolean) and
-     (Source is TIDMultiExpression) and
-     (TIDMultiExpression(Source).Items[0].DataTypeID = dtSet) then
-  begin
-    Decl := GetTMPVar(SContext, Sys._Boolean);
-    Result := TIDExpression.Create(Decl);
-    Exit;
-  end;
-
   // ищем явно определенный implicit у источника
   Decl := SDataType.GetImplicitOperatorTo(Dest);
   if Decl is TSysTypeCast then
@@ -3372,10 +3361,6 @@ begin
         Decl := Dest.FindImplicitOperatorFrom(SDataType);
         if not Assigned(Decl) then
         begin
-          { проверка на nullpointer }
-          if (Source.Declaration = Sys._NullPtrConstant) and
-             (Dest.IsReferenced or (Dest is TIDProcType)) then
-            Exit(Source);
 
           if (SrcDTID = dtPointer) and (DstDTID = dtPointer) then
           begin
@@ -3469,7 +3454,7 @@ begin
   if Decl.ItemType = itType then
     Exit(Source);
 
-  Result := CheckAndCallOperator(SContext, Decl, Source);
+  Result := nil;
 end;
 
 procedure TASTDelphiUnit.MatchProc(const SContext: TSContext; CallExpr: TIDExpression; const ProcParams: TVariableList; var CallArgs: TIDExpressions);
@@ -3894,7 +3879,7 @@ begin
     if AmbiguousRate > 0 then
       AbortWithAmbiguousOverload(MatchedCount, AmbiguousRate);
   end else
-    ERRORS.NO_OVERLOAD(Item)
+    ERRORS.NO_OVERLOAD(Item, CallArgs)
 end;
 
 function TASTDelphiUnit.MatchBinarOperatorWithImplicit(const SContext: TSContext; Op: TOperatorID; var Left,
@@ -4241,11 +4226,6 @@ begin
     Result := CheckSetImplicit(Source, TIDSet(Dest));
     Exit;
   end;}
-
-  // проверка на nullpointer
-  if (Source.Declaration = SContext.SysUnit._NullPtrConstant) and
-     (Dest.IsReferenced or (Dest is TIDProcType)) then
-    Exit(Dest);
 
   SrcDTID := Source.DataTypeID;
   DstDTID := Dest.DataTypeID;
