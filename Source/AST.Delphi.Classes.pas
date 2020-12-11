@@ -985,6 +985,17 @@ type
     function CompareTo(Constant: TIDConstant): Integer; override;
   end;
 
+  {set constant}
+  TIDSetConstant = class(TIDXXXConstant<TIDDynArrayConstant>)
+  public
+    function ValueDataType: TDataTypeID; override;
+    function ValueByteSize: Integer; override;
+    function AsString: string; override;
+    function AsInt64: Int64; override;
+    function AsVariant: Variant; override;
+    function CompareTo(Constant: TIDConstant): Integer; override;
+  end;
+
   TExpressonType = (
     etDeclaration,
     etExpressionList
@@ -4567,9 +4578,10 @@ begin
   OverloadImplicitTo(Self);
   OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
   OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
+  OverloadBinarOperator2(opAdd, Self, Self);
   OverloadImplicitToAny(SYSUnit.Operators.ImplicitArrayToAny);
   AddBinarySysOperator(opIn, SYSUnit.Operators.Ordinal_In_Set);
-//  OverloadExplicitFromAny(SYSUnit.Operators.ImplicitSetFromAny);
+  OverloadImplicitFromAny(SYSUnit.Operators.ImplicitSetFromAny);
 end;
 
 function TIDSet.GetBitsCount: UInt32;
@@ -5261,7 +5273,7 @@ end;
 
 function TIDRangeConstant.GetDisplayName: string;
 begin
-  Result := FValue.LBExpression.DisplayName + '..' + FValue.HBExpression.DataTypeName;
+  Result := FValue.LBExpression.DisplayName + '..' + FValue.HBExpression.DisplayName;
 end;
 
 { TProcScope }
@@ -6002,6 +6014,38 @@ procedure TIDNullPointerType.CreateStandardOperators;
 begin
   inherited;
   OverloadImplicitToAny(SYSUnit.Operators.ImplicitNullPtrToAny);
+end;
+
+{ TIDSetConstant }
+
+function TIDSetConstant.AsInt64: Int64;
+begin
+  Result := 0;
+end;
+
+function TIDSetConstant.AsString: string;
+begin
+  Result := '';
+end;
+
+function TIDSetConstant.AsVariant: Variant;
+begin
+  Result := null;
+end;
+
+function TIDSetConstant.CompareTo(Constant: TIDConstant): Integer;
+begin
+  Result := 0;
+end;
+
+function TIDSetConstant.ValueByteSize: Integer;
+begin
+  Result := 0;
+end;
+
+function TIDSetConstant.ValueDataType: TDataTypeID;
+begin
+  Result := dtSet;
 end;
 
 initialization

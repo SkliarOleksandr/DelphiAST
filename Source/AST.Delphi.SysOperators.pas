@@ -178,6 +178,7 @@ type
   TSysImplicitSetFromAny = class(TSysOpImplicit)
   public
     function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
+    function Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; override;
   end;
 
   {implicit nil -> Any}
@@ -205,7 +206,6 @@ type
   {explicit TProc <- Any}
   TSysExplicitTProcFromAny = class(TSysOpImplicit)
   public
-    function Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; override;
     function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
@@ -336,7 +336,7 @@ end;
 
 function TSysTypeCast.Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
 begin
-  if Check(SContext, Src.DataType, Dst) then
+  if Check(SContext, Src, Dst) <> nil then
     Result := TIDCastExpression.Create(Src, Dst)
   else
     Result := nil;
@@ -486,27 +486,18 @@ begin
             );
 end;
 
-function TSysExplicitTProcFromAny.Match(const SContext: TSContext; const Src: TIDExpression;
-                                         const Dst: TIDType): TIDExpression;
+function TSysExplicitTProcFromAny.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
   if Src.ItemType = itProcedure then
   begin
     var SrcProc := Src.AsProcedure;
     var DstProcType := Dst as TIDProcType;
     if TASTDelphiUnit.StrictMatchProcSingnatures(SrcProc.ExplicitParams, DstProcType.Params, SrcProc.ResultType, DstProcType.ResultType) then
-      Exit(Src)
+      Exit(Dst)
     else
       Exit(nil);
   end;
 
-  if (Src.DataTypeID = dtPointer) and (Dst as TIDProcType).IsStatic then
-    Result := Src
-  else
-    Result := nil;
-end;
-
-function TSysExplicitTProcFromAny.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
-begin
   if (Src.DataTypeID = dtPointer) and (Dst as TIDProcType).IsStatic then
     Result := Dst
   else
@@ -749,17 +740,24 @@ end;
 { TSysImplicitSetFromAny }
 
 function TSysImplicitSetFromAny.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
-var
-  Vector: TIDDynArrayConstant;
 begin
   Result := nil;
-  if Src.IsDynArrayConst then begin
-    Vector := Src.AsDynArrayConst;
-    if Vector.CabBeSet then
-      Result := Dst;
-    // and (Vector.ElementType = TIDSet(Dst).BaseType) then
-  end;
+  if Src.IsDynArrayConst then
+    Result := TASTDelphiUnit.MatchConstDynArrayImplicit(SContext, Src, Dst);
+end;
 
+function TSysImplicitSetFromAny.Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
+begin
+  Result := nil;
+  if Src.IsDynArrayConst then
+  begin
+    var Implicit := TASTDelphiUnit.MatchConstDynArrayImplicit(SContext, Src, Dst);
+    if Assigned(Implicit) and (Src.DataTypeID <> dtSet) then
+    begin
+      var Decl := TIDSetConstant.CreateAsAnonymous(SContext.Scope, Dst, Src.AsDynArrayConst);
+      Result := TIDExpression.Create(Decl, Src.TextPosition);
+    end;
+  end;
 end;
 
 { TSysImplicitNullPtrToAny }

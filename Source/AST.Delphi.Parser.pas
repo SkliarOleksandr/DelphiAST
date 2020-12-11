@@ -59,7 +59,7 @@ type
     class function MatchExplicit(const SContext: TSContext; const Source: TIDExpression; Destination: TIDType): TIDDeclaration; overload; static;
     class function MatchExplicit2(const SContext: TSContext; const Source: TIDExpression; Destination: TIDType; out Explicit: TIDDeclaration): TIDExpression; overload; static;
 
-    class function MatchArrayImplicitToRecord(const SContext: TSContext; Source: TIDExpression; Destination: TIDStructure): TIDExpression; static;
+    //class function MatchArrayImplicitToRecord(const SContext: TSContext; Source: TIDExpression; Destination: TIDStructure): TIDExpression; static;
 
     function Lexer_MatchSemicolonAndNext(Scope: TScope; ActualToken: TTokenID): TTokenID;
     //========================================================================================================
@@ -125,14 +125,15 @@ type
     function MatchRecordImplicit(const SContext: TSContext; Source: TIDExpression; DstRecord: TIDRecord): TIDExpression;
     function MatchBinarOperator(const SContext: TSContext; Op: TOperatorID; var Left, Right: TIDExpression): TIDDeclaration;
     function MatchBinarOperatorWithImplicit(const SContext: TSContext; Op: TOperatorID; var Left, Right: TIDexpression): TIDDeclaration;
-    function FindBinaryOperator(const SContext: TSContext; OpID: TOperatorID; Left, Right: TIDExpression): TIDDeclaration;
+    function FindBinaryOperator(const SContext: TSContext; OpID: TOperatorID; var Left, Right: TIDExpression): TIDDeclaration;
     class function MatchUnarOperator(Op: TOperatorID; Right: TIDType): TIDType; overload; static; inline;
     class function MatchUnarOperator(const SContext: TSContext; Op: TOperatorID; Source: TIDExpression): TIDExpression; overload; static;
-    function DoMatchBinarOperator(const SContext: TSContext; OpID: TOperatorID; Left, Right: TIDExpression): TIDDeclaration;
+    function DoMatchBinarOperator(const SContext: TSContext; OpID: TOperatorID; var Left, Right: TIDExpression): TIDDeclaration;
     procedure MatchProc(const SContext: TSContext; CallExpr: TIDExpression; const ProcParams: TVariableList; var CallArgs: TIDExpressions);
     function FindImplicitFormBinarOperators(const Operators: TIDPairList; const Right: TIDType; out BetterFactor: Integer; out BetterOp: TIDDeclaration): TIDDeclaration;
     function MatchBinarOperatorWithTuple(const SContext: TSContext; Op: TOperatorID; var CArray: TIDExpression;
       const SecondArg: TIDExpression): TIDDeclaration;
+  public
     class function MatchOperatorIn(const SContext: TSContext; const Left, Right: TIDExpression): TIDDeclaration; static;
     class function MatchConstDynArrayImplicit(const SContext: TSContext; Source: TIDExpression; Destination: TIDType): TIDType; static;
     class function MatchDynArrayImplicit(Source: TIDExpression; Destination: TIDType): TIDType; static;
@@ -143,7 +144,7 @@ type
     procedure MatchPropGetter(Prop: TIDProperty; Getter: TIDProcedure; PropParams: TScope);
     procedure SetProcGenericArgs(CallExpr: TIDCallExpression; Args: TIDExpressions);
     class function MatchImplicit(Source, Destination: TIDType): TIDDeclaration; static; inline;
-  public
+
     function IsConstValueInRange(Value: TIDExpression; RangeExpr: TIDRangeConstant): Boolean;
     function IsConstRangesIntersect(const Left, Right: TIDRangeConstant): Boolean;
     function IsConstEqual(const Left, Right: TIDExpression): Boolean;
@@ -634,7 +635,7 @@ var
   ExceptItem: TASTKWTryExceptItem;
 begin
   KW := SContext.Add<TASTKWTryBlock>;
-  NewContext := SContext.MakeChild(KW.Body);
+  NewContext := SContext.MakeChild(Scope, KW.Body);
   // запоминаем предыдущий TryBlock
   Lexer_NextToken(Scope);
   Result := ParseStatements(Scope, NewContext, True);
@@ -645,7 +646,7 @@ begin
       if Result <> token_on then
       begin
         ExceptItem := KW.AddExceptBlock(nil);
-        NewContext := SContext.MakeChild(ExceptItem.Body);
+        NewContext := SContext.MakeChild(Scope, ExceptItem.Body);
         Result := ParseStatements(Scope, NewContext, True);
       end else begin
         while Result = token_on do
@@ -659,7 +660,7 @@ begin
     token_finally: begin
       Lexer_NextToken(Scope);
       KW.FinallyBody := TASTBlock.Create(KW);
-      NewContext := SContext.MakeChild(KW.FinallyBody);
+      NewContext := SContext.MakeChild(Scope, KW.FinallyBody);
       Result := ParseStatements(Scope, NewContext, True);
       Lexer_MatchToken(Result, token_end);
       Result := Lexer_NextToken(Scope);
@@ -1406,7 +1407,7 @@ begin
 
   Item := KW.AddExceptBlock(VarExpr);
 
-  NewSContext := SContext.MakeChild(Item.Body);
+  NewSContext := SContext.MakeChild(Scope, Item.Body);
 
   Lexer_NextToken(Scope);
   Result := ParseStatements(NewScope, NewSContext, False);
@@ -1433,7 +1434,7 @@ begin
   CheckEmptyExpression(Expression);
   CheckBooleanExpression(Expression);
 
-  BodySContext := SContext.MakeChild(KW.Body);
+  BodySContext := SContext.MakeChild(Scope, KW.Body);
 
   // loop body
   Lexer_MatchToken(Result, token_do);
@@ -1456,7 +1457,7 @@ begin
   WPrevScope := Scope;
   WNextScope := nil;
   KW := SContext.Add<TASTKWWith>;
-  BodySContext := SContext.MakeChild(KW.Body);
+  BodySContext := SContext.MakeChild(Scope, KW.Body);
   while True do begin
     Result := Lexer_NextToken(Scope);
     InitEContext(EContext, SContext, ExprRValue);
@@ -1829,7 +1830,7 @@ begin
   inherited;
 end;
 
-function TASTDelphiUnit.DoMatchBinarOperator(const SContext: TSContext; OpID: TOperatorID; Left, Right: TIDExpression): TIDDeclaration;
+function TASTDelphiUnit.DoMatchBinarOperator(const SContext: TSContext; OpID: TOperatorID; var Left, Right: TIDExpression): TIDDeclaration;
 begin
   if OpID in [opShiftLeft, opShiftRight] then
     Result := MatchBinarOperator(SContext, OpID, Left, Left)
@@ -1891,14 +1892,6 @@ begin
       SContext.ERRORS.INCOMPATIBLE_TYPES(SExpr, DstElementDataType);
   end;
   Result := Destination;
-
-  // подгонка типа константного массива под тип приемника
-  if Destination.DataTypeID <> dtOpenArray then
-  begin
-    SrcArrayElement := TIDDynArray(SConst.DataType).ElementDataType;
-    if DstElementDataType.DataSize <> SrcArrayElement.DataSize then
-      SConst.DataType := Destination
-  end;
 end;
 
 class function TASTDelphiUnit.MatchDynArrayImplicit(Source: TIDExpression; Destination: TIDType): TIDType;
@@ -1915,7 +1908,7 @@ begin
   Result := nil;
 end;
 
-function TASTDelphiUnit.FindBinaryOperator(const SContext: TSContext; OpID: TOperatorID; Left, Right: TIDExpression): TIDDeclaration;
+function TASTDelphiUnit.FindBinaryOperator(const SContext: TSContext; OpID: TOperatorID; var Left, Right: TIDExpression): TIDDeclaration;
 var
   WasCall: Boolean;
 begin
@@ -3221,41 +3214,41 @@ begin
   end;
 end;
 
-class function TASTDelphiUnit.MatchArrayImplicitToRecord(const SContext: TSContext; Source: TIDExpression; Destination: TIDStructure): TIDExpression;
-var
-  i, TupleItemsCount: Integer;
-  ItemExpr: TIDExpression;
-  Field: TIDVariable;
-  FieldDataType: TIDType;
-  Tuple: TIDDynArrayConstant;
-  ImplicitCast: TIDDeclaration;
-//  NeedCallImplicits: Boolean;
-begin
-  if not Source.IsDynArrayConst then
-    Exit(nil);
-  Tuple := Source.AsDynArrayConst;
-  TupleItemsCount := Tuple.ArrayLength;
-
-  if TupleItemsCount <> Destination.FieldsCount then
-    AbortWork('Invalid fields count', Source.TextPosition);
-
-  Field := Destination.FirstField;
-
-  for i := 0 to TupleItemsCount - 1 do begin
-    ItemExpr := Tuple.Value[i];
-    FieldDataType := Field.DataType.ActualDataType;
-    ImplicitCast := CheckImplicit(SContext, ItemExpr, FieldDataType);
-
-    if not Assigned(ImplicitCast) then
-      SContext.ERRORS.INCOMPATIBLE_TYPES(ItemExpr, FieldDataType);
-
-    {if ImplicitCast.ItemType = itProcedure then
-      NeedCallImplicits := True;}
-
-    Field := TIDVariable(Field.NextItem);
-  end;
-  Result := Source;
-end;
+//class function TASTDelphiUnit.MatchArrayImplicitToRecord(const SContext: TSContext; Source: TIDExpression; Destination: TIDStructure): TIDExpression;
+//var
+//  i, TupleItemsCount: Integer;
+//  ItemExpr: TIDExpression;
+//  Field: TIDVariable;
+//  FieldDataType: TIDType;
+//  Tuple: TIDDynArrayConstant;
+//  ImplicitCast: TIDDeclaration;
+////  NeedCallImplicits: Boolean;
+//begin
+//  if not Source.IsDynArrayConst then
+//    Exit(nil);
+//  Tuple := Source.AsDynArrayConst;
+//  TupleItemsCount := Tuple.ArrayLength;
+//
+//  if TupleItemsCount <> Destination.FieldsCount then
+//    AbortWork('Invalid fields count', Source.TextPosition);
+//
+//  Field := Destination.FirstField;
+//
+//  for i := 0 to TupleItemsCount - 1 do begin
+//    ItemExpr := Tuple.Value[i];
+//    FieldDataType := Field.DataType.ActualDataType;
+//    ImplicitCast := CheckImplicit(SContext, ItemExpr, FieldDataType);
+//
+//    if not Assigned(ImplicitCast) then
+//      SContext.ERRORS.INCOMPATIBLE_TYPES(ItemExpr, FieldDataType);
+//
+//    {if ImplicitCast.ItemType = itProcedure then
+//      NeedCallImplicits := True;}
+//
+//    Field := TIDVariable(Field.NextItem);
+//  end;
+//  Result := Source;
+//end;
 
 function TASTDelphiUnit.MatchRecordImplicit(const SContext: TSContext; Source: TIDExpression; DstRecord: TIDRecord): TIDExpression;
 var
@@ -3341,9 +3334,9 @@ begin
   Decl := SDataType.GetImplicitOperatorTo(Dest);
   if Decl is TSysTypeCast then
   begin
-    Decl := TSysTypeCast(Decl).Check(SContext, Source, Dest);
-    if Assigned(Decl) then
-      Exit(Source);
+    Result := TSysTypeCast(Decl).Match(SContext, Source, Dest);
+    if Assigned(Result) then
+      Exit(Result);
     Decl := nil;
   end;
 
@@ -3362,16 +3355,16 @@ begin
         if not Assigned(Decl) then
         begin
 
-          if (SrcDTID = dtPointer) and (DstDTID = dtPointer) then
-          begin
-            // it needs to check
-            if (TIDPointer(SDataType).ReferenceType = nil) or
-               (TIDPointer(Dest).ReferenceType = nil) then
-              Exit(Source);
-
-            if TIDPointer(SDataType).ReferenceType.ActualDataType = TIDPointer(Dest).ReferenceType.ActualDataType then
-              Exit(Source);
-          end;
+//          if (SrcDTID = dtPointer) and (DstDTID = dtPointer) then
+//          begin
+//            // it needs to check
+//            if (TIDPointer(SDataType).ReferenceType = nil) or
+//               (TIDPointer(Dest).ReferenceType = nil) then
+//              Exit(Source);
+//
+//            if TIDPointer(SDataType).ReferenceType.ActualDataType = TIDPointer(Dest).ReferenceType.ActualDataType then
+//              Exit(Source);
+//          end;
 
           { если классы и интерфейс }
           if (SrcDTID = dtClass) and (DstDTID = dtInterface) then
@@ -3400,9 +3393,9 @@ begin
             if Dest is TIDArray then
               Result := MatchArrayImplicit(SContext, Source, TIDArray(Dest))
             else
-            if DstDTID = dtRecord then
-              Result := MatchArrayImplicitToRecord(SContext, Source, TIDStructure(Dest))
-            else
+//            if DstDTID = dtRecord then
+//              Result := MatchArrayImplicitToRecord(SContext, Source, TIDStructure(Dest))
+//            else
               Result := nil;
             Exit;
           end;
@@ -3502,7 +3495,6 @@ begin
           if Assigned(Implicit) then
             continue;
         end;
-        Implicit := CheckImplicit(SContext, Arg, Param.DataType);
         ERRORS.INCOMPATIBLE_TYPES(Arg, Param.DataType);
       end else
       if not Assigned(Param.DefaultValue) then
@@ -4221,27 +4213,8 @@ begin
   if Assigned(Result) then
     Exit;
 
-  {if (DstDTID = dtSet) and (SDataType is TIDDynArray) then
-  begin
-    Result := CheckSetImplicit(Source, TIDSet(Dest));
-    Exit;
-  end;}
-
   SrcDTID := Source.DataTypeID;
   DstDTID := Dest.DataTypeID;
-
-  if (Source.IsDynArrayConst) and (Dest.DataTypeID = dtRecord) then
-  begin
-    if MatchArrayImplicitToRecord(SContext, Source, TIDStructure(Dest)) <> nil then
-      Exit(Dest);
-  end;
-
-  {если оба - классы, то проверяем InheritsForm
-  if (SrcDTID = dtClass) and (DstDTID = dtClass) then
-  begin
-    if TIDClass(Source.DataType).IsInheritsForm(TIDClass(Dest)) then
-      Exit(Dest);
-  end;}
 
   // есди приемник - class of
   if DstDTID = dtClassOf then
@@ -5186,7 +5159,7 @@ begin
         Result := ParseExpression(Scope, SContext, EContext, ASTExpr);
 
         CaseItem := KW.AddItem(ASTExpr);
-        MISContext := SContext.MakeChild(CaseItem.Body);
+        MISContext := SContext.MakeChild(Scope, CaseItem.Body);
 
         ItemExpr := EContext.RPNPopExpression();
         CheckEmptyExpression(ItemExpr);
@@ -5253,7 +5226,7 @@ begin
 
     end else begin
       // ELSE секция
-      MISContext := SContext.MakeChild(KW.ElseBody);
+      MISContext := SContext.MakeChild(Scope, KW.ElseBody);
       Lexer_NextToken(Scope);
       Result := ParseStatements(Scope, MISContext, True);
       Lexer_MatchToken(Result, token_end);
@@ -5770,7 +5743,7 @@ begin
 
   FDefines := TDefines.Create();
   FPackage := Project as IASTDelphiProject;
-  fUnitSContext := TSContext.Create(Self);
+  fUnitSContext := TSContext.Create(Self, IntfScope);
   fErrors := TASTDelphiErrors.Create(Lexer);
 
 //  FParser := TDelphiLexer.Create(Source);
@@ -5949,7 +5922,7 @@ begin
   Lexer_MatchToken(Result, token_do);
   Lexer_NextToken(Scope);
 
-  BodySContext := SContext.MakeChild(KW.Body);
+  BodySContext := SContext.MakeChild(Scope, KW.Body);
   Result := ParseStatements(Scope, BodySContext, False);
 end;
 
@@ -5997,7 +5970,7 @@ begin
   end;
 
   KW := SContext.Add<TASTKWFor>;
-  BodySContext := SContext.MakeChild(KW.Body);
+  BodySContext := SContext.MakeChild(Scope, KW.Body);
 
   Lexer_MatchToken(Result, token_assign);
 
@@ -6204,7 +6177,7 @@ begin
     else
       NewScope := Scope;
 
-    ThenSContext := SContext.MakeChild(KW.ThenBody);
+    ThenSContext := SContext.MakeChild(Scope, KW.ThenBody);
 
     Result := ParseStatements(NewScope, ThenSContext, False);
   end;
@@ -6219,7 +6192,7 @@ begin
       NewScope := Scope;
 
     KW.ElseBody := TASTKWIF.TASTKWIfElseBlock.Create(KW);
-    ElseSContext := SContext.MakeChild(KW.ElseBody);
+    ElseSContext := SContext.MakeChild(Scope, KW.ElseBody);
     Result := ParseStatements(NewScope, ElseSContext, False);
   end;
 end;
@@ -6555,7 +6528,7 @@ begin
         Proc.Body := TASTBlock.Create(Proc);
         //SContext.Initialize;
         //SContext.IL := TIL(Proc.IL);
-        SContext := TSContext.Create(Self, Proc, Proc.Body);
+        SContext := TSContext.Create(Self, Scope, Proc, Proc.Body);
         //CheckInitVariables(@SContext, nil, @Proc.VarSpace);
         Lexer_NextToken(Scope);
         Result := ParseStatements(Scope, SContext, True);
@@ -7662,7 +7635,7 @@ var
 begin
   KW := SContext.Add<TASTKWRepeat>;
 
-  BodySContext := SContext.MakeChild(KW.Body);
+  BodySContext := SContext.MakeChild(Scope, KW.Body);
 
   Lexer_NextToken(Scope);
   // тело цикла
@@ -8337,7 +8310,7 @@ begin
 
   FInitProcExplicit := True;
 
-  SContext := TSContext.Create(Self, InitProc as TASTDelphiProc, TASTDelphiProc(InitProc).Body);
+  SContext := TSContext.Create(Self, ImplScope, InitProc as TASTDelphiProc, TASTDelphiProc(InitProc).Body);
   Lexer_NextToken(InitProc.Scope);
   InitProc.FirstBodyLine := Lexer_Line;
   Result := ParseStatements(InitProc.Scope, SContext, True);
@@ -8453,7 +8426,7 @@ begin
   if fFinalProcExplicit then
     ERRORS.FINAL_SECTION_ALREADY_DEFINED;
   FFinalProcExplicit := True;
-  SContext := TSContext.Create(Self, FinalProc as TASTDelphiProc, TASTDelphiProc(FinalProc).Body);
+  SContext := TSContext.Create(Self, ImplScope, FinalProc as TASTDelphiProc, TASTDelphiProc(FinalProc).Body);
   Lexer_NextToken(FinalProc.Scope);
   FinalProc.FirstBodyLine := Lexer_Line;
   Result := ParseStatements(FinalProc.Scope, SContext, True);

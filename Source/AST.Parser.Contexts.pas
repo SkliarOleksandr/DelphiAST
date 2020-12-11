@@ -12,18 +12,20 @@ type
   TASTSContext<TProc> = record
   private
     fModule: TASTModule;
-    fProc: TProc;
+    fScope: TScope;
     fBlock: TASTBlock;
+    fProc: TProc;
   public
-    constructor Create(const Module: TASTModule; Proc: TProc; Block: TASTBlock); overload;
-    constructor Create(const Module: TASTModule); overload;
-    function MakeChild(Block: TASTBlock): TASTSContext<TProc>; //inline;
+    constructor Create(const Module: TASTModule; Scope: TScope; Proc: TProc; Block: TASTBlock); overload;
+    constructor Create(const Module: TASTModule; Scope: TScope); overload;
+    function MakeChild(Scope: TScope; Block: TASTBlock): TASTSContext<TProc>; //inline;
     function Add<T: TASTItem>: T; overload;
     function Add(T: TASTItemClass): TASTItem; overload;
     procedure AddItem(const Item: TASTItem);
     property Module: TASTModule read fModule;
     property Proc: TProc read fProc;
     property Block: TASTBlock read fBlock;
+    property Scope: TScope read fScope;
   end;
 
   TExpessionPosition = AST.Delphi.Classes.TExpessionPosition;// (ExprNested, ExprLValue, ExprRValue, ExprNestedGeneric);
@@ -294,23 +296,25 @@ begin
   fBlock.AddChild(Item)
 end;
 
-constructor TASTSContext<TProc>.Create(const Module: TASTModule; Proc: TProc; Block: TASTBlock);
+constructor TASTSContext<TProc>.Create(const Module: TASTModule; Scope: TScope; Proc: TProc; Block: TASTBlock);
 begin
   fModule := Module;
+  fScope := Scope;
   fProc := Proc;
   fBlock := Block;
 end;
 
-constructor TASTSContext<TProc>.Create(const Module: TASTModule);
+constructor TASTSContext<TProc>.Create(const Module: TASTModule; Scope: TScope);
 begin
   fModule := Module;
+  Scope := Scope;
   fProc := default(TProc);
   fBlock := nil;
 end;
 
-function TASTSContext<TProc>.MakeChild(Block: TASTBlock): TASTSContext<TProc>;
+function TASTSContext<TProc>.MakeChild(Scope: TScope; Block: TASTBlock): TASTSContext<TProc>;
 begin
-  Result := TASTSContext<TProc>.Create(fModule, fProc, Block);
+  Result := TASTSContext<TProc>.Create(fModule, Scope, fProc, Block);
 end;
 
 end.
