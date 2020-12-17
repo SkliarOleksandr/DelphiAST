@@ -2194,7 +2194,8 @@ begin
 
   CheckEmptyExpression(LB);
   CheckEmptyExpression(HB);
-
+  CheckConstExpression(LB);
+  CheckConstExpression(HB);
   CheckOrdinalExpression(LB);
   CheckOrdinalExpression(HB);
 
@@ -2203,7 +2204,9 @@ begin
     AbortWork(sTypesMustBeIdentical, HB.TextPosition);
 
   RangeType := TIDRangeType.CreateAsAnonymous(IntfScope);
-  RangeType.ElementType := ValueType as TIDType;
+  RangeType.BaseType := ValueType as TIDType;
+  RangeType.LoDecl := LB.AsConst;
+  RangeType.HiDecl := HB.AsConst;
 
   if LB.IsConstant and HB.IsConstant then
   begin
@@ -5165,7 +5168,7 @@ begin
         CheckEmptyExpression(ItemExpr);
         // проверка на совпадение типа
         if ItemExpr.DataTypeID = dtRange then
-          Implicit := CheckImplicit(SContext, CaseExpr, TIDRangeType(ItemExpr.DataType).ElementType)
+          Implicit := CheckImplicit(SContext, CaseExpr, TIDRangeType(ItemExpr.DataType).BaseType)
         else
           Implicit := CheckImplicit(SContext, ItemExpr, CaseExpr.DataType);
         if not Assigned(Implicit) then
@@ -7274,7 +7277,8 @@ begin
   RDataType := Sys.DataTypes[RDataTypeID];
 
   Decl := TIDRangeType.Create(Scope, ID);
-
+  Decl.LoDecl := CRange.Value.LBExpression.AsConst;
+  Decl.HiDecl := CRange.Value.HBExpression.AsConst;
   Decl.LowBound := LB;
   Decl.HighBound := HB;
 

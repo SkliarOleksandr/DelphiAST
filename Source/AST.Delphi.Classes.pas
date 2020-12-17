@@ -504,7 +504,9 @@ type
   {range type}
   TIDRangeType = class(TIDOrdinal)
   private
-    FRangeType: TIDType;
+    fBaseType: TIDType;
+    fLoDecl: TIDConstant;
+    fHiDecl: TIDConstant;
   protected
     function GetDisplayName: string; override;
     procedure CreateStandardOperators; override;
@@ -512,7 +514,9 @@ type
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
     constructor CreateAsAnonymous(Scope: TScope); override;
     constructor Create(Scope: TScope; const Identifier: TIdentifier); override;
-    property ElementType: TIDType read FRangeType write FRangeType;
+    property BaseType: TIDType read fBaseType write fBaseType;
+    property LoDecl: TIDConstant read fLoDecl write fLoDecl;
+    property HiDecl: TIDConstant read fHiDecl write fHiDecl;
   end;
 
   {enum type}
@@ -5166,11 +5170,9 @@ end;
 
 function TIDRangeType.GetDisplayName: string;
 begin
-  Result := Name;
-  if (Result = '') and Assigned(FRangeType) then
-    Result := FRangeType.DisplayName
-  else
-    Result := IntToStr(LowBound) + '..' + IntToStr(HighBound);
+  Result := fLoDecl.DisplayName + '..' + fHiDecl.DisplayName;
+  if Name <> '' then
+    Result := Name + '(' + Result + ')';
 end;
 
 { TIDProcedureType }
