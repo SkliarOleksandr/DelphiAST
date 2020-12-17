@@ -990,7 +990,7 @@ type
   end;
 
   {set constant}
-  TIDSetConstant = class(TIDXXXConstant<TIDDynArrayConstant>)
+  TIDSetConstant = class(TIDXXXConstant<TIDExpressions>)
   public
     function ValueDataType: TDataTypeID; override;
     function ValueByteSize: Integer; override;
@@ -1049,6 +1049,7 @@ type
     function GetText: string;
     function GetAsUnit: TIDUnit; inline;
     function GetDeclClass: TIDDeclarationClass;
+    function GetIsRangeConst: Boolean;
   protected
     function GetDataType: TIDType; virtual;
   public
@@ -1077,6 +1078,7 @@ type
     property IsLocalVar: Boolean read GetIsLocalVar;
     property IsAnyLocalVar: Boolean read GetIsAnyLocalVar;
     property IsVariable: Boolean read GetIsVariable;
+    property IsRangeConst: Boolean read GetIsRangeConst;
     property IsParam: Boolean read GetIsParam;
     property IsNonAnonimousVariable: Boolean read GetIsNonAnonimousVariable;
     //property IsNullableVariable: Boolean read GetIsNullableVariable;
@@ -1591,6 +1593,7 @@ type
   function DeclarationName(Decl: TIDDeclaration; IsList: Boolean = False): string;
   function ExpressionName(Expr: TIDExpression): string;
   function ExpressionsName(const Expressions: TIDExpressions): string;
+  function GetExpressionsNames(const Expressions: TIDExpressions; const Separator: string = ', '): string;
   function GetProcName(Proc: TIDProcedure; WithParamsDataTypes: Boolean = False): string;
   function IDCompare(const Key1, Key2: TIDDeclaration): NativeInt;
   function IDVarCompare(const Key1, Key2: TIDVariable): NativeInt;
@@ -3536,6 +3539,11 @@ begin
   Result := (FDeclaration.ItemType = itProcedure);
 end;
 
+function TIDExpression.GetIsRangeConst: Boolean;
+begin
+  Result := fDeclaration.ClassType = TIDRangeConstant;
+end;
+
 function TIDExpression.GetIsTMPRef: Boolean;
 begin
   Result := (FDeclaration.ItemType = itVar) and (FDeclaration.Name = '') and (TIDVariable(FDeclaration).Reference);
@@ -4735,6 +4743,13 @@ begin
     Inc(StartIndex);
   end;
   Result := '[' + Result + ']';
+end;
+
+function GetExpressionsNames(const Expressions: TIDExpressions; const Separator: string = ', '): string;
+begin
+  Result := '';
+  for var i := 0 to Length(Expressions) - 1 do
+    Result := AddStringSegment(Result, Expressions[i].DisplayName, Separator);
 end;
 
 function ExpressionsName(const Expressions: TIDExpressions): string;
@@ -6027,7 +6042,7 @@ end;
 
 function TIDSetConstant.AsString: string;
 begin
-  Result := '';
+  Result := '[' + GetExpressionsNames(Value) + ']';
 end;
 
 function TIDSetConstant.AsVariant: Variant;

@@ -754,7 +754,7 @@ begin
     var Implicit := TASTDelphiUnit.MatchConstDynArrayImplicit(SContext, Src, Dst);
     if Assigned(Implicit) and (Src.DataTypeID <> dtSet) then
     begin
-      var Decl := TIDSetConstant.CreateAsAnonymous(SContext.Scope, Dst, Src.AsDynArrayConst);
+      var Decl := TIDSetConstant.CreateAsAnonymous(SContext.Scope, Dst, Src.AsDynArrayConst.Value);
       Result := TIDExpression.Create(Decl, Src.TextPosition);
     end;
   end;

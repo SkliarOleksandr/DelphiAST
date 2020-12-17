@@ -826,11 +826,8 @@ end;
 
 function TASTDelphiUnit.ParseTypeDeclOther(Scope: TScope; const ID: TIdentifier; out Decl: TIDType): TTokenID;
 var
-  IsPacked: Boolean;
   IsAnonimous: Boolean;
   Expr: TIDExpression;
-  TempId: TIdentifier;
-  TempDecl: TIDDeclaration;
 begin
   IsAnonimous := (ID.Name = '');
   Result := Lexer_CurTokenID;
@@ -7281,10 +7278,6 @@ begin
   Decl.HiDecl := CRange.Value.HBExpression.AsConst;
   Decl.LowBound := LB;
   Decl.HighBound := HB;
-
-  if Decl.Name = '' then
-   Decl.ID := Identifier(Format('Range %d..%d', [LB, HB]), Expr.TextPosition.Row, Expr.TextPosition.Col);
-
   Decl.OverloadImplicitFrom(RDataType);
 end;
 
@@ -8115,8 +8108,10 @@ begin
   begin
     CallExpr := TIDCastedCallExpression.Create(Expr.Declaration, Expr.TextPosition);
     TIDCastedCallExpression(CallExpr).DataType := Expr.DataType;
-  end else
+  end else begin
     ERRORS.FEATURE_NOT_SUPPORTED;
+    Result := token_unknown;
+  end;
   Result := ParseEntryCall(Scope, CallExpr, EContext, ASTE);
     (*// если это метод, подставляем self из пула
     if PMContext.Count > 0 then
@@ -8791,6 +8786,12 @@ procedure TASTDelphiUnit.ParseVector(Scope: TScope; var EContext: TEContext);
        (Type2 = Sys._Variant) then
      Exit(Sys._Variant);
 
+    if (Type1.DataTypeID = dtRange) then
+      Exit(Type1);
+
+    if (Type2.DataTypeID = dtRange) then
+      Exit(Type2);
+
     if Assigned(Type2.GetImplicitOperatorTo(Type1)) then
     begin
       if Type1.DataSize >= Type2.DataSize then
@@ -8803,11 +8804,9 @@ procedure TASTDelphiUnit.ParseVector(Scope: TScope; var EContext: TEContext);
 var
   i, c, Capacity: Integer;
   InnerEContext: TEContext;
-  AConst: TIDDynArrayConstant;
   Expr: TIDExpression;
   Token: TTokenID;
   SItems, DItems: TIDExpressions;
-  AType: TIDDynArray;
   ElDt: TIDType;
   IsStatic: Boolean;
   ASTExpr: TASTExpression;
@@ -8849,12 +8848,17 @@ begin
     end;
   end;
 
+  var IsSet := False;
+
   if c > 0 then begin
     // копирование элементов
     SetLength(DItems, c);
     Move(SItems[0], DItems[0], SizeOf(Pointer)*c);
     // вывод типа элемента
     Expr := SItems[0];
+
+    IsSet := IsSet or Expr.IsRangeConst;
+
     ElDt := Expr.DataType;
     for i := 1 to c - 1 do begin
       Expr := SItems[i];
@@ -8863,17 +8867,29 @@ begin
   end else
     ElDt := Sys._Variant;
 
-  // создаем анонимный тип константного массива
-  AType := TIDDynArray.CreateAsAnonymous(Scope);
-  AType.ElementDataType := ElDt;
-  // добовляем его в пул
-  AddType(AType);
-  // создаем анонимный константный динамический массив
-  AConst := TIDDynArrayConstant.CreateAsAnonymous(Scope, AType, DItems);
-  AConst.ArrayStatic := IsStatic;
-  // если массив константный, добовляем его в пул констант
-  if IsStatic then
+  var AConst: TIDConstant;
+  if IsSet then begin
+    // create anonymous set type
+    var SetType := TIDSet.CreateAsAnonymous(Scope);
+    SetType.BaseType := ElDt as TIDOrdinal;
+    // add to types pool
+    AddType(SetType);
+    // create anonymous set constant
+    AConst := TIDSetConstant.CreateAsAnonymous(Scope, SetType, DItems);
+    AConst.DisplayName;
     AddConstant(AConst);
+  end else begin
+    // create anonymous array type
+    var ArrType := TIDDynArray.CreateAsAnonymous(Scope);
+    ArrType.ElementDataType := ElDt;
+    // add to types pool
+    AddType(ArrType);
+    // create anonymous array constant
+    AConst := TIDDynArrayConstant.CreateAsAnonymous(Scope, ArrType, DItems);
+    TIDDynArrayConstant(AConst).ArrayStatic := IsStatic;
+    if IsStatic then
+      AddConstant(AConst);
+  end;
 
   Expr := TIDExpression.Create(AConst, Lexer.Position);
   // заталкиваем массив в стек
