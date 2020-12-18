@@ -66,11 +66,10 @@ object frmTestAppMain: TfrmTestAppMain
           ''
           'interface'
           ''
-          'type'
-          '  TSet = set of Byte;'
-          ''
-          'const '
-          '  Alpha: TSet = [0..1];'
+          'const'
+          '  Alpha = ['#39'A'#39'..'#39'Z'#39', '#39'a'#39'..'#39'z'#39', '#39'_'#39'];'
+          '  AlphaNumeric = Alpha + ['#39'0'#39'..'#39'9'#39'];'
+          '  AlphaNumericDot = AlphaNumeric + ['#39'.'#39'];'
           ''
           'implementation'
           ' '
@@ -81,7 +80,6 @@ object frmTestAppMain: TfrmTestAppMain
           ''
           '')
         FontSmoothing = fsmNone
-        ExplicitLeft = -1
       end
     end
     object tsAST: TTabSheet
@@ -237,6 +235,24 @@ object frmTestAppMain: TfrmTestAppMain
       ItemHeight = 13
       TabOrder = 1
     end
+  end
+  object chkbShowSysDecls: TCheckBox
+    Left = 456
+    Top = 173
+    Width = 177
+    Height = 17
+    Caption = 'Show system declarations'
+    TabOrder = 3
+  end
+  object chkbShowConstValues: TCheckBox
+    Left = 608
+    Top = 173
+    Width = 97
+    Height = 17
+    Caption = 'Show const values'
+    Checked = True
+    State = cbChecked
+    TabOrder = 4
   end
   object SynPasSyn1: TSynPasSyn
     Options.AutoDetectEnabled = False

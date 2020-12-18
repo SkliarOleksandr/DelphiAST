@@ -38,6 +38,8 @@ type
     Splitter1: TSplitter;
     lbFiles: TCheckListBox;
     Button4: TButton;
+    chkbShowSysDecls: TCheckBox;
+    chkbShowConstValues: TCheckBox;
     procedure Button2Click(Sender: TObject);
     procedure Button1Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
@@ -182,7 +184,15 @@ begin
       Prj.EnumIntfDeclarations(
         procedure(const Module: TASTModule; const Decl: TASTDeclaration)
         begin
-          edAllItems.Lines.Add(format('%s - %s.%s', [GetItemTypeName(TIDDeclaration(Decl).ItemType), Module.Name, GetDeclName(Decl)]));
+          if not chkbShowSysDecls.Checked and (Module.Name = 'system') then
+            Exit;
+
+          var Str := format('%s - %s.%s', [GetItemTypeName(TIDDeclaration(Decl).ItemType), Module.Name, GetDeclName(Decl)]);
+
+          if chkbShowConstValues.Checked and (Decl is TIDConstant) then
+            Str := Str + ' = ' + TIDConstant(Decl).AsString;
+
+          edAllItems.Lines.Add(Str);
           Application.ProcessMessages;
         end);
     finally
