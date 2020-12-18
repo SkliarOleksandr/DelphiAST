@@ -1059,6 +1059,7 @@ begin
   RegisterBuiltin(TSF_Swap);
   RegisterBuiltin(TSF_Trunc);
   RegisterBuiltin(TSF_Val);
+  RegisterBuiltin(TSF_ReturnAddress);
 
   RegisterVariable(ImplScope, 'ReturnAddress', _Pointer);
   RegisterConstStr(ImplScope, 'libmmodulename', '');

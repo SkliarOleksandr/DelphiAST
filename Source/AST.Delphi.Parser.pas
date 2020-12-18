@@ -7236,7 +7236,7 @@ end;
 
 function TASTDelphiUnit.ParseRaiseStatement(Scope: TScope; const SContext: TSContext): TTokenID;
 var
-  EExcept: TIDExpression;
+  EExcept, EAtAddr: TIDExpression;
   EContext: TEContext;
   ASTExpr: TASTExpression;
   KW: TASTKWRaise;
@@ -7247,6 +7247,18 @@ begin
   EExcept := EContext.Result;
   if Assigned(EExcept) then
     CheckClassExpression(EExcept);
+
+  if Lexer_AmbiguousId = token_at then
+  begin
+    Lexer_NextToken(Scope);
+    InitEContext(EContext, SContext, ExprRValue);
+    Result := ParseExpression(Scope, SContext, EContext, ASTExpr);
+    EAtAddr := EContext.Result;
+    if Assigned(EExcept) then
+      CheckPointerType(EAtAddr);
+  end;
+
+
   KW := SContext.Add<TASTKWRaise>;
   KW.Expression := ASTExpr;
 end;
@@ -8058,11 +8070,25 @@ begin
 
   if Decl.ItemType = itUnit then
     SearchScope := TIDNameSpace(Decl).Members
-  else begin
-    if Decl.ItemType <> itType then
-      DataType := Left.DataType.ActualDataType
+  else
+  if Decl.ItemType = itType then
+  begin
+    DataType := TIDType(Decl);
+    if DataType.ClassType = TIDAliasType then
+      DataType := TIDAliasType(DataType).Original;
+
+    if Assigned(DataType.Helper) then
+      SearchScope := DataType.Helper.Members // todo: should be StaticMembers
     else
-      DataType := TIDType(Decl);
+    if DataType is TIDStructure then
+      SearchScope := TIDStructure(DataType).Members // todo: should be StaticMembers
+    else
+    if Decl.ClassType = TIDEnum then
+      SearchScope := TIDEnum(Decl).Items;
+
+  end else
+  begin
+    DataType := Left.DataType.ActualDataType;
 
     if DataType.ClassType = TIDAliasType then
       DataType := TIDAliasType(DataType).Original;

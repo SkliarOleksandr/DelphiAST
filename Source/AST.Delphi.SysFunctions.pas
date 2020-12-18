@@ -54,6 +54,13 @@ type
     class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {ReturnAddress}
+  TSF_ReturnAddress = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
   {Defined}
   TSCTF_Defined = class(TIDSysCompileFunction)
   public
@@ -1224,6 +1231,23 @@ begin
   A2 := EContext.RPNPopExpression();
   A1 := EContext.RPNPopExpression();
   Result := nil;
+end;
+
+{ TSF_ReturnAddress }
+
+class function TSF_ReturnAddress.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'ReturnAddress', SYSUnit._Pointer);
+end;
+
+function TSF_ReturnAddress.Process(var EContext: TEContext): TIDExpression;
+var
+  ResVar: TIDVariable;
+  UN: TASTDelphiUnit;
+begin
+  UN := GetUnit(EContext);
+  ResVar := EContext.SContext.Proc.GetTMPVar(SYSUnit._Pointer);
+  Result := TIDExpression.Create(ResVar, UN.Lexer_Position);
 end;
 
 end.

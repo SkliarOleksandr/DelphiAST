@@ -52,6 +52,7 @@ type
     token_openround_asteriks,
     token_closeround_asteriks,
 
+    token_at,                       // keyword: at
     token_absolute,                 // keyword: absolute
     token_abstract,                 // keyword: abstract
     token_asm,                      // keyword: asm
@@ -378,6 +379,7 @@ begin
   RegisterToken('@', token_address);
   RegisterToken('&', token_ampersand);
   RegisterToken(':=', token_assign);
+  RegisterToken('at', token_at, TTokenClass.AmbiguousPriorityKeyword);
   RegisterToken('absolute', token_absolute, TTokenClass.AmbiguousPriorityKeyword);
   RegisterToken('abstract', token_abstract);
   RegisterToken('as', token_as);
