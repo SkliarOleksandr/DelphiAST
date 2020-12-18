@@ -504,7 +504,7 @@ type
   {range type}
   TIDRangeType = class(TIDOrdinal)
   private
-    fBaseType: TIDType;
+    fBaseType: TIDOrdinal;
     fLoDecl: TIDConstant;
     fHiDecl: TIDConstant;
   protected
@@ -514,7 +514,7 @@ type
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
     constructor CreateAsAnonymous(Scope: TScope); override;
     constructor Create(Scope: TScope; const Identifier: TIdentifier); override;
-    property BaseType: TIDType read fBaseType write fBaseType;
+    property BaseType: TIDOrdinal read fBaseType write fBaseType;
     property LoDecl: TIDConstant read fLoDecl write fLoDecl;
     property HiDecl: TIDConstant read fHiDecl write fHiDecl;
   end;
@@ -712,7 +712,7 @@ type
     function GetDisplayName: string; override;
     function GetDataSize: Integer; override;
   public
-    constructor CreateAnonymous(Scope: TScope; BaseType: TIDOrdinal); reintroduce;
+    constructor CreateAsAnonymous(Scope: TScope; BaseType: TIDOrdinal); reintroduce;
     constructor Create(Scope: TScope; const ID: TIdentifier); override;
     procedure CreateStandardOperators; override;
     ////////////////////////////////////////////////////////////////////////////
@@ -4575,7 +4575,7 @@ begin
     CreateStandardOperators;
 end;
 
-constructor TIDSet.CreateAnonymous(Scope: TScope; BaseType: TIDOrdinal);
+constructor TIDSet.CreateAsAnonymous(Scope: TScope; BaseType: TIDOrdinal);
 begin
   inherited CreateAsAnonymous(Scope);
   fDataTypeID := dtSet;

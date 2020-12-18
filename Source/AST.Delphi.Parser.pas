@@ -2,7 +2,8 @@
 
 interface
 
-uses 
+uses
+  System.Generics.Collections,
   AST.Pascal.Parser,
   AST.Lexer,
   AST.Classes,
@@ -10,6 +11,7 @@ uses
   AST.Delphi.Operators,
   AST.Delphi.Errors,
   AST.Lexer.Delphi,
+  AST.Delphi.DataTypes,
   AST.Delphi.Classes,
   AST.Parser.Utils,
   AST.Parser.Contexts,
@@ -26,6 +28,22 @@ uses
  // Windows
 
 type
+
+  TDeclCache = class
+  private
+    fRanges: TList<TIDRangeType>;
+    fSets: TList<TIDSet>;
+    //Arrays: TList<TIDSet>;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Add(Decl: TIDRangeType); overload;
+    procedure Add(Decl: TIDSet); overload;
+
+    function FindRange(BaseType: TIDType; LoBound, HiBound: TIDExpression): TIDRangeType;
+    function FindSet(BaseType: TIDType): TIDSet;
+  end;
+
 
   TASTDelphiUnit = class(TPascalUnit, IASTDelphiUnit)
   type
@@ -46,6 +64,7 @@ type
     fCCalc: TExpressionCalculator;
     fErrors: TASTDelphiErrors;
     fSysDecls: PDelphiSystemDeclarations;
+    fCache: TDeclCache;
     property Sys: PDelphiSystemDeclarations read fSysDecls;
     procedure CheckLeftOperand(const Status: TRPNStatus);
     class procedure CheckAndCallFuncImplicit(const EContext: TEContext); overload; static;
@@ -383,7 +402,6 @@ uses
    System.SysUtils,
    System.Classes,
    AST.Parser.Errors,
-   AST.Delphi.DataTypes,
    AST.Delphi.System,
    AST.Delphi.SysOperators,
    AST.Parser.ProcessStatuses;
@@ -1817,11 +1835,12 @@ end;
 
 destructor TASTDelphiUnit.Destroy;
 begin
-  FDefines.Free;
+  fCache.Free;
+  fDefines.Free;
 //  FIntfScope.Free;
 //  FImplScope.Free;
 //  FLexer.Free;
-  FOptions.Free;
+  fOptions.Free;
 //  FIntfImportedUnits.Free;
 //  FImplImportedUnits.Free;
   inherited;
@@ -2200,10 +2219,16 @@ begin
   if not Assigned(ValueType) then
     AbortWork(sTypesMustBeIdentical, HB.TextPosition);
 
-  RangeType := TIDRangeType.CreateAsAnonymous(IntfScope);
-  RangeType.BaseType := ValueType as TIDType;
-  RangeType.LoDecl := LB.AsConst;
-  RangeType.HiDecl := HB.AsConst;
+  // search in the cache first  
+  RangeType := fCache.FindRange(ValueType as TIDType, LB, HB);
+  if not Assigned(RangeType) then
+  begin
+    RangeType := TIDRangeType.CreateAsAnonymous(IntfScope);
+    RangeType.BaseType := ValueType as TIDOrdinal;
+    RangeType.LoDecl := LB.AsConst;
+    RangeType.HiDecl := HB.AsConst;
+    fCache.Add(RangeType);
+  end;
 
   if LB.IsConstant and HB.IsConstant then
   begin
@@ -5741,10 +5766,11 @@ var
 begin
   inherited Create(Project, FileName, Source);
 
-  FDefines := TDefines.Create();
-  FPackage := Project as IASTDelphiProject;
+  fDefines := TDefines.Create();
+  fPackage := Project as IASTDelphiProject;
   fUnitSContext := TSContext.Create(Self, IntfScope);
   fErrors := TASTDelphiErrors.Create(Lexer);
+  fCache := TDeclCache.Create;
 
 //  FParser := TDelphiLexer.Create(Source);
 //  FMessages := TCompilerMessages.Create;
@@ -8869,11 +8895,15 @@ begin
 
   var AConst: TIDConstant;
   if IsSet then begin
-    // create anonymous set type
-    var SetType := TIDSet.CreateAsAnonymous(Scope);
-    SetType.BaseType := ElDt as TIDOrdinal;
-    // add to types pool
-    AddType(SetType);
+    // search in the cache first
+    var SetType := fCache.FindSet(TIDRangeType(ElDt).BaseType);
+    if not Assigned(SetType) then
+    begin
+      SetType := TIDSet.CreateAsAnonymous(Scope, TIDRangeType(ElDt).BaseType);
+      // add to types pool
+      AddType(SetType);
+      fCache.Add(SetType);
+    end;
     // create anonymous set constant
     AConst := TIDSetConstant.CreateAsAnonymous(Scope, SetType, DItems);
     AConst.DisplayName;
@@ -9386,6 +9416,55 @@ begin
     item := item.NextItem;
     Inc(i);
   end;
+end;
+
+{ TDeclCache }
+
+procedure TDeclCache.Add(Decl: TIDRangeType);
+begin
+  fRanges.Add(Decl);
+end;
+
+procedure TDeclCache.Add(Decl: TIDSet);
+begin
+  fSets.Add(Decl);
+end;
+
+constructor TDeclCache.Create;
+begin
+  fRanges := TList<TIDRangeType>.Create;
+  fSets := TList<TIDSet>.Create;
+end;
+
+destructor TDeclCache.Destroy;
+begin
+  fRanges.Free;
+  fSets.Free;
+  inherited;
+end;
+
+function TDeclCache.FindRange(BaseType: TIDType; LoBound, HiBound: TIDExpression): TIDRangeType;
+begin
+  for var i := 0 to fRanges.Count - 1 do
+  begin
+    Result := fRanges[i];
+    if (Result.BaseType = BaseType) and
+       (Result.LoDecl.AsInt64 = LoBound.AsConst.AsInt64) and
+       (Result.HiDecl.AsInt64 = HiBound.AsConst.AsInt64) then
+     Exit;
+  end;
+  Result := nil;
+end;
+
+function TDeclCache.FindSet(BaseType: TIDType): TIDSet;
+begin
+  for var i := 0 to fSets.Count - 1 do
+  begin
+    Result := fSets[i];
+    if Result.BaseType = BaseType then
+     Exit;
+  end;
+  Result := nil;
 end;
 
 end.
