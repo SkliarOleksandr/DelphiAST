@@ -986,7 +986,6 @@ end;
 function TASTDelphiUnit.ParseTypeSpec(Scope: TScope; out DataType: TIDType): TTokenID;
 var
   Decl: TIDDeclaration;
-  Empty: TIdentifier;
   SearchScope: TScope;
 begin
   Result := Lexer_NextToken(Scope);
@@ -1077,7 +1076,7 @@ begin
     DataType := nil;
     Exit;
   end;
-  Result := ParseTypeDecl(Scope, nil, nil, Empty, DataType);
+  Result := ParseTypeDecl(Scope, nil, nil, TIdentifier.Empty, DataType);
   if not Assigned(DataType) then
     ERRORS.INVALID_TYPE_DECLARATION;
 end;
@@ -4005,18 +4004,15 @@ begin
       Exit(True);
   end;
 
-  if not Assigned(ExplicitOp) then
+  ExplicitOp := DstDataType.GetExplicitOperatorFrom(SrcDataType);
+  if Assigned(ExplicitOp) then
   begin
-    ExplicitOp := DstDataType.GetExplicitOperatorFrom(SrcDataType);
-    if Assigned(ExplicitOp) then
+    if ExplicitOp is TSysTypeCast then
     begin
-      if ExplicitOp is TSysTypeCast then
-      begin
-        if TSysTypeCast(ExplicitOp).Check(SContext, SrcDataType, DstDataType) then
-          Exit(True);
-      end else
+      if TSysTypeCast(ExplicitOp).Check(SContext, SrcDataType, DstDataType) then
         Exit(True);
-    end
+    end else
+      Exit(True);
   end;
   Result := False;
 end;

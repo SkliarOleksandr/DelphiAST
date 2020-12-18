@@ -2827,6 +2827,9 @@ begin
   if Assigned(FGenericDescriptor) then
     Result := Result + GenericDescriptorAsText(FGenericDescriptor);
 
+  if Result = '' then
+    Exit;
+
   Pt := GetParent;
   while Assigned(Pt) do
   begin
