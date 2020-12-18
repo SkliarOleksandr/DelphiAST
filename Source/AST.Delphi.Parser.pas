@@ -611,28 +611,12 @@ begin
     Lexer_NextToken(Scope);
     Result := ParseConstExpression(Scope, Expr, ExprNested);
     CheckExpression(Expr);
-    if Result = token_period then begin
-      ParseRangeType(Scope, Expr, TIdentifier.Empty, TIDRangeType(Bound));
-      AddType(Bound);
-    end else begin
-      if Expr.ItemType = itType then begin
-        Bound := TIDOrdinal(Expr.Declaration);
-      end else begin
-        Bound := TIDRangeType.CreateAsAnonymous(Scope);
-        if Expr.Declaration is TIDIntConstant then
-        begin
-          Bound.LowBound := 0;
-          if Expr.AsIntConst.Value <> 0 then
-            Bound.HighBound := Expr.AsIntConst.Value - 1
-          else
-            Bound.HighBound := 0;
-        end else begin
-          Bound.LowBound := Expr.AsRangeConst.Value.LBExpression.AsConst.AsInt64;
-          Bound.HighBound := Expr.AsRangeConst.Value.HBExpression.AsConst.AsInt64;
-        end;
-        AddType(Bound);
-      end;
-    end;
+
+    if Expr.ItemType = itType then
+      Bound := TIDOrdinal(Expr.Declaration)
+    else
+      Bound := Expr.AsRangeConst.DataType as TIDRangeType;
+
     Decl.AddBound(Bound);
     if Result = token_coma then begin
       continue;
@@ -2219,7 +2203,7 @@ begin
   if not Assigned(ValueType) then
     AbortWork(sTypesMustBeIdentical, HB.TextPosition);
 
-  // search in the cache first  
+  // search in the cache first
   RangeType := fCache.FindRange(ValueType as TIDType, LB, HB);
   if not Assigned(RangeType) then
   begin
@@ -2228,6 +2212,7 @@ begin
     RangeType.LoDecl := LB.AsConst;
     RangeType.HiDecl := HB.AsConst;
     fCache.Add(RangeType);
+    AddType(RangeType);
   end;
 
   if LB.IsConstant and HB.IsConstant then
@@ -4986,17 +4971,11 @@ begin
 
     Lexer_MatchToken(Result, token_semicolon);
 
-    if (c = 0) and Expr.IsAnonymous then begin
-      Item := Expr.AsConst;
-      Item.ID := Names.Items[0];
-      InsertToScope(Scope, Item);
-      //AddConstant(Item);
-    end else
     for i := 0 to c do begin
       Item := Expr.DeclClass.Create(Scope, Names.Items[i]) as TIDConstant;
       Item.AssignValue(Expr.AsConst);
       InsertToScope(Scope, Item);
-      //AddConstant(Item);
+      AddConstant(Item);
     end;
     c := 0;
     Result := Lexer_NextToken(Scope);

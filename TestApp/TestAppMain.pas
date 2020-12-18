@@ -40,6 +40,7 @@ type
     Button4: TButton;
     chkbShowSysDecls: TCheckBox;
     chkbShowConstValues: TCheckBox;
+    chkbShowAnonymous: TCheckBox;
     procedure Button2Click(Sender: TObject);
     procedure Button1Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
@@ -51,6 +52,7 @@ type
     fFiles: TStringDynArray;
     fSettings: IASTProjectSettings;
     procedure OnProgress(const Module: IASTModule; Status: TASTProcessStatusClass);
+    procedure ShowAllItems(const Project: IASTDelphiProject);
   public
     { Public declarations }
     procedure IndexSources(const RootPath: string; Dict: TSourcesDict);
@@ -177,27 +179,7 @@ begin
       Msg.Add('compile fail');
 
     ASTToTreeView2(UN, tvAST);
-
-    edAllItems.BeginUpdate;
-    try
-      edAllItems.Clear;
-      Prj.EnumIntfDeclarations(
-        procedure(const Module: TASTModule; const Decl: TASTDeclaration)
-        begin
-          if not chkbShowSysDecls.Checked and (Module.Name = 'system') then
-            Exit;
-
-          var Str := format('%s - %s.%s', [GetItemTypeName(TIDDeclaration(Decl).ItemType), Module.Name, GetDeclName(Decl)]);
-
-          if chkbShowConstValues.Checked and (Decl is TIDConstant) then
-            Str := Str + ' = ' + TIDConstant(Decl).AsString;
-
-          edAllItems.Lines.Add(Str);
-          Application.ProcessMessages;
-        end);
-    finally
-      edAllItems.EndUpdate;
-    end;
+    ShowAllItems(Prj);
 
     CompilerMessagesToStrings(Prj.Messages, Msg);
 
@@ -220,6 +202,33 @@ procedure TfrmTestAppMain.OnProgress(const Module: IASTModule; Status: TASTProce
 begin
   //if Status = TASTStatusParseSuccess then
     Memo1.Lines.Add(Module.Name + ' : ' + Status.Name);
+end;
+
+procedure TfrmTestAppMain.ShowAllItems(const Project: IASTDelphiProject);
+begin
+  edAllItems.BeginUpdate;
+  try
+    edAllItems.Clear;
+    Project.EnumIntfDeclarations(
+      procedure(const Module: TASTModule; const Decl: TASTDeclaration)
+      begin
+        if not chkbShowAnonymous.Checked and (Decl.ID.Name = '') then
+          Exit;
+
+        if not chkbShowSysDecls.Checked and (Module.Name = 'system') then
+          Exit;
+
+        var Str := format('%s - %s.%s', [GetItemTypeName(TIDDeclaration(Decl).ItemType), Module.Name, GetDeclName(Decl)]);
+
+        if chkbShowConstValues.Checked and (Decl is TIDConstant) then
+          Str := Str + ' = ' + TIDConstant(Decl).AsString;
+
+        edAllItems.Lines.Add(Str);
+        Application.ProcessMessages;
+      end);
+  finally
+    edAllItems.EndUpdate;
+  end;
 end;
 
 procedure TfrmTestAppMain.Button2Click(Sender: TObject);
@@ -253,19 +262,7 @@ begin
       Msg.Add('compile fail');
 
     ASTToTreeView2(UN, tvAST);
-
-    edAllItems.BeginUpdate;
-    try
-      edAllItems.Clear;
-      Prj.EnumIntfDeclarations(
-        procedure(const Module: TASTModule; const Decl: TASTDeclaration)
-        begin
-          edAllItems.Lines.Add(format('%s - %s.%s', [GetItemTypeName(TIDDeclaration(Decl).ItemType), Module.Name, GetDeclName(Decl)]));
-          Application.ProcessMessages;
-        end);
-    finally
-      edAllItems.EndUpdate;
-    end;
+    ShowAllItems(Prj);
 
     CompilerMessagesToStrings(Prj.Messages, Msg);
 

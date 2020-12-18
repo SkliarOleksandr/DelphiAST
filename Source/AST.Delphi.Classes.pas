@@ -507,6 +507,8 @@ type
     fBaseType: TIDOrdinal;
     fLoDecl: TIDConstant;
     fHiDecl: TIDConstant;
+    procedure SetHiDecl(const Value: TIDConstant);
+    procedure SetLoDecl(const Value: TIDConstant);
   protected
     function GetDisplayName: string; override;
     procedure CreateStandardOperators; override;
@@ -515,8 +517,8 @@ type
     constructor CreateAsAnonymous(Scope: TScope); override;
     constructor Create(Scope: TScope; const Identifier: TIdentifier); override;
     property BaseType: TIDOrdinal read fBaseType write fBaseType;
-    property LoDecl: TIDConstant read fLoDecl write fLoDecl;
-    property HiDecl: TIDConstant read fHiDecl write fHiDecl;
+    property LoDecl: TIDConstant read fLoDecl write SetLoDecl;
+    property HiDecl: TIDConstant read fHiDecl write SetHiDecl;
   end;
 
   {enum type}
@@ -4210,7 +4212,7 @@ function TIDArray.GetDisplayName: string;
   begin
     Result := '';
     for i := 0 to FDimensionsCount - 1 do
-      Result := AddStringSegment(Result, IntToStr(FDimensions[i].GetElementsCount), ', ');
+      Result := AddStringSegment(Result, FDimensions[i].DisplayName, ', ');
   end;
 begin
   Result := inherited GetDisplayName;
@@ -4800,7 +4802,10 @@ end;
 
 procedure TSpace<T>.Add(const Declaration: T);
 begin
-  Assert(FLast <> Declaration);
+  if FLast = Declaration then
+    AbortWorkInternal('Duplicated declaration: ' + TIDDeclaration(Declaration).DisplayName,
+      TIDDeclaration(Declaration).TextPosition);
+
   if Assigned(FLast) then
   begin
     Assert(not Assigned(TIDDeclaration(FLast).FNext));
@@ -5185,9 +5190,22 @@ end;
 
 function TIDRangeType.GetDisplayName: string;
 begin
-  Result := fLoDecl.DisplayName + '..' + fHiDecl.DisplayName;
+
+  Result := DeclarationName(fLoDecl) + '..' + DeclarationName(fHiDecl);
   if Name <> '' then
     Result := Name + '(' + Result + ')';
+end;
+
+procedure TIDRangeType.SetHiDecl(const Value: TIDConstant);
+begin
+  fHiDecl := Value;
+  HighBound := Value.AsInt64;
+end;
+
+procedure TIDRangeType.SetLoDecl(const Value: TIDConstant);
+begin
+  fLoDecl := Value;
+  LowBound := Value.AsInt64;
 end;
 
 { TIDProcedureType }

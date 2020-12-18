@@ -33,10 +33,21 @@ uses
    AST.Parser.Utils,
    AST.Delphi.Parser;
 
+function AddSets(Left, Right: TIDSetConstant): TIDConstant;
+var
+  LList, RList: TIDExpressions;
+begin
+  LList := Left.Value;
+  RList := Right.Value;
+  // todo: remove duplicates
+  Result := TIDSetConstant.CreateAsAnonymous(Left.Scope, Left.DataType, LList + RList);
+  Result.TextPosition := Left.TextPosition;
+end;
+
 function CalcSets(const Left, Right: TIDConstant; Operation: TOperatorID): TIDConstant;
 begin
   case Operation of
-    opAdd: Result := Left; // todo:
+    opAdd: Result := AddSets(Left as TIDSetConstant, Right as TIDSetConstant);
     opSubtract: Result := Left; // todo:
   else
     Result := nil;
