@@ -4444,6 +4444,7 @@ begin
   OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
   OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
   fSysExplicitFromAny := SYSUnit.Operators.ExplicitRecordFromAny;
+  OverloadExplicitToAny(SYSUnit.Operators.ExplicitRecordToAny);
 end;
 
 function TIDRecord.GetDataSize: Integer;
@@ -6001,6 +6002,7 @@ procedure TIDStaticArray.CreateStandardOperators;
 begin
   inherited;
   AddBinarySysOperator(opAdd, SYSUnit.Operators.StaticArray_Add);
+  OverloadExplicitToAny(SYSUnit.Operators.ExplicitStaticArrayToAny);
 end;
 
 { TUnknownIDExpression }

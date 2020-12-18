@@ -271,6 +271,19 @@ type
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
+  {explicit Record -> Any}
+  TSysExplicitRecordToAny = class(TSysOpExplisit)
+  public
+    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
+  {explicit StaticArray -> Any}
+  TSysExplicitStaticArrayToAny = class(TSysOpExplisit)
+  public
+    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
+
   ///////////////////////////////////////////////////////////////////////////////////////////
   /// BINARY
   ///////////////////////////////////////////////////////////////////////////////////////////
@@ -775,6 +788,20 @@ begin
     ((Dst.DataTypeID in [dtPAnsiChar]) and (Src.DataTypeID = dtStaticArray) and (TIDStaticArray(Src).ElementDataType = SYSUnit._AnsiChar)) or
     ((Dst.DataTypeID in [dtPWideChar]) and (Src.DataTypeID = dtStaticArray) and (TIDStaticArray(Src).ElementDataType = SYSUnit._Char))
   );
+end;
+
+{ TSysExplicitRecordToAny }
+
+function TSysExplicitRecordToAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
+begin
+  Result := Src.DataSize = Dst.DataSize;
+end;
+
+{ TSysExplicitStaticArrayToAny }
+
+function TSysExplicitStaticArrayToAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
+begin
+  Result := Src.DataSize = Dst.DataSize;
 end;
 
 end.

@@ -101,7 +101,9 @@ type
     ExplicitEnumFromAny,
     ExplicitUntypedToAny,
     ExplicitCharToAny,
-    ExplicitRangeFromAny
+    ExplicitRangeFromAny,
+    ExplicitRecordToAny,
+    ExplicitStaticArrayToAny
     : TIDOperator;
     // any cast
     IsOrdinal: TIDOperator;
@@ -1214,6 +1216,8 @@ begin
   ExplicitUntypedToAny := TSysExplicitUntypedToAny.CreateAsSystem(Scope);
   ExplicitCharToAny := TSysExplicitCharToAny.CreateAsSystem(Scope);
   ExplicitRangeFromAny := TSysExplicitRangeFromAny.CreateAsSystem(Scope);
+  ExplicitRecordToAny := TSysExplicitRecordToAny.CreateAsSystem(Scope);
+  ExplicitStaticArrayToAny := TSysExplicitStaticArrayToAny.CreateAsSystem(Scope);
   // any cast
   IsOrdinal := TSysTypeCast_IsOrdinal.CreateAsSystem(Scope);
 
