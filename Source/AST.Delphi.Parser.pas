@@ -544,7 +544,7 @@ begin
         Continue;
       end;
       {IDENTIFIER, OPEN ROUND}
-      token_identifier, token_openround: begin
+      token_identifier, token_id_keyword, token_openround: begin
         InitEContext(LEContext, SContext, ExprLValue);
         begin
           var ASTEDst, ASTESrc: TASTExpression;
@@ -5680,7 +5680,7 @@ begin
         Status := rpOperand;
         continue;
       end;
-      token_identifier: begin
+      token_identifier, token_id_keyword: begin
         // есил встретился подряд воторой идентификатор, то выходим
         if Status = rpOperand then
           Break;

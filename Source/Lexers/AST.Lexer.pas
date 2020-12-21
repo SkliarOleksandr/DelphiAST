@@ -786,6 +786,7 @@ begin
     end;
     TTokenClass.Ambiguous: begin
       fCurrentTokenId := fAmbiguousId;
+      fIdentifireType := itIdentifier;
       Exit(fAmbiguousId);
     end;
   end;
