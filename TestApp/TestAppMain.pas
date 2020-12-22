@@ -53,6 +53,7 @@ type
     fSettings: IASTProjectSettings;
     procedure OnProgress(const Module: IASTModule; Status: TASTProcessStatusClass);
     procedure ShowAllItems(const Project: IASTDelphiProject);
+    procedure ShowResult(const Project: IASTDelphiProject);
   public
     { Public declarations }
     procedure IndexSources(const RootPath: string; Dict: TSourcesDict);
@@ -155,9 +156,7 @@ end;
 procedure TfrmTestAppMain.Button1Click(Sender: TObject);
 var
   UN: TASTDelphiUnit;
-  Msg: TStrings;
   Prj: IASTDelphiProject;
-  CResult: TCompilerResult;
 begin
   Memo1.Clear;
   Prj := TASTDelphiProject.Create('test');
@@ -169,24 +168,7 @@ begin
   UN := TASTDelphiUnit.Create(Prj, 'test', edUnit.Text);
   Prj.AddUnit(UN, nil);
 
-  Msg := TStringList.Create;
-  try
-    Msg.Add('===================================================================');
-    CResult := Prj.Compile;
-    if CResult = CompileSuccess then
-      Msg.Add('compile success')
-    else
-      Msg.Add('compile fail');
-
-    ASTToTreeView2(UN, tvAST);
-    ShowAllItems(Prj);
-
-    CompilerMessagesToStrings(Prj.Messages, Msg);
-
-    Memo1.Lines := Msg;
-  finally
-    Msg.Free;
-  end;
+  ShowResult(Prj);
 end;
 
 const cRTLUsesSource =
@@ -231,12 +213,34 @@ begin
   end;
 end;
 
+procedure TfrmTestAppMain.ShowResult(const Project: IASTDelphiProject);
+begin
+  var Msg := TStringList.Create;
+  try
+    Msg.Add('===================================================================');
+    var CResult := Project.Compile;
+    if CResult = CompileSuccess then
+      Msg.Add('compile success')
+    else
+      Msg.Add('compile fail');
+
+    Msg.Add('total lines parsed: ' + IntToStr(Project.TotalLinesParsed));
+
+      //ASTToTreeView2(UN, tvAST);
+
+    ShowAllItems(Project);
+    CompilerMessagesToStrings(Project.Messages, Msg);
+
+    Memo1.Lines := Msg;
+  finally
+    Msg.Free;
+  end;
+end;
+
 procedure TfrmTestAppMain.Button2Click(Sender: TObject);
 var
   UN: TASTDelphiUnit;
-  Msg: TStrings;
   Prj: IASTDelphiProject;
-  CResult: TCompilerResult;
 begin
   Memo1.Clear;
 
@@ -252,25 +256,7 @@ begin
   UN := TASTDelphiUnit.Create(Prj, 'RTLParseTest', cRTLUsesSource);
   Prj.AddUnit(UN, nil);
 
-  Msg := TStringList.Create;
-  try
-    Msg.Add('===================================================================');
-    CResult := Prj.Compile;
-    if CResult = CompileSuccess then
-      Msg.Add('compile success')
-    else
-      Msg.Add('compile fail');
-
-    ASTToTreeView2(UN, tvAST);
-    ShowAllItems(Prj);
-
-    CompilerMessagesToStrings(Prj.Messages, Msg);
-
-    for var str in Msg do
-      Memo1.Lines.Add(str);
-  finally
-    Msg.Free;
-  end;
+  ShowResult(Prj);
 end;
 
 procedure TfrmTestAppMain.Button3Click(Sender: TObject);

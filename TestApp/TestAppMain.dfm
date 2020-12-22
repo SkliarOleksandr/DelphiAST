@@ -32,11 +32,8 @@ object frmTestAppMain: TfrmTestAppMain
     ActivePage = tsSource
     Align = alClient
     TabOrder = 0
-    ExplicitTop = 167
-    ExplicitWidth = 519
     object tsSource: TTabSheet
       Caption = 'Source'
-      ExplicitWidth = 511
       object edUnit: TSynEdit
         Left = 0
         Top = 0
@@ -83,13 +80,11 @@ object frmTestAppMain: TfrmTestAppMain
           ''
           '')
         FontSmoothing = fsmNone
-        ExplicitWidth = 511
       end
     end
     object tsAST: TTabSheet
       Caption = 'AST'
       ImageIndex = 1
-      ExplicitWidth = 511
       object tvAST: TTreeView
         Left = 0
         Top = 0
@@ -98,13 +93,11 @@ object frmTestAppMain: TfrmTestAppMain
         Align = alClient
         Indent = 19
         TabOrder = 0
-        ExplicitWidth = 511
       end
     end
     object tsNameSpace: TTabSheet
       Caption = 'NameSpace'
       ImageIndex = 2
-      ExplicitWidth = 511
       object edAllItems: TSynEdit
         Left = 0
         Top = 0
@@ -133,7 +126,6 @@ object frmTestAppMain: TfrmTestAppMain
         Gutter.ShowLineNumbers = True
         Highlighter = SynPasSyn1
         FontSmoothing = fsmNone
-        ExplicitWidth = 511
       end
     end
   end
@@ -145,7 +137,6 @@ object frmTestAppMain: TfrmTestAppMain
     Align = alTop
     BevelOuter = bvNone
     TabOrder = 1
-    ExplicitWidth = 793
     DesignSize = (
       814
       169)
@@ -164,7 +155,6 @@ object frmTestAppMain: TfrmTestAppMain
       Anchors = [akLeft, akTop, akRight]
       TabOrder = 0
       Text = 'C:\Program Files (x86)\Embarcadero\Studio\20.0\source\'
-      ExplicitWidth = 551
     end
     object Button1: TButton
       Left = 586
@@ -175,7 +165,6 @@ object frmTestAppMain: TfrmTestAppMain
       Caption = 'AST Parse'
       TabOrder = 1
       OnClick = Button1Click
-      ExplicitLeft = 565
     end
     object Button2: TButton
       Left = 698
@@ -186,7 +175,6 @@ object frmTestAppMain: TfrmTestAppMain
       Caption = 'AST Parse RTL'
       TabOrder = 2
       OnClick = Button2Click
-      ExplicitLeft = 677
     end
     object Memo1: TMemo
       Left = 8
@@ -198,7 +186,6 @@ object frmTestAppMain: TfrmTestAppMain
         'Memo1')
       ScrollBars = ssVertical
       TabOrder = 3
-      ExplicitWidth = 777
     end
   end
   object Panel2: TPanel

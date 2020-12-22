@@ -9,7 +9,9 @@ type
   IASTModule = interface
     ['{1E3A5748-1671-41E8-BAAD-4BBB2B363BF4}']
     function GetModuleName: string;
+    function GetTotalLinesParsed: Integer;
     property Name: string read GetModuleName;
+    property TotalLinesParsed: Integer read GetTotalLinesParsed;
   end;
 
   TASTProgressEvent = reference to procedure (const Module: IASTModule; Status: TASTProcessStatusClass);
@@ -22,8 +24,10 @@ type
 
     function GetPointerSize: Integer;
     function GetNativeIntSize: Integer;
+    function GetTotalLinesParsed: Integer;
     property PointerSize: Integer read GetPointerSize;
     property NativeIntSize: Integer read GetNativeIntSize;
+    property TotalLinesParsed: Integer read GetTotalLinesParsed;
   end;
 
   IASTProjectSettings = interface

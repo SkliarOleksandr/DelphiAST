@@ -48,6 +48,7 @@ type
     fMessages: ICompilerMessages;
     fRTTICharset: TRTTICharset;
     fOptions: TPackageOptions;
+    fTotalLinesParsed: Integer;
     function GetIncludeDebugInfo: Boolean;
     function OpenUnit(const UnitName: string): TASTModule;
     function RefCount: Integer;
@@ -85,11 +86,13 @@ type
     procedure AddUnitSource(const Source: string);
     procedure AddUnitSearchPath(const Path: string; IncludeSubDirectories: Boolean);
     procedure Clear;
+    function GetTotalLinesParsed: Integer;
     property IncludeDebugInfo: Boolean read GetIncludeDebugInfo write SetIncludeDebugInfo;
     property RTTICharset: TRTTICharset read GetRTTICharset write SetRTTICharset;
     property Units: TUnits read FUnits;
     property SysUnit: TASTModule read fSysUnit;
     property Options: TPackageOptions read GetOptions;
+    property TotalLinesParsed: Integer read fTotalLinesParsed;
     function GetStringConstant(const Value: string): Integer; overload;
     function GetStringConstant(const StrConst: TIDStringConstant): Integer; overload;
     function FindUnitFile(const UnitName: string): string;
@@ -203,6 +206,11 @@ end;
 function TPascalProject.GetTarget: string;
 begin
   Result := FTargetName;
+end;
+
+function TPascalProject.GetTotalLinesParsed: Integer;
+begin
+  Result := fTotalLinesParsed;
 end;
 
 function TPascalProject.GetUnit(Index: Integer): TASTModule;
@@ -386,13 +394,21 @@ begin
       Exit(CompileFail);
     end;
   end;
-  // compile all units
-  for i := 0 to FUnits.Count - 1 do
-  begin
-    var UN := FUnits[i];
-    Result := TPascalUnit(UN).Compile;
-    if Result = CompileFail then
-      Exit;
+
+  fTotalLinesParsed := 0;
+  try
+    // compile all units
+    for i := 0 to FUnits.Count - 1 do
+    begin
+      var UN := FUnits[i];
+      Result := TPascalUnit(UN).Compile;
+      Inc(fTotalLinesParsed, UN.TotalLinesParsed);
+      if Result = CompileFail then
+        Exit;
+    end;
+  finally
+    for i := 0 to FUnits.Count - 1 do
+      Inc(fTotalLinesParsed, FUnits[i].TotalLinesParsed);
   end;
 end;
 

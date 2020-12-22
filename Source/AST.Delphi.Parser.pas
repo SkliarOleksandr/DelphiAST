@@ -17,6 +17,7 @@ uses
   AST.Parser.Contexts,
   AST.Delphi.Contexts,
   AST.Parser.Options,
+  AST.Parser.ProcessStatuses,
   AST.Intf,
   AST.Pascal.ConstCalculator,
   AST.Delphi.Options,
@@ -152,6 +153,7 @@ type
     function FindImplicitFormBinarOperators(const Operators: TIDPairList; const Right: TIDType; out BetterFactor: Integer; out BetterOp: TIDDeclaration): TIDDeclaration;
     function MatchBinarOperatorWithTuple(const SContext: TSContext; Op: TOperatorID; var CArray: TIDExpression;
       const SecondArg: TIDExpression): TIDDeclaration;
+    procedure Progress(StatusClass: TASTProcessStatusClass); override;
   public
     class function MatchOperatorIn(const SContext: TSContext; const Left, Right: TIDExpression): TIDDeclaration; static;
     class function MatchConstDynArrayImplicit(const SContext: TSContext; Source: TIDExpression; Destination: TIDType): TIDType; static;
@@ -403,8 +405,7 @@ uses
    System.Classes,
    AST.Parser.Errors,
    AST.Delphi.System,
-   AST.Delphi.SysOperators,
-   AST.Parser.ProcessStatuses;
+   AST.Delphi.SysOperators;
 
 type
   TSContextHelper = record helper for TSContext
@@ -2249,6 +2250,7 @@ var
   Token: TTokenID;
   Scope: TScope;
 begin
+  fTotalLinesParsed := 0;
   Progress(TASTStatusParseBegin);
   Result := inherited Compile(RunPostCompile);
   fSysDecls := TSYSTEMUnit(SysUnit).SystemDeclarations;
@@ -7747,6 +7749,12 @@ begin
 
   Lexer_ReadSemicolon(Scope);
   Result := Lexer_NextToken(Scope);
+end;
+
+procedure TASTDelphiUnit.Progress(StatusClass: TASTProcessStatusClass);
+begin
+  fTotalLinesParsed := Lexer_Line;
+  inherited;
 end;
 
 function TASTDelphiUnit.ProcSpec_Abstract(Scope: TScope; Struct: TIDStructure; var Flags: TProcFlags): TTokenID;

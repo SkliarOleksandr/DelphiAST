@@ -57,6 +57,7 @@ type
     function GetUnitClass: TASTUnitClass; virtual; abstract;
     function GetPointerSize: Integer; virtual; abstract;
     function GetNativeIntSize: Integer; virtual; abstract;
+    function GetTotalLinesParsed: Integer; virtual;
   public
     constructor Create(const Name: string); virtual; abstract;
     property OnProgress: TASTProgressEvent read GetOnProgress write SetOnProgress;
@@ -90,10 +91,11 @@ type
     fProject: IASTProject;
     fFileName: string;
   protected
+    fTotalLinesParsed: Integer;
     function GetModuleName: string; virtual;
     function GetSource: string; virtual; abstract;
     procedure SetFileName(const Value: string);
-    procedure Progress(StatusClass: TASTProcessStatusClass);
+    procedure Progress(StatusClass: TASTProcessStatusClass); virtual;
   public
     property Name: string read GetModuleName;
     property FileName: string read fFileName write SetFileName;
@@ -102,9 +104,11 @@ type
     function GetFirstVar: TASTDeclaration; virtual; abstract;
     function GetFirstType: TASTDeclaration; virtual; abstract;
     function GetFirstConst: TASTDeclaration; virtual; abstract;
+    function GetTotalLinesParsed: Integer;
     constructor Create(const Project: IASTProject; const FileName: string; const Source: string = ''); virtual;
     constructor CreateFromFile(const Project: IASTProject; const FileName: string); virtual;
     procedure EnumIntfDeclarations(const Proc: TEnumASTDeclProc); virtual; abstract;
+    property TotalLinesParsed: Integer read GetTotalLinesParsed;
   end;
 
   TASTDeclaration = class(TASTItem)
@@ -1147,6 +1151,11 @@ begin
   Result := ExtractFileName(fFileName);
 end;
 
+function TASTModule.GetTotalLinesParsed: Integer;
+begin
+  Result := fTotalLinesParsed;
+end;
+
 procedure TASTModule.Progress(StatusClass: TASTProcessStatusClass);
 var
   Event: TASTProgressEvent;
@@ -1166,6 +1175,11 @@ end;
 function TASTProject.GetOnProgress: TASTProgressEvent;
 begin
   Result := fOnProgress;
+end;
+
+function TASTProject.GetTotalLinesParsed: Integer;
+begin
+  Result := 0;
 end;
 
 procedure TASTProject.SetOnProgress(const Value: TASTProgressEvent);
