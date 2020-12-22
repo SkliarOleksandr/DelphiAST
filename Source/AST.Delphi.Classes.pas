@@ -3462,7 +3462,8 @@ end;
 
 function TIDExpression.GetDataType: TIDType;
 begin
-  Result := FDeclaration.DataType
+  Result := FDeclaration.DataType;
+  Assert(Assigned(Result));
 end;
 
 function TIDExpression.GetDataTypeID: TDataTypeID;

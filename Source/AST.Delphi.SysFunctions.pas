@@ -75,6 +75,13 @@ type
     class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {Delete}
+  TSF_Delete = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
   {AtomicExchange}
   TSF_AtomicExchange = class(TIDSysRuntimeFunction)
   public
@@ -1248,6 +1255,27 @@ begin
   UN := GetUnit(EContext);
   ResVar := EContext.SContext.Proc.GetTMPVar(SYSUnit._Pointer);
   Result := TIDExpression.Create(ResVar, UN.Lexer_Position);
+end;
+
+{ TSF_Delete }
+
+class function TSF_Delete.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Delete', nil);
+  Result.AddParam('Source', SYSUnit._String, [VarInOut]);
+  Result.AddParam('StartChar', SYSUnit._Int32, []);
+  Result.AddParam('Count', SYSUnit._Int32, []);
+end;
+
+function TSF_Delete.Process(var EContext: TEContext): TIDExpression;
+var
+  A1, A2, A3: TIDExpression;
+begin
+  // read arguments
+  A3 := EContext.RPNPopExpression();
+  A2 := EContext.RPNPopExpression();
+  A1 := EContext.RPNPopExpression();
+  Result := nil;
 end;
 
 end.

@@ -381,7 +381,7 @@ type
     property Source: string read GetSource;
     function Compile(RunPostCompile: Boolean = True): TCompilerResult; override;
     function CompileIntfOnly: TCompilerResult; override;
-    function CompileSource(Section: TUnitSection; const FileName: string; const Source: string): ICompilerMessages;
+    function CompileSource(Scope: TScope; const FileName: string; const Source: string): ICompilerMessages;
     constructor Create(const Project: IASTProject; const FileName: string; const Source: string = ''); override;
     destructor Destroy; override;
   end;
@@ -2385,12 +2385,11 @@ begin
   Result := Compile;
 end;
 
-function TASTDelphiUnit.CompileSource(Section: TUnitSection; const FileName: string; const Source: string): ICompilerMessages;
+function TASTDelphiUnit.CompileSource(Scope: TScope; const FileName: string; const Source: string): ICompilerMessages;
 var
   ParserState: TParserPosition;
   ParserSource: string;
   Token: TTokenID;
-  Scope: TScope;
 begin
   Result := Messages;
   Lexer.SaveState(ParserState);
@@ -2398,12 +2397,6 @@ begin
   fIncludeFilesStack.Push(FileName);
   try
     try
-      case Section of
-        usInterface: Scope := IntfScope;
-        usImplementation: Scope := ImplScope;
-      else
-        Scope := nil;
-      end;
       Lexer.Source := Source;
       Lexer.First;
       Token := Lexer_NextToken(Scope);
@@ -4637,7 +4630,7 @@ begin
   Stream := TStringStream.Create;
   try
     Stream.LoadFromFile(ExtractFilePath(Self.FileName) + FileName);
-    var Messages := CompileSource(usImplementation, FileName, Stream.DataString);
+    var Messages := CompileSource(Scope, FileName, Stream.DataString);
     if Messages.HasErrors then
       AbortWork('The included file: ' + FileName + ' has errors', Lexer_Position);
   finally
@@ -5005,7 +4998,6 @@ var
   CaseTypeDecl: TIDDeclaration;
   ID: TIdentifier;
 begin
-  // todo: fix
   Lexer_ReadNextIdentifier(Scope, ID);
   CaseTypeDecl := FindIDNoAbort(Scope, ID);
   if not Assigned(CaseTypeDecl) then
@@ -8068,9 +8060,40 @@ begin
   Decl := Left.Declaration;
   // todo: system fail if decl is not assigned
 
+  SearchScope := nil;
+  if Left is TIDCastExpression then
+  begin
+    DataType := Left.DataType.ActualDataType;
+
+    if DataType.ClassType = TIDAliasType then
+      DataType := TIDAliasType(DataType).Original;
+
+    if DataType.DataTypeID in [dtPointer, dtClassOf] then
+      DataType := TIDPointer(DataType).ReferenceType.ActualDataType;
+
+    if Decl.ItemType = itType then
+    begin
+      if Assigned(DataType.Helper) then
+        SearchScope := DataType.Helper.Members // todo: should be StaticMembers
+      else
+      if DataType is TIDStructure then
+        SearchScope := TIDStructure(DataType).Members // todo: should be StaticMembers
+    end else begin
+      if Assigned(DataType.Helper) then
+        SearchScope := DataType.Helper.Members // todo: should be StaticMembers
+      else
+      if DataType is TIDStructure then
+        SearchScope := TIDStructure(DataType).Members // todo: should be StaticMembers
+     end;
+  end else
   if Decl.ItemType = itUnit then
-    SearchScope := TIDNameSpace(Decl).Members
-  else
+  begin
+    // if this is the full name of THIS unit, let's search in implementation first
+    if Decl.ID.Name = Self._ID.Name then
+      SearchScope := ImplScope
+    else
+      SearchScope := TIDNameSpace(Decl).Members
+  end else
   if Decl.ItemType = itType then
   begin
     DataType := TIDType(Decl);
@@ -8107,10 +8130,12 @@ begin
     else
     if Decl.ClassType = TIDEnum then
       SearchScope := TIDEnum(Decl).Items
-    else begin
-      ERRORS.IDENTIFIER_HAS_NO_MEMBERS(Decl);
-      Exit;
-    end;
+  end;
+
+  if not Assigned(SearchScope) then
+  begin
+    ERRORS.IDENTIFIER_HAS_NO_MEMBERS(Decl);
+    Exit;
   end;
 
   ASTE.AddOperation<TASTOpMemberAccess>;

@@ -13,7 +13,7 @@ uses System.SysUtils, System.Classes, System.Types, Generics.Collections, System
      AST.Parser.Messages,
      AST.Parser.Utils,
      AST.Pascal.Intf,
-     AST.Classes;
+     AST.Classes, AST.Lexer;
 
 type
   TUnits = TList<TASTModule>;
@@ -37,17 +37,17 @@ type
     end;
     TStrLiterals = TAVLTree<TStrConstKey, TConstInfo>;
   private
-    FName: string;
-    FUnits: TUnits;
-    FTargetName: string;
-    FTarget: TNPLTarget;
-    FDefines: TDefines;
-    FStrLiterals: TStrLiterals;
-    FIncludeDebugInfo: Boolean;
-    FUnitSearchPathes: TStrings;
-    FMessages: ICompilerMessages;
-    FRTTICharset: TRTTICharset;
-    FOptions: TPackageOptions;
+    fName: string;
+    fUnits: TUnits;
+    fTargetName: string;
+    fTarget: TNPLTarget;
+    fDefines: TDefines;
+    fStrLiterals: TStrLiterals;
+    fIncludeDebugInfo: Boolean;
+    fUnitSearchPathes: TStrings;
+    fMessages: ICompilerMessages;
+    fRTTICharset: TRTTICharset;
+    fOptions: TPackageOptions;
     function GetIncludeDebugInfo: Boolean;
     function OpenUnit(const UnitName: string): TASTModule;
     function RefCount: Integer;
@@ -98,6 +98,9 @@ type
     function Compile: TCompilerResult; virtual;
     function CompileInterfacesOnly: TCompilerResult; virtual;
     procedure EnumIntfDeclarations(const EnumProc: TEnumASTDeclProc);
+    procedure PutMessage(const Message: TCompilerMessage); overload;
+    procedure PutMessage(MessageType: TCompilerMessageType; const MessageText: string); overload;
+    procedure PutMessage(MessageType: TCompilerMessageType; const MessageText: string; const SourcePosition: TTextPosition); overload;
   end;
 
 implementation
@@ -127,6 +130,7 @@ var
   Module: TPascalUnit;
 begin
   Result := TCompilerMessages.Create;
+  Result.CopyFrom(fMessages);
   for i := 0 to FUnits.Count - 1 do begin
     Module := TPascalUnit(FUnits[i]);
     Result.CopyFrom(Module.Messages);
@@ -369,13 +373,20 @@ var
   i: Integer;
 begin
   Result := CompileInProgress;
-  // компиляция модулей
+  // init system first
   try
     InitSystemUnit;
   except
-    on e: exception do
-      AbortWorkInternal('Init system unit ERROR: %s', [e.Message]);
+    on e: ECompilerAbort do begin
+      PutMessage(ECompilerAbort(e).CompilerMessage^);
+      Exit(CompileFail);
+    end;
+    on e: Exception do begin
+      PutMessage(cmtInteranlError, e.Message);
+      Exit(CompileFail);
+    end;
   end;
+  // compile all units
   for i := 0 to FUnits.Count - 1 do
   begin
     var UN := FUnits[i];
@@ -438,6 +449,22 @@ begin
       Constant.Index := Idx;
     Node := FStrLiterals.Next(Node);
   end;
+end;
+
+procedure TPascalProject.PutMessage(const Message: TCompilerMessage);
+begin
+  fMessages.Add(Message);
+end;
+
+procedure TPascalProject.PutMessage(MessageType: TCompilerMessageType; const MessageText: string);
+begin
+  fMessages.Add(TCompilerMessage.Create(Self, MessageType, MessageText, TTextPosition.Empty));
+end;
+
+procedure TPascalProject.PutMessage(MessageType: TCompilerMessageType; const MessageText: string;
+  const SourcePosition: TTextPosition);
+begin
+  fMessages.Add(TCompilerMessage.Create(Self, MessageType, MessageText, SourcePosition));
 end;
 
 function TPascalProject.RefCount: Integer;

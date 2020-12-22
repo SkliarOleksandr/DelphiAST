@@ -165,7 +165,7 @@ type
   private
     function GetTypeByID(ID: TDataTypeID): TIDType;
     procedure SearchSystemTypes;
-    procedure AddCustomExplicits(const Sources: array of TDataTypeID; Dest: TIDType); overload;
+    procedure AddStandardExplicitsTo(const Sources: array of TDataTypeID; Dest: TIDType); overload;
   public
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     constructor Create(const Project: IASTProject; const FileName: string; const Source: string); override;
@@ -446,7 +446,7 @@ begin
   _Boolean.OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
 end;
 
-procedure TSYSTEMUnit.AddCustomExplicits(const Sources: array of TDataTypeID; Dest: TIDType);
+procedure TSYSTEMUnit.AddStandardExplicitsTo(const Sources: array of TDataTypeID; Dest: TIDType);
 var
   i: Integer;
 begin
@@ -526,8 +526,8 @@ begin
 
   _PChar.OverloadExplicitTo(_String);
 
-  AddCustomExplicits([dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean], _Char);
-  AddCustomExplicits([dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean], _AnsiChar);
+  AddStandardExplicitsTo([dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtNativeInt, dtNativeUInt, dtBoolean], _Char);
+  AddStandardExplicitsTo([dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtNativeInt, dtNativeUInt, dtBoolean], _AnsiChar);
 end;
 
 procedure TSYSTEMUnit.AddIntDivOperators;
@@ -853,8 +853,6 @@ begin
   _Boolean := RegisterOrdinal('Boolean', dtBoolean, 0, 1);
   _Boolean.OverloadExplicitFromAny(Operators.IsOrdinal);
 
-  RegisterPointer('ByteBool', _Boolean);
-
   _AnsiChar := RegisterOrdinal('AnsiChar', dtAnsiChar, 0, MaxUInt8);
   _Char := RegisterOrdinal('Char', dtChar, 0, MaxUInt16);
   //===============================================================
@@ -924,6 +922,7 @@ begin
   RegisterTypeAlias('UnicodeString', _String);
   RegisterTypeAlias('WideChar', _Char);
 
+  RegisterTypeAlias('ByteBool', _Boolean);
   RegisterTypeAlias('WordBool', _Boolean);
   RegisterTypeAlias('LongBool', _Boolean);
   RegisterTypeAlias('OleVariant', _Variant);
@@ -1030,6 +1029,7 @@ begin
   RegisterBuiltin(TSF_Dispose);
   RegisterBuiltin(TSCTF_Defined);
   RegisterBuiltin(TSCTF_Declared);
+  RegisterBuiltin(TSF_Delete);
   RegisterBuiltin(TSF_Exit);
   RegisterBuiltin(TSF_Exclude);
   RegisterBuiltin(TSF_FreeMem);
