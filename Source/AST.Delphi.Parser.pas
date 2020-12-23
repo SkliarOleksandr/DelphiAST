@@ -7983,16 +7983,8 @@ begin
           TIDCallExpression(Expression).Instance := TIDExpression.Create(EContext.SContext.Proc.SelfParam);
         end;
 
-        // если выражение продолжается дальше, генерируем вызов процедуры
-        if Result in [token_dot, token_openblock] then
-        begin
-          Expression := EContext.RPNPopOperator();
-          Decl := Expression.Declaration;
-          PMContext.Clear;
-        end else begin
-          Expression := nil;
-          //Break;
-        end;
+        // process call operator
+        Expression := EContext.RPNPopOperator();
 
       end else begin // иначе создаем процедурный тип, если он отсутствовал
         TIDProcedure(Decl).CreateProcedureTypeIfNeed(Scope);
@@ -8076,7 +8068,7 @@ begin
     if DataType.ClassType = TIDAliasType then
       DataType := TIDAliasType(DataType).Original;
 
-    if DataType.DataTypeID in [dtPointer, dtClassOf] then
+    while DataType.DataTypeID in [dtPointer, dtClassOf] do
       DataType := TIDPointer(DataType).ReferenceType.ActualDataType;
 
     if Decl.ItemType = itType then
@@ -8127,7 +8119,7 @@ begin
 //    if DataType.DataTypeID in [dtStaticArray, dtDynArray] then            ???
 //      DataType := TIDArray(DataType).ElementDataType;
 
-    if DataType.DataTypeID in [dtPointer, dtClassOf] then
+    while DataType.DataTypeID in [dtPointer, dtClassOf] do
       DataType := TIDPointer(DataType).ReferenceType.ActualDataType;
 
     if Assigned(Decl.DataType.Helper) then

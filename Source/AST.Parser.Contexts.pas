@@ -183,7 +183,7 @@ var
   Op: TOperatorID;
 begin
   if OpID = fRPNLastOp then
-    RPNError(reDublicateOperation);
+    AbortWork(sDublicateOperationFmt, [OperatorShortName(OpID)], TTextPosition.Empty);
 
   fRPNLastOp := OpID;
   Priority := cOperatorPriorities[OpID];
