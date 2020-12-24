@@ -919,6 +919,13 @@ type
     function CompareTo(Constant: TIDConstant): Integer; override;
   end;
 
+  {pointer constant}
+  TIDPointerConstant = class(TIDXXXConstant<TIDDeclaration>)
+    function ValueDataType: TDataTypeID; override;
+    function ValueByteSize: Integer; override;
+    function AsString: string; override;
+  end;
+
   {array constant}
   TIDDynArrayConstant = class(TIDXXXConstant<TIDExpressions>)
   private
@@ -6087,6 +6094,23 @@ end;
 function TIDSetConstant.ValueDataType: TDataTypeID;
 begin
   Result := dtSet;
+end;
+
+{ TIDPointerConstant }
+
+function TIDPointerConstant.AsString: string;
+begin
+  Result := 'not supported';  // todo
+end;
+
+function TIDPointerConstant.ValueByteSize: Integer;
+begin
+  Result := 0;  // todo
+end;
+
+function TIDPointerConstant.ValueDataType: TDataTypeID;
+begin
+  Result := dtPointer;
 end;
 
 initialization

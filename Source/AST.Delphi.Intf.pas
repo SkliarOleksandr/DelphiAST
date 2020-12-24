@@ -42,6 +42,7 @@ type
     _NullPtrType: TIDType;
     _PointerType: TIDPointer;
     _UntypedReference: TIDPointer;
+    _Untyped: TIDType;
     _MetaType: TIDType;
     _Void: TIDType;
     _GuidType: TIDStructure;
@@ -68,6 +69,7 @@ type
     _EmptyStrConstant: TIDStringConstant;
     _EmptyStrExpression: TIDExpression;
     _DeprecatedDefaultStr: TIDStringConstant;
+    _ResStringRecord: TIDType;
     function GetTypeByID(DataTypeID: TDataTypeID): TIDType;
     property DataTypes[DataTypeID: TDataTypeID]: TIDType read GetTypeByID;
   end;

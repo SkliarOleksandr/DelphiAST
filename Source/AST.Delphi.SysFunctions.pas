@@ -271,6 +271,14 @@ type
     class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {GetDir}
+  TSF_GetDir = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
+
   {FreeMem}
   TSF_FreeMem = class(TIDSysRuntimeFunction)
   public
@@ -1276,6 +1284,24 @@ begin
   A2 := EContext.RPNPopExpression();
   A1 := EContext.RPNPopExpression();
   Result := nil;
+end;
+
+{ TSF_GetDir }
+
+class function TSF_GetDir.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'GetDir', nil);
+  Result.AddParam('Drive', SYSUnit._UInt8, []);
+  Result.AddParam('Directory ', SYSUnit._String, [VarInOut]);
+end;
+
+function TSF_GetDir.Process(var EContext: TEContext): TIDExpression;
+var
+  A1, A2: TIDExpression;
+begin
+  // read arguments
+  A2 := EContext.RPNPopExpression();
+  A1 := EContext.RPNPopExpression();
 end;
 
 end.

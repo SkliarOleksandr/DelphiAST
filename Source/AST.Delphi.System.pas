@@ -100,6 +100,7 @@ type
     ExplicitEnumToAny,
     ExplicitEnumFromAny,
     ExplicitUntypedToAny,
+    ExplicitUntypedRefToAny,
     ExplicitCharToAny,
     ExplicitRangeFromAny,
     ExplicitRecordToAny,
@@ -212,6 +213,7 @@ type
     property _EmptyStrExpression: TIDExpression read fDecls._EmptyStrExpression;
     property _Pointer: TIDPointer read fDecls._PointerType;
     property _UntypedReference: TIDPointer read fDecls._UntypedReference;
+    property _Untyped: TIDType read fDecls._Untyped;
     property _TObject: TIDClass read fDecls._TObject;
     property _Exception: TIDClass read fDecls._Exception;
     property _EAssert: TIDClass read fDecls._EAssertClass;
@@ -227,6 +229,7 @@ type
     property _AnyArrayType: TIDArray read fArrayType;
     property _MetaType: TIDType read fDecls._MetaType;
     property _Void: TIDType read fDecls._Void;
+    property _ResStringRecord: TIDType read fDecls._ResStringRecord;
     property Operators: TSystemOperatos read fOperators;
   end;
 
@@ -909,10 +912,17 @@ begin
   IntfScope.InsertID(fDecls._NullPtrConstant);
 
   // Untyped reference
-  fDecls._UntypedReference := TIDPointer.CreateAsSystem(IntfScope, 'Untyped reference');
+  fDecls._UntypedReference := TIDPointer.CreateAsSystem(IntfScope, '$Untyped reference');
   IntfScope.InsertID(fDecls._UntypedReference);
   fDecls._UntypedReference.OverloadImplicitFromAny(Operators.ImplicitUntypedFromAny);
-  fDecls._UntypedReference.OverloadExplicitToAny(Operators.ExplicitUntypedToAny);
+  fDecls._UntypedReference.OverloadExplicitToAny(Operators.ExplicitUntypedRefToAny);
+
+  // Untyped
+  fDecls._Untyped := TIDOrdinal.CreateAsSystem(IntfScope, '$Untyped');
+  fDecls._Untyped.DataTypeID := dtNativeUInt;
+  IntfScope.InsertID(fDecls._Untyped);
+  fDecls._Untyped.OverloadExplicitToAny(Operators.ExplicitUntypedToAny);
+
 
   // Delphi system aliases
   RegisterTypeAlias('LongInt', _Int32);
@@ -927,15 +937,18 @@ begin
   RegisterTypeAlias('LongBool', _Boolean);
   RegisterTypeAlias('OleVariant', _Variant);
 
+  // PAnsiChar
   fDecls._PAnsiChar := RegisterType('PAnsiChar', TIDPointer, dtPAnsiChar);
   TIDPointer(fDecls._PAnsiChar).ReferenceType := _AnsiChar;
+  fDecls._PAnsiChar.OverloadImplicitTo(_Variant);
 
+  // PWideChar
   fDecls._PChar := RegisterType('PWideChar', TIDPointer, dtPWideChar);
   TIDPointer(fDecls._PChar).ReferenceType := _Char;
+  fDecls._PChar.OverloadImplicitTo(_Variant);
 
   _AnsiChar.DefaultReference := _PAnsiChar;
   _Char.DefaultReference := _PChar;
-
 
   RegisterTypeAlias('PChar', _PChar);
   RegisterTypeAlias('Text', _Pointer);
@@ -982,10 +995,8 @@ end;
 
 procedure TSYSTEMUnit.SearchSystemTypes;
 begin
-//  fDecls._TObject := GetPublicClass('TObject');
-{  FException := GetPublicClass('Exception');
-  FEAssertClass := GetPublicClass('EAssert');
-  FTypeIDType := GetPublicType('TDataTypeID');}
+  fDecls._TObject := GetPublicClass('TObject');
+  fDecls._ResStringRecord := GetPublicType('PResStringRec');
 end;
 
 procedure TSYSTEMUnit.SystemFixup;
@@ -1035,6 +1046,7 @@ begin
   RegisterBuiltin(TSF_FreeMem);
   RegisterBuiltin(TSF_FillChar);
   RegisterBuiltin(TSF_GetMem);
+  RegisterBuiltin(TSF_GetDir);
   RegisterBuiltin(TSF_Halt);
   RegisterBuiltin(TSF_HiBound);
   RegisterBuiltin(TSF_Include);
@@ -1215,6 +1227,7 @@ begin
   ExplicitEnumToAny := TSysExplicitEnumToAny.CreateAsSystem(Scope);
   ExplicitEnumFromAny := TSysExplicitEnumFromAny.CreateAsSystem(Scope);
   ExplicitUntypedToAny := TSysExplicitUntypedToAny.CreateAsSystem(Scope);
+  ExplicitUntypedRefToAny := TSysExplicitUntypedRefToAny.CreateAsSystem(Scope);
   ExplicitCharToAny := TSysExplicitCharToAny.CreateAsSystem(Scope);
   ExplicitRangeFromAny := TSysExplicitRangeFromAny.CreateAsSystem(Scope);
   ExplicitRecordToAny := TSysExplicitRecordToAny.CreateAsSystem(Scope);

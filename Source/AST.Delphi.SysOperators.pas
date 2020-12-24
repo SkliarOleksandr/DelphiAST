@@ -247,6 +247,12 @@ type
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
+  {explicit Untyped Ref -> Any}
+  TSysExplicitUntypedRefToAny = class(TSysOpExplisit)
+  public
+    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
   {explicit Untyped -> Any}
   TSysExplicitUntypedToAny = class(TSysOpExplisit)
   public
@@ -667,11 +673,18 @@ begin
     Result := nil;
 end;
 
-{ TSysExplicitUntypedToAny }
+{ TSysExplicitUntypedRefToAny }
 
-function TSysExplicitUntypedToAny.Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean;
+function TSysExplicitUntypedRefToAny.Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean;
 begin
   Result := (Dst.DataTypeID in [dtPointer, dtClass, dtInterface]);
+end;
+
+{ TSysExplicitUntypedToAny }
+
+function TSysExplicitUntypedToAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
+begin
+  Result := Dst.DataSize = Src.DataSize;
 end;
 
 

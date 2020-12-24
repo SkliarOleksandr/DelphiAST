@@ -2071,6 +2071,12 @@ begin
     AddType(DataType);
   end;
 
+  // resourcestring support
+  if Expr.IsConstant and (Expr.DataTypeID in [dtString, dtAnsiString]) then
+  begin
+    var RStr := TIDPointerConstant.CreateAsAnonymous(IntfScope, EContext.SContext.SysUnit._ResStringRecord, Expr.Declaration);
+    Result := TIDExpression.Create(RStr, Expr.TextPosition);
+  end else
   if Expr.IsTMPVar and Expr.AsVariable.Reference then
   begin
     Result := GetTMPVarExpr(EContext.SContext, DataType, Expr.TextPosition);
@@ -2109,7 +2115,7 @@ begin
   PtrType := Src.DataType as TIDPointer;
   RefType := PtrType.ReferenceType;
   if not Assigned(RefType) then
-    RefType := Sys._UntypedReference;
+    RefType := Sys._Untyped;
 
   Result := GetTMPVarExpr(EContext, RefType, Src.TextPosition);
 end;
