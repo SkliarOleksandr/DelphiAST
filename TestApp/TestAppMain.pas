@@ -249,6 +249,7 @@ begin
   Prj.Target := TWINX86_Target.TargetName;
   Prj.Defines.Add('CPUX86');
   Prj.Defines.Add('CPU386');
+  Prj.Defines.Add('WIN32');
   Prj.Defines.Add('MSWINDOWS');
   Prj.Defines.Add('ASSEMBLER');
   Prj.OnProgress := OnProgress;

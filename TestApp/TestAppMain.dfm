@@ -154,7 +154,7 @@ object frmTestAppMain: TfrmTestAppMain
       Height = 21
       Anchors = [akLeft, akTop, akRight]
       TabOrder = 0
-      Text = 'C:\Program Files (x86)\Embarcadero\Studio\20.0\source\'
+      Text = 'C:\Program Files (x86)\Embarcadero\Studio\22.0\source\'
     end
     object Button1: TButton
       Left = 586

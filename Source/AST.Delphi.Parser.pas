@@ -6356,10 +6356,9 @@ begin
         Include(VarFlags, VarConst);
         Result := Lexer_NextToken(Scope);
       end;
-      {token_constref: begin
-        Include(VarFlags, VarConstRef);
-        Result := Lexer_NextToken(Scope);
-      end;}
+      token_openblock: begin
+        Result := ParseAttribute(Scope);
+      end;
       token_var: begin
         Include(VarFlags, VarInOut);
         Result := Lexer_NextToken(Scope);
@@ -6369,6 +6368,10 @@ begin
         Result := Lexer_NextToken(Scope);
       end;
     end;
+
+    if Result = token_openblock then
+      Result := ParseAttribute(Scope);
+
     Lexer_MatchIdentifier(Result);
     while True do begin
       // read param name
@@ -7312,6 +7315,7 @@ begin
   Result := Lexer_CurTokenID;
   while True do begin
     case Result of
+      token_openblock: Result := ParseAttribute(Scope);
       token_case: Result := ParseCaseRecord(Decl.Members, Decl);
       token_class: begin
         Result := Lexer_NextToken(scope);
