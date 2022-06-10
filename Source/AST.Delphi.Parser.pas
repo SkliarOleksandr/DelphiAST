@@ -27,6 +27,7 @@ uses
  // sysutils
  // sysinit
  // Windows
+ // AnsiStrings
 
 type
 
@@ -1603,22 +1604,6 @@ begin
       end;
 
       UserArguments[AIndex] := AExpr;
-
-      if Param.VarReference then
-      begin
-        CheckVarExpression(AExpr, vmpPassArgument);
-        {проверка на строгость соответствия типов}
-        if Param.DataType.ActualDataType <> AExpr.DataType.ActualDataType then
-        begin
-          if Param.DataType = Sys._UntypedReference then
-            continue;
-
-          if not ((Param.DataType.DataTypeID = dtPointer) and
-             (AExpr.DataType.DataTypeID = dtPointer) {and
-             (TIDPointer(Param.DataType).ReferenceType = TIDPointer(AExpr.DataType).ReferenceType) !!!!!! }) then
-          ERRORS.REF_PARAM_MUST_BE_IDENTICAL(AExpr);
-        end;
-      end;
     end;
     CallArguments := UserArguments;
   end else
@@ -1858,9 +1843,11 @@ begin
   end;
 end;
 
-class function TASTDelphiUnit.MatchConstDynArrayImplicit(const SContext: TSContext; Source: TIDExpression; Destination: TIDType): TIDType;
+class function TASTDelphiUnit.MatchConstDynArrayImplicit(const SContext: TSContext;
+                                                         Source: TIDExpression;
+                                                         Destination: TIDType): TIDType;
 var
-  i, c: Integer;
+  i, ArrayLen: Integer;
   SConst: TIDDynArrayConstant;
   SExpr: TIDExpression;
   DstElementDataType: TIDType;
@@ -1868,8 +1855,10 @@ var
   SrcArrayElement: TIDType;
 begin
   SConst := TIDDynArrayConstant(Source.Declaration);
-  c := Length(SConst.Value);
-  if c = 0 then Exit(Destination);
+  ArrayLen := Length(SConst.Value);
+  // exit if this is just empty array "[]"
+  if ArrayLen = 0 then
+    Exit(Destination);
 
   case Destination.DataTypeID of
     dtSet: begin
@@ -1878,14 +1867,12 @@ begin
     dtDynArray, dtOpenArray: begin
       DstElementDataType := TIDDynArray(Destination).ElementDataType;
     end;
-    else begin
-      SContext.ERRORS.INCOMPATIBLE_TYPES(Source, Destination);
-      DstElementDataType := nil;
-    end;
+  else
+    Exit(nil);
   end;
 
   // проверка каждого элемента
-  for i := 0 to c - 1 do begin
+  for i := 0 to ArrayLen - 1 do begin
     SExpr := SConst.Value[i];
     ImplicitCast := CheckImplicit(SContext, SExpr, DstElementDataType);
     if not Assigned(ImplicitCast) then
@@ -3495,7 +3482,21 @@ begin
 
         Implicit := CheckImplicit(SContext, Arg, Param.DataType);
         if Assigned(Implicit) then
+        begin
+          if Param.VarReference then
+          begin
+            CheckVarExpression(Arg, vmpPassArgument);
+            {проверка на строгость соответствия типов}
+            if Param.DataType.ActualDataType <> Arg.DataType.ActualDataType then
+            begin
+              if (Param.DataType <> Sys._UntypedReference) and
+                 not ((Param.DataType.DataTypeID = dtPointer) and
+                      (Arg.DataType.DataTypeID = dtPointer)) then
+                ERRORS.REF_PARAM_MUST_BE_IDENTICAL(Arg);
+            end;
+          end;
           continue;
+        end;
 
         var WasCall := False;
         Arg := CheckAndCallFuncImplicit(SContext, Arg, WasCall);
@@ -6716,7 +6717,7 @@ begin
       while True do begin
         if Decl.SameDeclaration(Parameters) then begin
           FwdDeclState := dsSame;
-          if Assigned(Decl.IL) or (Scope.ScopeClass = scInterface) then
+          if (Decl.Scope = Scope) and not (pfForward in Decl.Flags) then
             ERRORS.ID_REDECLARATED(ID);
           Proc := Decl;
           Break;

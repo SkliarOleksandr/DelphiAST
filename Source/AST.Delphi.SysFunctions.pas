@@ -661,7 +661,7 @@ begin
       if Expr.IsConstant then
         Result := IntConstExpression(EContext.SContext, Expr.AsStrConst.StrLength)
       else begin
-        var TMPVar := EContext.Proc.GetTMPVar(SYSUnit._NativeUInt);
+        var TMPVar := EContext.Proc.GetTMPVar(SYSUnit._NativeInt);
         Result := TIDExpression.Create(TMPVar, Expr.TextPosition);
       end;
     end;
@@ -731,7 +731,7 @@ end;
 
 class function TSF_Chr.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
-  Result := Self.Create(Scope, 'Chr', SYSUnit._AnsiChar);
+  Result := Self.Create(Scope, 'Chr', SYSUnit._Char);
   Result.AddParam('X', SYSUnit._UInt8, []);
 end;
 
@@ -740,7 +740,7 @@ var
   Expr: TIDExpression;
 begin
   Expr := EContext.RPNPopExpression();
-  Result := TIDCastExpression.Create(Expr.Declaration, SYSUnit._AnsiChar, Expr.TextPosition);
+  Result := TIDCastExpression.Create(Expr.Declaration, SYSUnit._Char, Expr.TextPosition);
 end;
 
 { TSF_FillChar }
@@ -987,7 +987,7 @@ begin
   Result := Self.Create(Scope, 'Copy', SYSUnit._Void);
   Result.AddParam('Source', SYSUnit._Pointer, [VarConst]);
   Result.AddParam('StartChar', SYSUnit._Int32, [VarConst]);
-  Result.AddParam('Count ', SYSUnit._Int32, [VarConst]);
+  Result.AddParam('Count ', SYSUnit._Int32, [VarConst], SysUnit.SystemDeclarations._MaxIntExpression);
 end;
 
 function TSF_Copy.Process(var EContext: TEContext): TIDExpression;
@@ -1302,6 +1302,7 @@ begin
   // read arguments
   A2 := EContext.RPNPopExpression();
   A1 := EContext.RPNPopExpression();
+  Result := nil;
 end;
 
 end.

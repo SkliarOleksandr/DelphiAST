@@ -307,7 +307,7 @@ end;
 constructor TASTSContext<TProc>.Create(const Module: TASTModule; Scope: TScope);
 begin
   fModule := Module;
-  Scope := Scope;
+  fScope := Scope;
   fProc := default(TProc);
   fBlock := nil;
 end;

@@ -61,6 +61,7 @@ type
     dtPWideChar,    // PWideChar
     dtVariant,      // Variant
     dtGuid,         // TGUID
+    dtUntypedRef,   // Untyped Reference
     dtPointer,      // Pointer
     dtWeakRef,      //
     dtGeneric,      // any generic type (generic type parameter)
@@ -111,6 +112,7 @@ const
     {dtPWideChar}   False,
     {dtVariant}     True,
     {dtGuid}        False,
+    {dtUntypedRef}  False,
     {dtPointer}     False,
     {dtWeakRef}     True,
     {dtGeneric}     False,
@@ -163,6 +165,7 @@ const
     {dtPAnsiChar}   'PAnsiChar',
     {dtPWideChar}   'PWideChar',
     {dtVariant}     'Variant',
+    {dtUntypedRef}  'Untyped Reference',
     {dtGuid}        'Guid',
     {dtPointer}     'Pointer',
     {dtWeakRef}     'WeakRef',
@@ -203,10 +206,11 @@ const
     {dtAnsiString}  True,
     {dtString}      True,
     {dtWideString}  True,
-    {dtPAnsiChar}   False,
-    {dtPWideChar}   False,
+    {dtPAnsiChar}   True,
+    {dtPWideChar}   True,
     {dtVariant}     True,
     {dtGuid}        False,
+    {dtUntypedRef}  True,
     {dtPointer}     True,
     {dtWeakRef}     True,
     {dtGeneric}     False,
@@ -232,8 +236,8 @@ const
     {dtUInt16}      2,
     {dtUInt32}      4,
     {dtUInt64}      8,
-    {dtNativeInt}   SizeOf(Pointer),
-    {dtNativeUInt}  SizeOf(Pointer),
+    {dtNativeInt}   -1,
+    {dtNativeUInt}  -1,
     {dtFloat32}     4,
     {dtFloat64}     8,
     {dtFloat80}     10,
@@ -241,16 +245,17 @@ const
     {dtBoolean}     1,
     {dtAnsiChar}    1,
     {dtChar}        2, // UTF16
-    {dtShortString} SizeOf(Pointer), // refernce type
-    {dtAnsiString}  SizeOf(Pointer), // refernce type
-    {dtString}      SizeOf(Pointer), // refernce type
-    {dtWideString}  SizeOf(Pointer), // refernce type
+    {dtShortString} -1, // refernce type
+    {dtAnsiString}  -1, // refernce type
+    {dtString}      -1, // refernce type
+    {dtWideString}  -1, // refernce type
+    {dtPAnsiChar}   -1,
+    {dtPWideChar}   -1,
     {dtVariant}     16,
     {dtGuid}        SizeOf(TGUID),
-    {dtPAnsiChar}   SizeOf(Pointer),
-    {dtPWideChar}   SizeOf(Pointer),
-    {dtPointer}     SizeOf(Pointer),
-    {dtWeakRef}     SizeOf(Pointer),
+    {dtUntypedRef}  -1,
+    {dtPointer}     -1,
+    {dtWeakRef}     -1,
     {dtGeneric}     0,
     {dtRange}       0,
     {dtEnum}        0,
@@ -339,66 +344,67 @@ end;
 
 procedure InitImplicitRates;
 begin
+  // IMPORTANT: These rates are approximate and should be adjusted
   FillChar(implicitRates, Sizeof(implicitRates), #0);
   // Int8 ///////////////////////////////////////////
-  Rate(dtInt8, [dtInt8, dtInt16, dtInt32, dtInt64, dtFloat32, dtFloat64, dtVariant]);
+  Rate(dtInt8, [dtInt8, dtInt16, dtInt32, dtInt64, dtUntypedRef, dtFloat32, dtFloat64, dtVariant]);
   RateWDL(dtInt8, [dtUInt16, dtUInt32, dtUInt64, dtUInt8]);
   // Int16 //////////////////////////////////////////
-  Rate(dtInt16, [dtInt16, dtInt32, dtInt64, dtFloat32, dtFloat64, dtVariant]);
+  Rate(dtInt16, [dtInt16, dtInt32, dtInt64, dtUntypedRef, dtFloat32, dtFloat64, dtVariant]);
   RateWDL(dtInt16, [dtUInt32, dtUInt64, dtUInt16, dtInt8, dtUInt8]);
   // Int32 //////////////////////////////////////////
-  Rate(dtInt32, [dtInt32, dtNativeInt, dtInt64, dtFloat64, dtVariant]);
+  Rate(dtInt32, [dtInt32, dtNativeInt, dtInt64, dtUntypedRef, dtFloat64, dtVariant]);
   RateWDL(dtInt32, [dtUInt32, dtNativeUInt, dtFloat32, dtUInt64, dtInt16, dtUInt16, dtInt8, dtUInt8]);
   // Int64 //////////////////////////////////////////
-  Rate(dtInt64, [dtInt64, dtVariant]);
+  Rate(dtInt64, [dtInt64, dtUntypedRef, dtVariant]);
   RateWDL(dtInt64, [dtUInt64, dtFloat64, dtInt32, dtFloat32, dtUInt32, dtInt16, dtUInt16, dtInt8, dtUInt8]);
   // UInt8 ///////////////////////////////////////////
-  Rate(dtUInt8, [dtUInt8, dtUInt16, dtInt16, dtInt32, dtUInt32, dtInt64, dtUInt64, dtFloat32, dtFloat64, dtVariant]);
+  Rate(dtUInt8, [dtUInt8, dtUInt16, dtInt16, dtInt32, dtUInt32, dtInt64, dtUInt64, dtUntypedRef, dtFloat32, dtFloat64, dtVariant]);
   RateWDL(dtUInt8, [dtInt8]);
   // UInt16 //////////////////////////////////////////
-  Rate(dtUInt16, [dtUInt16, dtUInt32, dtInt32, dtInt64, dtUInt64, dtFloat32, dtFloat64, dtVariant]);
+  Rate(dtUInt16, [dtUInt16, dtUInt32, dtInt32, dtInt64, dtUInt64, dtUntypedRef, dtFloat32, dtFloat64, dtVariant]);
   RateWDL(dtUInt16, [dtInt16, dtUInt8, dtInt8]);
   // UInt32 //////////////////////////////////////////
-  Rate(dtUInt32, [dtUInt32, dtNativeUInt, dtInt64, dtUInt64, dtFloat64, dtVariant]);
+  Rate(dtUInt32, [dtUInt32, dtNativeUInt, dtInt64, dtUInt64, dtUntypedRef, dtFloat64, dtVariant]);
   RateWDL(dtUInt32, [dtInt32, dtNativeInt, dtFloat32, dtUInt16, dtInt16, dtUInt8, dtInt8]);
   // UInt64 //////////////////////////////////////////
-  Rate(dtUInt64, [dtUInt64, dtVariant]);
+  Rate(dtUInt64, [dtUInt64, dtUntypedRef, dtVariant]);
   RateWDL(dtUInt64, [dtInt64, dtFloat64, dtInt32, dtUInt32, dtFloat32, dtInt16, dtUInt16, dtInt8, dtUInt8]);
   // NativeInt //////////////////////////////////////////
-  Rate(dtNativeInt, [dtNativeInt, dtInt32, dtInt64]);
+  Rate(dtNativeInt, [dtNativeInt, dtUntypedRef, dtInt32, dtInt64]);
   RateWDL(dtNativeInt, [dtNativeUInt, dtUInt32, dtUInt64, dtInt16, dtUInt16, dtInt8, dtUInt8, dtFloat64, dtFloat32]);
   // NativeUInt //////////////////////////////////////////
-  Rate(dtNativeUInt, [dtNativeUInt, dtUInt32, dtUInt64]);
+  Rate(dtNativeUInt, [dtNativeUInt, dtUntypedRef, dtUInt32, dtUInt64]);
   RateWDL(dtNativeUInt, [dtInt64, dtNativeInt, dtInt32, dtInt16, dtUInt16, dtInt8, dtUInt8, dtFloat64, dtFloat32]);
   // Float32 /////////////////////////////////////////
-  Rate(dtFloat32, [dtFloat32, dtFloat64, dtFloat80, dtCurrency, dtVariant]);
+  Rate(dtFloat32, [dtFloat32, dtFloat64, dtFloat80, dtCurrency, dtUntypedRef, dtVariant]);
   // Float64 /////////////////////////////////////////
-  Rate(dtFloat64, [dtFloat64, dtFloat80, dtVariant]);
+  Rate(dtFloat64, [dtFloat64, dtFloat80, dtUntypedRef, dtVariant]);
   RateWDL(dtFloat64, [dtCurrency, dtFloat32]);
   // Float80 /////////////////////////////////////////
-  Rate(dtFloat80, [dtFloat80, dtVariant]);
+  Rate(dtFloat80, [dtFloat80, dtUntypedRef, dtVariant]);
   RateWDL(dtFloat80, [dtFloat64, dtCurrency, dtFloat32]);
   // Currency /////////////////////////////////////////
-  Rate(dtCurrency, [dtFloat80, dtFloat64, dtFloat32, dtVariant]);
+  Rate(dtCurrency, [dtFloat80, dtFloat64, dtFloat32, dtUntypedRef, dtVariant]);
   // Boolean /////////////////////////////////////////
-  Rate(dtBoolean, [dtBoolean, dtVariant]);
+  Rate(dtBoolean, [dtBoolean, dtUntypedRef, dtVariant]);
   // AnsiChar /////////////////////////////////////////
-  Rate(dtAnsiChar, [dtAnsiChar, dtVariant]);
+  Rate(dtAnsiChar, [dtAnsiChar, dtUntypedRef, dtVariant]);
   // Char /////////////////////////////////////////
-  Rate(dtChar, [dtChar, dtVariant]);
+  Rate(dtChar, [dtChar, dtUntypedRef, dtVariant]);
   // ShortString /////////////////////////////////////////
-  Rate(dtShortString, [dtShortString, dtAnsiString, dtVariant, dtString, dtWideString]);
+  Rate(dtShortString, [dtShortString, dtAnsiString, dtUntypedRef, dtVariant, dtString, dtWideString]);
   // AnsiString /////////////////////////////////////////
-  Rate(dtAnsiString, [dtAnsiString, dtPAnsiChar, dtVariant, dtString, dtWideString, dtPWideChar]);
+  Rate(dtAnsiString, [dtAnsiString, dtPAnsiChar, dtUntypedRef, dtVariant, dtString, dtWideString, dtPWideChar]);
   // String /////////////////////////////////////////
-  Rate(dtString, [dtString, dtWideString, dtPWideChar, dtVariant, dtPAnsiChar]);
+  Rate(dtString, [dtString, dtWideString, dtPWideChar, dtUntypedRef, dtVariant, dtPAnsiChar]);
   RateWDL(dtString, [dtAnsiString]);
   // WideString /////////////////////////////////////////
-  Rate(dtWideString, [dtWideString, dtString, dtVariant]);
+  Rate(dtWideString, [dtWideString, dtString, dtUntypedRef, dtVariant]);
   // PAnsiChar /////////////////////////////////////////
-  Rate(dtPAnsiChar, [dtPAnsiChar, dtPointer, dtAnsiString, dtString]);
+  Rate(dtPAnsiChar, [dtPAnsiChar, dtPointer, dtUntypedRef, dtAnsiString, dtString]);
   // PWideChar /////////////////////////////////////////
-  Rate(dtPWideChar, [dtPWideChar, dtPointer, dtWideString, dtString, dtAnsiString]);
+  Rate(dtPWideChar, [dtPWideChar, dtPointer, dtUntypedRef, dtWideString, dtString, dtAnsiString]);
   // Variant /////////////////////////////////////////
   Rate(dtVariant, [dtVariant]); // todo
   // Variant /////////////////////////////////////////

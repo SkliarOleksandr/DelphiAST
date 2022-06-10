@@ -212,7 +212,7 @@ type
     property _NullPtrExpression: TIDExpression read fDecls._NullPtrExpression;
     property _EmptyStrExpression: TIDExpression read fDecls._EmptyStrExpression;
     property _Pointer: TIDPointer read fDecls._PointerType;
-    property _UntypedReference: TIDPointer read fDecls._UntypedReference;
+    property _UntypedReference: TIDUntypedRef read fDecls._UntypedReference;
     property _Untyped: TIDType read fDecls._Untyped;
     property _TObject: TIDClass read fDecls._TObject;
     property _Exception: TIDClass read fDecls._Exception;
@@ -912,7 +912,7 @@ begin
   IntfScope.InsertID(fDecls._NullPtrConstant);
 
   // Untyped reference
-  fDecls._UntypedReference := TIDPointer.CreateAsSystem(IntfScope, '$Untyped reference');
+  fDecls._UntypedReference := TIDUntypedRef.CreateAsSystem(IntfScope, '$Untyped reference');
   IntfScope.InsertID(fDecls._UntypedReference);
   fDecls._UntypedReference.OverloadImplicitFromAny(Operators.ImplicitUntypedFromAny);
   fDecls._UntypedReference.OverloadExplicitToAny(Operators.ExplicitUntypedRefToAny);
@@ -953,7 +953,8 @@ begin
   RegisterTypeAlias('PChar', _PChar);
   RegisterTypeAlias('Text', _Pointer);
 
-  RegisterConstInt('MaxInt', _Int32, MaxInt32);
+  fDecls._MaxIntConstant := RegisterConstInt('MaxInt', _Int32, MaxInt32);
+  fDecls._MaxIntExpression := TIDExpression.Create(fDecls._MaxIntConstant, 0);
 
   // constant "True"
   fDecls._True := TIDBooleanConstant.Create(IntfScope, Identifier('TRUE'), _Boolean, True);

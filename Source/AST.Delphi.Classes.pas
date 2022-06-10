@@ -441,6 +441,12 @@ type
     procedure CreateStandardOperators; override;
   end;
 
+  {untyped referenced type}
+  TIDUntypedRef = class(TIDRefType)
+  public
+    constructor CreateAsSystem(Scope: TScope; const Name: string); override;
+  end;
+
   {class of type}
   TIDClassOf = class(TIDRefType)
   protected
@@ -801,6 +807,7 @@ type
     function GetIsStatic: Boolean; inline;
   protected
     function GetDisplayName: string; override;
+    function GetDataSize: Integer; override;
   public
     constructor Create(Scope: TScope; const Identifier: TIdentifier); override;
     constructor CreateAsAnonymous(Scope: TScope); override;
@@ -2806,14 +2813,18 @@ end;
 function TIDType.GetDataSize: Integer;
 begin
   case DataTypeID of
-    dtPointer,
     dtPAnsiChar,
-    dtPWideChar: Result := Package.PointerSize;
+    dtPWideChar,
+    dtUntypedRef,
+    dtPointer,
+    dtWeakRef: Result := Package.PointerSize;
     dtNativeInt,
     dtNativeUInt: Result := Package.NativeIntSize;
   else
     Result := cDataTypeSizes[DataTypeID];
   end;
+//  if Result <= 0 then
+//    Assert(Result > 0);
 end;
 
 function TIDType.GetDefaultReference(Scope: TScope): TIDType;
@@ -5252,6 +5263,15 @@ begin
   FSysImplicitFromAny := SYSUnit.Operators.ExplicitTProcFromAny;
 end;
 
+function TIDProcType.GetDataSize: Integer;
+begin
+  case fProcClass of
+    procStatic: Result := Package.PointerSize;
+    procMethod: Result := Package.PointerSize*2;
+    procReference: Result := Package.PointerSize;
+  end;
+end;
+
 function TIDProcType.GetDisplayName: string;
 var
   i: Integer;
@@ -6111,6 +6131,14 @@ end;
 function TIDPointerConstant.ValueDataType: TDataTypeID;
 begin
   Result := dtPointer;
+end;
+
+{ TIDUntypedRef }
+
+constructor TIDUntypedRef.CreateAsSystem(Scope: TScope; const Name: string);
+begin
+  inherited;
+  fDataTypeID := dtUntypedRef;
 end;
 
 initialization

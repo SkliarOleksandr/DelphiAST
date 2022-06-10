@@ -41,7 +41,7 @@ type
     _Variant: TIDType;
     _NullPtrType: TIDType;
     _PointerType: TIDPointer;
-    _UntypedReference: TIDPointer;
+    _UntypedReference: TIDUntypedRef;
     _Untyped: TIDType;
     _MetaType: TIDType;
     _Void: TIDType;
@@ -64,6 +64,8 @@ type
     _ZeroFloatExpression: TIDExpression;
     _OneConstant: TIDIntConstant;
     _OneExpression: TIDExpression;
+    _MaxIntConstant: TIDIntConstant;
+    _MaxIntExpression: TIDExpression;
     _NullPtrConstant: TIDIntConstant;
     _NullPtrExpression: TIDExpression;
     _EmptyStrConstant: TIDStringConstant;
