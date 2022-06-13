@@ -33,9 +33,9 @@ type
     _Currency: TIDType;
     _Boolean: TIDType;
     _AnsiChar: TIDType;
-    _Char: TIDType;
+    _WideChar: TIDType;
     _AnsiString: TIDType;
-    _String: TIDType;
+    _UnicodeString: TIDType;
     _ShortString: TIDType;
     _WideString: TIDType;
     _Variant: TIDType;
@@ -47,7 +47,7 @@ type
     _Void: TIDType;
     _GuidType: TIDStructure;
     _PAnsiChar: TIDType;
-    _PChar: TIDType;
+    _PWideChar: TIDType;
     _OrdinalType: TIDType;
     _TObject: TIDClass;
     _Exception: TIDClass;
@@ -72,6 +72,7 @@ type
     _EmptyStrExpression: TIDExpression;
     _DeprecatedDefaultStr: TIDStringConstant;
     _ResStringRecord: TIDType;
+    _TVarRec: TIDType;
     function GetTypeByID(DataTypeID: TDataTypeID): TIDType;
     property DataTypes[DataTypeID: TDataTypeID]: TIDType read GetTypeByID;
   end;
@@ -104,13 +105,13 @@ begin
     dtCurrency: Result := _Currency;
     dtBoolean: Result := _Boolean;
     dtAnsiChar: Result := _AnsiChar;
-    dtChar: Result := _Char;
+    dtChar: Result := _WideChar;
     dtShortString: Result := _ShortString;
     dtAnsiString: Result := _AnsiString;
-    dtString: Result := _String;
+    dtString: Result := _UnicodeString;
     dtWideString: Result := _WideString;
     dtPAnsiChar: Result := _PAnsiChar;
-    dtPWideChar: Result := _PChar;
+    dtPWideChar: Result := _PWideChar;
     dtVariant: Result := _Variant;
     dtGuid: Result := _GuidType;
     dtPointer: Result := _PointerType;

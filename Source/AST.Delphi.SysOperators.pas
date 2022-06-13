@@ -113,8 +113,8 @@ type
     function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
   end;
 
-  {implicit AnsiChar -> Char}
-  TSysImplicitAnsiCharToChar = class(TSysOpImplicit)
+  {implicit AnsiChar -> WideChar}
+  TSysImplicitAnsiCharToWideChar = class(TSysOpImplicit)
   public
     function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
   end;
@@ -385,7 +385,7 @@ end;
 function TSysImplicitCharToString.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
   if Src.IsConstant then
-    Exit(SYSUnit._String)
+    Exit(SYSUnit._UnicodeString)
   else
     Result := Self;
 end;
@@ -424,11 +424,11 @@ begin
   Result := nil;
 end;
 
-{ TSysImplicitAnsiCharToChar }
+{ TSysImplicitAnsiCharToWideChar }
 
-function TSysImplicitAnsiCharToChar.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+function TSysImplicitAnsiCharToWideChar.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
-  Result := nil;
+  Result := Dst;
 end;
 
 { TSysImplicitMetaClassToGUID }
@@ -587,7 +587,7 @@ begin
   end else begin
     Result :=
       ((Dst = SYSUnit._PAnsiChar) and (SrcElType = SYSUnit._AnsiChar)) or
-      ((Dst = SYSUnit._PChar) and (SrcElType = SYSUnit._Char));
+      ((Dst = SYSUnit._PWideChar) and (SrcElType = SYSUnit._WideChar));
   end;
 end;
 
@@ -623,7 +623,11 @@ begin
   Result := (Src.DataTypeID = dtAnsiString) or
             (Src.DataTypeID in [dtPointer, dtPAnsiChar, dtPWideChar]) or
             (
-              (Src.DataTypeID = dtStaticArray) and (TIDArray(Src).ElementDataType.DataTypeID = dtChar)
+              (Src.DataTypeID = dtStaticArray) and
+                (
+                  (TIDArray(Src).ElementDataType.DataTypeID = dtChar) or
+                  (TIDArray(Src).ElementDataType.DataTypeID = dtAnsiChar)
+                )
             );
 end;
 
@@ -702,9 +706,9 @@ begin
   if (Left.DataTypeID = dtStaticArray) and (Right.DataType.IsInteger) then
   begin
     var ADT := TIDArray(Left.DataType);
-    if ADT.ElementDataType = SYSUnit._Char then
+    if ADT.ElementDataType = SYSUnit._WideChar then
     begin
-      Result := TIDExpression.Create(GetTMPVar(SYSUnit._Char.DefaultReference));
+      Result := TIDExpression.Create(GetTMPVar(SYSUnit._WideChar.DefaultReference));
       Exit;
     end;
     if ADT.ElementDataType = SYSUnit._AnsiChar then
@@ -799,7 +803,7 @@ function TSysImplicitPointerFromAny.Check(const SContext: TSContext; const Src, 
 begin
   Result := (
     ((Dst.DataTypeID in [dtPAnsiChar]) and (Src.DataTypeID = dtStaticArray) and (TIDStaticArray(Src).ElementDataType = SYSUnit._AnsiChar)) or
-    ((Dst.DataTypeID in [dtPWideChar]) and (Src.DataTypeID = dtStaticArray) and (TIDStaticArray(Src).ElementDataType = SYSUnit._Char))
+    ((Dst.DataTypeID in [dtPWideChar]) and (Src.DataTypeID = dtStaticArray) and (TIDStaticArray(Src).ElementDataType = SYSUnit._WideChar))
   );
 end;
 

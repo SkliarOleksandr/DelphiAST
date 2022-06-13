@@ -2932,6 +2932,8 @@ var
   List: TIDPairList;
   ExistKey: TIDPairList.PAVLNode;
 begin
+  Assert(Assigned(Right));
+
   List := FBinarOperators[Op];
   if not Assigned(List) then begin
     List := TIDPairList.Create;
@@ -4415,7 +4417,8 @@ constructor TIDPointer.CreateAsSystem(Scope: TScope; const Name: string);
 begin
   inherited;
   fDataTypeID := dtPointer;
-  CreateStandardOperators;
+  // can't call CreateStandardOperators until all needed types will be initialized
+  // CreateStandardOperators;
 end;
 
 procedure TIDPointer.CreateStandardOperators;
@@ -5269,6 +5272,8 @@ begin
     procStatic: Result := Package.PointerSize;
     procMethod: Result := Package.PointerSize*2;
     procReference: Result := Package.PointerSize;
+  else
+    Result := 0;
   end;
 end;
 

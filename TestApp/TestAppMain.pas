@@ -41,6 +41,8 @@ type
     chkbShowSysDecls: TCheckBox;
     chkbShowConstValues: TCheckBox;
     chkbShowAnonymous: TCheckBox;
+    Splitter2: TSplitter;
+    Panel4: TPanel;
     procedure Button2Click(Sender: TObject);
     procedure Button1Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);

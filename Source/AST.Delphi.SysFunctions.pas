@@ -731,7 +731,7 @@ end;
 
 class function TSF_Chr.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
-  Result := Self.Create(Scope, 'Chr', SYSUnit._Char);
+  Result := Self.Create(Scope, 'Chr', SYSUnit._WideChar);
   Result.AddParam('X', SYSUnit._UInt8, []);
 end;
 
@@ -740,7 +740,7 @@ var
   Expr: TIDExpression;
 begin
   Expr := EContext.RPNPopExpression();
-  Result := TIDCastExpression.Create(Expr.Declaration, SYSUnit._Char, Expr.TextPosition);
+  Result := TIDCastExpression.Create(Expr.Declaration, SYSUnit._WideChar, Expr.TextPosition);
 end;
 
 { TSF_FillChar }
@@ -840,7 +840,7 @@ end;
 class function TSF_Val.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'Val', SYSUnit._Void);
-  Result.AddParam('S', SYSUnit._String, [VarConst]);
+  Result.AddParam('S', SYSUnit._UnicodeString, [VarConst]);
   Result.AddParam('V', SYSUnit._UntypedReference, [VarInOut]);
   Result.AddParam('Code', SYSUnit._Int32, []);
 end;
@@ -879,7 +879,7 @@ class function TSF_Str.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuilt
 begin
   Result := Self.Create(Scope, 'Str', SYSUnit._Void);
   Result.AddParam('X', SYSUnit._Void, [VarConst]);
-  Result.AddParam('S', SYSUnit._String, [VarInOut]);
+  Result.AddParam('S', SYSUnit._UnicodeString, [VarInOut]);
 end;
 
 function TSF_Str.Process(var EContext: TEContext): TIDExpression;
@@ -1134,7 +1134,7 @@ class function TSF_Assert.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBu
 begin
   Result := Self.Create(Scope, 'Assert', SYSUnit._Void);
   Result.AddParam('Condition', SYSUnit._Boolean, [VarConst]);
-  Result.AddParam('Message', SYSUnit._String, [VarConst], SYSUnit._NullPtrExpression);
+  Result.AddParam('Message', SYSUnit._UnicodeString, [VarConst], SYSUnit._NullPtrExpression);
 end;
 
 function TSF_Assert.Process(var EContext: TEContext): TIDExpression;
@@ -1270,7 +1270,7 @@ end;
 class function TSF_Delete.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'Delete', nil);
-  Result.AddParam('Source', SYSUnit._String, [VarInOut]);
+  Result.AddParam('Source', SYSUnit._UnicodeString, [VarInOut]);
   Result.AddParam('StartChar', SYSUnit._Int32, []);
   Result.AddParam('Count', SYSUnit._Int32, []);
 end;
@@ -1292,7 +1292,7 @@ class function TSF_GetDir.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBu
 begin
   Result := Self.Create(Scope, 'GetDir', nil);
   Result.AddParam('Drive', SYSUnit._UInt8, []);
-  Result.AddParam('Directory ', SYSUnit._String, [VarInOut]);
+  Result.AddParam('Directory ', SYSUnit._UnicodeString, [VarInOut]);
 end;
 
 function TSF_GetDir.Process(var EContext: TEContext): TIDExpression;

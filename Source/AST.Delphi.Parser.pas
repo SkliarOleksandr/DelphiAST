@@ -453,7 +453,7 @@ function StrConstExpression(const SContext: TSContext; const Value: string): TID
 var
   Decl: TIDStringConstant;
 begin
-  Decl := TIDStringConstant.CreateAsAnonymous(nil, SContext.SysUnit._String, Value);
+  Decl := TIDStringConstant.CreateAsAnonymous(nil, SContext.SysUnit._UnicodeString, Value);
   Result := TIDExpression.Create(Decl);
 end;
 
@@ -716,7 +716,9 @@ begin
     // case: array of const
     if (DataType = nil) and (Result = token_const) then
     begin
-      DataType := TSYSTEMUnit(SysUnit)._Variant;
+      DataType := TSYSTEMUnit(SysUnit).SystemDeclarations._TVarRec;
+      if not Assigned(DataType) then
+        AbortWorkInternal('System.TVarRec is not defined', Lexer_Position);
       Result := Lexer_NextToken(Scope);
     end;
     TIDDynArray(Decl).ElementDataType := DataType;
@@ -1862,7 +1864,7 @@ begin
 
   case Destination.DataTypeID of
     dtSet: begin
-      DstElementDataType := TIDSet(Destination){.BaseType}; // tmp
+      DstElementDataType := TIDSet(Destination).BaseType;
     end;
     dtDynArray, dtOpenArray: begin
       DstElementDataType := TIDDynArray(Destination).ElementDataType;
@@ -1903,12 +1905,14 @@ begin
 
   if not Assigned(Result) then
   begin
+    // if there is no operator found, let's assume that the left operand can be a function...
     Left := CheckAndCallFuncImplicit(SContext, Left, WasCall);
     if WasCall then
       Result := DoMatchBinarOperator(SContext, OpID, Left, Right);
 
     if not Assigned(Result) then
     begin
+      // if there is no operator found, let's assume that the right operand can be a function...
       Right := CheckAndCallFuncImplicit(SContext, Right, WasCall);
       if WasCall then
         Result := FindBinaryOperator(SContext, OpID, Left, Right);
@@ -1932,7 +1936,7 @@ begin
   Node := Operators.First;
   while Assigned(Node) do begin
     ParamDataType := TIDType(Node.Key);
-    ImplicitCast := MatchImplicit(Right, ParamDataType);
+    ImplicitCast := MatchImplicit({Source:} Right, {Destination:} ParamDataType);
     if Assigned(ImplicitCast) then begin
       ParamFactor := ImplicitFactor2(Right.DataTypeID, ParamDataType.DataTypeID);
       if ParamFactor > BetterFactor then begin
@@ -4252,9 +4256,7 @@ begin
   if (Source.Declaration.ItemType = itConst) and (SrcDTID = dtDynArray) then
     Result := MatchConstDynArrayImplicit(SContext, Source, Dest)
   else begin
-    Result := Dest.GetImplicitOperatorFrom(SDataType);
-    if not Assigned(Result) then
-      Result := MatchDynArrayImplicit(Source, Dest);
+    Result := MatchDynArrayImplicit(Source, Dest);
   end;
   if (DstDTID = dtGeneric) or (SrcDTID = dtGeneric) then
     Exit(Source.AsType); // нужна еще проверка на констрейты
@@ -5795,21 +5797,21 @@ var
 begin
   Value := ID.Name;
   case IdentifierType of
-    itChar: CItem := TIDCharConstant.CreateAsAnonymous(Scope, Sys._Char, Value[1]);
+    itChar: CItem := TIDCharConstant.CreateAsAnonymous(Scope, Sys._WideChar, Value[1]);
     itString: begin
         // если чарсет метаданных равен ASCII, все строковые константы
         // удовлетворающе набору ASCII, создаются по умолчанию с типом AnsiString
         if (Package.RTTICharset = RTTICharsetASCII) and IsAnsiString(Value) then
           DataType := Sys._AnsiString
         else
-          DataType := Sys._String;
+          DataType := Sys._UnicodeString;
       CItem := TIDStringConstant.CreateAsAnonymous(Scope, DataType, Value);
     end;
     itInteger: begin
       if Value[1] = '#' then begin
         Value := Copy(Value, 2, Length(Value) - 1);
         if TryStrToInt(Value, Int32Value) then
-          CItem := TIDCharConstant.CreateAsAnonymous(Scope, Sys._Char, Char(Int32Value))
+          CItem := TIDCharConstant.CreateAsAnonymous(Scope, Sys._WideChar, Char(Int32Value))
         else
           AbortWorkInternal('int convert error', Lexer_Position);
       end else begin
@@ -5876,12 +5878,12 @@ begin
         if (Package.RTTICharset = RTTICharsetASCII) and IsAnsiString(Value) then
           DataType := Sys._AnsiString
         else
-          DataType := Sys._String;
+          DataType := Sys._UnicodeString;
 
         CItem := TIDStringConstant.CreateAsAnonymous(Scope, DataType, Value);
       end else
       // this is a char
-        CItem := TIDCharConstant.CreateAsAnonymous(Scope, Sys._Char, Char(StrToInt(Chars[0])));
+        CItem := TIDCharConstant.CreateAsAnonymous(Scope, Sys._WideChar, Char(StrToInt(Chars[0])));
     end;
   else
     ERRORS.INTERNAL;
@@ -7928,7 +7930,7 @@ begin
 
     if PMContext.ItemScope is TConditionalScope then
     begin
-      Decl := TIDStringConstant.CreateAsAnonymous(PMContext.ItemScope, Sys._String, PMContext.ID.Name);
+      Decl := TIDStringConstant.CreateAsAnonymous(PMContext.ItemScope, Sys._UnicodeString, PMContext.ID.Name);
     end;
 
     if not Assigned(Decl) then
@@ -9201,7 +9203,7 @@ end;
 
 class procedure TASTDelphiUnit.CheckStringExpression(Expression: TIDExpression);
 begin
-  if MatchImplicit(Expression.DataType, Expression.Declaration.SysUnit._String) = nil then
+  if MatchImplicit(Expression.DataType, Expression.Declaration.SysUnit._UnicodeString) = nil then
     AbortWork(sStringExpressionRequired, Expression.TextPosition);
 end;
 

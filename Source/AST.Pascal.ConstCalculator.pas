@@ -174,7 +174,7 @@ function TExpressionCalculator.ProcessConstOperation(const Left, Right: TIDConst
     case Operation of
       opAdd: begin
         sValue := LValue + RValue;
-        Result := TIDStringConstant.CreateAsAnonymous(Left.Scope, Sys._String, sValue);
+        Result := TIDStringConstant.CreateAsAnonymous(Left.Scope, Sys._UnicodeString, sValue);
       end;
       opEqual,
       opNotEqual: begin
@@ -375,7 +375,7 @@ function TExpressionCalculator.ProcessConstOperation(Left, Right: TIDExpression;
     case Operation of
       opAdd: begin
         sValue := LValue + RValue;
-        Result := TIDStringConstant.CreateWithoutScope(Sys._String, sValue);
+        Result := TIDStringConstant.CreateWithoutScope(Sys._UnicodeString, sValue);
       end;
       opEqual,
       opNotEqual: begin
@@ -398,7 +398,7 @@ function TExpressionCalculator.ProcessConstOperation(Left, Right: TIDExpression;
     case Operation of
       opAdd: begin
         sValue := LValue + RValue;
-        Result := TIDStringConstant.CreateWithoutScope(Sys._String, sValue);
+        Result := TIDStringConstant.CreateWithoutScope(Sys._UnicodeString, sValue);
       end;
       opEqual,
       opNotEqual,
