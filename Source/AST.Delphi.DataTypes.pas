@@ -389,9 +389,9 @@ begin
   // Boolean /////////////////////////////////////////
   Rate(dtBoolean, [dtBoolean, dtUntypedRef, dtVariant]);
   // AnsiChar /////////////////////////////////////////
-  Rate(dtAnsiChar, [dtAnsiChar, dtUntypedRef, dtVariant]);
+  Rate(dtAnsiChar, [dtAnsiChar, dtAnsiString, dtUntypedRef, dtVariant]);
   // Char /////////////////////////////////////////
-  Rate(dtChar, [dtChar, dtUntypedRef, dtVariant]);
+  Rate(dtChar, [dtChar, dtString, dtUntypedRef, dtVariant]);
   // ShortString /////////////////////////////////////////
   Rate(dtShortString, [dtShortString, dtAnsiString, dtUntypedRef, dtVariant, dtString, dtWideString]);
   // AnsiString /////////////////////////////////////////

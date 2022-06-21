@@ -313,6 +313,13 @@ type
     function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; override;
   end;
 
+  {operator Set * Set}
+
+  TSys_Multiply_Set = class(TSysOpBinary)
+  public
+    function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; override;
+  end;
+
 
 implementation
 
@@ -831,6 +838,14 @@ end;
 function TSysExplicitStaticArrayToAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
   Result := Src.DataSize = Dst.DataSize;
+end;
+
+{ TSys_Multiply_Set }
+
+function TSys_Multiply_Set.Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression;
+begin
+  // todo:
+  Result := Left;
 end;
 
 end.

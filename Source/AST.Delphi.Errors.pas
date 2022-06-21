@@ -72,7 +72,7 @@ resourcestring
   sNoOverloadOperatorForTypeFmt = 'No overload operator "%s" for type "%s"';
   sUnknownOperatorFmt = 'Unknown operator "%s"';
   sOperatorNeedNCountOfParameters = 'Operator "%s" need %d explicit parameters';
-  sIncompatibleTypesFmt = 'Incompatible types: "%s" and "%s"';
+  sIncompatibleTypesFmt = 'Incompatible types: Src: "%s" and Dst: "%s"';
   sInvalidTypecastFmt = 'Can not explicitly convert type "%s" into "%s"';
   sEmptyExpression = 'Empty expression';
   sExpressionMustBeBoolean = 'Type of expression must be BOOLEAN';

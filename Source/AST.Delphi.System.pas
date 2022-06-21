@@ -105,18 +105,16 @@ type
     ExplicitCharToAny,
     ExplicitRangeFromAny,
     ExplicitRecordToAny,
-    ExplicitStaticArrayToAny
-    : TIDOperator;
+    ExplicitStaticArrayToAny: TIDOperator;
     // any cast
     IsOrdinal: TIDOperator;
     // in
-    Ordinal_In_Set
-    : TIDOperator;
+    Ordinal_In_Set: TIDOperator;
     // add
-    StaticArray_Add
-    : TIDOperator;
-    Ptr_IntDiv_Int
-    : TIDOperator;
+    StaticArray_Add: TIDOperator;
+    Ptr_IntDiv_Int: TIDOperator;
+    // Set Multiplay
+    Multiply_Set: TIDOperator;
     procedure Init(Scope: TScope);
   end;
 
@@ -394,7 +392,6 @@ begin
   _UnicodeString.OverloadImplicitFrom(_PWideChar);
   _UnicodeString.OverloadImplicitFromAny(Operators.ImplicitStringFromAny);
 
-
   // ShortString
   _ShortString.OverloadImplicitTo(_AnsiString);
   _ShortString.OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
@@ -417,8 +414,9 @@ begin
   // WideString
   _WideString.OverloadImplicitTo(_UnicodeString);
 
-  // Char
+  // WideChar
   _WideChar.OverloadImplicitTo(_WideChar);
+  _WideChar.OverloadImplicitTo(_PWideChar);
   _WideChar.OverloadImplicitTo(_UnicodeString, Operators.ImplicitCharToString);
   _WideChar.OverloadImplicitTo(_AnsiString, Operators.ImplicitCharToAnsiString);
   _WideChar.OverloadImplicitTo(_AnsiChar, Operators.ImplicitCharToAnsiChar);
@@ -426,6 +424,7 @@ begin
 
   // AnsiChar
   _AnsiChar.OverloadImplicitTo(_AnsiChar);
+  _AnsiChar.OverloadImplicitTo(_PAnsiChar);
   _AnsiChar.OverloadImplicitTo(_AnsiString, Operators.ImplicitAnsiCharToAnsiString);
   _AnsiChar.OverloadImplicitTo(_UnicodeString, Operators.ImplicitAnsiCharToString);
   _AnsiChar.OverloadImplicitTo(_WideChar, Operators.ImplicitAnsiCharToWideChar);
@@ -650,6 +649,7 @@ begin
   fDecls._TVarRec.OverloadImplicitFrom(fDecls._TObject);
   fDecls._TVarRec.OverloadImplicitFrom(fDecls._Variant);
   fDecls._TVarRec.OverloadImplicitFrom(fDecls._Currency);
+  fDecls._TVarRec.OverloadImplicitFrom(fDecls._Float80);
   fDecls._TVarRec.OverloadImplicitFrom(fDecls._AnsiString);
   fDecls._TVarRec.OverloadImplicitFrom(fDecls._UnicodeString);
 
@@ -664,6 +664,7 @@ begin
   fDecls._TVarRec.OverloadImplicitTo(fDecls._TObject);
   fDecls._TVarRec.OverloadImplicitTo(fDecls._Variant);
   fDecls._TVarRec.OverloadImplicitTo(fDecls._Currency);
+  fDecls._TVarRec.OverloadImplicitTo(fDecls._Float80);
   fDecls._TVarRec.OverloadImplicitTo(fDecls._AnsiString);
   fDecls._TVarRec.OverloadImplicitTo(fDecls._UnicodeString);
 end;
@@ -1281,6 +1282,8 @@ begin
   // add
   StaticArray_Add := TSys_StaticArray_Add.CreateAsSystem(Scope);
   Ptr_IntDiv_Int := TSys_Ptr_IntDiv_Int.CreateAsSystem(Scope);
+
+  Multiply_Set := TSys_Multiply_Set.CreateAsSystem(Scope);
 end;
 
 initialization

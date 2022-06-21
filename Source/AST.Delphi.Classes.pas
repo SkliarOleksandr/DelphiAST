@@ -3073,7 +3073,7 @@ end;
 procedure TIDType.AddBinarySysOperator(Op: TOperatorID; Decl: TIDOperator);
 begin
   if Assigned(fSysBinaryOperators[Op]) then
-    ERROR_OPERATOR_ALREADY_OVERLOADED(Op, Self, nil, TTextPosition.Empty);
+    ERROR_OPERATOR_ALREADY_OVERLOADED(Op, Self, Self, TTextPosition.Empty);
 
   fSysBinaryOperators[Op] := Decl;
 end;
@@ -4621,6 +4621,7 @@ begin
   OverloadBinarOperator2(opAdd, Self, Self);
   OverloadImplicitToAny(SYSUnit.Operators.ImplicitArrayToAny);
   AddBinarySysOperator(opIn, SYSUnit.Operators.Ordinal_In_Set);
+  AddBinarySysOperator(opMultiply, SYSUnit.Operators.Multiply_Set);
   OverloadImplicitFromAny(SYSUnit.Operators.ImplicitSetFromAny);
 end;
 
