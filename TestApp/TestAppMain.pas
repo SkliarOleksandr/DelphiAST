@@ -6,7 +6,8 @@ uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, System.Generics.Collections, AST.Pascal.Project,
   AST.Pascal.Parser, AST.Delphi.Classes, SynEdit, SynEditHighlighter, SynEditCodeFolding, SynHighlighterPas, AST.Delphi.Project,
-  Vcl.ComCtrls, System.Types, Vcl.ExtCtrls, AST.Intf, AST.Parser.ProcessStatuses, Vcl.CheckLst;   // system
+  Vcl.ComCtrls, System.Types, Vcl.ExtCtrls, AST.Intf, AST.Parser.ProcessStatuses, Vcl.CheckLst, SynEditMiscClasses,
+  SynEditSearch;   // system
 
 type
   TSourceFileInfo = record
@@ -43,11 +44,16 @@ type
     chkbShowAnonymous: TCheckBox;
     Splitter2: TSplitter;
     Panel4: TPanel;
+    SynEditSearch1: TSynEditSearch;
+    Panel5: TPanel;
+    Button5: TButton;
+    NSSearchEdit: TEdit;
     procedure Button2Click(Sender: TObject);
     procedure Button1Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
     procedure Button4Click(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure Button5Click(Sender: TObject);
   private
     { Private declarations }
     //fPKG: INPPackage;
@@ -326,6 +332,11 @@ begin
   finally
     Msg.Free;
   end;
+end;
+
+procedure TfrmTestAppMain.Button5Click(Sender: TObject);
+begin
+  edAllItems.SearchReplace(NSSearchEdit.Text, '', []);
 end;
 
 procedure TfrmTestAppMain.FormCreate(Sender: TObject);
