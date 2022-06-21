@@ -428,11 +428,11 @@ begin
   if not Assigned(Expr) then
     AbortWork('DEFINE String expected', TTextPosition.Empty);
 
-  if Ctx.Scope.FindIDRecurcive(Expr.AsStrConst.Value) <> nil then
+  // take the name of the declaration (could be any, const, type, etc) and find it in the scope...
+  if Ctx.Scope.FindIDRecurcive(Expr.Declaration.Name) <> nil then
     Result := SYSUnit._TrueExpression
   else
     Result := SYSUnit._FalseExpression;
-
 end;
 
 class function TSCTF_Declared.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;

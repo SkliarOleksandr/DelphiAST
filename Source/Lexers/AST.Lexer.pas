@@ -584,7 +584,7 @@ begin
   if QuoteChar = '''' then
     fCurrentToken := StringReplace(fCurrentToken, '''''', '''', [rfReplaceAll]);
 
-  if ReadedChars = 1 then
+  if Length(fCurrentToken) = 1 then
     fIdentifireType := itChar
   else
     fIdentifireType := itString;

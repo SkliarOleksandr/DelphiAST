@@ -3407,12 +3407,12 @@ end; *)
 
 function TIDExpression.GetAsArrayConst: TIDDynArrayConstant;
 begin
-  Result := TIDDynArrayConstant(FDeclaration);
+  Result := FDeclaration as TIDDynArrayConstant;
 end;
 
 function TIDExpression.GetAsBoolConst: TIDBooleanConstant;
 begin
-  Result := TIDBooleanConstant(FDeclaration);
+  Result := FDeclaration as TIDBooleanConstant;
 end;
 
 function TIDExpression.GetAsCharConst: TIDCharConstant;
@@ -3422,57 +3422,57 @@ end;
 
 function TIDExpression.GetAsClosure: TIDClosure;
 begin
-  Result := TIDClosure(FDeclaration);
+  Result := FDeclaration as TIDClosure;
 end;
 
 function TIDExpression.GetAsConst: TIDConstant;
 begin
-  Result := TIDConstant(FDeclaration);
+  Result := FDeclaration as TIDConstant;
 end;
 
 function TIDExpression.GetAsDynArrayConst: TIDDynArrayConstant;
 begin
-  Result := TIDDynArrayConstant(FDeclaration);
+  Result := FDeclaration as TIDDynArrayConstant;
 end;
 
 function TIDExpression.GetAsIntConst: TIDIntConstant;
 begin
-  Result := TIDIntConstant(FDeclaration);
+  Result := FDeclaration as TIDIntConstant;
 end;
 
 function TIDExpression.GetAsProcedure: TIDProcedure;
 begin
-  Result := TIDProcedure(FDeclaration);
+  Result := FDeclaration as TIDProcedure;
 end;
 
 function TIDExpression.GetAsProperty: TIDProperty;
 begin
-  Result := TIDProperty(FDeclaration);
+  Result := FDeclaration as TIDProperty;
 end;
 
 function TIDExpression.GetAsRangeConst: TIDRangeConstant;
 begin
-  Result := TIDRangeConstant(FDeclaration);
+  Result := FDeclaration as TIDRangeConstant;
 end;
 
 function TIDExpression.GetAsStrConst: TIDStringConstant;
 begin
-  Result := TIDStringConstant(FDeclaration);
+  Result := FDeclaration as TIDStringConstant;
 end;
 
 function TIDExpression.GetAsType: TIDType;
 begin
-  Result := TIDType(FDeclaration);
+  Result := FDeclaration as TIDType;
 end;
 
 function TIDExpression.GetAsUnit: TIDUnit;
 begin
-  Result := TIDUnit(fDeclaration);
+  Result := fDeclaration as TIDUnit;
 end;
 
 function TIDExpression.GetAsVariable: TIDVariable;
 begin
-  Result := TIDVariable(FDeclaration);
+  Result := FDeclaration as TIDVariable;
 end;
 
 function TIDExpression.GetCValue: TIDConstant;

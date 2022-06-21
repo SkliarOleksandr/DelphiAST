@@ -1215,9 +1215,6 @@ begin
     end;
   end;
 
-  if pfDestructor in CallExpr.AsProcedure.Flags then
-    ERRORS.DESTRUCTOR_CANNOT_BE_CALL_DIRECTLY;
-
   TIDCallExpression(CallExpr).ArgumentsCount := ArgumentsCount;
   EContext.RPNPushExpression(CallExpr);
   EContext.RPNPushOperator(opCall);
@@ -2090,8 +2087,26 @@ begin
 end;
 
 procedure TASTDelphiUnit.Process_operator_Assign(var EContext: TEContext);
+
+  function IsSameRef(const Dst, Src: TIDExpression): Boolean;
+  begin
+    if Src.ItemType = itVar then
+      Result := Dst.AsVariable.Reference = Src.AsVariable.Reference
+    else
+      Result := False;
+  end;
+
 begin
-  //
+  var Source := EContext.RPNPopExpression;
+  var Dest := EContext.RPNPopExpression;
+
+  // todo: there are so many erros if do MatchImplicit, let's do it later))
+
+  {check Implicit}
+//  var NewSrc := MatchImplicit3(EContext.SContext, Source, Dest.DataType);
+//  if not Assigned(NewSrc) then
+//    ERRORS.INCOMPATIBLE_TYPES(Source, Dest);
+//  CheckVarExpression(Dest, vmpAssignment);
 end;
 
 function TASTDelphiUnit.Process_operator_Deref(var EContext: TEContext): TIDExpression;
@@ -3303,6 +3318,7 @@ begin
 end;
 
 function TASTDelphiUnit.MatchImplicitOrNil(const SContext: TSContext; Source: TIDExpression; Dest: TIDType): TIDExpression;
+
   function CheckAndCallOperator(const SContext: TSContext; OperatorDecl: TIDDeclaration; Src: TIDExpression): TIDExpression;
   var
     CallExpr: TIDCallExpression;
@@ -3311,6 +3327,7 @@ function TASTDelphiUnit.MatchImplicitOrNil(const SContext: TSContext; Source: TI
     CallExpr.ArgumentsCount := 1;
     Result := Process_CALL_direct(SContext, CallExpr, TIDExpressions.Create(Src));
   end;
+
 var
   SDataType: TIDType;
   Decl: TIDDeclaration;
@@ -4262,7 +4279,10 @@ begin
     Result := MatchDynArrayImplicit(Source, Dest);
   end;
   if (DstDTID = dtGeneric) or (SrcDTID = dtGeneric) then
-    Exit(Source.AsType); // нужна еще проверка на констрейты
+  begin
+     // todo: constrains
+     Exit(Source.Declaration);
+  end;
 end;
 
 function TASTDelphiUnit.ParseAnonymousProc(Scope: TScope; var EContext: TEContext; const SContext: TSContext; ProcType: TTokenID): TTokenID;

@@ -507,20 +507,32 @@ end;
 
 function TSysExplicitTProcFromAny.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
+  var ASrcParams: TVariableList;
+  var ASrcResultType: TIDType;
+  var DstProcType := Dst as TIDProcType;
+
   if Src.ItemType = itProcedure then
   begin
-    var SrcProc := Src.AsProcedure;
-    var DstProcType := Dst as TIDProcType;
-    if TASTDelphiUnit.StrictMatchProcSingnatures(SrcProc.ExplicitParams, DstProcType.Params, SrcProc.ResultType, DstProcType.ResultType) then
+    ASrcParams := Src.AsProcedure.ExplicitParams;
+    ASrcResultType := Src.AsProcedure.ResultType;
+  end else
+  if Src.DataTypeID = dtProcType then
+  begin
+    var ASrcProcType := Src.DataType as TIDProcType;
+    ASrcParams := ASrcProcType.Params;
+    ASrcResultType := ASrcProcType.ResultType;
+  end else
+  begin
+    if (Src.DataTypeID = dtPointer) and DstProcType.IsStatic then
       Exit(Dst)
     else
       Exit(nil);
   end;
 
-  if (Src.DataTypeID = dtPointer) and (Dst as TIDProcType).IsStatic then
-    Result := Dst
+  if TASTDelphiUnit.StrictMatchProcSingnatures(ASrcParams, DstProcType.Params, ASrcResultType, DstProcType.ResultType) then
+    Exit(Dst)
   else
-    Result := nil;
+    Exit(nil);
 end;
 
 { TSysExplicitEnumToAny }
