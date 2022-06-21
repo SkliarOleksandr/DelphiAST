@@ -22,8 +22,8 @@ type
     ttHexPrefix,
     ttUnicodeChars,
     ttBinPrefix,
-    ttQuote,
-    ttQuoteMulti,
+    ttSingleQuote,
+    ttDoubleQuote,
     ttOneLineRem,
     ttStartRem,
     ttEndRem
@@ -152,7 +152,7 @@ type
     procedure ParseDidgit(SPos: Integer);
     procedure ParseCharCode(SPos: Integer); overload;
     procedure ParseQuote(Ch: Char; SPos: Integer);
-    function ParseQuoteMulti(Ch: Char; SPos: Integer): Integer;
+    function ParseDoubleQuote(Ch: Char; SPos: Integer): Integer;
     procedure ParseUnicodeChars(SPos: Integer);
     procedure ParseBinPrefix(SPos: Integer);
     procedure ParseHexPrefix(SPos: Integer);
@@ -377,13 +377,9 @@ begin
         Result := fIdentifireId;
         Exit;
       end;
-      ttQuote: begin
+      ttSingleQuote, ttDoubleQuote: begin
         ParseQuote(Ch, SPos);
         Result := fIdentifireId;
-        Exit;
-      end;
-      ttQuoteMulti: begin
-        Result := ParseQuoteMulti(Ch, SPos);
         Exit;
       end;
       ttOneLineRem: begin
@@ -583,7 +579,10 @@ begin
   end;
   // read identifier:
   fCurrentToken := Copy(fSource, SPos - ReadedChars, ReadedChars);
-  fCurrentToken := StringReplace(fCurrentToken, '''''', '''', [rfReplaceAll]);
+
+  // replace double <''> with single <'>
+  if QuoteChar = '''' then
+    fCurrentToken := StringReplace(fCurrentToken, '''''', '''', [rfReplaceAll]);
 
   if ReadedChars = 1 then
     fIdentifireType := itChar
@@ -597,7 +596,7 @@ begin
 //  Inc(SPos);
 end;
 
-function TGenericLexer.ParseQuoteMulti(Ch: Char; SPos: Integer): Integer;
+function TGenericLexer.ParseDoubleQuote(Ch: Char; SPos: Integer): Integer;
 var
   QuoteChar: Char;
   SignIdx, SPos2, ReadedChars, SignReadedChars, SignLen: Integer;

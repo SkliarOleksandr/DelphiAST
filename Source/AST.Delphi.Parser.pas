@@ -3741,7 +3741,10 @@ function TASTDelphiUnit.MatchOverloadProc(const SContext: TSContext; Item: TIDEx
 
     Str := Str + #13#10'  Arguments: (' + Args + ')';
 
-    AbortWork(sAmbiguousOverloadedCallFmt, [Str], Item.TextPosition);
+    // just warning, to not block parsing process
+    // todo: AST parser doesn't have ability to resolve an ambiguous
+    // in case argument array [..] of Char and params (1. PAnsiChar, 2. untyped ref)
+    Warning(sAmbiguousOverloadedCallFmt, [Str], Item.TextPosition);
   end;
 
 const
