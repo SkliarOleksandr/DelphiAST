@@ -187,6 +187,18 @@ type
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
+  {implicit TVarRec -> Any}
+  TSysImplicitTVarRecToAny = class(TSysOpImplicit)
+  public
+    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
+  {implicit TVarRec <- Any}
+  TSysImplicitTVarRecFromAny = class(TSysOpImplicit)
+  public
+    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
   ///////////////////////////////////////////////////////////////////////////////////////////
   /// EXPLICIT
   ///////////////////////////////////////////////////////////////////////////////////////////
@@ -320,6 +332,11 @@ type
     function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; override;
   end;
 
+  {operator [...] = [...]}
+  TSys_Equal_DynArray = class(TSysOpBinary)
+  public
+    function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; override;
+  end;
 
 implementation
 
@@ -792,7 +809,7 @@ function TSysImplicitSetFromAny.Check(const SContext: TSContext; const Src: TIDE
 begin
   Result := nil;
   if Src.IsDynArrayConst then
-    Result := TASTDelphiUnit.MatchConstDynArrayImplicit(SContext, Src, Dst);
+    Result := TASTDelphiUnit.CheckConstDynArrayImplicit(SContext, Src, Dst);
 end;
 
 function TSysImplicitSetFromAny.Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
@@ -800,7 +817,7 @@ begin
   Result := nil;
   if Src.IsDynArrayConst then
   begin
-    var Implicit := TASTDelphiUnit.MatchConstDynArrayImplicit(SContext, Src, Dst);
+    var Implicit := TASTDelphiUnit.CheckConstDynArrayImplicit(SContext, Src, Dst);
     if Assigned(Implicit) and (Src.DataTypeID <> dtSet) then
     begin
       var Decl := TIDSetConstant.CreateAsAnonymous(SContext.Scope, Dst, Src.AsDynArrayConst.Value);
@@ -847,6 +864,43 @@ begin
   // todo:
   Result := Left;
 end;
+
+{ TSys_Equal_DynArray }
+
+function TSys_Equal_DynArray.Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression;
+begin
+  // todo:
+  Result := SYSUnit._TrueExpression;
+end;
+
+{ TSysImplicitTVarRecToAny }
+
+function TSysImplicitTVarRecToAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
+begin
+  case Dst.DataTypeID of
+    dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64,
+    dtNativeInt, dtNativeUInt, dtFloat32, dtFloat64, dtFloat80, dtCurrency, dtBoolean,
+    dtAnsiChar, dtChar, dtAnsiString, dtString, dtShortString, dtPAnsiChar, dtPWideChar,
+    dtClass, dtClassOf, dtInterface: Result := True;
+  else
+    Result := False;
+  end;
+end;
+
+{ TSysImplicitTVarRecFromAny }
+
+function TSysImplicitTVarRecFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
+begin
+  case Src.DataTypeID of
+    dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64,
+    dtNativeInt, dtNativeUInt, dtFloat32, dtFloat64, dtFloat80, dtCurrency, dtBoolean,
+    dtAnsiChar, dtChar, dtAnsiString, dtString, dtShortString, dtPAnsiChar, dtPWideChar,
+    dtClass, dtClassOf, dtInterface: Result := True;
+  else
+    Result := False;
+  end;
+end;
+
 
 end.
 

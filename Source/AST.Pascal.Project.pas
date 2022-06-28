@@ -74,6 +74,8 @@ type
     function GetPointerSize: Integer; override;
     function GetNativeIntSize: Integer; override;
     procedure InitSystemUnit; virtual;
+    procedure DoBeforeCompileUnit(AUnit: TASTModule); virtual;
+    procedure DoFinishCompileUnit(AUnit: TASTModule); virtual;
   public
     constructor Create(const Name: string); override;
     destructor Destroy; override;
@@ -421,6 +423,16 @@ begin
   FUnitSearchPathes.Free;
   FOptions.Free;
   inherited;
+end;
+
+procedure TPascalProject.DoBeforeCompileUnit(AUnit: TASTModule);
+begin
+  // do nothing
+end;
+
+procedure TPascalProject.DoFinishCompileUnit(AUnit: TASTModule);
+begin
+  // do nothing
 end;
 
 procedure TPascalProject.EnumIntfDeclarations(const EnumProc: TEnumASTDeclProc);

@@ -43,6 +43,8 @@ type
     procedure AddUnitSearchPath(const Path: string; IncludeSubDirectories: Boolean = True);
     procedure Clear;
     procedure EnumIntfDeclarations(const EnumProc: TEnumASTDeclProc);
+    procedure DoBeforeCompileUnit(AUnit: TASTModule);
+    procedure DoFinishCompileUnit(AUnit: TASTModule);
     function GetMessages: ICompilerMessages;
     function GetRTTICharset: TRTTICharset;
     function RefCount: Integer;

@@ -709,6 +709,7 @@ type
     procedure AddBound(Bound: TIDOrdinal);
     procedure IncRefCount(RCPath: UInt32); override;
     procedure DecRefCount(RCPath: UInt32); override;
+    function IsOpenArrayOfConst: Boolean;
   end;
 
   {set}
@@ -747,6 +748,7 @@ type
     constructor Create(Scope: TScope; const Name: TIdentifier); override;
     constructor CreateAsAnonymous(Scope: TScope); override;
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
+    procedure CreateStandardOperators; override;
     ////////////////////////////////////////////////////////////////////////////
   end;
 
@@ -4192,8 +4194,6 @@ procedure TIDArray.CreateStandardOperators;
 begin
   inherited;
   OverloadImplicitTo(Self);
-  OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
-  OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
   OverloadImplicitToAny(SYSUnit.Operators.ImplicitArrayToAny);
   AddBinarySysOperator(opIn, SYSUnit.Operators.Ordinal_In_Set);
 end;
@@ -4266,6 +4266,11 @@ begin
   for i := 0 to FDimensionsCount - 1 do
     FDimensions[i].IncRefCount(RCPath);
   ElementDataType.IncRefCount(RCPath);
+end;
+
+function TIDArray.IsOpenArrayOfConst: Boolean;
+begin
+  Result := (DataTypeID = dtOpenArray) and (ElementDataType = SYSUnit.SystemDeclarations._TVarRec);
 end;
 
 procedure TIDArray.DecRefCount(RCPath: UInt32);
@@ -4586,6 +4591,12 @@ begin
   FDataTypeID := dtDynArray;
   if Assigned(SYSUnit) then
     AddBound(TIDOrdinal(SYSUnit._NativeUInt));
+end;
+
+procedure TIDDynArray.CreateStandardOperators;
+begin
+  inherited;
+  AddBinarySysOperator(opEqual, SYSUnit.Operators.Equal_DynArray);
 end;
 
 function TIDDynArray.GetDimension(Index: Integer): TIDOrdinal;

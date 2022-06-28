@@ -75,6 +75,13 @@ type
     class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {Default}
+  TSCTF_Default = class(TIDSysCompileFunction)
+  public
+    function Process(const Ctx: TSysFunctionContext): TIDExpression; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
   {Delete}
   TSF_Delete = class(TIDSysRuntimeFunction)
   public
@@ -330,6 +337,13 @@ type
 
   {Pi}
   TSF_Pi = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
+  {Pi}
+  TSF_Insert = class(TIDSysRuntimeFunction)
   public
     function Process(var EContext: TEContext): TIDExpression; override;
     class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
@@ -1302,6 +1316,40 @@ begin
   // read arguments
   A2 := EContext.RPNPopExpression();
   A1 := EContext.RPNPopExpression();
+  Result := nil;
+end;
+
+{ TSCTF_Default }
+
+class function TSCTF_Default.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Default', SYSUnit._Void);
+  Result.AddParam('Type', SYSUnit._Untyped, [VarConst]);
+end;
+
+function TSCTF_Default.Process(const Ctx: TSysFunctionContext): TIDExpression;
+begin
+  var ATypeExpr := Ctx.EContext.RPNPopExpression();
+  Ctx.UN.CheckType(ATypeExpr);
+  var ResVar := Ctx.EContext.SContext.Proc.GetTMPVar(ATypeExpr.AsType);
+  Result := TIDExpression.Create(ResVar, Ctx.UN.Lexer_Position);
+end;
+
+{ TSF_Insert }
+
+class function TSF_Insert.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Insert', SYSUnit._Void);
+  Result.AddParam('Source', SYSUnit._Untyped, [VarInOut]);
+  Result.AddParam('Dest', SYSUnit._Untyped, [VarInOut]);
+  Result.AddParam('Index', SYSUnit._Int32, []);
+end;
+
+function TSF_Insert.Process(var EContext: TEContext): TIDExpression;
+begin
+  var A3 := EContext.RPNPopExpression();
+  var A2 := EContext.RPNPopExpression();
+  var A1 := EContext.RPNPopExpression();
   Result := nil;
 end;
 

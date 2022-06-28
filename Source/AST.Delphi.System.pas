@@ -86,8 +86,9 @@ type
     ImplicitClassToClass,
     ImplicitArrayToAny,
     ImplicitSetFromAny,
-    ImplicitNullPtrToAny
-
+    ImplicitNullPtrToAny,
+    ImplicitTVarRecToAny,
+    ImplicitTVarRecFromAny
     : TIDOperator;
     // explicits
     ExplicitStringFromAny,
@@ -115,6 +116,8 @@ type
     Ptr_IntDiv_Int: TIDOperator;
     // Set Multiplay
     Multiply_Set: TIDOperator;
+    // DynArray
+    Equal_DynArray: TIDOperator;
     procedure Init(Scope: TScope);
   end;
 
@@ -638,35 +641,8 @@ end;
 
 procedure TSYSTEMUnit.AddTVarRecImplicitOperators;
 begin
-  fDecls._TVarRec.OverloadImplicitFrom(fDecls._Int32);
-  fDecls._TVarRec.OverloadImplicitFrom(fDecls._Int64);
-  fDecls._TVarRec.OverloadImplicitFrom(fDecls._Boolean);
-  fDecls._TVarRec.OverloadImplicitFrom(fDecls._AnsiChar);
-  fDecls._TVarRec.OverloadImplicitFrom(fDecls._WideChar);
-  fDecls._TVarRec.OverloadImplicitFrom(fDecls._PAnsiChar);
-  fDecls._TVarRec.OverloadImplicitFrom(fDecls._PWideChar);
-  fDecls._TVarRec.OverloadImplicitFrom(fDecls._PointerType);
-  fDecls._TVarRec.OverloadImplicitFrom(fDecls._TObject);
-  fDecls._TVarRec.OverloadImplicitFrom(fDecls._Variant);
-  fDecls._TVarRec.OverloadImplicitFrom(fDecls._Currency);
-  fDecls._TVarRec.OverloadImplicitFrom(fDecls._Float80);
-  fDecls._TVarRec.OverloadImplicitFrom(fDecls._AnsiString);
-  fDecls._TVarRec.OverloadImplicitFrom(fDecls._UnicodeString);
-
-  fDecls._TVarRec.OverloadImplicitTo(fDecls._Int32);
-  fDecls._TVarRec.OverloadImplicitTo(fDecls._Int64);
-  fDecls._TVarRec.OverloadImplicitTo(fDecls._Boolean);
-  fDecls._TVarRec.OverloadImplicitTo(fDecls._AnsiChar);
-  fDecls._TVarRec.OverloadImplicitTo(fDecls._WideChar);
-  fDecls._TVarRec.OverloadImplicitTo(fDecls._PAnsiChar);
-  fDecls._TVarRec.OverloadImplicitTo(fDecls._PWideChar);
-  fDecls._TVarRec.OverloadImplicitTo(fDecls._PointerType);
-  fDecls._TVarRec.OverloadImplicitTo(fDecls._TObject);
-  fDecls._TVarRec.OverloadImplicitTo(fDecls._Variant);
-  fDecls._TVarRec.OverloadImplicitTo(fDecls._Currency);
-  fDecls._TVarRec.OverloadImplicitTo(fDecls._Float80);
-  fDecls._TVarRec.OverloadImplicitTo(fDecls._AnsiString);
-  fDecls._TVarRec.OverloadImplicitTo(fDecls._UnicodeString);
+  fDecls._TVarRec.OverloadExplicitToAny(Operators.ImplicitTVarRecToAny);
+  fDecls._TVarRec.OverloadExplicitFromAny(Operators.ImplicitTVarRecFromAny);
 end;
 
 procedure TSYSTEMUnit.AddAddOperators;
@@ -1081,6 +1057,7 @@ begin
   RegisterBuiltin(TCT_Dec);
   RegisterBuiltin(TSF_Dispose);
   RegisterBuiltin(TSCTF_Defined);
+  RegisterBuiltin(TSCTF_Default);
   RegisterBuiltin(TSCTF_Declared);
   RegisterBuiltin(TSF_Delete);
   RegisterBuiltin(TSF_Exit);
@@ -1093,6 +1070,7 @@ begin
   RegisterBuiltin(TSF_HiBound);
   RegisterBuiltin(TSF_Include);
   RegisterBuiltin(TSF_Inc);
+  RegisterBuiltin(TSF_Insert);
   RegisterBuiltin(TSF_LoBound);
   RegisterBuiltin(TSF_Length);
   RegisterBuiltin(TSF_New);
@@ -1257,6 +1235,8 @@ begin
   ImplicitArrayToAny := TSysImplicitArrayToAny.CreateAsSystem(Scope);
   ImplicitSetFromAny := TSysImplicitSetFromAny.CreateAsSystem(Scope);
   ImplicitNullPtrToAny := TSysImplicitNullPtrToAny.CreateAsSystem(Scope);
+  ImplicitTVarRecToAny := TSysImplicitTVarRecToAny.CreateAsSystem(Scope);
+  ImplicitTVarRecFromAny := TSysImplicitTVarRecFromAny.CreateAsSystem(Scope);
   // explicit
   ExplicitStringFromAny := TSysExplicitStringFromAny.CreateAsSystem(Scope);
   ExplicitAnsiStringFromAny := TSysExplicitAnsiStringFromAny.CreateAsSystem(Scope);
@@ -1284,6 +1264,8 @@ begin
   Ptr_IntDiv_Int := TSys_Ptr_IntDiv_Int.CreateAsSystem(Scope);
 
   Multiply_Set := TSys_Multiply_Set.CreateAsSystem(Scope);
+
+  Equal_DynArray := TSys_Equal_DynArray.CreateAsSystem(Scope);
 end;
 
 initialization

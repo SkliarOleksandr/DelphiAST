@@ -57,6 +57,9 @@ type
     procedure CopyFrom(const Tree: TAVLTree<TKey, TData>);
     function InsertNode(const Key: TKey; const Data: TData): PAVLNode;
     function Find(const Key: TKey): PAVLNode;
+    function TryGetValue(const Key: TKey; out Value: TData): Boolean; overload;
+    function TryGetValue<TDataCast: TData>(const Key: TKey; out Value: TDataCast): Boolean; overload;
+
     function Iterate(Action: TIterateFunc; Up: Boolean; OtherData: Pointer): PAVLNode;
     function First: PAVLNode; inline;
     function Last: PAVLNode; inline;
@@ -583,6 +586,34 @@ begin
     LeaveCS;
   end;
 {$ENDIF}
+end;
+
+function TAVLTree<TKey, TData>.TryGetValue(const Key: TKey; out Value: TData): Boolean;
+begin
+  var ANode := Find(Key);
+  if Assigned(ANode) then
+  begin
+    Value := ANode.Data;
+    Result := True;
+  end else
+  begin
+    Value := default(TData);
+    Result := False;
+  end;
+end;
+
+function TAVLTree<TKey, TData>.TryGetValue<TDataCast>(const Key: TKey; out Value: TDataCast): Boolean;
+begin
+  var ANode := Find(Key);
+  if Assigned(ANode) then
+  begin
+    Value := TDataCast(ANode.Data);
+    Result := True;
+  end else
+  begin
+    Value := nil;
+    Result := False;
+  end;
 end;
 
 function TAVLTree<TKey, TData>.InsertNode(const Key: TKey; const Data: TData): PAVLNode;

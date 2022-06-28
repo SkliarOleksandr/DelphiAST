@@ -169,6 +169,7 @@ begin
 
   fSysUnit := (Project as IASTPascalProject).SysUnit;
 
+  // add system unit implicitly
   if Assigned(fSysUnit) then
     fIntfImportedUnits.AddObject('system', fSysUnit);
 end;

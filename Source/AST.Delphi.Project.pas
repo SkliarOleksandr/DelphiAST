@@ -11,13 +11,20 @@ uses AST.Intf,
 type
   IASTDelphiProject = interface(IASTPascalProject)
     ['{07D970E0-C4D9-4627-AD95-A561286C049E}']
+    function GetSysInitUnit: TASTModule;
+    property SysInitUnit: TASTModule read GetSysInitUnit;
   end;
 
 
   TASTDelphiProject = class(TPascalProject, IASTDelphiProject)
+  private
+    fSysInitUnit: TASTModule;
   protected
     function GetUnitClass: TASTUnitClass; override;
     function GetSystemUnitClass: TASTUnitClass; override;
+    function GetSysInitUnit: TASTModule;
+    procedure DoBeforeCompileUnit(AUnit: TASTModule); override;
+    procedure DoFinishCompileUnit(AUnit: TASTModule); override;
   public
     constructor Create(const Name: string); override;
   end;
@@ -33,6 +40,25 @@ constructor TASTDelphiProject.Create(const Name: string);
 begin
   inherited;
 
+end;
+
+procedure TASTDelphiProject.DoBeforeCompileUnit(AUnit: TASTModule);
+begin
+  inherited;
+  // add SysInit unit implicitly
+  if Assigned(fSysInitUnit) then
+    (AUnit as TASTDelphiUnit).IntfImportedUnits.AddObject('SysInit', fSysInitUnit);
+end;
+
+procedure TASTDelphiProject.DoFinishCompileUnit(AUnit: TASTModule);
+begin
+  if AUnit.Name = 'SysInit' then
+    fSysInitUnit := AUnit;
+end;
+
+function TASTDelphiProject.GetSysInitUnit: TASTModule;
+begin
+  Result := fSysInitUnit;
 end;
 
 function TASTDelphiProject.GetSystemUnitClass: TASTUnitClass;
