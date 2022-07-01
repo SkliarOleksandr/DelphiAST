@@ -267,6 +267,10 @@ type
     class procedure UNKNOWN_OPTION(const ID: TIdentifier);
     class procedure CANNOT_ASSIGN_TEMPORARRY_OBJECT(Expr: TIDExpression);
 
+    class procedure CLASS_CONSTRUCTOR_ALREADY_EXIST(const Proc: TIDProcedure);
+    class procedure CLASS_DESTRUCTOR_ALREADY_EXIST(const Proc: TIDProcedure);
+
+
     class procedure INTF_ALREADY_IMPLEMENTED(Expr: TIDExpression);
     class procedure INTF_METHOD_NOT_IMPLEMENTED(ClassType: TIDClass; Proc: TIDProcedure);
     class procedure RECORD_STATIC_CONSTRUCTOR_ALREADY_EXIST(const Proc: TIDProcedure);
@@ -834,6 +838,16 @@ end;
 class procedure TASTDelphiErrors.CANNOT_MODIFY_READONLY_PROPERTY(const Expr: TIDExpression);
 begin
   AbortWork(sCannotModifyReadOnlyProperty, Expr.TextPosition);
+end;
+
+class procedure TASTDelphiErrors.CLASS_CONSTRUCTOR_ALREADY_EXIST(const Proc: TIDProcedure);
+begin
+  AbortWork('CLASS CONSTRUCTOR already exists', Proc.TextPosition);
+end;
+
+class procedure TASTDelphiErrors.CLASS_DESTRUCTOR_ALREADY_EXIST(const Proc: TIDProcedure);
+begin
+  AbortWork('CLASS DESTRUCTOR already exists', Proc.TextPosition);
 end;
 
 class procedure TASTDelphiErrors.CLASS_NOT_IMPLEMENT_INTF(const Src: TIDExpression; Dest: TIDType);

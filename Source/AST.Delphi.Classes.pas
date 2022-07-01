@@ -95,7 +95,6 @@ type
     itProperty,        // свойство
     itAlias,           // алиас
     itType,            // тип
-    itNameSpace,       // неймспейс
     itUnit,            // модуль
     itLabel            // label
   );
@@ -556,6 +555,8 @@ type
     fStrucFlags: TStructFlags;
     fDefaultProperty: TIDProperty;
     fClassOfType: TIDClassOf;
+    fClassConstructor: TIDProcedure;
+    FClassDestructor: TIDProcedure;
     function GetHasInitFiels: Boolean;
     procedure SetAncestor(const Value: TIDStructure);
     function GetProcSpace: PProcSpace; inline;
@@ -595,6 +596,9 @@ type
     function FindMethod(const Name: string): TIDProcedure;
     procedure IncRefCount(RCPath: UInt32); override;
     procedure DecRefCount(RCPath: UInt32); override;
+
+    property ClassConstructor: TIDProcedure read fClassConstructor write fClassConstructor;
+    property ClassDestructor: TIDProcedure read FClassDestructor write FClassDestructor;
   end;
 
   {record type}
@@ -1515,7 +1519,7 @@ type
     procedure AddProperty(Declaration: TIDProperty);
     procedure AddScope(Scope: TScope);
     procedure RemoveVariable(Declaration: TIDVariable);
-    function FindInChilds(const ID: string): TIDDeclaration;
+    function FindInAdditionalScopes(const ID: string): TIDDeclaration;
     function FindIDRecurcive(const ID: string): TIDDeclaration; overload; virtual;
     function FindMembers(const ID: string): TIDDeclaration; virtual;
     function GetDeclArray(Recursively: Boolean = False): TIDDeclArray;
@@ -1626,6 +1630,23 @@ type
   function GetBoolResultExpr(ExistExpr: TIDExpression): TIDBoolResultExpression;
   function GetItemTypeName(ItemType: TIDItemType): string;
 
+const
+  CIsClassProc: array [TProcType] of Boolean =
+  (
+    {ptFunc} False,
+    {ptClassFunc} True,
+    {ptStaticFunc} True,
+    {ptProc} False,
+    {ptClassProc} True,
+    {ptStaticProc} True,
+    {ptConstructor} False,
+    {ptDestructor} False,
+    {ptClassConstructor} False,
+    {ptClassDestructor} False
+  );
+
+  function IsClassProc(AProcType: TProcType): Boolean; inline;
+
 implementation
 
 uses AST.Delphi.System,
@@ -1634,6 +1655,11 @@ uses AST.Delphi.System,
      AST.Delphi.Errors,
      AST.Delphi.Parser,
      AST.Delphi.SysOperators;
+
+function IsClassProc(AProcType: TProcType): Boolean; inline;
+begin
+  Result := CIsClassProc[AProcType];
+end;
 
 function GetItemTypeName(ItemType: TIDItemType): string;
 begin
@@ -1647,7 +1673,6 @@ begin
     itProperty: Result := 'Property';
     itAlias: Result := 'Alias';
     itType: Result := 'Type';
-    itNameSpace: Result := 'NameSpace';
     itUnit: Result := 'Unit';
     itLabel: Result := 'Label';
   end;
@@ -1915,7 +1940,7 @@ end;
 procedure TScope.AddProcedure(Declaration: TIDProcedure);
 begin
   if not InsertID(Declaration) then
-    AbortWork(sIdentifierRedeclaredFmt, [Declaration.Name], Declaration.SourcePosition);
+    AbortWork(sIdentifierRedeclaredFmt, [Declaration.DisplayName], Declaration.SourcePosition);
   FProcSpace.Add(Declaration);
 end;
 
@@ -1939,8 +1964,8 @@ begin
   if Assigned(Result) then
     Exit;
 
-  // ищим в своих вложенных
-  Result := FindInChilds(ID);
+  // search in additional scopes
+  Result := FindInAdditionalScopes(ID);
   if Assigned(Result) then
     Exit;
 
@@ -1949,7 +1974,7 @@ begin
     Result := FParent.FindIDRecurcive(ID);
 end;
 
-function TScope.FindInChilds(const ID: string): TIDDeclaration;
+function TScope.FindInAdditionalScopes(const ID: string): TIDDeclaration;
 var
   i: Integer;
 begin
@@ -2405,10 +2430,13 @@ var
   ParamsStr: string;
   i: Integer;
 begin
-  if Name = '' then
-    Result := '$anonymous_proc_' + IntToStr(Index)
-  else
-    Result := Name;
+  Result := Name;
+
+  if Assigned(Struct) and not Struct.IsAnonymous then
+    Result := Struct.Name + '.' + Result;
+
+  if Result = '' then
+    Result := '$anonymous_proc_' + IntToStr(Index);
 
   if Assigned(FGenericDescriptor) then
     Result := Result + GenericDescriptorAsText(FGenericDescriptor);
@@ -3902,10 +3930,11 @@ end;
 
 procedure TIDStructure.DoCreateStructure;
 begin
-  fMembers := TStructScope.CreateAsStruct(Scope, Self, @fVarSpace, @fProcSpace, Scope.DeclUnit);
-  {$IFDEF DEBUG}fMembers.Name := ID.Name + '.members';{$ENDIF}
   fStaticMembers := TStructScope.CreateAsStruct(Scope, Self, @fStaticVarSpace, @fStaticProcSpace, Scope.DeclUnit);
   {$IFDEF DEBUG}fStaticMembers.Name := ID.Name + '.staticmembers';{$ENDIF}
+  fMembers := TStructScope.CreateAsStruct(Scope, Self, @fVarSpace, @fProcSpace, Scope.DeclUnit);
+  fMembers.AddScope(fStaticMembers);
+  {$IFDEF DEBUG}fMembers.Name := ID.Name + '.members';{$ENDIF}
 end;
 
 function TIDStructure.IsInheritsForm(Ancestor: TIDStructure): Boolean;
@@ -3949,8 +3978,10 @@ begin
   if Assigned(Value) then
   begin
     if not Assigned(FGenericDescriptor) then
-      FMembers.FAncestorScope := Value.Members
-    else
+    begin
+      fMembers.fAncestorScope := Value.Members;
+      fStaticMembers.fAncestorScope := Value.StaticMembers;
+    end else
       FGenericDescriptor.Scope.Parent := Value.Members;
     FAncestor.IncRefCount(1);
   end;
@@ -5691,7 +5722,6 @@ begin
   inherited Create(Scope, Identifier);
   FMembers := TScope.Create(stGlobal, Scope);
   {$IFDEF DEBUG}FMembers.FName := 'namespace_' + Identifier.Name + '_scope';{$ENDIF}
-  ItemType := itNameSpace;
 end;
 
 { TIDUnit }
@@ -5793,6 +5823,10 @@ end;
 function TStructScope.FindMembers(const ID: string): TIDDeclaration;
 begin
   Result := FindID(ID);
+  if Assigned(Result) then
+    Exit;
+
+  Result := FindInAdditionalScopes(ID);
   if Assigned(Result) then
     Exit;
 

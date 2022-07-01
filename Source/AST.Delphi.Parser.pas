@@ -24,6 +24,7 @@ uses
   AST.Delphi.Project,
   AST.Delphi.Intf;
  // system
+ // system.types
  // sysutils
  // sysinit
  // Windows
@@ -319,7 +320,8 @@ type
     function ParseBuiltinCall(Scope: TScope; CallExpr: TIDExpression; var EContext: TEContext): TTokenID;
     function ParseExplicitCast(Scope: TScope; const SContext: TSContext; var DstExpression: TIDExpression): TTokenID;
     function ParseProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure = nil): TTokenID;
-    function ParseProcName(var Scope: TScope; out Name: TIdentifier; var Struct: TIDStructure; out ProcScope: TProcScope; out GenericParams: TIDTypeList): TTokenID;
+    function ParseProcName(Scope: TScope; ProcType: TProcType; out Name: TIdentifier; var Struct: TIDStructure;
+                           out ProcScope: TProcScope; out GenericParams: TIDTypeList): TTokenID;
     function ParseProcBody(Proc: TASTDelphiProc): TTokenID;
     function ParseGenericProcRepeatedly(Scope: TScope; GenericProc, Proc: TASTDelphiProc; Struct: TIDStructure): TTokenID;
     function ParseOperator(Scope: TScope; Struct: TIDStructure): TTokenID;
@@ -341,7 +343,7 @@ type
     function ParseLabelSection(Scope: TScope): TTokenID;
     function ParseGoToStatement(Scope: TScope; const SContext: TSContext): TTokenID;
     function ParseASMStatement(Scope: TScope; const SContext: TSContext): TTokenID;
-    function ParseProperty(Struct: TIDStructure): TTokenID;
+    function ParseProperty(Scope: TScope; Struct: TIDStructure): TTokenID;
     function ParseVarDefaultValue(Scope: TScope; DataType: TIDType; out DefaultValue: TIDExpression): TTokenID;
     function ParseVarStaticArrayDefaultValue(Scope: TScope; ArrType: TIDArray; out DefaultValue: TIDExpression): TTokenID;
     function ParseVarRecordDefaultValue(Scope: TScope; Struct: TIDStructure; out DefaultValue: TIDExpression): TTokenID;
@@ -899,17 +901,17 @@ begin
       token_class: begin
         Result := Lexer_NextToken(scope);
         case Result of
-          token_procedure: Result := ParseProcedure(Decl.Members, ptClassProc, Decl);
-          token_function: Result := ParseProcedure(Decl.Members, ptClassFunc, Decl);
-          token_operator: Result := ParseOperator(Decl.Members, Decl);
-          token_property: Result := ParseProperty(Decl);
+          token_procedure: Result := ParseProcedure(Decl.StaticMembers, ptClassProc, Decl);
+          token_function: Result := ParseProcedure(Decl.StaticMembers, ptClassFunc, Decl);
+          token_operator: Result := ParseOperator(Decl.StaticMembers, Decl);
+          token_property: Result := ParseProperty(Decl.StaticMembers, Decl);
         else
           AbortWork('PROCEDURE, FUNCTION and PROPERIES are allowed in helpers only', Lexer_Position);
         end;
       end;
       token_procedure: Result := ParseProcedure(Decl.Members, ptProc, Decl);
       token_function: Result := ParseProcedure(Decl.Members, ptFunc, Decl);
-      token_property: Result := ParseProperty(Decl);
+      token_property: Result := ParseProperty(Decl.Members, Decl);
       token_public: begin
         Visibility := vPublic;
         Result := Lexer_NextToken(Scope);
@@ -942,15 +944,15 @@ function TASTDelphiUnit.ParseTypeMember(Scope: TScope; Struct: TIDStructure): TT
 begin
   Result := Lexer_NextToken(Scope);
   case Result of
-    token_procedure: Result := ParseProcedure(Struct.Members, ptClassProc, Struct);
-    token_function: Result := ParseProcedure(Struct.Members, ptClassFunc, Struct);
-    token_property: Result := ParseProperty(Struct);
+    token_procedure: Result := ParseProcedure(Struct.StaticMembers, ptClassProc, Struct);
+    token_function: Result := ParseProcedure(Struct.StaticMembers, ptClassFunc, Struct);
+    token_property: Result := ParseProperty(Struct.StaticMembers, Struct);
     token_operator: Result := ParseOperator(Struct.Members, Struct);
     token_constructor: Result := ParseProcedure(Struct.StaticMembers, ptClassConstructor, Struct);
     token_destructor: Result := ParseProcedure(Struct.StaticMembers, ptClassDestructor, Struct);
     token_var: begin
       Lexer_NextToken(Scope);
-      Result := ParseFieldsSection(Struct.Members, vLocal, Struct, True);
+      Result := ParseFieldsSection(Struct.StaticMembers, vLocal, Struct, True);
     end
   else
     ERRORS.PROC_OR_PROP_OR_VAR_REQUIRED;
@@ -4532,11 +4534,10 @@ begin
   Result := Lexer_NextToken(Scope);
 end;
 
-function TASTDelphiUnit.ParseProperty(Struct: TIDStructure): TTokenID;
+function TASTDelphiUnit.ParseProperty(Scope: TScope; Struct: TIDStructure): TTokenID;
 var
   ID: TIdentifier;
   Prop: TIDProperty;
-  Scope: TScope;
   PropDataType: TIDType;
   Proc: TIDProcedure;
   Expr: TIDExpression;
@@ -4547,7 +4548,6 @@ var
   SContext: TSContext;
   ASTE: TASTExpression;
 begin
-  Scope := Struct.Members;
   Lexer_ReadNextIdentifier(Scope, ID);
   Prop := TIDProperty.Create(Scope, ID);
   Scope.AddProperty(Prop);
@@ -5429,7 +5429,7 @@ begin
       token_class: Result := ParseTypeMember(Scope, Decl);
       token_procedure: Result := ParseProcedure(Decl.Members, ptProc, Decl);
       token_function: Result := ParseProcedure(Decl.Members, ptFunc, Decl);
-      token_property: Result := ParseProperty(Decl);
+      token_property: Result := ParseProperty(Decl.Members, Decl);
       token_operator: Result := ParseOperator(Decl.Members, Decl);
       token_constructor: Result := ParseProcedure(Decl.Members, ptConstructor, Decl);
       token_destructor: begin
@@ -5441,8 +5441,8 @@ begin
         Lexer_NextToken(Scope);
         Result := ParseFieldsSection(Decl.Members, Visibility, Decl, False);
       end;
-      token_const: Result := ParseConstSection(Decl.Members);
-      token_type: Result := ParseNamedTypeDecl(Decl.Members);
+      token_const: Result := ParseConstSection(Decl.StaticMembers);
+      token_type: Result := ParseNamedTypeDecl(Decl.StaticMembers);
       token_public: begin
         Visibility := vPublic;
         Result := Lexer_NextToken(Scope);
@@ -6626,6 +6626,43 @@ begin
   end;
 end;
 
+
+function SearchInstanceMethodDecl(Struct: TIDStructure;
+                                  const ID: TIdentifier;
+                                  out ForwardDeclNode: TIDList.PAVLNode): TASTDelphiProc;
+begin
+  Result := nil;
+  ForwardDeclNode := Struct.Members.Find(ID.Name);
+  if not Assigned(ForwardDeclNode) then
+  begin
+    // second, search the decl including ancestors
+    Result := Struct.Members.FindMembers(ID.Name) as TASTDelphiProc;
+    // third, if this is a helper, search the decl in the helper's target
+    if not Assigned(Result) and
+       (Struct is TDlphHelper) and
+       (TDlphHelper(Struct).Target is TIDStructure) then
+    ForwardDeclNode := TIDStructure(TDlphHelper(Struct).Target).Members.Find(ID.Name);
+  end;
+end;
+
+function SearchClassMethodDecl(Struct: TIDStructure;
+                               const ID: TIdentifier;
+                               out ForwardDeclNode: TIDList.PAVLNode): TASTDelphiProc;
+begin
+  Result := nil;
+  ForwardDeclNode := Struct.StaticMembers.Find(ID.Name);
+  if not Assigned(ForwardDeclNode) then
+  begin
+    // second, search the decl including ancestors
+    Result := Struct.StaticMembers.FindMembers(ID.Name) as TASTDelphiProc;
+    // third, if this is a helper, search the decl in the helper's target
+    if not Assigned(Result) and
+       (Struct is TDlphHelper) and
+       (TDlphHelper(Struct).Target is TIDStructure) then
+    ForwardDeclNode := TIDStructure(TDlphHelper(Struct).Target).StaticMembers.Find(ID.Name);
+  end;
+end;
+
 function TASTDelphiUnit.ParseProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure): TTokenID;
 type
   TFwdDeclState = (dsNew, dsDifferent, dsSame);
@@ -6646,7 +6683,8 @@ var
   ImportLib, ImportName: TIDDeclaration;
 begin
   ForwardScope := Scope;
-  Result := ParseProcName(ForwardScope, ID, Struct, Parameters, GenericsParams);
+  Result := ParseProcName(Scope,  ProcType, {out} ID, {var} Struct,
+                          {out} Parameters, {out} GenericsParams);
 
   VarSpace.Initialize;
   Parameters.VarSpace := addr(VarSpace);
@@ -6742,22 +6780,15 @@ begin
   if Assigned(Struct) then
   begin
     // first, search the decl in the current members only
-    ForwardDeclNode := Struct.Members.Find(ID.Name);
-    if not Assigned(ForwardDeclNode) then
-    begin
-      // second, search the decl including ancestors
-      ForwardDecl := Struct.Members.FindMembers(ID.Name) as TASTDelphiProc;
-      // third, if this is a helper, search the decl in the helper's target
-      if not Assigned(ForwardDecl) and
-         (Struct is TDlphHelper) and
-         (TDlphHelper(Struct).Target is TIDStructure) then
-      ForwardDeclNode := TIDStructure(TDlphHelper(Struct).Target).Members.Find(ID.Name);
+    if IsClassProc(ProcType) then
+      ForwardDecl := SearchClassMethodDecl(Struct, ID, {out} ForwardDeclNode)
+    else
+      ForwardDecl := SearchInstanceMethodDecl(Struct, ID, {out} ForwardDeclNode);
 
-      if not Assigned(ForwardDecl) and
-         not Assigned(ForwardDeclNode) and
-         (Scope.ScopeClass = scImplementation) then
-       ERRORS.METHOD_NOT_DECLARED_IN_CLASS(ID, Struct);
-    end;
+    if not Assigned(ForwardDecl) and
+       not Assigned(ForwardDeclNode) and
+       (Scope.ScopeClass = scImplementation) then
+     ERRORS.METHOD_NOT_DECLARED_IN_CLASS(ID, Struct);
   end else begin
     // first, search the declaration in the current scope only
     ForwardDeclNode := ForwardScope.Find(ID.Name);
@@ -6791,7 +6822,8 @@ begin
       while True do begin
         if Decl.SameDeclaration(Parameters) then begin
           FwdDeclState := dsSame;
-          if (Decl.Scope = Scope) and not (pfForward in Decl.Flags) then
+          if ((Decl.Scope = Scope) and not (pfForward in Decl.Flags)) or
+              (pfCompleted in Decl.Flags) then
             ERRORS.ID_REDECLARATED(ID);
           Proc := Decl;
           Break;
@@ -6850,6 +6882,20 @@ begin
             TIDRecord(Struct).StaticDestructor := Proc;
           end;
         end;
+
+        case ProcType of
+          ptClassConstructor: begin
+            if Assigned(Struct.ClassConstructor) then
+              ERRORS.CLASS_CONSTRUCTOR_ALREADY_EXIST(Proc);
+           Struct.ClassConstructor := Proc;
+          end;
+          ptClassDestructor: begin
+            if Assigned(Struct.ClassConstructor) then
+              ERRORS.CLASS_DESTRUCTOR_ALREADY_EXIST(Proc);
+           Struct.ClassDestructor := Proc;
+          end;
+        end;
+
       end else
         // глобальная процедура
         Scope.AddProcedure(Proc);
@@ -6910,9 +6956,18 @@ begin
     CheckDestructorSignature(Proc);
 end;
 
-function TASTDelphiUnit.ParseProcName(var Scope: TScope; out Name: TIdentifier; var Struct: TIDStructure;
+function TASTDelphiUnit.ParseProcName(Scope: TScope; ProcType: TProcType; out Name: TIdentifier; var Struct: TIDStructure;
                                       out ProcScope: TProcScope;
                                       out GenericParams: TIDTypeList): TTokenID;
+
+  function GetStructScope(AStruct: TIDStructure; AProcType: TProcType): TScope;
+  begin
+    if IsClassProc(ProcType) then
+      Result := Struct.StaticMembers
+    else
+      Result := Struct.Members;
+  end;
+
 var
   Decl: TIDDeclaration;
   SearchName: string;
@@ -6926,7 +6981,7 @@ begin
     if Result = token_less then
     begin
       if Assigned(Struct) then
-        ProcScope := TMethodScope.CreateInDecl(Scope, Struct.Members)
+        ProcScope := TMethodScope.CreateInDecl(Scope, GetStructScope(Struct, ProcType))
       else
         ProcScope := TProcScope.CreateInDecl(Scope, nil, nil);
       Result := ParseGenericsHeader(ProcScope, GenericParams);
@@ -6943,24 +6998,21 @@ begin
       if Decl is TIDStructure then
       begin
         Struct := TIDStructure(Decl);
-        SearchScope := Struct.Members;
+        SearchScope := Struct.StaticMembers;
         {т.к это имплементация обобщенного метода, то очищаем дупликатные обобщенные параметры}
         if Assigned(ProcScope) then begin
           ProcScope.OuterScope := Scope;
-          ProcScope.Parent := Struct.Members;
+          ProcScope.Parent := GetStructScope(Struct, ProcType);
           ProcScope.Clear;
         end;
-      end
-      else if Decl.ItemType = itNameSpace then
-        Scope := TIDNameSpace(Decl).Members
-      else
+      end else
         ERRORS.STRUCT_TYPE_REQUIRED(Name.TextPosition);
       continue;
     end;
     if not Assigned(ProcScope) then
     begin
       if Assigned(Struct) then
-        ProcScope := TMethodScope.CreateInDecl(Scope, Struct.Members)
+        ProcScope := TMethodScope.CreateInDecl(Scope, GetStructScope(Struct, ProcType))
       else
         ProcScope := TProcScope.CreateInDecl(Scope, nil, nil);
     end;
@@ -7163,7 +7215,8 @@ var
   ProcFlags: TProcFlags;
   ImportLib, ImportName: TIDDeclaration;
 begin
-  Result := ParseProcName(Scope, ID, Struct, Parameters, GenericsParams);
+  Result := ParseProcName(Scope, ptProc {ptClassProc?}, {out} ID, {var} Struct,
+                          {out} Parameters, {out} GenericsParams);
 
   OperatorID := GetOperatorID(ID.Name);
   if OperatorID = opNone then
@@ -7401,15 +7454,15 @@ begin
       token_class: begin
         Result := Lexer_NextToken(scope);
         case Result of
-          token_procedure: Result := ParseProcedure(Decl.Members, ptClassProc, Decl);
-          token_function: Result := ParseProcedure(Decl.Members, ptClassFunc, Decl);
+          token_procedure: Result := ParseProcedure(Decl.StaticMembers, ptClassProc, Decl);
+          token_function: Result := ParseProcedure(Decl.StaticMembers, ptClassFunc, Decl);
           token_operator: Result := ParseOperator(Decl.Members, Decl);
-          token_property: Result := ParseProperty(Decl {todo: IsClass});
-          token_constructor: Result := ParseProcedure(Decl.Members, ptClassConstructor, Decl);
-          token_destructor: Result := ParseProcedure(Decl.Members, ptClassDestructor, Decl);
+          token_property: Result := ParseProperty(Decl.StaticMembers, Decl);
+          token_constructor: Result := ParseProcedure(Decl.StaticMembers, ptClassConstructor, Decl);
+          token_destructor: Result := ParseProcedure(Decl.StaticMembers, ptClassDestructor, Decl);
           token_var: begin
              Lexer_NextToken(Scope);
-             Result := ParseFieldsSection(Decl.Members, Visibility, Decl, True);
+             Result := ParseFieldsSection(Decl.StaticMembers, Visibility, Decl, True);
           end;
         else
           AbortWork('Class members can be: PROCEDURE, FUNCTION, OPERATOR, CONSTRUCTOR, DESTRUCTOR, PROPERTY, VAR', Lexer_Position);
@@ -7419,7 +7472,7 @@ begin
       token_function: Result := ParseProcedure(Decl.Members, ptFunc, Decl);
       token_constructor: Result := ParseProcedure(Decl.Members, ptConstructor, Decl);
       token_destructor: Result := ParseProcedure(Decl.Members, ptDestructor, Decl);
-      token_property: Result := ParseProperty(Decl);
+      token_property: Result := ParseProperty(Decl.Members, Decl);
       token_public: begin
         Visibility := vPublic;
         Result := Lexer_NextToken(Scope);
@@ -7442,8 +7495,8 @@ begin
         Lexer_NextToken(Scope);
         Result := ParseFieldsSection(Decl.Members, Visibility, Decl, False);
       end;
-      token_const: Result := ParseConstSection(Decl.Members);
-      token_type: Result := ParseNamedTypeDecl(Decl.Members);
+      token_const: Result := ParseConstSection(Decl.StaticMembers);
+      token_type: Result := ParseNamedTypeDecl(Decl.StaticMembers);
       // необходимо оптимизировать парсинг ключевых слов как идентификаторов
       token_identifier, token_name: Result := ParseFieldsSection(Decl.Members, Visibility, Decl, False);
     else
@@ -8195,7 +8248,7 @@ begin
       SearchScope := DataType.Helper.Members // todo: should be StaticMembers
     else
     if DataType is TIDStructure then
-      SearchScope := TIDStructure(DataType).Members // todo: should be StaticMembers
+      SearchScope := TIDStructure(DataType).StaticMembers
     else
     if Decl.ClassType = TIDEnum then
       SearchScope := TIDEnum(Decl).Items;
@@ -8479,7 +8532,6 @@ function TASTDelphiUnit.ParseInterfaceType(Scope, GenericScope: TScope; GDescrip
 var
   FwdDecl: TIDDeclaration;
   Expr: TIDExpression;
-  Ancestor: TIDInterface;
   SearchName: string;
 begin
   if not Assigned(GDescriptor) then
@@ -8514,11 +8566,11 @@ begin
     Lexer_NextToken(Scope);
     Result := ParseConstExpression(Scope, Expr, ExprNested);
     CheckInterfaceType(Expr);
-    Ancestor := TIDInterface(Expr.Declaration);
+    var Ancestor := Expr.AsType.ActualDataType;
     if Ancestor = Decl then
       AbortWork(sRecurciveTypeLinkIsNotAllowed, Expr.TextPosition);
     Lexer_MatchToken(Result, token_closeround);
-    Decl.Ancestor := Ancestor;
+    Decl.Ancestor := Ancestor as TIDInterface;
     Result := Lexer_NextToken(Scope);
   end;
 
@@ -8539,7 +8591,7 @@ begin
       token_openblock: Result := ParseAttribute(Scope);
       token_procedure: Result := ParseProcedure(Decl.Members, ptProc, Decl);
       token_function: Result := ParseProcedure(Decl.Members, ptFunc, Decl);
-      token_property: Result := ParseProperty(Decl);
+      token_property: Result := ParseProperty(Decl.Members, Decl);
     else
       break;
     end;
