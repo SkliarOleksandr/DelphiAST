@@ -25,6 +25,7 @@ uses
   AST.Delphi.Intf;
  // system
  // system.types
+ // system.uitypes
  // sysutils
  // sysinit
  // Windows
@@ -320,6 +321,8 @@ type
     function ParseBuiltinCall(Scope: TScope; CallExpr: TIDExpression; var EContext: TEContext): TTokenID;
     function ParseExplicitCast(Scope: TScope; const SContext: TSContext; var DstExpression: TIDExpression): TTokenID;
     function ParseProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure = nil): TTokenID;
+    function ParseGlobalProc(Scope: TScope; ProcType: TProcType; const ID: TIdentifier; Parameters: TProcScope): TTokenID;
+
     function ParseProcName(Scope: TScope; ProcType: TProcType; out Name: TIdentifier; var Struct: TIDStructure;
                            out ProcScope: TProcScope; out GenericParams: TIDTypeList): TTokenID;
     function ParseProcBody(Proc: TASTDelphiProc): TTokenID;
@@ -930,8 +933,8 @@ begin
         end;
         Result := Lexer_NextToken(Scope);
       end;
-      token_const: Result := ParseConstSection(Decl.Members);
-      token_type: Result := ParseNamedTypeDecl(Decl.Members);
+      token_const: Result := ParseConstSection(Decl.StaticMembers);
+      token_type: Result := ParseNamedTypeDecl(Decl.StaticMembers);
       token_end: break;
     else
       AbortWork('PROCEDURE, FUNCTION and PROPERIES are allowed in helpers only', Lexer_Position);
@@ -947,7 +950,6 @@ begin
     token_procedure: Result := ParseProcedure(Struct.StaticMembers, ptClassProc, Struct);
     token_function: Result := ParseProcedure(Struct.StaticMembers, ptClassFunc, Struct);
     token_property: Result := ParseProperty(Struct.StaticMembers, Struct);
-    token_operator: Result := ParseOperator(Struct.Members, Struct);
     token_constructor: Result := ParseProcedure(Struct.StaticMembers, ptClassConstructor, Struct);
     token_destructor: Result := ParseProcedure(Struct.StaticMembers, ptClassDestructor, Struct);
     token_var: begin
@@ -4499,7 +4501,9 @@ begin
   if IdxCount <> DimensionsCount then
     ERRORS.NEED_SPECIFY_NINDEXES(ArrDecl);
 
-  var AExpr := TIDArrayExpression.Create(ArrDecl, ArrExpr.TextPosition);
+
+  var ATmpVar := GetTMPVar(EContext, DataType);
+  var AExpr := TIDArrayExpression.Create(ATmpVar, ArrExpr.TextPosition);
   AExpr.DataType := DataType;
   AExpr.Indexes := Indexes;
   EContext.RPNPushExpression(AExpr);
@@ -5430,11 +5434,8 @@ begin
       token_procedure: Result := ParseProcedure(Decl.Members, ptProc, Decl);
       token_function: Result := ParseProcedure(Decl.Members, ptFunc, Decl);
       token_property: Result := ParseProperty(Decl.Members, Decl);
-      token_operator: Result := ParseOperator(Decl.Members, Decl);
       token_constructor: Result := ParseProcedure(Decl.Members, ptConstructor, Decl);
       token_destructor: begin
-        if Lexer_Line = 352 then
-          sleep(1);
         Result := ParseProcedure(Decl.Members, ptDestructor, Decl);
       end;
       token_var: begin
@@ -6683,25 +6684,31 @@ var
   ImportLib, ImportName: TIDDeclaration;
 begin
   ForwardScope := Scope;
-  Result := ParseProcName(Scope,  ProcType, {out} ID, {var} Struct,
+  Result := ParseProcName(Scope, ProcType, {out} ID, {var} Struct,
                           {out} Parameters, {out} GenericsParams);
+
+  if not Assigned(Struct) then
+  begin
+    Result := ParseGlobalProc(Scope, ProcType, ID, Parameters);
+    Exit;
+  end;
 
   VarSpace.Initialize;
   Parameters.VarSpace := addr(VarSpace);
 
-  if Assigned(Struct) then
+  if ProcType in [ptFunc, ptProc, ptClassFunc, ptClassProc, ptConstructor, ptDestructor] then
     AddSelfParameter(Parameters, Struct, (ProcType = ptClassProc) or (ProcType = ptClassFunc));
 
   Lexer.SaveState(SRCProcPos);
 
-  // парсим параметры
+  // parse parameters
   if Result = token_openround then
   begin
     ParseParameters(Parameters);
     Result := Lexer_NextToken(Scope);
   end;
 
-  // парсим тип возвращаемого значения
+  // parse result type
   if ProcType <= ptStaticFunc then begin
     if Result <> token_semicolon then
     begin
@@ -6725,15 +6732,12 @@ begin
     ptStaticFunc,
     ptStaticProc: ProcFlags := [pfStatic];
     ptConstructor: begin
-      if not Assigned(Struct) then
-        ERRORS.CTOR_DTOR_MUST_BE_DECLARED_IN_STRUCT(Lexer_PrevPosition);
+      if (Struct.DataTypeID = dtRecord) and (Parameters.Count <= 1) then
+        ERRORS.PARAMETERLESS_CTOR_NOT_ALLOWED_ON_RECORD(Lexer_PrevPosition);
+
       ProcFlags := [pfConstructor];
     end;
-    ptDestructor: begin
-      if not Assigned(Struct) then
-        ERRORS.CTOR_DTOR_MUST_BE_DECLARED_IN_STRUCT(Lexer_PrevPosition);
-      ProcFlags := [pfDestructor];
-    end
+    ptDestructor: ProcFlags := [pfDestructor];
   else
     ProcFlags := [];
   end;
@@ -6777,25 +6781,16 @@ begin
   ForwardDecl := nil;
   ForwardDeclNode := nil;
   // search the procedure forward declaration
-  if Assigned(Struct) then
-  begin
-    // first, search the decl in the current members only
-    if IsClassProc(ProcType) then
-      ForwardDecl := SearchClassMethodDecl(Struct, ID, {out} ForwardDeclNode)
-    else
-      ForwardDecl := SearchInstanceMethodDecl(Struct, ID, {out} ForwardDeclNode);
+  // first, search the decl in the current members only
+  if IsClassProc(ProcType) then
+    ForwardDecl := SearchClassMethodDecl(Struct, ID, {out} ForwardDeclNode)
+  else
+    ForwardDecl := SearchInstanceMethodDecl(Struct, ID, {out} ForwardDeclNode);
 
-    if not Assigned(ForwardDecl) and
-       not Assigned(ForwardDeclNode) and
-       (Scope.ScopeClass = scImplementation) then
-     ERRORS.METHOD_NOT_DECLARED_IN_CLASS(ID, Struct);
-  end else begin
-    // first, search the declaration in the current scope only
-    ForwardDeclNode := ForwardScope.Find(ID.Name);
-    // second, search the declaration in the interface section scope
-    if not Assigned(ForwardDeclNode) and (ForwardScope = ImplScope) then
-      ForwardDeclNode := IntfScope.Find(ID.Name);
-  end;
+  if not Assigned(ForwardDecl) and
+     not Assigned(ForwardDeclNode) and
+     (Scope.ScopeClass = scImplementation) then
+   ERRORS.METHOD_NOT_DECLARED_IN_CLASS(ID, Struct);
 
   if Assigned(ForwardDeclNode) and not Assigned(ForwardDecl) then
     ForwardDecl := TASTDelphiProc(ForwardDeclNode.Data);
@@ -6805,6 +6800,14 @@ begin
 
   {если найдена ранее обьявленная декларация, проверяем соответствие}
   if Assigned(ForwardDecl) then begin
+
+    if (Scope.ScopeClass = scInterface) then
+    begin
+      if (Struct = ForwardDecl.Struct)
+      and not ((pfOveload in ForwardDecl.Flags) or (pfOveload in ProcFlags)) then
+        ERRORS.OVERLOADED_MUST_BE_MARKED(ID);
+    end;
+
     // ошибка если перекрыли идентификатор другого типа:
     if ForwardDecl.ItemType <> itProcedure then
       ERRORS.ID_REDECLARATED(ID);
@@ -6836,14 +6839,14 @@ begin
   end else
     FwdDeclState := dsNew;
 
-  {создаем новую декларацию}
+  {create a new declaration}
   if not Assigned(Proc) then
   begin
     Proc := TASTDelphiProc.Create(Scope, ID);
     // если это generic-процедура или это generic-метод
     if Assigned(GenericsParams) then
       Proc.CreateGenericDescriptor(GenericsParams, SRCProcPos)
-    else if Assigned(Struct) and Assigned(Struct.GenericDescriptor) then
+    else if Assigned(Struct.GenericDescriptor) then
       Proc.CreateGenericDescriptor(Struct.GenericDescriptor.GenericParams, SRCProcPos);
 
     // Для Scope будут переопределены VarSpace и ProcSpace
@@ -6851,9 +6854,10 @@ begin
     Proc.VarSpace := VarSpace;
     Proc.ResultType := ResultType;
 
-    FirstSkipCnt := 0;
-    if Assigned(Struct) then
-      Inc(FirstSkipCnt);
+    if Scope.ScopeClass = scInterface then
+      Proc.Flags := Proc.Flags + [pfForward];
+
+    FirstSkipCnt := 1;
     if Assigned(ResultType) then
       Inc(FirstSkipCnt);
     Proc.ExplicitParams := ScopeToVarList(Parameters, FirstSkipCnt);
@@ -6861,44 +6865,28 @@ begin
     // добовляем новую декларацию в структуру или глобольный список или к списку перегруженных процедур
     if not Assigned(ForwardDecl) then
     begin
-      if Assigned(Struct) then begin
-        // метод
-        Scope.AddProcedure(Proc);
-        Proc.Struct := Struct;
-        if Struct.DataTypeID = dtRecord then
-        case ProcType of
-          ptConstructor: begin
-            if Proc.ParamsCount = 0 then
-            begin
-              if Assigned(TIDRecord(Struct).StaticConstructor) then
-                ERRORS.RECORD_STATIC_CONSTRUCTOR_ALREADY_EXIST(Proc);
-              TIDRecord(Struct).StaticConstructor := Proc;
-            end;
-          end;
-          ptDestructor: begin
-            CheckStaticRecordConstructorSign(Proc);
-            if Assigned(TIDRecord(Struct).StaticDestructor) then
-              ERRORS.RECORD_STATIC_DESTRUCTOR_ALREADY_EXIST(Proc);
-            TIDRecord(Struct).StaticDestructor := Proc;
-          end;
+      Proc.Struct := Struct;
+      case ProcType of
+        ptConstructor: begin
+          // constructor should be added to both scopes (instance and static)
+          Scope.AddProcedure(Proc);
+          Struct.StaticMembers.InsertID(Proc);
         end;
-
-        case ProcType of
-          ptClassConstructor: begin
-            if Assigned(Struct.ClassConstructor) then
-              ERRORS.CLASS_CONSTRUCTOR_ALREADY_EXIST(Proc);
-           Struct.ClassConstructor := Proc;
-          end;
-          ptClassDestructor: begin
-            if Assigned(Struct.ClassConstructor) then
-              ERRORS.CLASS_DESTRUCTOR_ALREADY_EXIST(Proc);
-           Struct.ClassDestructor := Proc;
-          end;
+        ptClassConstructor: begin
+          // class constructor doesn't need to be added to the scope
+          if Assigned(Struct.ClassConstructor) then
+            ERRORS.CLASS_CONSTRUCTOR_ALREADY_EXIST(Proc);
+          Struct.ClassConstructor := Proc;
         end;
-
-      end else
-        // глобальная процедура
+        ptClassDestructor: begin
+          // class destructor doesn't need to be added to the scope
+          if Assigned(Struct.ClassConstructor) then
+            ERRORS.CLASS_DESTRUCTOR_ALREADY_EXIST(Proc);
+          Struct.ClassDestructor := Proc;
+        end;
+      else
         Scope.AddProcedure(Proc);
+      end;
     end else begin
       // доавляем в список следующую перегруженную процедуру
       Proc.PrevOverload := ForwardDecl;
@@ -6909,12 +6897,22 @@ begin
       else
         Scope.InsertID(Proc);
 
-      if Assigned(Struct) then
+      //special case for constructors, we need to place overloaded contructor in the static scope as well
+      if ProcType = ptConstructor then
       begin
-        Struct.AddMethod(Proc);
-        Proc.Struct := Struct;
-      end else
-        Scope.ProcSpace.Add(Proc);
+        SearchClassMethodDecl(Struct, ID, {out} ForwardDeclNode);
+        if Assigned(ForwardDeclNode) then
+          ForwardDeclNode.Data := Proc
+        else
+          Struct.StaticMembers.InsertID(Proc);
+      end;
+
+      if IsClassProc(ProcType) then
+        Struct.StaticMembers.ProcSpace.Add(Proc)
+      else
+        Struct.Members.ProcSpace.Add(Proc);
+
+      Proc.Struct := Struct;
     end;
   end else begin
     if Assigned(Proc.GenericDescriptor) then
@@ -6956,12 +6954,220 @@ begin
     CheckDestructorSignature(Proc);
 end;
 
+function TASTDelphiUnit.ParseGlobalProc(Scope: TScope; ProcType: TProcType;
+                                        const ID: TIdentifier; Parameters: TProcScope): TTokenID;
+type
+  TFwdDeclState = (dsNew, dsDifferent, dsSame);
+var
+  ResultType: TIDType;
+  VarSpace: TVarSpace;
+  Proc, ForwardDecl: TASTDelphiProc;
+  ForwardDeclNode: TIDList.PAVLNode;
+  FwdDeclState: TFwdDeclState;
+  FirstSkipCnt: Integer;
+  CallConv: TCallConvention;
+  ProcFlags: TProcFlags;
+  ForwardScope: TScope;
+  ImportLib, ImportName: TIDDeclaration;
+begin
+  ForwardScope := Scope;
+
+  VarSpace.Initialize;
+  Parameters.VarSpace := addr(VarSpace);
+
+  Result := Lexer_CurTokenID;
+
+  // парсим параметры
+  if Result = token_openround then
+  begin
+    ParseParameters(Parameters);
+    Result := Lexer_NextToken(Scope);
+  end;
+
+  // парсим тип возвращаемого значения
+  if ProcType = ptFunc then
+  begin
+    if Result <> token_semicolon then
+    begin
+      Lexer_MatchToken(Result, token_colon);
+      Result := ParseTypeSpec(Parameters, ResultType);
+      AddResultParameter(Parameters, ResultType);
+    end else
+      ResultType := nil;
+  end else
+    ResultType := nil;
+
+  if Result = token_semicolon then
+    Result := Lexer_NextToken(Scope)
+  else
+  if not (Result in [token_overload, token_stdcall, token_cdecl]) then
+    ERRORS.SEMICOLON_EXPECTED;
+
+  ProcFlags := [];
+
+  // parse proc specifiers
+  while True do begin
+    case Result of
+      token_forward: Result := ProcSpec_Forward(Scope, ProcFlags);
+      token_export: Result := ProcSpec_Export(Scope, ProcFlags);
+      token_inline: Result := ProcSpec_Inline(Scope, ProcFlags);
+      token_external: Result := ProcSpec_External(Scope, ImportLib, ImportName, ProcFlags);
+      token_overload: Result := ProcSpec_Overload(Scope, ProcFlags);
+      token_stdcall: Result := ProcSpec_StdCall(Scope, CallConv);
+      token_fastcall: Result := ProcSpec_FastCall(Scope, CallConv);
+      token_cdecl: Result := ProcSpec_CDecl(Scope, CallConv);
+      token_varargs: begin
+        Lexer_ReadSemicolon(Scope);
+        Result := Lexer_NextToken(Scope);
+      end;
+      token_deprecated: begin
+        Result := CheckAndParseDeprecated(Scope, token_deprecated);
+        Result := Lexer_NextToken(Scope);
+      end;
+      token_id_keyword: begin
+        if Lexer_AmbiguousId = token_platform then
+        begin
+          Result := ParsePlatform(Scope);
+          Result := Lexer_NextToken(Scope);
+        end;
+      end;
+    else
+      break;
+    end;
+  end;
+
+  ForwardDecl := nil;
+  ForwardDeclNode := nil;
+
+  // search the procedure forward declaration
+  // first, search the declaration in the current scope only
+  ForwardDeclNode := ForwardScope.Find(ID.Name);
+  // second, search the declaration in the interface section scope
+  if not Assigned(ForwardDeclNode) and (ForwardScope = ImplScope) then
+    ForwardDeclNode := IntfScope.Find(ID.Name);
+
+  if Assigned(ForwardDeclNode) and not Assigned(ForwardDecl) then
+    ForwardDecl := TASTDelphiProc(ForwardDeclNode.Data);
+
+  Proc := nil;
+  FwdDeclState := dsDifferent;
+
+  {если найдена ранее обьявленная декларация, проверяем соответствие}
+  if Assigned(ForwardDecl) then
+  begin
+    if (Scope.ScopeClass = scInterface) then
+    begin
+      if not ((pfOveload in ForwardDecl.Flags) and (pfOveload in ProcFlags)) then
+        ERRORS.OVERLOADED_MUST_BE_MARKED(ID);
+    end;
+
+    // ошибка если перекрыли идентификатор другого типа:
+    if ForwardDecl.ItemType <> itProcedure then
+      ERRORS.ID_REDECLARATED(ID);
+
+    // The case when proc impl doesn't have params at all insted of decl
+    if (Parameters.Count = 0) and (ForwardDecl.PrevOverload = nil) then
+    begin
+      FwdDeclState := dsSame;
+      Proc := ForwardDecl;
+      Parameters.CopyFrom(ForwardDecl.ParamsScope);
+    end else
+    begin
+      // search overload
+      var Decl := ForwardDecl;
+      while True do begin
+        if Decl.SameDeclaration(Parameters) then begin
+          FwdDeclState := dsSame;
+          if ((Decl.Scope = Scope) and not (pfForward in Decl.Flags)) or
+              (pfCompleted in Decl.Flags) then
+            ERRORS.ID_REDECLARATED(ID);
+          Proc := Decl;
+          Break;
+        end;
+        if not Assigned(Decl.PrevOverload) then
+          Break;
+        Decl := TASTDelphiProc(Decl.PrevOverload);
+      end;
+    end;
+  end else
+    FwdDeclState := dsNew;
+
+  {create a new declaration}
+  if not Assigned(Proc) then
+  begin
+    Proc := TASTDelphiProc.Create(Scope, ID);
+    // Для Scope будут переопределены VarSpace и ProcSpace
+    Proc.ParamsScope := Parameters;
+    Proc.VarSpace := VarSpace;
+    Proc.ResultType := ResultType;
+
+    if Scope.ScopeClass = scInterface then
+      Proc.Flags := Proc.Flags + [pfForward];
+
+    FirstSkipCnt := 0;
+    if Assigned(ResultType) then
+      Inc(FirstSkipCnt);
+    Proc.ExplicitParams := ScopeToVarList(Parameters, FirstSkipCnt);
+
+    // добовляем новую декларацию в структуру или глобольный список или к списку перегруженных процедур
+    if not Assigned(ForwardDecl) then
+    begin
+      Scope.AddProcedure(Proc);
+    end else begin
+      // доавляем в список следующую перегруженную процедуру
+      Proc.PrevOverload := ForwardDecl;
+      // override the declaration if the scope the same
+      if (ForwardDecl.Scope = Scope) then
+        ForwardDeclNode.Data := Proc
+      else
+        Scope.InsertID(Proc);
+
+      Scope.ProcSpace.Add(Proc);
+    end;
+  end;
+
+  CallConv := ConvNative;
+  Proc.Flags := Proc.Flags + ProcFlags;
+  Proc.CallConvention := CallConv;
+
+  if (Scope.ScopeClass <> scInterface) and not (pfImport in ProcFlags)
+                                       and not (pfForward in ProcFlags) then
+  begin
+    // имена парметров реализации процедуры могут отличатся от ее определения
+    // копируем накопленный VarSpace в процедуру
+
+    Proc.VarSpace := VarSpace;
+
+    Parameters.ProcSpace := Proc.ProcSpace;
+    Proc.EntryScope := Parameters;
+
+    if (FwdDeclState = dsDifferent) and not (pfOveload in ProcFlags) then
+    begin
+      if Assigned(Proc.IL) then
+        ERRORS.OVERLOADED_MUST_BE_MARKED(ID)
+      else
+        ERRORS.DECL_DIFF_WITH_PREV_DECL(ID);
+    end;
+    Result := ParseProcBody(Proc);
+    if Result = token_eof then
+      Exit;
+
+    if Result <> token_semicolon then
+      ERRORS.SEMICOLON_EXPECTED;
+
+    Result := Lexer_NextToken(Scope);
+  end;
+end;
+
 function TASTDelphiUnit.ParseProcName(Scope: TScope; ProcType: TProcType; out Name: TIdentifier; var Struct: TIDStructure;
                                       out ProcScope: TProcScope;
                                       out GenericParams: TIDTypeList): TTokenID;
 
   function GetStructScope(AStruct: TIDStructure; AProcType: TProcType): TScope;
   begin
+    if AProcType = ptOperator then
+      Result := Struct.Operators
+    else
     if IsClassProc(ProcType) then
       Result := Struct.StaticMembers
     else
@@ -7215,7 +7421,7 @@ var
   ProcFlags: TProcFlags;
   ImportLib, ImportName: TIDDeclaration;
 begin
-  Result := ParseProcName(Scope, ptProc {ptClassProc?}, {out} ID, {var} Struct,
+  Result := ParseProcName(Scope, ptOperator, {out} ID, {var} Struct,
                           {out} Parameters, {out} GenericsParams);
 
   OperatorID := GetOperatorID(ID.Name);
@@ -7249,7 +7455,7 @@ begin
   Lexer_MatchToken(Result, token_semicolon);
 
   // ищем ранее обьявленную декларацию с таким же именем
-  ForwardDecl := TASTDelphiProc(Struct.Members.FindID(ID.Name));
+  ForwardDecl := TASTDelphiProc(Struct.Operators.FindID(ID.Name));
 
   Proc := nil;
   FwdDeclState := dsDifferent;
@@ -7284,7 +7490,7 @@ begin
   {создаем новую декларацию}
   if not Assigned(Proc) then
   begin
-    Proc := TIDOperator.Create(Scope, ID, OperatorID);
+    Proc := TIDOperator.Create(Struct.Operators, ID, OperatorID);
     if Assigned(GenericsParams) then
       Proc.CreateGenericDescriptor(GenericsParams, SRCProcPos);
 
@@ -7302,10 +7508,10 @@ begin
     // добовляем новую декларацию в структуру или глобольный список или к списку перегруженных процедур
     if not Assigned(ForwardDecl) then
     begin
-      Struct.Members.AddProcedure(Proc);
+      Struct.Operators.AddProcedure(Proc);
     end else begin
       ForwardDecl.PrevOverload := Proc;
-      Struct.Members.ProcSpace.Add(Proc);
+      Struct.Operators.ProcSpace.Add(Proc);
     end;
 
     case OperatorID of
@@ -7456,7 +7662,7 @@ begin
         case Result of
           token_procedure: Result := ParseProcedure(Decl.StaticMembers, ptClassProc, Decl);
           token_function: Result := ParseProcedure(Decl.StaticMembers, ptClassFunc, Decl);
-          token_operator: Result := ParseOperator(Decl.Members, Decl);
+          token_operator: Result := ParseOperator(Decl.Operators, Decl);
           token_property: Result := ParseProperty(Decl.StaticMembers, Decl);
           token_constructor: Result := ParseProcedure(Decl.StaticMembers, ptClassConstructor, Decl);
           token_destructor: Result := ParseProcedure(Decl.StaticMembers, ptClassDestructor, Decl);
@@ -9591,18 +9797,22 @@ var
   item: TIDDeclaration;
   i: Integer;
 begin
-  item := Scope.VarSpace.First;
-  SetLength(Result, Scope.VarSpace.Count - SkipFirstCount);
-  // пропускаем N первых элементов
-  for i := 0 to SkipFirstCount - 1 do
-    item := item.NextItem;
+  if Scope.VarSpace.Count > 0 then
+  begin
+    item := Scope.VarSpace.First;
+    SetLength(Result, Scope.VarSpace.Count - SkipFirstCount);
+    // пропускаем N первых элементов
+    for i := 0 to SkipFirstCount - 1 do
+      item := item.NextItem;
 
-  i := 0;
-  while Assigned(item) do begin
-    Result[i] := TIDVariable(item);
-    item := item.NextItem;
-    Inc(i);
-  end;
+    i := 0;
+    while Assigned(item) do begin
+      Result[i] := TIDVariable(item);
+      item := item.NextItem;
+      Inc(i);
+    end;
+  end else
+    Result := [];
 end;
 
 { TDeclCache }

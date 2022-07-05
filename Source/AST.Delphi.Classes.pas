@@ -546,12 +546,14 @@ type
   TIDStructure = class(TIDType)
   private
     fAncestor: TIDStructure;
-    fStaticMembers: TStructScope;  // class (static) members
-    fMembers: TStructScope;        // instance members
+    fStaticMembers: TStructScope;   // class (static) members
+    fMembers: TStructScope;         // instance members
+    fOperators: TStructScope;       // operators members
     fVarSpace: TVarSpace;
     fProcSpace: TProcSpace;
     fStaticVarSpace: TVarSpace;
     fStaticProcSpace: TProcSpace;
+    fOperatorsSpace: TProcSpace;
     fStrucFlags: TStructFlags;
     fDefaultProperty: TIDProperty;
     fClassOfType: TIDClassOf;
@@ -576,6 +578,7 @@ type
     ////////////////////////////////////////////////////////////////////////////
     property Members: TStructScope read FMembers;
     property StaticMembers: TStructScope read FStaticMembers;
+    property Operators: TStructScope read fOperators;
     property HasInitFiels: Boolean read GetHasInitFiels;
     property StructFlags: TStructFlags read FStrucFlags write FStrucFlags;
     property Ancestor: TIDStructure read FAncestor write SetAncestor;
@@ -590,7 +593,6 @@ type
     function GetLastVirtualIndex: Integer;
     function FindVirtualProc(Proc: TIDProcedure): TIDProcedure;
     function FindVirtualProcInAncestor(Proc: TIDProcedure): TIDProcedure;
-    procedure AddMethod(const Decl: TIDProcedure); inline;
     function AddField(const Name: string; DataType: TIDType): TIDField;
     function FindField(const Name: string): TIDField;
     function FindMethod(const Name: string): TIDProcedure;
@@ -791,7 +793,8 @@ type
     ptConstructor,        // конструктор
     ptDestructor,         // деструктор
     ptClassConstructor,   // классовый конструктор
-    ptClassDestructor     // классовый деструктор
+    ptClassDestructor,    // классовый деструктор
+    ptOperator
   );
 
   TProcTypeClass = (
@@ -1642,7 +1645,8 @@ const
     {ptConstructor} False,
     {ptDestructor} False,
     {ptClassConstructor} False,
-    {ptClassDestructor} False
+    {ptClassDestructor} False,
+    {ptOperator} False
   );
 
   function IsClassProc(AProcType: TProcType): Boolean; inline;
@@ -3693,12 +3697,6 @@ begin
   FMembers.AddVariable(Result);
 end;
 
-procedure TIDStructure.AddMethod(const Decl: TIDProcedure);
-begin
-  FMembers.ProcSpace.Add(Decl);
-  Decl.FScope := FMembers;
-end;
-
 constructor TIDStructure.Create(Scope: TScope; const Name: TIdentifier);
 begin
   inherited Create(Scope, Name);
@@ -3935,6 +3933,9 @@ begin
   fMembers := TStructScope.CreateAsStruct(Scope, Self, @fVarSpace, @fProcSpace, Scope.DeclUnit);
   fMembers.AddScope(fStaticMembers);
   {$IFDEF DEBUG}fMembers.Name := ID.Name + '.members';{$ENDIF}
+  fOperators := TStructScope.CreateAsStruct(Scope, Self, nil, @fOperatorsSpace, Scope.DeclUnit);
+  fOperators.AddScope(fStaticMembers);
+  {$IFDEF DEBUG}fOperators.Name := ID.Name + '.operators';{$ENDIF}
 end;
 
 function TIDStructure.IsInheritsForm(Ancestor: TIDStructure): Boolean;
@@ -5950,7 +5951,7 @@ begin
   FDataTypeID := dtClass;
   FDeclProc := DeclProc;
   FCapturedVars := TCapturedVars.Create(IDVarCompare);
-  AddMethod(RunProc);
+  Members.ProcSpace.Add(RunProc);
   OverloadImplicitTo(dtProcType, SYSUnit.Operators.ImplicitClosureToTMethod);
 end;
 
