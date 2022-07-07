@@ -55,6 +55,7 @@ type
     token_at,                       // keyword: at
     token_absolute,                 // keyword: absolute
     token_abstract,                 // keyword: abstract
+    token_aling,                    // keyword: align
     token_asm,                      // keyword: asm
     token_stdcall,                  // keyword: stdcall
     token_fastcall,                 // keyword: fastcall
@@ -382,6 +383,7 @@ begin
   RegisterToken('at', token_at, TTokenClass.AmbiguousPriorityKeyword);
   RegisterToken('absolute', token_absolute, TTokenClass.AmbiguousPriorityKeyword);
   RegisterToken('abstract', token_abstract);
+  RegisterToken('align', token_aling, TTokenClass.AmbiguousPriorityIdentifier);
   RegisterToken('as', token_as);
   RegisterToken('asm', token_asm);
   RegisterToken('and', token_and);

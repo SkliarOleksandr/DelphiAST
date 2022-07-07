@@ -6782,6 +6782,12 @@ begin
   ForwardDeclNode := nil;
   // search the procedure forward declaration
   // first, search the decl in the current members only
+  if ProcType = ptClassConstructor then
+    ForwardDecl := Struct.ClassConstructor as TASTDelphiProc
+  else
+  if ProcType = ptClassDestructor then
+    ForwardDecl := Struct.ClassDestructor as TASTDelphiProc
+  else
   if IsClassProc(ProcType) then
     ForwardDecl := SearchClassMethodDecl(Struct, ID, {out} ForwardDeclNode)
   else
@@ -6880,7 +6886,7 @@ begin
         end;
         ptClassDestructor: begin
           // class destructor doesn't need to be added to the scope
-          if Assigned(Struct.ClassConstructor) then
+          if Assigned(Struct.ClassDestructor) then
             ERRORS.CLASS_DESTRUCTOR_ALREADY_EXIST(Proc);
           Struct.ClassDestructor := Proc;
         end;
@@ -7715,6 +7721,14 @@ begin
   Lexer_MatchToken(Result, token_end);
   Result := Lexer_NextToken(Scope);
 
+  // check for align keyword
+  if Lexer_AmbiguousId = token_aling then
+  begin
+    Lexer_NextToken(Scope);
+    var AlignValueExpr: TIDExpression;
+    Result := ParseConstExpression(Scope, {out} AlignValueExpr, ExprRValue);
+  end;
+
   if Lexer_IsCurrentToken(token_platform) then
     Result := ParsePlatform(Scope);
 
@@ -8424,7 +8438,7 @@ begin
     if Decl.ItemType = itType then
     begin
       if Assigned(DataType.Helper) then
-        SearchScope := DataType.Helper.Members // todo: should be StaticMembers
+        SearchScope := DataType.Helper.StaticMembers
       else
       if DataType is TIDStructure then
         SearchScope := TIDStructure(DataType).Members // todo: should be StaticMembers
@@ -8451,7 +8465,7 @@ begin
       DataType := TIDAliasType(DataType).Original;
 
     if Assigned(DataType.Helper) then
-      SearchScope := DataType.Helper.Members // todo: should be StaticMembers
+      SearchScope := DataType.Helper.StaticMembers
     else
     if DataType is TIDStructure then
       SearchScope := TIDStructure(DataType).StaticMembers
@@ -8948,9 +8962,9 @@ begin
   i := 0;
   Lexer_MatchCurToken(token_openround);
   SetLength(Expressions, Struct.FieldsCount);
-
+  Lexer_NextToken(Scope);
   while True do begin
-    Lexer_ReadNextIdentifier(Scope, ID);
+    Lexer_ReadCurrIdentifier(ID);
     Lexer_ReadToken(Scope, token_colon);
     Field := Struct.FindField(ID.Name);
     if not Assigned(Field) then
@@ -8969,8 +8983,10 @@ begin
     if Result = token_semicolon then
     begin
       Field := TIDField(Field.NextItem);
-      Continue;
-    end;
+      Result := Lexer_NextToken(Scope);
+      if Result = token_identifier then
+        Continue;
+      end;
     Break;
   end;
   // create anonymous record constant
