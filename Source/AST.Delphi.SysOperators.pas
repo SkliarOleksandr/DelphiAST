@@ -199,6 +199,13 @@ type
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
+  {implicit TVarRec <- Any}
+  TSysImplicitSysVarFromAny = class(TSysOpImplicit)
+  public
+    function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
+  end;
+
+
   ///////////////////////////////////////////////////////////////////////////////////////////
   /// EXPLICIT
   ///////////////////////////////////////////////////////////////////////////////////////////
@@ -901,6 +908,19 @@ begin
   end;
 end;
 
+
+{ TSysImplicitSysVarFromAny }
+
+function TSysImplicitSysVarFromAny.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+begin
+  var ASysVar := Dst as TIDSysVariativeType;
+  for var AType in ASysVar.Types do
+  begin
+    Result := TASTDelphiUnit(SContext.Module).CheckImplicit(SContext, Src, Dst);
+    if Assigned(Result) then
+      Exit;
+  end;
+end;
 
 end.
 

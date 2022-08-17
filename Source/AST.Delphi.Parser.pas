@@ -77,7 +77,7 @@ type
 
     function CreateAnonymousConstant(Scope: TScope; var EContext: TEContext;
       const ID: TIdentifier; IdentifierType: TIdentifierType): TIDExpression;
-    procedure InitEContext(var EContext: TEContext; const SContext: TSContext; EPosition: TExpessionPosition); overload; inline;
+    procedure InitEContext(out EContext: TEContext; const SContext: TSContext; EPosition: TExpessionPosition); overload; inline;
     procedure AddType(const Decl: TIDType);
     class function CheckExplicit(const SContext: TSContext; const Source, Destination: TIDType; out ExplicitOp: TIDDeclaration): Boolean; overload; static;
     class function MatchExplicit(const SContext: TSContext; const Source: TIDExpression; Destination: TIDType): TIDDeclaration; overload; static;
@@ -169,7 +169,7 @@ type
     procedure MatchPropGetter(Prop: TIDProperty; Getter: TIDProcedure; PropParams: TScope);
     procedure SetProcGenericArgs(CallExpr: TIDCallExpression; Args: TIDExpressions);
     class function MatchImplicit(Source, Destination: TIDType): TIDDeclaration; static; inline;
-
+    procedure CheckVarParamConformity(Param: TIDVariable; Arg: TIDExpression);
     function IsConstValueInRange(Value: TIDExpression; RangeExpr: TIDRangeConstant): Boolean;
     function IsConstRangesIntersect(const Left, Right: TIDRangeConstant): Boolean;
     function IsConstEqual(const Left, Right: TIDExpression): Boolean;
@@ -387,6 +387,7 @@ type
     function ParseCondOptions(Scope: TScope): TTokenID;
 
     procedure EnumIntfDeclarations(const Proc: TEnumASTDeclProc); override;
+    procedure EnumAllDeclarations(const Proc: TEnumASTDeclProc); override;
 
     property Source: string read GetSource;
     function Compile(RunPostCompile: Boolean = True): TCompilerResult; override;
@@ -483,7 +484,7 @@ end;
 
 function TASTDelphiUnit.ParseStatements(Scope: TScope; const SContext: TSContext; IsBlock: Boolean): TTokenID;
 var
-  LEContext, REContext: TEContext;
+  LEContext: TEContext;
   NewScope: TScope;
   AST: TASTItem;
 begin
@@ -526,7 +527,7 @@ begin
       token_asm: Result := ParseASMStatement(Scope, SContext);
       {INHERITED}
       token_inherited: begin
-        InitEContext(LEContext, SContext, ExprLValue);
+        InitEContext({out} LEContext, SContext, ExprLValue);
         Result := ParseInheritedStatement(Scope, LEContext);
       end;
       {TRY}
@@ -553,12 +554,14 @@ begin
         Continue;
       end;
       {IDENTIFIER, OPEN ROUND}
-      token_identifier, token_id_keyword, token_openround: begin
-        InitEContext(LEContext, SContext, ExprLValue);
+      token_identifier, token_id_keyword, token_openround:
+      begin
+        InitEContext({out} LEContext, SContext, ExprLValue);
         begin
           var ASTEDst, ASTESrc: TASTExpression;
           Result := ParseExpression(Scope, SContext, LEContext, ASTEDst);
           if Result = token_assign then begin
+            var REContext: TEContext;
             InitEContext(REContext, SContext, ExprRValue);
             Lexer_NextToken(Scope);
             Result := ParseExpression(Scope, SContext, REContext, ASTESrc);
@@ -567,7 +570,7 @@ begin
             LEContext.RPNPushOperator(opAssignment);
             LEContext.RPNFinish();
 
-            var Op := SContext.Add<TASTOpAssign>;
+            var Op := SContext.Add(TASTOpAssign) as TASTOpAssign;
             Op.Dst := ASTEDst;
             Op.Src := ASTESrc;
 
@@ -576,7 +579,7 @@ begin
           begin
             var LExpr := LEContext.Result;
             CheckLabelExpression(LExpr);
-            var KW := SContext.Add<TASTKWLabel>;
+            var KW := SContext.Add(TASTKWLabel) as TASTKWLabel;
             KW.LabelDecl := LExpr.Declaration;
             Result := Lexer_NextToken(Scope);
             Continue;
@@ -645,7 +648,7 @@ var
   NewContext: TSContext;
   ExceptItem: TASTKWTryExceptItem;
 begin
-  KW := SContext.Add<TASTKWTryBlock>;
+  KW := SContext.Add(TASTKWTryBlock) as TASTKWTryBlock;
   NewContext := SContext.MakeChild(Scope, KW.Body);
   // запоминаем предыдущий TryBlock
   Lexer_NextToken(Scope);
@@ -1428,7 +1431,7 @@ var
   ASTExpr: TASTExpression;
   KW: TASTKWWhile;
 begin
-  KW := SContext.Add<TASTKWWhile>;
+  KW := SContext.Add(TASTKWWhile) as TASTKWWhile;
 
   // loop expression
   InitEContext(EContext, SContext, ExprRValue);
@@ -1461,7 +1464,7 @@ var
 begin
   WPrevScope := Scope;
   WNextScope := nil;
-  KW := SContext.Add<TASTKWWith>;
+  KW := SContext.Add(TASTKWWith) as TASTKWWith;
   BodySContext := SContext.MakeChild(Scope, KW.Body);
   while True do begin
     Result := Lexer_NextToken(Scope);
@@ -1811,12 +1814,7 @@ destructor TASTDelphiUnit.Destroy;
 begin
   fCache.Free;
   fDefines.Free;
-//  FIntfScope.Free;
-//  FImplScope.Free;
-//  FLexer.Free;
   fOptions.Free;
-//  FIntfImportedUnits.Free;
-//  FImplImportedUnits.Free;
   inherited;
 end;
 
@@ -2611,6 +2609,40 @@ begin
   Result := VarSpace.First;
 end;
 
+procedure TASTDelphiUnit.EnumAllDeclarations(const Proc: TEnumASTDeclProc);
+var
+  Decl: TIDDeclaration;
+begin
+  {константы}
+  Decl := ConstSpace.First;
+  while Assigned(Decl) do
+  begin
+    Proc(Self, Decl);
+    Decl := Decl.NextItem;
+  end;
+  {глобальные переменные}
+  Decl := VarSpace.First;
+  while Assigned(Decl) do
+  begin
+    Proc(Self, Decl);
+    Decl := Decl.NextItem;
+  end;
+  {типы}
+  Decl := TypeSpace.First;
+  while Assigned(Decl) do
+  begin
+    Proc(Self, Decl);
+    Decl := Decl.NextItem;
+  end;
+  {процедуры}
+  Decl := ProcSpace.First;
+  while Assigned(Decl) do
+  begin
+    Proc(Self, Decl);
+    Decl := Decl.NextItem;
+  end;
+end;
+
 procedure TASTDelphiUnit.EnumIntfDeclarations(const Proc: TEnumASTDeclProc);
 var
   Decl: TIDDeclaration;
@@ -2704,7 +2736,7 @@ begin
   Result := TIDExpression.Create(GetTMPRef(SContext, DataType));
 end;
 
-procedure TASTDelphiUnit.InitEContext(var EContext: TEContext; const SContext: TSContext; EPosition: TExpessionPosition);
+procedure TASTDelphiUnit.InitEContext(out EContext: TEContext; const SContext: TSContext; EPosition: TExpessionPosition);
 begin
   EContext.Initialize(SContext, Process_operators);
   EContext.EPosition := EPosition;
@@ -3530,12 +3562,7 @@ begin
             CheckVarExpression(Arg, vmpPassArgument);
             {проверка на строгость соответствия типов}
             if Param.DataType.ActualDataType <> Arg.DataType.ActualDataType then
-            begin
-              if (Param.DataType <> Sys._UntypedReference) and
-                 not ((Param.DataType.DataTypeID = dtPointer) and
-                      (Arg.DataType.DataTypeID = dtPointer)) then
-                ERRORS.REF_PARAM_MUST_BE_IDENTICAL(Arg);
-            end;
+              CheckVarParamConformity(Param, Arg);
           end;
           continue;
         end;
@@ -3845,7 +3872,7 @@ begin
                 curRate := 10;
               end else begin
                   var dataLoss: Boolean;
-                  curRate := GetImplicitRate(SrcDataTypeID, DstDataTypeID, dataLoss);  // todo
+                  curRate := GetImplicitRate(SrcDataTypeID, DstDataTypeID, {out} dataLoss);  // todo
                   if dataLoss then
                     curLevel := TASTArgMatchLevel.MatchImplicitAndDataLoss
                   else
@@ -4518,7 +4545,7 @@ function TASTDelphiUnit.ParseASMStatement(Scope: TScope; const SContext: TSConte
 var
   KW: TASTKWAsm;
 begin
-  KW := SContext.Add<TASTKWAsm>;
+  KW := SContext.Add(TASTKWAsm) as TASTKWAsm;
   while (Result <> token_end) do
   begin
     // skip all to end
@@ -4635,7 +4662,7 @@ begin
     if not SContext.IsLoopBody then
     AbortWork(sBreakOrContinueAreAllowedOnlyInALoops, Lexer_Position);
 
-  SContext.Add<TASTKWBreak>;
+  SContext.Add(TASTKWBreak);
   Result := Lexer_NextToken(Scope);
 end;
 
@@ -5054,7 +5081,7 @@ begin
   if not SContext.IsLoopBody then
     AbortWork(sBreakOrContinueAreAllowedOnlyInALoops, Lexer_Position);
 
-  SContext.Add<TASTKWContinue>;
+  SContext.Add(TASTKWContinue);
   Result := Lexer_NextToken(Scope);
 end;
 
@@ -5195,7 +5222,7 @@ var
   KW: TASTKWCase;
   CaseItem: TASTExpBlockItem;
 begin
-  KW := SContext.Add<TASTKWCase>;
+  KW := SContext.Add(TASTKWCase) as TASTKWCase;
 
   // NeedCMPCode := False;
   // CASE выражение
@@ -5967,7 +5994,7 @@ var
 begin
   ASTExpr := TASTExpression.Create(nil);
   ASTExpr.AddDeclItem(LoopVar.Declaration, LoopVar.TextPosition);
-  KW := SContext.Add<TASTKWForIn>;
+  KW := SContext.Add(TASTKWForIn) as TASTKWForIn;
   KW.VarExpr := ASTExpr;
   // парсим выражение-коллекцию
   InitEContext(EContext, SContext, ExprRValue);
@@ -6037,7 +6064,7 @@ begin
     Exit;
   end;
 
-  KW := SContext.Add<TASTKWFor>;
+  KW := SContext.Add(TASTKWFor) as TASTKWFor;
   BodySContext := SContext.MakeChild(Scope, KW.Body);
 
   Lexer_MatchToken(Result, token_assign);
@@ -6209,7 +6236,7 @@ begin
   Lexer_ReadNextIdentifier(Scope, ID);
   LDecl := FindID(Scope, ID);
   CheckLabelExpression(LDecl);
-  KW := SContext.Add<TASTKWGoTo>;
+  KW := SContext.Add(TASTKWGoTo) as TASTKWGoTo;
   KW.LabelDecl := LDecl;
   Result := Lexer_NextToken(Scope);
 end;
@@ -6280,7 +6307,7 @@ begin
   Names := TIdentifiersPool.Create(1);
   Result := Lexer_NextToken(Scope);
 
-  KW := SContext.Add<TASTKWInlineVarDecl>;
+  KW := SContext.Add(TASTKWInlineVarDecl) as TASTKWInlineVarDecl;
 
   while True do begin
     Lexer_MatchIdentifier(Result);
@@ -6293,15 +6320,11 @@ begin
       Continue;
     end;
 
-    // парсим тип, если определен
+    // parse a type if declared
     if Result = token_colon then
       Result := ParseTypeSpec(Scope, DataType)
     else
       DataType := nil;
-
-    Lexer_MatchToken(Result, token_assign);
-
-    InitEContext(EContext, SContext, ExprRValue);
 
     SetLength(Vars, c + 1);
     for i := 0 to c do
@@ -6313,28 +6336,34 @@ begin
       Variable.Absolute := nil;
       Scope.AddVariable(Variable);
       Vars[i] := Variable;
-      Expr := TIDExpression.Create(Variable, Variable.TextPosition);
-      EContext.RPNPushExpression(Expr);
       KW.AddDecl(Variable);
     end;
 
-    Lexer_NextToken(Scope);
-    var ASTExpr: TASTExpression := nil;
-    Result := ParseExpression(Scope, SContext, EContext, ASTExpr);
-    KW.Expression := ASTExpr;
-
-    if not Assigned(DataType) then
+    // parse a default value if declared
+    if Result = token_assign then
     begin
-      DataType := EContext.Result.DataType;
-      for i := 0 to c do
-        Vars[i].DataType := DataType
+      InitEContext(EContext, SContext, ExprRValue);
+      var ADefaultValueExpr := TIDExpression.Create(Variable, Variable.TextPosition);
+      EContext.RPNPushExpression(Expr);
+
+      Lexer_NextToken(Scope);
+      var ASTExpr: TASTExpression := nil;
+      Result := ParseExpression(Scope, SContext, EContext, {out} ASTExpr);
+      KW.Expression := ASTExpr;
+
+      if not Assigned(DataType) then
+      begin
+        DataType := EContext.Result.DataType;
+        for i := 0 to c do
+          Vars[i].DataType := DataType
+      end;
+
+      EContext.RPNPushOperator(opAssignment);
+      EContext.RPNFinish;
     end;
 
-    EContext.RPNPushOperator(opAssignment);
-    EContext.RPNFinish;
-
     Lexer_MatchSemicolon(Result);
-    break;
+    Break;
   end;
 end;
 
@@ -7228,7 +7257,7 @@ begin
       else
         ProcScope := TProcScope.CreateInDecl(Scope, nil, nil);
     end;
-    {$IFDEF DEBUG}ProcScope.Name := Name.Name + '_params'; {$ENDIF}
+    {$IFDEF DEBUG}ProcScope.Name := Name.Name + '$params'; {$ENDIF}
     Exit;
   end;
 end;
@@ -7608,7 +7637,7 @@ begin
   end;
 
 
-  KW := SContext.Add<TASTKWRaise>;
+  KW := SContext.Add(TASTKWRaise) as TASTKWRaise;
   KW.Expression := ASTExpr;
 end;
 
@@ -8001,7 +8030,7 @@ var
   KW: TASTKWRepeat;
   ASTExpr: TASTExpression;
 begin
-  KW := SContext.Add<TASTKWRepeat>;
+  KW := SContext.Add(TASTKWRepeat) as TASTKWRepeat;
 
   BodySContext := SContext.MakeChild(Scope, KW.Body);
 
@@ -8666,7 +8695,7 @@ var
   KW: TASTKWInheritedCall;
 begin
   Proc := EContext.SContext.Proc;
-  KW := EContext.SContext.Add<TASTKWInheritedCall>;
+  KW := EContext.SContext.Add(TASTKWInheritedCall) as TASTKWInheritedCall;
 
   Result := Lexer_NextToken(Scope);
   if Result = token_identifier then
@@ -9745,6 +9774,17 @@ begin
   end;
   if VarLoopIndex in Flags then
     ERRORS.CANNOT_MODIFY_FOR_LOOP_VARIABLE(Expression);
+end;
+
+procedure TASTDelphiUnit.CheckVarParamConformity(Param: TIDVariable; Arg: TIDExpression);
+begin
+  if (Param.DataTypeID = dtOpenArray) and (Arg.DataType is TIDArray) then
+    Exit;
+
+  if (Param.DataType <> Sys._UntypedReference) and
+     not ((Param.DataType.DataTypeID = dtPointer) and
+          (Arg.DataType.DataTypeID = dtPointer)) then
+  ERRORS.REF_PARAM_MUST_BE_IDENTICAL(Arg);
 end;
 
 class procedure TASTDelphiUnit.CheckAccessMember(SContext: PSContext; Decl: TIDDeclaration; const ID: TIdentifier);

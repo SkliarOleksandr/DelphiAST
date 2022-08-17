@@ -386,6 +386,20 @@ type
     property Helper: TDlphHelper read fHelper write fHelper;
   end;
 
+  TIDTypesArray = array of TIDType;
+
+  {special system internal type to describe several possible types in one}
+  TIDSysVariativeType = class(TIDType)
+  private
+    FTypes: TIDTypesArray;
+  protected
+    function GetDisplayName: string; override;
+  public
+    constructor CreateAsSystem(Scope: TScope; const Types: TIDTypesArray); reintroduce;
+    procedure CreateStandardOperators; override;
+    property Types: TIDTypesArray read FTypes;
+  end;
+
   {special generic type}
   TIDGenericType = class(TIDType)
   private
@@ -6191,6 +6205,28 @@ constructor TIDUntypedRef.CreateAsSystem(Scope: TScope; const Name: string);
 begin
   inherited;
   fDataTypeID := dtUntypedRef;
+end;
+
+{ TIDSysVariativeType }
+
+constructor TIDSysVariativeType.CreateAsSystem(Scope: TScope; const Types: TIDTypesArray);
+begin
+  inherited CreateAsSystem(Scope, '');
+  FTypes := Types;
+end;
+
+procedure TIDSysVariativeType.CreateStandardOperators;
+begin
+  inherited;
+  OverloadImplicitFromAny(SysUnit.Operators.ImplicitSysVarFromAny);
+end;
+
+function TIDSysVariativeType.GetDisplayName: string;
+begin
+  Result := '<';
+  for var AType in FTypes do
+    Result := AddStringSegment(Result, AType.DisplayName, ' or ');
+  Result := Result + '>';
 end;
 
 initialization

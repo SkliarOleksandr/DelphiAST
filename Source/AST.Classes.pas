@@ -108,6 +108,7 @@ type
     constructor Create(const Project: IASTProject; const FileName: string; const Source: string = ''); virtual;
     constructor CreateFromFile(const Project: IASTProject; const FileName: string); virtual;
     procedure EnumIntfDeclarations(const Proc: TEnumASTDeclProc); virtual; abstract;
+    procedure EnumAllDeclarations(const Proc: TEnumASTDeclProc); virtual; abstract;
     property TotalLinesParsed: Integer read GetTotalLinesParsed;
   end;
 

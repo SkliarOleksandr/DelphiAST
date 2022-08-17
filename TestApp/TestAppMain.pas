@@ -177,6 +177,8 @@ begin
   Prj.AddUnit(UN, nil);
 
   ShowResult(Prj);
+
+  Prj.Clear;
 end;
 
 const cRTLUsesSource =
@@ -199,7 +201,7 @@ begin
   edAllItems.BeginUpdate;
   try
     edAllItems.Clear;
-    Project.EnumIntfDeclarations(
+    Project.EnumAllDeclarations(
       procedure(const Module: TASTModule; const Decl: TASTDeclaration)
       begin
         if not chkbShowAnonymous.Checked and (Decl.ID.Name = '') then

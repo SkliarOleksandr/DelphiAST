@@ -316,6 +316,7 @@ begin
     Exit(Abs(RValue));
   end;
   Result := 0;
+  DataLoss := False;
 end;
 
 procedure Rate(Src: TDataTypeID; Dsts: array of TDataTypeID);

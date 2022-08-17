@@ -1,6 +1,7 @@
 program DASTTestApp;
 
 uses
+  FastMM4,
   Vcl.Forms,
   TestAppMain in 'TestAppMain.pas' {frmTestAppMain},
   AVL in '..\Source\AVL.pas',

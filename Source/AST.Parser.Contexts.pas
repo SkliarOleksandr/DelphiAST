@@ -19,7 +19,7 @@ type
     constructor Create(const Module: TASTModule; Scope: TScope; Proc: TProc; Block: TASTBlock); overload;
     constructor Create(const Module: TASTModule; Scope: TScope); overload;
     function MakeChild(Scope: TScope; Block: TASTBlock): TASTSContext<TProc>; //inline;
-    function Add<T: TASTItem>: T; overload;
+    function Add<T: TASTItem>: T; overload; // do not use due to compiler erros
     function Add(T: TASTItemClass): TASTItem; overload;
     procedure AddItem(const Item: TASTItem);
     property Module: TASTModule read fModule;

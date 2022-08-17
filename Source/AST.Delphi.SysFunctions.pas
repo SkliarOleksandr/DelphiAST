@@ -396,20 +396,21 @@ end;
 { TSF_AtomicExchange }
 
 function TSF_AtomicExchange.Process(var EContext: TEContext): TIDExpression;
-var
-  Left, Right: TIDExpression;
 begin
-  Right := EContext.RPNPopExpression();
-  Left := EContext.RPNPopExpression();
-  Result := CreateTMPExpr(EContext, SYSUnit._NativeInt);
+  var AValue := EContext.RPNPopExpression();
+  var ATarget := EContext.RPNPopExpression();
+
+  Result := CreateTMPExpr(EContext, ATarget.DataType);
   // todo:
 end;
 
 class function TSF_AtomicExchange.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
-  Result := Self.Create(Scope, 'AtomicExchange', SYSUnit._NativeInt);
-  Result.AddParam('Left', SYSUnit._Void, [VarInOut]);
-  Result.AddParam('Right', SYSUnit._Void, [VarInOut]);
+  var AVariativeType := TIDSysVariativeType.CreateAsSystem(Scope,
+                        [SysUnit._Int32, SysUnit._NativeInt, SysUnit._Pointer]);
+  Result := Self.Create(Scope, 'AtomicExchange', AVariativeType);
+  Result.AddParam('Target', SYSUnit._Void, [VarInOut]);
+  Result.AddParam('Value', AVariativeType);
 end;
 
 { TSF_AtomicCmpExchange }

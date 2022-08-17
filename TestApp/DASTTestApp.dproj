@@ -1,7 +1,7 @@
 ﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{3C2A4704-BAD3-42B6-8C41-69D707A46C18}</ProjectGuid>
-        <ProjectVersion>19.4</ProjectVersion>
+        <ProjectVersion>19.5</ProjectVersion>
         <FrameworkType>VCL</FrameworkType>
         <MainSource>DASTTestApp.dpr</MainSource>
         <Base>True</Base>
@@ -93,7 +93,7 @@
         <AppEnableRuntimeThemes>true</AppEnableRuntimeThemes>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
-        <DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
+        <DCC_Define>DEBUG;FullDebugMode;$(DCC_Define)</DCC_Define>
         <DCC_DebugDCUs>true</DCC_DebugDCUs>
         <DCC_Optimize>false</DCC_Optimize>
         <DCC_GenerateStackFrames>true</DCC_GenerateStackFrames>
@@ -105,10 +105,9 @@
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
         <DCC_RemoteDebug>false</DCC_RemoteDebug>
-        <AppEnableRuntimeThemes>true</AppEnableRuntimeThemes>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
-        <VerInfo_Locale>1033</VerInfo_Locale>
         <AppDPIAwarenessMode>PerMonitor</AppDPIAwarenessMode>
+        <DCC_LargeAddressAware>true</DCC_LargeAddressAware>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Win64)'!=''">
         <AppEnableRuntimeThemes>true</AppEnableRuntimeThemes>
@@ -134,7 +133,6 @@
         </DelphiCompile>
         <DCCReference Include="TestAppMain.pas">
             <Form>frmTestAppMain</Form>
-            <FormType>dfm</FormType>
         </DCCReference>
         <DCCReference Include="..\Source\AVL.pas"/>
         <DCCReference Include="..\Source\AST.Delphi.Classes.pas"/>
@@ -165,10 +163,6 @@
         <DCCReference Include="..\Source\AST.Delphi.Options.pas"/>
         <DCCReference Include="..\Source\AST.Delphi.Intf.pas"/>
         <DCCReference Include="..\Source\AST.Pascal.Intf.pas"/>
-        <BuildConfiguration Include="Release">
-            <Key>Cfg_2</Key>
-            <CfgParent>Base</CfgParent>
-        </BuildConfiguration>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
@@ -190,15 +184,10 @@
                     <Source Name="MainSource">DASTTestApp.dpr</Source>
                 </Source>
             </Delphi.Personality>
-            <Deployment Version="3">
-                <DeployFile LocalName="Win32\Debug\DASTTestApp.exe" Configuration="Debug" Class="ProjectOutput">
-                    <Platform Name="Win32">
-                        <RemoteName>DASTTestApp.exe</RemoteName>
-                        <Overwrite>true</Overwrite>
-                    </Platform>
-                </DeployFile>
-                <ProjectRoot Platform="Win64" Name="$(PROJECTNAME)"/>
+            <Deployment Version="4">
+                <DeployFile LocalName="Win32\Debug\DASTTestApp.exe" Configuration="Debug" Class="ProjectOutput"/>
                 <ProjectRoot Platform="Win32" Name="$(PROJECTNAME)"/>
+                <ProjectRoot Platform="Win64" Name="$(PROJECTNAME)"/>
             </Deployment>
             <Platforms>
                 <Platform value="Win32">True</Platform>
