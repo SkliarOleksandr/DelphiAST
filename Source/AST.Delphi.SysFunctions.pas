@@ -82,6 +82,21 @@ type
     class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {_console}
+  TSCTF_Console = class(TIDSysCompileFunction)
+  public
+    function Process(const Ctx: TSysFunctionContext): TIDExpression; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
+  {_typename}
+  TSCTF_TypeName = class(TIDSysCompileFunction)
+  public
+    function Process(const Ctx: TSysFunctionContext): TIDExpression; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
+
   {Delete}
   TSF_Delete = class(TIDSysRuntimeFunction)
   public
@@ -1334,6 +1349,56 @@ begin
   Ctx.UN.CheckType(ATypeExpr);
   var ResVar := Ctx.EContext.SContext.Proc.GetTMPVar(ATypeExpr.AsType);
   Result := TIDExpression.Create(ResVar, Ctx.UN.Lexer_Position);
+end;
+
+{ TSCTF_Console }
+
+class function TSCTF_Console.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, '_console', SYSUnit._Void);
+  Result.AddParam('message', SYSUnit._UnicodeString, [VarConst]);
+end;
+
+function TSCTF_Console.Process(const Ctx: TSysFunctionContext): TIDExpression;
+begin
+  var MsgArg := Ctx.EContext.RPNPopExpression();
+  Ctx.UN.CheckConstExpression(MsgArg);
+  var StrMessage := MsgArg.AsConst.AsString;
+  Ctx.UN.Package.CosoleWrite(Ctx.UN, Ctx.UN.Lexer_Line, StrMessage);
+  Result := nil;
+end;
+
+
+{ TSCTF_TypeName }
+
+class function TSCTF_TypeName.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, '_typename', SYSUnit._UnicodeString);
+  Result.AddParam('declaration', SYSUnit._Void, [VarConst]);
+  Result.AddParam('expandanonymous', SYSUnit._Boolean, [], SysUnit._FalseExpression);
+end;
+
+function TSCTF_TypeName.Process(const Ctx: TSysFunctionContext): TIDExpression;
+begin
+  var ExpandArg := Ctx.EContext.RPNPopExpression();
+  var DeclArg := Ctx.EContext.RPNPopExpression();
+  var ADataType: TIDType := nil;
+  case DeclArg.ItemType of
+    itVar, itConst, itProperty: ADataType := DeclArg.DataType;
+    itType: ADataType := DeclArg.AsType;
+  end;
+
+  var ATypeName := '';
+  if Assigned(ADataType) then
+  begin
+    if ExpandArg.AsBoolConst.Value then
+      ATypeName := ADataType.DisplayName
+    else
+      ATypeName := ADataType.Name;
+  end;
+
+  var StrConst := TIDStringConstant.CreateAsAnonymous(Ctx.Scope, SYSUnit._UnicodeString, ATypeName);
+  Result := TIDExpression.Create(StrConst, Ctx.UN.Lexer_Position);
 end;
 
 { TSF_Insert }

@@ -172,6 +172,10 @@ begin
   Prj.Target := 'WIN-X86';
   Prj.Defines.Add('CPUX86');
   Prj.Defines.Add('MSWINDOWS');
+  Prj.OnConsoleWrite := procedure (const Module: IASTModule; Line: Integer; const Msg: string)
+                        begin
+                          Memo1.Lines.Add(format('#console: [%s: %d]: %s', [Module.Name, Line, Msg]));
+                        end;
 
   UN := TASTDelphiUnit.Create(Prj, 'test', edUnit.Text);
   Prj.AddUnit(UN, nil);
@@ -241,7 +245,7 @@ begin
     ShowAllItems(Project);
     CompilerMessagesToStrings(Project.Messages, Msg);
 
-    Memo1.Lines := Msg;
+    Memo1.Lines.AddStrings(Msg);
   finally
     Msg.Free;
   end;

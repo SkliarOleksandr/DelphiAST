@@ -15,12 +15,16 @@ type
   end;
 
   TASTProgressEvent = reference to procedure (const Module: IASTModule; Status: TASTProcessStatusClass);
+  TASTRrojectConsoleWriteEvent = reference to procedure (const Module: IASTModule; Line: Integer; const Message: string);
 
   IASTProject = interface
     ['{AE77D75A-4F7F-445B-ADF9-47CF5C2F0A14}']
     procedure SetOnProgress(const Value: TASTProgressEvent);
+    procedure SetOnConsoleWrite(const Value: TASTRrojectConsoleWriteEvent);
     function GetOnProgress: TASTProgressEvent;
+    function GetOnConsoleWrite: TASTRrojectConsoleWriteEvent;
     property OnProgress: TASTProgressEvent read GetOnProgress write SetOnProgress;
+    property OnConsoleWrite: TASTRrojectConsoleWriteEvent read GetOnConsoleWrite write SetOnConsoleWrite;
 
     function GetPointerSize: Integer;
     function GetNativeIntSize: Integer;
@@ -28,6 +32,8 @@ type
     property PointerSize: Integer read GetPointerSize;
     property NativeIntSize: Integer read GetNativeIntSize;
     property TotalLinesParsed: Integer read GetTotalLinesParsed;
+
+    procedure CosoleWrite(const Module: IASTModule; Line: Integer; const Message: string);
   end;
 
   IASTProjectSettings = interface

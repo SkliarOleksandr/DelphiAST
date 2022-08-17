@@ -51,8 +51,11 @@ type
   TASTProject = class(TInterfacedObject, IASTProject)
   private
     fOnProgress: TASTProgressEvent;
+    fOnConsoleProc: TASTRrojectConsoleWriteEvent;
     procedure SetOnProgress(const Value: TASTProgressEvent);
+    procedure SetOnConsoleWrite(const Value: TASTRrojectConsoleWriteEvent);
     function GetOnProgress: TASTProgressEvent;
+    function GetOnConsoleWrite: TASTRrojectConsoleWriteEvent;
   protected
     function GetUnitClass: TASTUnitClass; virtual; abstract;
     function GetPointerSize: Integer; virtual; abstract;
@@ -61,6 +64,7 @@ type
   public
     constructor Create(const Name: string); virtual; abstract;
     property OnProgress: TASTProgressEvent read GetOnProgress write SetOnProgress;
+    procedure CosoleWrite(const Module: IASTModule; Line: Integer; const Message: string);
   end;
 
   TASTParentItem = class(TASTItem)
@@ -1173,6 +1177,17 @@ end;
 
 { TASTProject }
 
+procedure TASTProject.CosoleWrite(const Module: IASTModule; Line: Integer; const Message: string);
+begin
+  if Assigned(fOnConsoleProc) then
+    fOnConsoleProc(Module, Line, Message);
+end;
+
+function TASTProject.GetOnConsoleWrite: TASTRrojectConsoleWriteEvent;
+begin
+  Result := fOnConsoleProc;
+end;
+
 function TASTProject.GetOnProgress: TASTProgressEvent;
 begin
   Result := fOnProgress;
@@ -1181,6 +1196,11 @@ end;
 function TASTProject.GetTotalLinesParsed: Integer;
 begin
   Result := 0;
+end;
+
+procedure TASTProject.SetOnConsoleWrite(const Value: TASTRrojectConsoleWriteEvent);
+begin
+  fOnConsoleProc := Value;
 end;
 
 procedure TASTProject.SetOnProgress(const Value: TASTProgressEvent);
