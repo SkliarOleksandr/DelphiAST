@@ -34,6 +34,7 @@ uses
 
 type
 
+  {anonymous types cache}
   TDeclCache = class
   private
     fRanges: TList<TIDRangeType>;
@@ -316,6 +317,7 @@ type
     function ParsePropertyMember(var PMContext: TPMContext; Scope: TScope; Prop: TIDProperty; out Expression: TIDExpression;
                                  var EContext: TEContext; const PrevExpr: TIDExpression): TTokenID;
     function ParseIndexedPropertyArgs(Scope: TScope; out ArgumentsCount: Integer; var EContext: TEContext): TTokenID;
+    function InferTypeByVector(Scope: TScope; Vector: TIDExpressions): TIDType;
     procedure ParseVector(Scope: TScope; var EContext: TEContext);
     function ParseEntryCall(Scope: TScope; CallExpr: TIDCallExpression; const EContext: TEContext; const ASTE: TASTExpression): TTokenID;
     function ParseBuiltinCall(Scope: TScope; CallExpr: TIDExpression; var EContext: TEContext): TTokenID;
@@ -9237,7 +9239,7 @@ begin
   Result := DoParse(ArrType, Dimensions, 0, DefaultValue.AsDynArrayConst);
 end;
 
-procedure TASTDelphiUnit.ParseVector(Scope: TScope; var EContext: TEContext);
+function TASTDelphiUnit.InferTypeByVector(Scope: TScope; Vector: TIDExpressions): TIDType;
 
   function MaxType(Type1, Type2: TIDType): TIDType;
   begin
@@ -9265,13 +9267,63 @@ procedure TASTDelphiUnit.ParseVector(Scope: TScope; var EContext: TEContext);
       Result := Sys._Variant;
   end;
 
+begin
+  if Length(Vector) = 0 then
+    Exit(Sys._Void);
+
+  var IsSet := False;
+  var ItemType: TIDType := nil;
+
+  for var AIndex := 0 to Length(Vector) - 1 do
+  begin
+    var Expr := Vector[AIndex];
+
+    IsSet := IsSet or Expr.IsRangeConst or (Expr.DataTypeID = dtEnum);
+
+    if AIndex > 0 then
+      ItemType := MaxType(ItemType, Expr.DataType)
+    else
+      ItemType := Expr.DataType;
+  end;
+
+  if not Assigned(ItemType) then
+    ERRORS.COULD_NOT_INFER_DYNAMIC_ARRAY_TYPE(Vector);
+
+  if IsSet then
+  begin
+    // create or find in the cache anonymous set type
+    var ASetBaseType: TIDOrdinal;
+    if ItemType.DataTypeID = dtRange then
+      ASetBaseType := (ItemType as TIDRangeType).BaseType
+    else
+      ASetBaseType := (ItemType as TIDEnum);
+    // search in the cache first
+    var SetType := fCache.FindSet(ASetBaseType);
+    if not Assigned(SetType) then
+    begin
+      SetType := TIDSet.CreateAsAnonymous(Scope, ASetBaseType);
+      // add to types pool
+      AddType(SetType);
+      fCache.Add(SetType);
+    end;
+    Result := SetType;
+  end else begin
+    // create anonymous array type
+    var ArrType := TIDDynArray.CreateAsAnonymous(Scope);
+    ArrType.ElementDataType := ItemType;
+    // add to types pool
+    AddType(ArrType);
+    Result := ArrType;
+  end;
+end;
+
+procedure TASTDelphiUnit.ParseVector(Scope: TScope; var EContext: TEContext);
 var
   i, c, Capacity: Integer;
   InnerEContext: TEContext;
   Expr: TIDExpression;
   Token: TTokenID;
   SItems, DItems: TIDExpressions;
-  ElDt: TIDType;
   IsStatic: Boolean;
   ASTExpr: TASTExpression;
 begin
@@ -9284,7 +9336,7 @@ begin
   InitEContext(InnerEContext, SContext, ExprNested);
   while True do begin
     Lexer_NextToken(Scope);
-    Token := ParseExpression(Scope, SContext, InnerEContext, ASTExpr);
+    Token := ParseExpression(Scope, SContext, InnerEContext, {out} ASTExpr);
     Expr := InnerEContext.Result;
     if Assigned(Expr) then begin
       if Expr.Declaration.ItemType <> itConst then
@@ -9312,52 +9364,28 @@ begin
     end;
   end;
 
-  var IsSet := False;
-
-  if c > 0 then begin
-    // копирование элементов
+  var AConst: TIDConstant;
+  if c > 0 then
+  begin
+    // prepare expressions array
     SetLength(DItems, c);
     Move(SItems[0], DItems[0], SizeOf(Pointer)*c);
-    // вывод типа элемента
-    Expr := SItems[0];
-
-    IsSet := IsSet or Expr.IsRangeConst;
-
-    ElDt := Expr.DataType;
-    for i := 1 to c - 1 do begin
-      Expr := SItems[i];
-      ElDt := MaxType(ElDt, Expr.DataType);
+    // infer array type
+    var ArrayType := InferTypeByVector(Scope, DItems);
+    if ArrayType.DataTypeID = dtSet then
+    begin
+      // create anonymous set constant
+      AConst := TIDSetConstant.CreateAsAnonymous(Scope, ArrayType, DItems);
+      AddConstant(AConst);
+    end else begin
+      // create anonymous array constant
+      AConst := TIDDynArrayConstant.CreateAsAnonymous(Scope, ArrayType, DItems);
+      TIDDynArrayConstant(AConst).ArrayStatic := IsStatic;
+      if IsStatic then
+        AddConstant(AConst);
     end;
   end else
-    ElDt := Sys._Variant;
-
-  var AConst: TIDConstant;
-  if IsSet then begin
-    // search in the cache first
-    var SetType := fCache.FindSet(TIDRangeType(ElDt).BaseType);
-    if not Assigned(SetType) then
-    begin
-      SetType := TIDSet.CreateAsAnonymous(Scope, TIDRangeType(ElDt).BaseType);
-      // add to types pool
-      AddType(SetType);
-      fCache.Add(SetType);
-    end;
-    // create anonymous set constant
-    AConst := TIDSetConstant.CreateAsAnonymous(Scope, SetType, DItems);
-    AConst.DisplayName;
-    AddConstant(AConst);
-  end else begin
-    // create anonymous array type
-    var ArrType := TIDDynArray.CreateAsAnonymous(Scope);
-    ArrType.ElementDataType := Sys._Untyped;
-    // add to types pool
-    AddType(ArrType);
-    // create anonymous array constant
-    AConst := TIDDynArrayConstant.CreateAsAnonymous(Scope, ArrType, DItems);
-    TIDDynArrayConstant(AConst).ArrayStatic := IsStatic;
-    if IsStatic then
-      AddConstant(AConst);
-  end;
+    AConst := Sys._EmptyArrayConstant;
 
   Expr := TIDExpression.Create(AConst, Lexer.Position);
   // заталкиваем массив в стек

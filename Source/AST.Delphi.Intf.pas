@@ -71,6 +71,7 @@ type
     _EmptyStrConstant: TIDStringConstant;
     _EmptyStrExpression: TIDExpression;
     _DeprecatedDefaultStr: TIDStringConstant;
+    _EmptyArrayConstant: TIDDynArrayConstant;
     _ResStringRecord: TIDType;
     _TVarRec: TIDType;
     function GetTypeByID(DataTypeID: TDataTypeID): TIDType;

@@ -991,6 +991,9 @@ begin
   // constant ""
   fDecls._EmptyStrConstant := TIDStringConstant.CreateAsAnonymous(IntfScope, _UnicodeString, '');
   fDecls._EmptyStrExpression := TIDExpression.Create(fDecls._EmptyStrConstant);
+  // constant "[]"
+  fDecls._EmptyArrayConstant := TIDDynArrayConstant.CreateAsAnonymous(IntfScope, _Void, []);
+
   // constant for deprecated
   fDecls._DeprecatedDefaultStr := TIDStringConstant.CreateAsSystem(IntfScope, 'The declaration is deprecated');
 

@@ -16,6 +16,7 @@ type
   private
     fErrors: TASTDelphiErrors;
     fSysDecls: PDelphiSystemDeclarations;
+    function CalcSets(const Left, Right: TIDConstant; Operation: TOperatorID): TIDConstant;
     property Sys: PDelphiSystemDeclarations read fSysDecls;
   public
     constructor Create(const Module: IASTDelphiUnit);
@@ -44,11 +45,14 @@ begin
   Result.TextPosition := Left.TextPosition;
 end;
 
-function CalcSets(const Left, Right: TIDConstant; Operation: TOperatorID): TIDConstant;
+function TExpressionCalculator.CalcSets(const Left, Right: TIDConstant; Operation: TOperatorID): TIDConstant;
 begin
   case Operation of
+    opEqual: Result := Sys._False; // todo:
+    opNotEqual: Result := Sys._False;  // todo:
     opAdd: Result := AddSets(Left as TIDSetConstant, Right as TIDSetConstant);
     opSubtract: Result := Left; // todo:
+    opMultiply: Result := Left; // todo:
   else
     Result := nil;
   end;
