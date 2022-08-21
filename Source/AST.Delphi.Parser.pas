@@ -305,6 +305,7 @@ type
     function ParseGenericsHeader(Params: TScope; out Args: TIDTypeList): TTokenID;
     function ParseGenericsArgs(Scope: TScope; const SContext: TSContext; out Args: TIDExpressions): TTokenID;
     function ParseStatements(Scope: TScope; const SContext: TSContext; IsBlock: Boolean): TTokenID; overload;
+    function GetPtrReferenceType(Decl: TIDPointer): TIDType;
 
     function ParseExpression(Scope: TScope; const SContext: TSContext; var EContext: TEContext; out ASTE: TASTExpression): TTokenID; overload;
     function ParseConstExpression(Scope: TScope; out Expr: TIDExpression; EPosition: TExpessionPosition): TTokenID;
@@ -1985,9 +1986,7 @@ begin
       Op := FindBinaryOperator(EContext.SContext, OpID, Left, Right);
 
       // если аргументы - константы, производим константные вычисления
-      if (Left.IsConstant and Right.IsConstant) and
-         (Left.Declaration.ClassType <> TIDSizeofConstant) and
-         (Right.Declaration.ClassType <> TIDSizeofConstant) then
+      if Left.IsConstant and Right.IsConstant then
       begin
         Result := fCCalc.ProcessConstOperation(Left, Right, OpID);
         Exit;
@@ -2071,11 +2070,13 @@ begin
     AddType(DataType);
   end;
 
-  // resourcestring support
   if Expr.IsConstant and (Expr.DataTypeID in [dtString, dtAnsiString]) then
   begin
-    var RStr := TIDPointerConstant.CreateAsAnonymous(IntfScope, EContext.SContext.SysUnit._ResStringRecord, Expr.Declaration);
-    Result := TIDExpression.Create(RStr, Expr.TextPosition);
+    // resourcestring -> PResStringRec support
+    var LConst := TIDPointerConstant.CreateAsAnonymous(IntfScope,
+                                                       Sys._ResStringRecord,
+                                                       Expr.AsConst);
+    Result := TIDExpression.Create(LConst, Expr.TextPosition);
   end else
   if Expr.IsTMPVar and Expr.AsVariable.Reference then
   begin
@@ -2131,7 +2132,7 @@ begin
   CheckPointerType(Src);
 
   PtrType := Src.DataType as TIDPointer;
-  RefType := PtrType.ReferenceType;
+  RefType := GetPtrReferenceType(PtrType);
   if not Assigned(RefType) then
     RefType := Sys._Untyped;
 
@@ -2170,7 +2171,7 @@ begin
   if not Assigned(OperatorItem) then
     ERRORS.NO_OVERLOAD_OPERATOR_FOR_TYPES(opNegative, Right);
 
-  if (Right.ItemType = itConst) and (Right.ClassType <> TIDSizeofConstant) then
+  if Right.ItemType = itConst then
     Result := fCCalc.ProcessConstOperation(Right, Right, opNegative)
   else begin
     Result := GetTMPVarExpr(EContext, OperatorItem.DataType, Right.TextPosition);
@@ -2189,7 +2190,7 @@ begin
   if not Assigned(OperatorItem) then
     ERRORS.NO_OVERLOAD_OPERATOR_FOR_TYPES(opNot, Right);
 
-  if (Right.ItemType = itConst) and (Right.ClassType <> TIDSizeofConstant) then
+  if Right.ItemType = itConst then
     Result := fCCalc.ProcessConstOperation(Right, Right, opNot)
   else begin
     var WasCall := False;
@@ -2790,7 +2791,6 @@ end;
 
 procedure TASTDelphiUnit.InsertToScope(Scope: TScope; Item: TIDDeclaration);
 begin
-  Item.DisplayName;
   if not Scope.InsertID(Item) then
     ERRORS.ID_REDECLARATED(Item);
 end;
@@ -5016,7 +5016,7 @@ function TASTDelphiUnit.ParseConstSection(Scope: TScope): TTokenID;
 var
   i, c: Integer;
   DataType: TIDType;
-  Item: TIDConstant;
+  LConst: TIDConstant;
   Expr: TIDExpression;
   Names: TIdentifiersPool;
 begin
@@ -5052,11 +5052,13 @@ begin
     end else begin
       // читаем значение константы
       Lexer_NextToken(Scope);
-      Result := ParseConstExpression(Scope, Expr, ExprRValue);
+      Result := ParseConstExpression(Scope, {out} Expr, ExprRValue);
       CheckEmptyExpression(Expr);
     end;
 
     CheckConstExpression(Expr);
+
+    var LConstClass := GetConstantClassByDataType(Expr.DataTypeID);
 
    // AddConstant(Expr.AsConst);
 
@@ -5068,10 +5070,11 @@ begin
     Lexer_MatchToken(Result, token_semicolon);
 
     for i := 0 to c do begin
-      Item := Expr.DeclClass.Create(Scope, Names.Items[i]) as TIDConstant;
-      Item.AssignValue(Expr.AsConst);
-      InsertToScope(Scope, Item);
-      AddConstant(Item);
+      LConst := LConstClass.Create(Scope, Names.Items[i]) as TIDConstant;
+      LConst.DataType := Expr.DataType;
+      LConst.AssignValue(Expr.AsConst);
+      InsertToScope(Scope, LConst);
+      AddConstant(LConst);
     end;
     c := 0;
     Result := Lexer_NextToken(Scope);
@@ -6564,6 +6567,25 @@ begin
   Result := Lexer_NextToken(Scope);
 end;
 
+function TASTDelphiUnit.GetPtrReferenceType(Decl: TIDPointer): TIDType;
+begin
+  Result := Decl.ReferenceType;
+  // if the type has been declared as forward, find the reference type
+  if not Assigned(Result) and Decl.NeedForward then
+  begin
+    var TypeDecl := FindID(Decl.Scope, Decl.ForwardID);
+    if Assigned(TypeDecl) then
+    begin
+      if TypeDecl.ItemType <> itType then
+        AbortWork(sTypeIdExpectedButFoundFmt, [Decl.ForwardID.Name], Decl.ForwardID.TextPosition);
+
+      Decl.ReferenceType := TIDType(TypeDecl);
+      Result := TIDType(TypeDecl);
+    end else
+      ERRORS.UNDECLARED_ID(Decl.ForwardID);
+  end;
+end;
+
 function TASTDelphiUnit.ParsePointerType(Scope: TScope; const ID: TIdentifier; out Decl: TIDPointer): TTokenID;
 var
   TmpID: TIdentifier;
@@ -6571,7 +6593,8 @@ var
 begin
   Lexer_ReadNextIdentifier(Scope, TmpID);
   DataType := TIDType(FindIDNoAbort(Scope, TmpID));
-  if Assigned(DataType) then
+  // use the target type if it has been declared in the same unit
+  if Assigned(DataType) and (DataType.Scope.DeclUnit = Self) then
   begin
     if DataType.ItemType <> itType then
       AbortWork(sTypeIdExpectedButFoundFmt, [TmpID.Name], Lexer.Position);
@@ -6587,6 +6610,7 @@ begin
       InsertToScope(Scope, Decl);
     end;
   end else begin
+    // if not, postpone it to first using
     Decl := TIDPointer.Create(Scope, ID);
     Decl.ForwardID := TmpID;
     Decl.NeedForward := True;
@@ -8464,7 +8488,7 @@ begin
       DataType := TIDAliasType(DataType).Original;
 
     while DataType.DataTypeID in [dtPointer, dtClassOf] do
-      DataType := TIDPointer(DataType).ReferenceType.ActualDataType;
+      DataType := GetPtrReferenceType(TIDPointer(DataType)).ActualDataType;
 
     if Decl.ItemType = itType then
     begin
@@ -8530,7 +8554,7 @@ begin
 //      DataType := TIDArray(DataType).ElementDataType;
 
     while DataType.DataTypeID in [dtPointer, dtClassOf] do
-      DataType := TIDPointer(DataType).ReferenceType.ActualDataType;
+      DataType := GetPtrReferenceType(TIDPointer(DataType)).ActualDataType;
 
     if Assigned(Decl.DataType.Helper) then
       SearchScope := Decl.DataType.Helper.Members

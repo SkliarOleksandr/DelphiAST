@@ -432,7 +432,6 @@ type
   TIDRefType = class(TIDType)
   private
     fReferenceType: TIDType;
-    function GetReferenceType: TIDType;
   protected
     function GetDisplayName: string; override;
     procedure IncRefCount(RCPath: UInt32); override;
@@ -442,16 +441,19 @@ type
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
     constructor CreateAsAnonymous(Scope: TScope; ReferenceType: TIDType); virtual;
     procedure CreateStandardOperators; override;
-    property ReferenceType: TIDType read GetReferenceType write FReferenceType;
+    property ReferenceType: TIDType read fReferenceType write FReferenceType;
   end;
 
   {pointer type}
   TIDPointer = class(TIDRefType)
+  private
+    FForwardDeclaration: Boolean;
   public
     constructor Create(Scope: TScope; const ID: TIdentifier); override;
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
     constructor CreateAsAnonymous(Scope: TScope; ReferenceType: TIDType); override;
     procedure CreateStandardOperators; override;
+    property ForwardDeclaration: Boolean read FForwardDeclaration write FForwardDeclaration;
   end;
 
   {untyped referenced type}
@@ -869,10 +871,14 @@ type
     procedure DecRefCount(RCPath: UInt32); override;
   end;
 
+  TIDConstantClass = class of TIDConstant;
+
   {base generic constant class}
   TIDXXXConstant<T> = class(TIDConstant)
   private
     FValue: T;
+  protected
+    procedure SetAsVariant(const AValue: Variant); virtual; abstract;
   public
     constructor Create(Scope: TScope; const Identifier: TIdentifier; DataType: TIDType; Value: T); overload;
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
@@ -884,6 +890,8 @@ type
 
   {int constant}
   TIDIntConstant = class(TIDXXXConstant<Int64>)
+  protected
+    procedure SetAsVariant(const AValue: Variant); override;
   public
     function ValueDataType: TDataTypeID; override;
     function ValueByteSize: Integer; override;
@@ -893,20 +901,10 @@ type
     function CompareTo(Constant: TIDConstant): Integer; override;
   end;
 
-  {todo: deprecated}
-  TIDSizeofConstant = class(TIDXXXConstant<TIDType>)
-    function ValueByteSize: Integer; override;
-    function ValueDataType: TDataTypeID; override;
-    function AsInt64: Int64; override;
-    function AsString: string; override;
-    function AsVariant: Variant; override;
-    function CompareTo(Constant: TIDConstant): Integer; override;
-    procedure IncRefCount(RCPath: UInt32); override;
-    procedure DecRefCount(RCPath: UInt32); override;
-  end;
-
   {float constant}
   TIDFloatConstant = class(TIDXXXConstant<Extended>)
+  protected
+    procedure SetAsVariant(const AValue: Variant); override;
   public
     function ValueDataType: TDataTypeID; override;
     function ValueByteSize: Integer; override;
@@ -918,6 +916,8 @@ type
 
   {string constant}
   TIDStringConstant = class(TIDXXXConstant<string>)
+  protected
+    procedure SetAsVariant(const AValue: Variant); override;
   public
     function ValueByteSize: Integer; override;
     function ValueDataType: TDataTypeID; override;
@@ -930,6 +930,8 @@ type
 
   {char constant}
   TIDCharConstant = class(TIDXXXConstant<char>)
+  protected
+    procedure SetAsVariant(const AValue: Variant); override;
   public
     function ValueDataType: TDataTypeID; override;
     function ValueByteSize: Integer; override;
@@ -941,6 +943,9 @@ type
 
   {boolean constant}
   TIDBooleanConstant = class(TIDXXXConstant<Boolean>)
+  protected
+    procedure SetAsVariant(const AValue: Variant); override;
+  public
     function ValueDataType: TDataTypeID; override;
     function ValueByteSize: Integer; override;
     function AsInt64: Int64; override;
@@ -951,9 +956,13 @@ type
 
   {pointer constant}
   TIDPointerConstant = class(TIDXXXConstant<TIDDeclaration>)
+  protected
+    procedure SetAsVariant(const AValue: Variant); override;
+  public
     function ValueDataType: TDataTypeID; override;
     function ValueByteSize: Integer; override;
     function AsString: string; override;
+    procedure AssignValue(Source: TIDConstant); override;
   end;
 
   {array constant}
@@ -963,6 +972,8 @@ type
     function GetLength: Integer; inline;
     function GetElementType: TIDType; inline;
     function CheckAsSet: Boolean; inline;
+  protected
+    procedure SetAsVariant(const AValue: Variant); override;
   public
     function ValueDataType: TDataTypeID; override;
     function ValueByteSize: Integer; override;
@@ -991,6 +1002,7 @@ type
   TIDRangeConstant = class(TIDXXXConstant<TSubRangeRecord>)
   protected
     function GetDisplayName: string; override;
+    procedure SetAsVariant(const AValue: Variant); override;
   public
     function ValueDataType: TDataTypeID; override;
     function ValueByteSize: Integer; override;
@@ -1002,6 +1014,8 @@ type
 
   {guid constant}
   TIDGuidConstant = class(TIDXXXConstant<TGUID>)
+  protected
+    procedure SetAsVariant(const AValue: Variant); override;
   public
     function ValueDataType: TDataTypeID; override;
     function ValueByteSize: Integer; override;
@@ -1019,6 +1033,8 @@ type
 
   {record constant}
   TIDRecordConstant = class(TIDXXXConstant<TIDRecordConstantFields>)
+  protected
+    procedure SetAsVariant(const AValue: Variant); override;
   public
     function ValueDataType: TDataTypeID; override;
     function ValueByteSize: Integer; override;
@@ -1030,6 +1046,8 @@ type
 
   {set constant}
   TIDSetConstant = class(TIDXXXConstant<TIDExpressions>)
+  protected
+    procedure SetAsVariant(const AValue: Variant); override;
   public
     function ValueDataType: TDataTypeID; override;
     function ValueByteSize: Integer; override;
@@ -1664,6 +1682,8 @@ const
   );
 
   function IsClassProc(AProcType: TProcType): Boolean; inline;
+
+  function GetConstantClassByDataType(DataTypeID: TDataTypeID): TIDConstantClass;
 
 implementation
 
@@ -3211,8 +3231,11 @@ end;
 procedure TIDXXXConstant<T>.AssignValue(Source: TIDConstant);
 begin
   FIndex := Source.Index;
-  FValue := TIDXXXConstant<T>(Source).Value;
-  FDataType := TIDXXXConstant<T>(Source).DataType;
+  if Source.ClassType = ClassType then
+  begin
+    FValue := TIDXXXConstant<T>(Source).Value
+  end else
+    SetAsVariant(Source.AsVariant);
 end;
 
 constructor TIDXXXConstant<T>.Create(Scope: TScope; const Identifier: TIdentifier; DataType: TIDType; Value: T);
@@ -4053,6 +4076,11 @@ begin
     Result := -1;
 end;
 
+procedure TIDIntConstant.SetAsVariant(const AValue: Variant);
+begin
+  FValue := AValue;
+end;
+
 { TIDFloatConstant }
 
 function TIDFloatConstant.AsInt64: Int64;
@@ -4098,6 +4126,11 @@ begin
     Result := -1;
 end;
 
+procedure TIDFloatConstant.SetAsVariant(const AValue: Variant);
+begin
+  FValue := AValue;
+end;
+
 { TIDStringConstant }
 
 function TIDStringConstant.AsInt64: Int64;
@@ -4131,6 +4164,11 @@ begin
     Result :=  AnsiCompareStr(Value, TIDStringConstant(Constant).Value)
   else
     Result := -1;
+end;
+
+procedure TIDStringConstant.SetAsVariant(const AValue: Variant);
+begin
+  FValue := AValue;
 end;
 
 function TIDStringConstant.StrLength: Integer;
@@ -4173,6 +4211,14 @@ begin
     Result := -1;
 end;
 
+procedure TIDCharConstant.SetAsVariant(const AValue: Variant);
+begin
+  var AStr := string(AValue);
+  Assert(Length(AStr) <= 1);
+  if AStr <> '' then
+    FValue := AStr[1];
+end;
+
 { TIDBooleanConstant }
 
 function TIDBooleanConstant.AsInt64: Int64;
@@ -4209,6 +4255,11 @@ begin
     Result := Integer(Value) - Integer(TIDBooleanConstant(Constant).Value)
   else
     Result := -1;
+end;
+
+procedure TIDBooleanConstant.SetAsVariant(const AValue: Variant);
+begin
+  FValue := AValue;
 end;
 
 { TIDArray }
@@ -4369,21 +4420,6 @@ begin
     end;
   end else
     Result := '^' + ReferenceType.DisplayName;
-end;
-
-function TIDRefType.GetReferenceType: TIDType;
-var
-  Decl: TIDDeclaration;
-begin
-  if not Assigned(FReferenceType) and NeedForward then
-  begin
-    Decl := Scope.FindID(ForwardID.Name);
-    if Assigned(Decl) and (Decl.ItemType = itType) then
-      FReferenceType := TIDType(Decl)
-    else
-      TASTDelphiErrors.UNDECLARED_ID(ForwardID);
-  end;
-  Result := FReferenceType;
 end;
 
 procedure TIDRefType.IncRefCount(RCPath: UInt32);
@@ -4792,6 +4828,11 @@ end;
 function TIDDynArrayConstant.GetLength: Integer;
 begin
   Result := Length(Value);
+end;
+
+procedure TIDDynArrayConstant.SetAsVariant(const AValue: Variant);
+begin
+  // todo:
 end;
 
 function DeclarationName(Decl: TIDDeclaration; IsList: Boolean = False): string;
@@ -5406,6 +5447,11 @@ begin
   Result := FValue.LBExpression.DisplayName + '..' + FValue.HBExpression.DisplayName;
 end;
 
+procedure TIDRangeConstant.SetAsVariant(const AValue: Variant);
+begin
+  // todo:
+end;
+
 { TProcScope }
 
 constructor TProcScope.CreateInBody(Parent: TScope);
@@ -5623,60 +5669,6 @@ end;
 function TIDAlias.GetOriginalDecl: TIDDeclaration;
 begin
   Result := FOriginalDecl;
-end;
-
-{ TIDSizeofConstant }
-
-function TIDSizeofConstant.AsInt64: Int64;
-begin
-  Result := FValue.Index;
-end;
-
-function TIDSizeofConstant.AsString: string;
-begin
-  Result := 'sizeof(' + FValue.DisplayName + ')';
-end;
-
-function TIDSizeofConstant.AsVariant: Variant;
-begin
-  Result := NULL;
-  AbortWorkInternal('Not supported', []);
-end;
-
-function TIDSizeofConstant.ValueByteSize: Integer;
-begin
-  Result := GetValueByteSize(FValue.Index);
-end;
-
-function TIDSizeofConstant.ValueDataType: TDataTypeID;
-begin
-  Result := GetValueDataType(FValue.Index);
-end;
-
-function TIDSizeofConstant.CompareTo(Constant: TIDConstant): Integer;
-begin
-  if ClassType = Constant.ClassType then
-    Result := NativeInt(Value) - NativeInt(TIDIntConstant(Constant).Value)
-  else
-    Result := -1;
-end;
-
-procedure TIDSizeofConstant.IncRefCount(RCPath: UInt32);
-begin
-  if FRCPath = RCPath then
-    Exit;
-  FRCPath := RCPath;
-  Inc(FRefCount);
-  Value.IncRefCount(RCPath);
-end;
-
-procedure TIDSizeofConstant.DecRefCount(RCPath: UInt32);
-begin
-  if FRCPath = RCPath then
-    Exit;
-  FRCPath := RCPath;
-  Dec(FRefCount);
-  Value.DecRefCount(RCPath);
 end;
 
 { TGenericDescriptor }
@@ -5935,6 +5927,11 @@ begin
   Result := -1;
 end;
 
+procedure TIDGuidConstant.SetAsVariant(const AValue: Variant);
+begin
+  // todo:
+end;
+
 { TIDDrefExpression }
 
 constructor TIDDrefExpression.Create(Src: TIDExpression);
@@ -6063,6 +6060,11 @@ begin
   Result := 0;
 end;
 
+procedure TIDRecordConstant.SetAsVariant(const AValue: Variant);
+begin
+  // todo:
+end;
+
 function TIDRecordConstant.ValueByteSize: Integer;
 begin
   Result := 0;
@@ -6172,6 +6174,11 @@ begin
   Result := 0;
 end;
 
+procedure TIDSetConstant.SetAsVariant(const AValue: Variant);
+begin
+  // todo:
+end;
+
 function TIDSetConstant.ValueByteSize: Integer;
 begin
   Result := 0;
@@ -6184,9 +6191,22 @@ end;
 
 { TIDPointerConstant }
 
+procedure TIDPointerConstant.AssignValue(Source: TIDConstant);
+begin
+  FValue := Source;
+end;
+
 function TIDPointerConstant.AsString: string;
 begin
-  Result := 'not supported';  // todo
+  if Assigned(FValue) and (FValue.ItemType = itConst) then
+    Result := TIDConstant(FValue).AsString
+  else
+    Result := '<uknown>';
+end;
+
+procedure TIDPointerConstant.SetAsVariant(const AValue: Variant);
+begin
+  // todo:
 end;
 
 function TIDPointerConstant.ValueByteSize: Integer;
@@ -6227,6 +6247,42 @@ begin
   for var AType in FTypes do
     Result := AddStringSegment(Result, AType.DisplayName, ' or ');
   Result := Result + '>';
+end;
+
+
+function GetConstantClassByDataType(DataTypeID: TDataTypeID): TIDConstantClass;
+begin
+  case DataTypeID of
+    dtInt8, dtInt16, dtInt32, dtInt64,
+    dtUInt8, dtUInt16, dtUInt32, dtUInt64,
+    dtNativeInt, dtNativeUInt, dtEnum, dtRange: Result := TIDIntConstant;
+
+    dtFloat32, dtFloat64, dtFloat80, dtCurrency: Result := TIDFloatConstant;
+
+    dtBoolean: Result := TIDBooleanConstant;
+
+    dtAnsiChar,
+    dtChar: Result := TIDCharConstant;
+
+    dtShortString,
+    dtAnsiString,
+    dtString,
+    dtWideString: Result := TIDStringConstant;
+
+    dtPAnsiChar,
+    dtPWideChar,
+    dtPointer: Result := TIDPointerConstant;
+
+    dtSet: Result := TIDSetConstant;
+
+    dtStaticArray,
+    dtDynArray: Result := TIDDynArrayConstant;
+    dtRecord: Result := TIDRecordConstant;
+
+  else
+    Result := nil;
+    //AbortWorkInternal('Unknown constant type');
+  end;
 end;
 
 initialization

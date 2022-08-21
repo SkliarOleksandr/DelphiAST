@@ -186,10 +186,13 @@ begin
   fLexer := TDelphiLexer.Create(Source);
   FMessages := TCompilerMessages.Create;
   //FVisibility := vPublic;
+
+  var AUnitName := StringReplace(ExtractFileName(FileName), '.pas', '', []);
+
   FIntfScope := TScope.Create(stGlobal, @FVarSpace, @FProcSpace, nil, Self);
-  {$IFDEF DEBUG}FIntfScope.Name := 'unit_intf_scope';{$ENDIF}
+  {$IFDEF DEBUG}FIntfScope.Name := AUnitName + '$intf_scope';{$ENDIF}
   FImplScope := TImplementationScope.Create(FIntfScope, nil);
-  {$IFDEF DEBUG}FImplScope.Name := 'unit_impl_scope';{$ENDIF}
+  {$IFDEF DEBUG}FImplScope.Name := AUnitName + '$impl_scope';{$ENDIF}
   FIntfImportedUnits := TUnitList.Create;
   FImplImportedUnits := TUnitList.Create;
   //FBENodesPool := TBENodesPool.Create(16);
