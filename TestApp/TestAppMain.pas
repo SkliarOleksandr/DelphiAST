@@ -48,12 +48,14 @@ type
     Panel5: TPanel;
     Button5: TButton;
     NSSearchEdit: TEdit;
+    chkCompileSsystemForASTParse: TCheckBox;
     procedure Button2Click(Sender: TObject);
     procedure Button1Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
     procedure Button4Click(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure Button5Click(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
   private
     { Private declarations }
     //fPKG: INPPackage;
@@ -82,7 +84,7 @@ uses
   AST.Parser.Messages,
   AST.Writer,
   AST.Targets,
-  AST.Delphi.DataTypes;
+  AST.Delphi.DataTypes, AST.Parser.Utils;
 
 {$R *.dfm}
 
@@ -149,15 +151,20 @@ end;
 
 function GetDeclName(const Decl: TASTDeclaration): string;
 begin
-  if Decl.Name <> '' then
-    Result := Decl.DisplayName
-  else
-    Result := '[Anonymous]' + Decl.DisplayName;
+  try
+    if Decl.Name <> '' then
+      Result := Decl.DisplayName
+    else
+      Result := '[Anonymous]' + Decl.DisplayName;
 
-  var CastedDecl := (Decl as TIDDeclaration);
-  case CastedDecl.ItemType of
-    itVar, itConst: Result := Result + ' : '  + CastedDecl.DataType.DisplayName;
-    itType: Result := Result + ' ['  + GetDataTypeName(TIDType(CastedDecl).DataTypeID) + ']';
+    var CastedDecl := (Decl as TIDDeclaration);
+    case CastedDecl.ItemType of
+      itVar, itConst: Result := Result + ' : '  + CastedDecl.DataType.DisplayName;
+      itType: Result := Result + ' ['  + GetDataTypeName(TIDType(CastedDecl).DataTypeID) + ']';
+    end;
+  except
+     on E: Exception do
+       Result := E.Message;
   end;
 end;
 
@@ -169,9 +176,14 @@ begin
   Memo1.Clear;
   Prj := TASTDelphiProject.Create('test');
   Prj.AddUnitSearchPath(ExtractFilePath(Application.ExeName));
-  Prj.Target := 'WIN-X86';
+  if chkCompileSsystemForASTParse.Checked then
+    Prj.AddUnitSearchPath(edSrcRoot.Text);
+  Prj.Target := TWINX86_Target.TargetName;
   Prj.Defines.Add('CPUX86');
+  Prj.Defines.Add('CPU386');
+  Prj.Defines.Add('WIN32');
   Prj.Defines.Add('MSWINDOWS');
+  Prj.Defines.Add('ASSEMBLER');
   Prj.OnConsoleWrite := procedure (const Module: IASTModule; Line: Integer; const Msg: string)
                         begin
                           Memo1.Lines.Add(format('#console: [%s: %d]: %s', [Module.Name, Line, Msg]));
@@ -343,6 +355,16 @@ end;
 procedure TfrmTestAppMain.Button5Click(Sender: TObject);
 begin
   edAllItems.SearchReplace(NSSearchEdit.Text, '', []);
+end;
+
+procedure Test;
+begin
+
+end;
+
+procedure TfrmTestAppMain.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  TPooledObject.ClearPool;
 end;
 
 procedure TfrmTestAppMain.FormCreate(Sender: TObject);

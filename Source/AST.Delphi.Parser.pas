@@ -81,8 +81,7 @@ type
     procedure InitEContext(out EContext: TEContext; const SContext: TSContext; EPosition: TExpessionPosition); overload; inline;
     procedure AddType(const Decl: TIDType);
     class function CheckExplicit(const SContext: TSContext; const Source, Destination: TIDType; out ExplicitOp: TIDDeclaration): Boolean; overload; static;
-    class function MatchExplicit(const SContext: TSContext; const Source: TIDExpression; Destination: TIDType): TIDDeclaration; overload; static;
-    class function MatchExplicit2(const SContext: TSContext; const Source: TIDExpression; Destination: TIDType; out Explicit: TIDDeclaration): TIDExpression; overload; static;
+    class function MatchExplicit(const SContext: TSContext; const Source: TIDExpression; Destination: TIDType; out Explicit: TIDDeclaration): TIDExpression; overload; static;
 
     //class function MatchArrayImplicitToRecord(const SContext: TSContext; Source: TIDExpression; Destination: TIDStructure): TIDExpression; static;
 
@@ -984,16 +983,22 @@ begin
     Exit;
   end;
 
-  Decl := TIDRecord.Create(Scope, ID);
-  Decl.GenericDescriptor := GDescriptor;
-  if Assigned(GenericScope) then
-    TIDRecord(Decl).Members.AddScope(GenericScope);
+  // try to find forward declaration first (for system types)
+  var FForwardDecl := FindIDNoAbort(Scope, ID);
+  if Assigned(FForwardDecl) and (FForwardDecl is TIDRecord) and TIDType(FForwardDecl).NeedForward then
+    Decl := TIDRecord(FForwardDecl)
+  else begin
+    Decl := TIDRecord.Create(Scope, ID);
+    Decl.GenericDescriptor := GDescriptor;
+    if Assigned(GenericScope) then
+      TIDRecord(Decl).Members.AddScope(GenericScope);
 
-  if ID.Name <> '' then begin
-    if Assigned(GDescriptor) then
-      InsertToScope(Scope, GDescriptor.SearchName, Decl)
-    else
-      InsertToScope(Scope, Decl);
+    if ID.Name <> '' then begin
+      if Assigned(GDescriptor) then
+        InsertToScope(Scope, GDescriptor.SearchName, Decl)
+      else
+        InsertToScope(Scope, Decl);
+    end;
   end;
 
   Result := ParseRecordType(Scope, TIDRecord(Decl));
@@ -1818,6 +1823,7 @@ begin
   fCache.Free;
   fDefines.Free;
   fOptions.Free;
+  fErrors.Free;
   inherited;
 end;
 
@@ -3193,12 +3199,14 @@ begin
 end;
 
 function TASTDelphiUnit.MatchArrayImplicit(const SContext: TSContext; Source: TIDExpression; DstArray: TIDArray): TIDExpression;
+
   function CreateAnonymousDynArrayType(ElementDataType: TIDType): TIDArray;
   begin
     Result := TIDDynArray.CreateAsAnonymous(ImplScope);
     Result.ElementDataType := ElementDataType;
     AddType(Result);
   end;
+
 var
   i, ACnt: Integer;
   CArray: TIDDynArrayConstant;
@@ -3284,42 +3292,6 @@ begin
     end;
   end;
 end;
-
-//class function TASTDelphiUnit.MatchArrayImplicitToRecord(const SContext: TSContext; Source: TIDExpression; Destination: TIDStructure): TIDExpression;
-//var
-//  i, TupleItemsCount: Integer;
-//  ItemExpr: TIDExpression;
-//  Field: TIDVariable;
-//  FieldDataType: TIDType;
-//  Tuple: TIDDynArrayConstant;
-//  ImplicitCast: TIDDeclaration;
-////  NeedCallImplicits: Boolean;
-//begin
-//  if not Source.IsDynArrayConst then
-//    Exit(nil);
-//  Tuple := Source.AsDynArrayConst;
-//  TupleItemsCount := Tuple.ArrayLength;
-//
-//  if TupleItemsCount <> Destination.FieldsCount then
-//    AbortWork('Invalid fields count', Source.TextPosition);
-//
-//  Field := Destination.FirstField;
-//
-//  for i := 0 to TupleItemsCount - 1 do begin
-//    ItemExpr := Tuple.Value[i];
-//    FieldDataType := Field.DataType.ActualDataType;
-//    ImplicitCast := CheckImplicit(SContext, ItemExpr, FieldDataType);
-//
-//    if not Assigned(ImplicitCast) then
-//      SContext.ERRORS.INCOMPATIBLE_TYPES(ItemExpr, FieldDataType);
-//
-//    {if ImplicitCast.ItemType = itProcedure then
-//      NeedCallImplicits := True;}
-//
-//    Field := TIDVariable(Field.NextItem);
-//  end;
-//  Result := Source;
-//end;
 
 function TASTDelphiUnit.MatchRecordImplicit(const SContext: TSContext; Source: TIDExpression; DstRecord: TIDRecord): TIDExpression;
 var
@@ -3556,7 +3528,7 @@ begin
             ERRORS.INPLACEVAR_ALLOWED_ONLY_FOR_OUT_PARAMS(Arg.AsVariable);
         end;
 
-        Implicit := CheckImplicit(SContext, Arg, Param.DataType);
+        Implicit := CheckImplicit(SContext, Arg, Param.DataType, {AResolveCalls:} True);
         if Assigned(Implicit) then
         begin
           if Param.VarReference then
@@ -3569,14 +3541,6 @@ begin
           continue;
         end;
 
-        var WasCall := False;
-        Arg := CheckAndCallFuncImplicit(SContext, Arg, WasCall);
-        if WasCall then
-        begin
-          Implicit := CheckImplicit(SContext, Arg, Param.DataType);
-          if Assigned(Implicit) then
-            continue;
-        end;
         ERRORS.INCOMPATIBLE_TYPES(Arg, Param.DataType);
       end else
       if not Assigned(Param.DefaultValue) then
@@ -3863,7 +3827,7 @@ begin
             curLevel := TASTArgMatchLevel.MatchStrict
           else begin
             // find implicit type cast
-            ImplicitCast := CheckImplicit(SContext, CallArgs[i], ParamDataType);
+            ImplicitCast := CheckImplicit(SContext, CallArgs[i], ParamDataType, {AResolveCalls:} True);
             if Assigned(ImplicitCast) then
             begin
               SrcDataTypeID := ArgDataType.DataTypeID;
@@ -4019,42 +3983,6 @@ begin
   end;
 end;
 
-class function TASTDelphiUnit.MatchExplicit(const Scontext: TSContext; const Source: TIDExpression; Destination: TIDType): TIDDeclaration;
-var
-  SrcDataType: TIDType;
-  DstDataType: TIDType;
-begin
-  SrcDataType := Source.DataType.ActualDataType;
-  DstDataType := Destination.ActualDataType;
-  if SrcDataType = DstDataType then
-    Exit(Destination);
-
-  Result := SrcDataType.GetExplicitOperatorTo(DstDataType);
-  if Assigned(Result) then
-  begin
-    if Result is TSysTypeCast then
-    begin
-      Result := TSysTypeCast(Result).Check(SContext, Source, DstDataType);
-      if Assigned(Result) then
-        Exit;
-    end else
-      Exit;
-  end;
-
-  if not Assigned(Result) then
-  begin
-    Result := DstDataType.GetExplicitOperatorFrom(SrcDataType);
-    if Assigned(Result) then
-    begin
-      if Result is TSysTypeCast then
-      begin
-        if TSysTypeCast(Result).Check(Scontext, DstDataType, SrcDataType) then
-          Exit(SrcDataType);
-      end;
-    end;
-  end;
-end;
-
 class function TASTDelphiUnit.CheckExplicit(const Scontext: TSContext; const Source, Destination: TIDType; out ExplicitOp: TIDDeclaration): Boolean;
 var
   SrcDataType: TIDType;
@@ -4099,7 +4027,7 @@ begin
     AbortWork('Expression has no members', Expression.TextPosition);
 end;
 
-class function TASTDelphiUnit.MatchExplicit2(const SContext: TSContext; const Source: TIDExpression; Destination: TIDType; out Explicit: TIDDeclaration): TIDExpression;
+class function TASTDelphiUnit.MatchExplicit(const SContext: TSContext; const Source: TIDExpression; Destination: TIDType; out Explicit: TIDDeclaration): TIDExpression;
 var
   SrcDataType: TIDType;
   DstDataType: TIDType;
@@ -5535,7 +5463,7 @@ begin
     ERRORS.INCOMPLETE_STATEMENT('explicit cast');
 
   TargetType := DstExpression.AsType;
-  ResExpr := MatchExplicit2(SContext, SrcExpr, TargetType, OperatorDecl);
+  ResExpr := MatchExplicit(SContext, SrcExpr, TargetType, OperatorDecl);
   Result := Lexer_NextToken(Scope);
 
   if Assigned(ResExpr) then
@@ -6359,6 +6287,9 @@ begin
       if not Assigned(DataType) then
       begin
         DataType := EContext.Result.DataType;
+        if DataType = Sys._Untyped then
+          ERRORS.COULD_NOT_INFER_VAR_TYPE_FROM_UNTYPED(EContext.Result);
+
         for i := 0 to c do
           Vars[i].DataType := DataType
       end;
@@ -9093,7 +9024,7 @@ begin
 
     case Result of
       // значение по умолчанию
-      token_equal: Result := ParseVarDefaultValue(Scope, DataType, DefaultValue);
+      token_equal: Result := ParseVarDefaultValue(Scope, DataType, {out} DefaultValue);
       // absolute
       token_absolute: begin
         Lexer_ReadNextIdentifier(Scope, ID);

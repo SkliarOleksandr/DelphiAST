@@ -645,6 +645,7 @@ type
     function GetInterfacesCount: Integer;
     function GetInterface(Index: Integer): TIDInterface;
   protected
+    function GetDataSize: Integer; override;
     function GetIsManaged: Boolean; override;
     function GetExtraFlags: Byte; override;
   public
@@ -3078,6 +3079,7 @@ end;
 
 procedure TIDType.OverloadImplicitTo(const Destination: TIDDeclaration);
 begin
+  Assert(Assigned(Destination));
   if Assigned(FImplicitsTo.InsertNode(Destination, Destination)) then
     ERROR_OPERATOR_ALREADY_OVERLOADED(opImplicit, Self, Destination, TextPosition);
 end;
@@ -3086,6 +3088,7 @@ procedure TIDType.OverloadImplicitTo(const Destination, Proc: TIDDeclaration);
 var
   Node: TIDPairList.PAVLNode;
 begin
+  Assert(Assigned(Destination));
   Node := FImplicitsTo.InsertNode(Destination, Proc);
   if Assigned(Node) then
     ERROR_OPERATOR_ALREADY_OVERLOADED(opImplicit, Destination, Proc, TextPosition);
@@ -3093,12 +3096,14 @@ end;
 
 procedure TIDType.OverloadImplicitFrom(const Source: TIDDeclaration);
 begin
+  Assert(Assigned(Source));
   if Assigned(FImplicitsFrom.InsertNode(Source, Source)) then
     ERROR_OPERATOR_ALREADY_OVERLOADED(opImplicit, Self, Source, TextPosition);
 end;
 
 procedure TIDType.OverloadImplicitFrom(const Source, Proc: TIDDeclaration);
 begin
+  Assert(Assigned(Source));
   if Assigned(FImplicitsFrom.InsertNode(Source, Proc)) then
     ERROR_OPERATOR_ALREADY_OVERLOADED(opImplicit, Source, Proc, TextPosition);
 end;
@@ -5037,7 +5042,7 @@ end;
 function TIDAliasType.GetDisplayName: string;
 begin
   Result := inherited GetDisplayName;
-  Result := '(' + fOriginalType.DisplayName + ')';
+  Result := 'alias of ' + fOriginalType.DisplayName;
 end;
 
 function TIDAliasType.GetIndex: Integer;
@@ -5843,6 +5848,11 @@ begin
     Result := nil;
 end;
 
+function TIDClass.GetDataSize: Integer;
+begin
+  Result := Package.PointerSize;
+end;
+
 function TIDClass.GetExtraFlags: Byte;
 begin
   Result := 0;
@@ -6278,10 +6288,10 @@ begin
     dtStaticArray,
     dtDynArray: Result := TIDDynArrayConstant;
     dtRecord: Result := TIDRecordConstant;
+    dtGuid: Result := TIDGuidConstant;
 
   else
-    Result := nil;
-    //AbortWorkInternal('Unknown constant type');
+    AbortWorkInternal('Unknown constant type');
   end;
 end;
 

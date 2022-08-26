@@ -11,6 +11,7 @@ object frmTestAppMain: TfrmTestAppMain
   Font.Name = 'Tahoma'
   Font.Style = []
   Position = poScreenCenter
+  OnClose = FormClose
   OnCreate = FormCreate
   TextHeight = 13
   object Splitter1: TSplitter
@@ -84,6 +85,17 @@ object frmTestAppMain: TfrmTestAppMain
         'Memo1')
       ScrollBars = ssVertical
       TabOrder = 3
+    end
+    object chkCompileSsystemForASTParse: TCheckBox
+      Left = 384
+      Top = 7
+      Width = 196
+      Height = 17
+      Anchors = [akTop, akRight]
+      Caption = 'Compile "system.pas" for AST Parse'
+      Checked = True
+      State = cbChecked
+      TabOrder = 4
     end
   end
   object Panel2: TPanel
@@ -189,17 +201,20 @@ object frmTestAppMain: TfrmTestAppMain
             ''
             'implementation'
             '   '
-            'var'
-            '  F1: function (A: Integer): Integer;  '
             ''
-            'function Get: Integer;'
-            'begin '
+            'procedure FreeAndNil(const [ref] Obj: TObject);'
+            'var'
+            '  Temp: TObject;'
+            'begin'
+            '  Temp := Obj;'
+            '  TObject(Pointer(@Obj)^) := nil;'
+            '  Temp.Free;'
             'end;'
             ''
             'initialization'
-            '  F1 := Get; '
             ''
-            'end.')
+            'end.'
+            '')
           FontSmoothing = fsmNone
         end
       end
@@ -251,8 +266,6 @@ object frmTestAppMain: TfrmTestAppMain
           Options = [eoAutoIndent, eoDragDropEditing, eoEnhanceEndKey, eoGroupUndo, eoRightMouseMovesCursor, eoScrollPastEol, eoShowScrollHint, eoSmartTabDelete, eoSmartTabs, eoTabsToSpaces]
           SearchEngine = SynEditSearch1
           FontSmoothing = fsmNone
-          ExplicitLeft = -2
-          ExplicitTop = 34
         end
         object Panel5: TPanel
           Left = 0
@@ -272,7 +285,6 @@ object frmTestAppMain: TfrmTestAppMain
             Caption = 'Search'
             TabOrder = 0
             OnClick = Button5Click
-            ExplicitTop = 2
           end
           object NSSearchEdit: TEdit
             AlignWithMargins = True

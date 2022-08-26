@@ -271,6 +271,8 @@ type
     class procedure CLASS_DESTRUCTOR_ALREADY_EXIST(const Proc: TIDProcedure);
 
     class procedure COULD_NOT_INFER_DYNAMIC_ARRAY_TYPE(Exprs: TIDExpressions);
+    class procedure COULD_NOT_INFER_VAR_TYPE_FROM_UNTYPED(Expr: TIDExpression);
+
     class procedure INTF_ALREADY_IMPLEMENTED(Expr: TIDExpression);
     class procedure INTF_METHOD_NOT_IMPLEMENTED(ClassType: TIDClass; Proc: TIDProcedure);
     class procedure RECORD_STATIC_CONSTRUCTOR_ALREADY_EXIST(const Proc: TIDProcedure);
@@ -395,6 +397,11 @@ end;
 class procedure TASTDelphiErrors.COULD_NOT_INFER_DYNAMIC_ARRAY_TYPE(Exprs: TIDExpressions);
 begin
   AbortWork('Couldn''t infer dynamic array element type from different element types', Exprs[0].TextPosition);
+end;
+
+class procedure TASTDelphiErrors.COULD_NOT_INFER_VAR_TYPE_FROM_UNTYPED(Expr: TIDExpression);
+begin
+  AbortWork('Couldn''t infer variable/constant type from untyped', Expr.TextPosition);
 end;
 
 class procedure TASTDelphiErrors.CTOR_DTOR_MUST_BE_DECLARED_IN_STRUCT(const Position: TTextPosition);

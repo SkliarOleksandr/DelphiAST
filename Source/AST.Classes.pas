@@ -630,6 +630,7 @@ end;
 
 constructor TASTItem.Create(Parent: TASTItem);
 begin
+  CreateFromPool;
   fParent := Parent;
 end;
 
@@ -755,6 +756,7 @@ end;
 
 constructor TASTEIDecl.Create(Decl: TASTDeclaration; const SrcPos: TTextPosition);
 begin
+  CreateFromPool;
   fDecl := Decl;
   fSPos := SrcPos;
 end;

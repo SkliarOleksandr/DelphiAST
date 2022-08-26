@@ -891,12 +891,9 @@ begin
   FTObject.NeedForward := True; // forward declaration
   InsertToScope(FTObject);}
   // TGUID ========================================================
-  fDecls._GuidType := TIDStructure.CreateAsSystem(IntfScope, '_TGUID');
+  fDecls._GuidType := TIDRecord.CreateAsSystem(IntfScope, 'TGUID');
+  fDecls._GuidType.NeedForward := True;
   fDecls._GuidType.DataTypeID := dtGuid;
-  fDecls._GuidType.AddField('LoDWord', _Int64);
-  fDecls._GuidType.AddField('HiDWord', _Int64);
-  fDecls._GuidType.OverloadBinarOperator2(opEqual, fDecls._GuidType, _Boolean);
-  fDecls._GuidType.OverloadBinarOperator2(opNotEqual, fDecls._GuidType, _Boolean);
   fDecls._GuidType.DataType := _MetaType;
   InsertToScope(fDecls._GuidType);
   AddType(fDecls._GuidType);
@@ -1014,6 +1011,7 @@ end;
 
 procedure TSYSTEMUnit.SearchSystemTypes;
 begin
+  // todo: use forward declaration instead
   fDecls._TObject := GetPublicClass('TObject');
   fDecls._ResStringRecord := GetPublicType('PResStringRec');
   fDecls._TVarRec := GetPublicType('TVarRec');
