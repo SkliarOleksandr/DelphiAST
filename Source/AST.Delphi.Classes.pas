@@ -1556,7 +1556,7 @@ type
     procedure AddScope(Scope: TScope);
     procedure RemoveVariable(Declaration: TIDVariable);
     function FindInAdditionalScopes(const ID: string): TIDDeclaration;
-    function FindIDRecurcive(const ID: string): TIDDeclaration; overload; virtual;
+    function FindIDRecurcive(const ID: string): TIDDeclaration; virtual;
     function FindMembers(const ID: string): TIDDeclaration; virtual;
     function GetDeclArray(Recursively: Boolean = False): TIDDeclArray;
     function GetDeclNamesArray(Recursively: Boolean = False): TStrArray;
@@ -1620,14 +1620,23 @@ type
     function FindIDRecurcive(const ID: string): TIDDeclaration; override;
   end;
 
+  TInterfaceScope = class(TScope)
+  public
+    constructor Create(AUnit: TASTModule;
+                       VarSpace: PVarSpace;
+                       ProcSpace: PProcSpace); reintroduce;
+    function FindIDRecurcive(const ID: string): TIDDeclaration; override;
+  end;
+
   TImplementationScope = class(TScope)
   private
     fIntfScope: TScope;
   protected
     function GetScopeClass: TScopeClass; override;
   public
-    constructor Create(InterfaceScope, Parent: TScope); overload;
+    constructor Create(InterfaceScope: TScope); reintroduce;
     function FindID(const Identifier: string): TIDDeclaration; override;
+    function FindIDRecurcive(const ID: string): TIDDeclaration; override;
   end;
 
   TConditionalScope = class(TScope)
@@ -5191,16 +5200,46 @@ begin
   Result := inherited GetDisplayName + ' as ' + FDataType.DisplayName
 end;
 
+{ TInterfaceScope }
+
+constructor TInterfaceScope.Create(AUnit: TASTModule;
+                       VarSpace: PVarSpace;
+                       ProcSpace: PProcSpace);
+begin
+  inherited Create(StrCICompare);
+  FScopeType := stGlobal;
+  FVarSpace := VarSpace;
+  FProcSpace := ProcSpace;
+  FUnit := AUnit;
+  Assert(Assigned(AUnit));
+end;
+
+function TInterfaceScope.FindIDRecurcive(const ID: string): TIDDeclaration;
+begin
+  Result := inherited FindIDRecurcive(ID);
+
+  if not Assigned(Result) then
+  begin
+    var List := TPascalUnit(fUnit).IntfImportedUnits;
+    for var LIndex := List.Count - 1 downto 0 do
+    begin
+      var LUnit := TPascalUnit(List.Objects[LIndex]);
+      Result := LUnit.IntfScope.FindID(ID);
+      if Assigned(Result) then
+        Exit;
+    end;
+  end;
+end;
+
 { TImplementationScope }
 
-constructor TImplementationScope.Create(InterfaceScope, Parent: TScope);
+constructor TImplementationScope.Create(InterfaceScope: TScope);
 begin
   inherited Create(StrCICompare);
   FScopeType := InterfaceScope.ScopeType;
   FVarSpace := InterfaceScope.VarSpace;
   FProcSpace := InterfaceScope.ProcSpace;
   FIntfScope := InterfaceScope;
-  FParent := Parent;
   FUnit := InterfaceScope.DeclUnit;
   Assert(Assigned(FUnit));
 end;
@@ -5210,6 +5249,35 @@ begin
   Result := inherited FindID(Identifier);
   if not Assigned(Result) then
     Result := FIntfScope.FindID(Identifier);
+end;
+
+function TImplementationScope.FindIDRecurcive(const ID: string): TIDDeclaration;
+begin
+  Result := inherited FindIDRecurcive(ID);
+
+  if not Assigned(Result) then
+  begin
+    var List := TPascalUnit(fUnit).ImplImportedUnits;
+    for var LIndex := List.Count - 1 downto 0 do
+    begin
+      var LUnit := TPascalUnit(List.Objects[LIndex]);
+      Result := LUnit.IntfScope.FindID(ID);
+      if Assigned(Result) then
+        Exit;
+    end;
+  end;
+
+  if not Assigned(Result) then
+  begin
+    var List := TPascalUnit(fUnit).IntfImportedUnits;
+    for var LIndex := List.Count - 1 downto 0 do
+    begin
+      var LUnit := TPascalUnit(List.Objects[LIndex]);
+      Result := LUnit.IntfScope.FindID(ID);
+      if Assigned(Result) then
+        Exit;
+    end;
+  end;
 end;
 
 function TImplementationScope.GetScopeClass: TScopeClass;
@@ -6291,6 +6359,7 @@ begin
     dtGuid: Result := TIDGuidConstant;
 
   else
+    Result := nil;
     AbortWorkInternal('Unknown constant type');
   end;
 end;

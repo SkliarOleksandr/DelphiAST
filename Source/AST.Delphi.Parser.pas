@@ -1141,36 +1141,43 @@ function TASTDelphiUnit.ParseUsesSection(Scope: TScope): TTokenID;
 var
   Token: TTokenID;
   ID: TIdentifier;
-  UUnit: TPascalUnit;
+  LUnit: TPascalUnit;
   Idx: Integer;
 begin
-  while true do begin
-    Token := ParseUnitName(Scope, ID);
+  while True do begin
+    Token := ParseUnitName(Scope, {out} ID);
 
+    // check recursive using
     if ID.Name = Self.FUnitName.Name then
       ERRORS.UNIT_RECURSIVELY_USES_ITSELF(ID);
 
-    UUnit := Package.UsesUnit(ID.Name, nil) as TPascalUnit;
-    if not Assigned(UUnit) then
+    // find the unit file
+    LUnit := Package.UsesUnit(ID.Name, nil) as TPascalUnit;
+    if not Assigned(LUnit) then
       ERRORS.UNIT_NOT_FOUND(ID);
 
-    // если модуль используется первый раз - компилируем
-    if UUnit.Compiled = CompileNone then
+    // check unique using
+    if IntfImportedUnits.Find(ID.Name, {var} Idx) or
+       ImplImportedUnits.Find(ID.Name, {var} Idx) then
     begin
-      if UUnit.Compile() = CompileFail then begin
+      //if (LUnit <> SYSUnit) or FSystemExplicitUse then
+      ERRORS.ID_REDECLARATED(ID);
+    end;
+
+    // compile if not compiled yet
+    if LUnit.Compiled = CompileNone then
+    begin
+      if LUnit.Compile() = CompileFail then
         StopCompile(False);
-      end;
     end;
 
-    if not IntfImportedUnits.Find(ID.Name, Idx) then
-      IntfImportedUnits.AddObject(ID.Name, UUnit)
-    else begin
-      if (UUnit <> SYSUnit) or FSystemExplicitUse then
-        ERRORS.ID_REDECLARATED(ID);
-    end;
-
-    if UUnit = SYSUnit then
-      FSystemExplicitUse := True;
+    if Scope = IntfScope then
+      IntfImportedUnits.AddObject(ID.Name, LUnit)
+    else
+    if Scope = ImplScope then
+      ImplImportedUnits.AddObject(ID.Name, LUnit)
+    else
+      AbortWorkInternal('Wrong scope');
 
     case Token of
       token_coma: continue;
@@ -3065,50 +3072,18 @@ var
 begin
   IDName := ID.Name;
   Result := Scope.FindIDRecurcive(IDName);
-  if Assigned(Result) then
-    Exit;
-  with IntfImportedUnits do
-  begin
-    for i := Count - 1 downto 0 do begin
-      Result := TPascalUnit(Objects[i]).IntfScope.FindID(IDName);
-      if Assigned(Result) then
-        Exit;
-    end;
-  end;
-  ERRORS.UNDECLARED_ID(ID);
+  if not Assigned(Result) then
+    ERRORS.UNDECLARED_ID(ID);
 end;
 
 function TASTDelphiUnit.FindIDNoAbort(Scope: TScope; const ID: string): TIDDeclaration;
-var
-  i: Integer;
 begin
   Result := Scope.FindIDRecurcive(ID);
-  if Assigned(Result) then
-    Exit;
-  with IntfImportedUnits do
-    for i := Count - 1 downto 0 do begin
-      Result := TPascalUnit(Objects[i]).IntfScope.FindID(ID);
-      if Assigned(Result) then
-        Exit;
-    end;
 end;
 
 function TASTDelphiUnit.FindIDNoAbort(Scope: TScope; const ID: TIdentifier): TIDDeclaration;
-var
-  i: Integer;
-  IDName: string;
 begin
-  IDName := ID.Name;
-  Result := Scope.FindIDRecurcive(IDName);
-  if Assigned(Result) then
-    Exit;
-  for i := IntfImportedUnits.Count - 1 downto 0 do
-  begin
-    var un := TPascalUnit(IntfImportedUnits.Objects[i]);
-    Result := un.IntfScope.FindID(IDName);
-    if Assigned(Result) then
-      Exit;
-  end;
+  Result := Scope.FindIDRecurcive(ID.Name);
 end;
 
 procedure TASTDelphiUnit.AddType(const Decl: TIDType);
@@ -6959,11 +6934,8 @@ var
   FirstSkipCnt: Integer;
   CallConv: TCallConvention;
   ProcFlags: TProcFlags;
-  ForwardScope: TScope;
   ImportLib, ImportName: TIDDeclaration;
 begin
-  ForwardScope := Scope;
-
   VarSpace.Initialize;
   Parameters.VarSpace := addr(VarSpace);
 
@@ -7031,12 +7003,30 @@ begin
   ForwardDecl := nil;
   ForwardDeclNode := nil;
 
-  // search the procedure forward declaration
+  {search the procedure forward declaration}
+
   // first, search the declaration in the current scope only
-  ForwardDeclNode := ForwardScope.Find(ID.Name);
+  ForwardDeclNode := Scope.Find(ID.Name);
+
   // second, search the declaration in the interface section scope
-  if not Assigned(ForwardDeclNode) and (ForwardScope = ImplScope) then
+  if not Assigned(ForwardDeclNode) and (Scope = ImplScope) then
     ForwardDeclNode := IntfScope.Find(ID.Name);
+
+  // third, search in the uses units
+  if not Assigned(ForwardDeclNode) then
+  begin
+    if Scope = ImplScope then
+    begin
+      var LDecl := ImplScope.FindIDRecurcive(ID.Name);
+      if LDecl is TASTDelphiProc then
+        ForwardDecl := TASTDelphiProc(LDecl);
+    end else
+    begin
+      var LDecl := IntfScope.FindIDRecurcive(ID.Name);
+      if LDecl is TASTDelphiProc then
+        ForwardDecl := TASTDelphiProc(LDecl);
+    end;
+  end;
 
   if Assigned(ForwardDeclNode) and not Assigned(ForwardDecl) then
     ForwardDecl := TASTDelphiProc(ForwardDeclNode.Data);
@@ -7047,7 +7037,7 @@ begin
   {если найдена ранее обьявленная декларация, проверяем соответствие}
   if Assigned(ForwardDecl) then
   begin
-    if (Scope.ScopeClass = scInterface) then
+    if (Scope.ScopeClass = scInterface) and (ForwardDecl.Scope.DeclUnit = Self) then
     begin
       if not ((pfOveload in ForwardDecl.Flags) and (pfOveload in ProcFlags)) then
         ERRORS.OVERLOADED_MUST_BE_MARKED(ID);
@@ -7071,7 +7061,7 @@ begin
         if Decl.SameDeclaration(Parameters) then begin
           FwdDeclState := dsSame;
           if ((Decl.Scope = Scope) and not (pfForward in Decl.Flags)) or
-              (pfCompleted in Decl.Flags) then
+              ((pfCompleted in Decl.Flags) and (ForwardDecl.Scope.DeclUnit = Self)) then
             ERRORS.ID_REDECLARATED(ID);
           Proc := Decl;
           Break;

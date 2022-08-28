@@ -170,7 +170,7 @@ begin
   fSysUnit := (Project as IASTPascalProject).SysUnit;
 
   // add system unit implicitly
-  if Assigned(fSysUnit) then
+  if Assigned(fSysUnit) and (Self <> fSysUnit) then
     fIntfImportedUnits.AddObject('system', fSysUnit);
 end;
 
@@ -189,12 +189,14 @@ begin
 
   var AUnitName := StringReplace(ExtractFileName(FileName), '.pas', '', []);
 
-  FIntfScope := TScope.Create(stGlobal, @FVarSpace, @FProcSpace, nil, Self);
-  {$IFDEF DEBUG}FIntfScope.Name := AUnitName + '$intf_scope';{$ENDIF}
-  FImplScope := TImplementationScope.Create(FIntfScope, nil);
-  {$IFDEF DEBUG}FImplScope.Name := AUnitName + '$impl_scope';{$ENDIF}
   FIntfImportedUnits := TUnitList.Create;
   FImplImportedUnits := TUnitList.Create;
+
+  FIntfScope := TInterfaceScope.Create(Self, @FVarSpace, @FProcSpace);
+  {$IFDEF DEBUG}FIntfScope.Name := AUnitName + '$intf_scope';{$ENDIF}
+  FImplScope := TImplementationScope.Create(FIntfScope);
+  {$IFDEF DEBUG}FImplScope.Name := AUnitName + '$impl_scope';{$ENDIF}
+
   //FBENodesPool := TBENodesPool.Create(16);
 
   // pre allocate 8 items by 8 args
