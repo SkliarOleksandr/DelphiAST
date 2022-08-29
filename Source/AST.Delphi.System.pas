@@ -1099,6 +1099,7 @@ begin
 
   RegisterVariable(ImplScope, 'ReturnAddress', _Pointer);
   RegisterConstStr(ImplScope, 'libmmodulename', '');
+  RegisterConstInt('CompilerVersion', _Int32, 35); // Delphi 11.x
 end;
 
 function TSYSTEMUnit.RegisterOrdinal(const TypeName: string; DataType: TDataTypeID; LowBound: Int64; HighBound: UInt64): TIDType;

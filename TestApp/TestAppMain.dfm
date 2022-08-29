@@ -81,10 +81,16 @@ object frmTestAppMain: TfrmTestAppMain
       Width = 798
       Height = 149
       Anchors = [akLeft, akTop, akRight, akBottom]
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Consolas'
+      Font.Style = []
       Lines.Strings = (
         'Memo1')
+      ParentFont = False
       ScrollBars = ssVertical
       TabOrder = 3
+      WordWrap = False
     end
     object chkCompileSsystemForASTParse: TCheckBox
       Left = 384
@@ -174,7 +180,8 @@ object frmTestAppMain: TfrmTestAppMain
           Font.Charset = DEFAULT_CHARSET
           Font.Color = clWindowText
           Font.Height = -13
-          Font.Name = 'Courier New'
+          Font.Name = 'Consolas'
+          Font.Pitch = fpFixed
           Font.Style = []
           TabOrder = 0
           CodeFolding.GutterShapeSize = 11

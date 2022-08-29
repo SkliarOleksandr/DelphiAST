@@ -1540,6 +1540,7 @@ type
    {$ENDIF}
     procedure SetParent(const Value: TScope);
   protected
+    function GetName: string; virtual;
     function GetScopeClass: TScopeClass; virtual;
     procedure AddChild(Scope: TScope);
     procedure RemoveChild(Scope: TScope);
@@ -1567,7 +1568,7 @@ type
     property ScopeClass: TScopeClass read GetScopeClass;
     property DeclUnit: TASTModule read FUnit;
     property AdditionalScopes: TScopes read FAdditionalScopes;
-    {$IFDEF DEBUG}property Name: string read FName write FName;{$ENDIF}
+    {$IFDEF DEBUG}property Name: string read GetName write FName;{$ENDIF}
   end;
 
   TProcScope = class(TScope)
@@ -1585,6 +1586,8 @@ type
   TStructScope = class(TScope)
     fAncestorScope: TScope;
     fStruct: TIDStructure;
+  protected
+    function GetName: string; override;
   public
     constructor CreateAsStruct(Parent: TScope; Struct: TIDStructure; VarSpace: PVarSpace; ProcSpace: PProcSpace; DeclUnit: TASTModule); reintroduce;
     function FindIDRecurcive(const ID: string): TIDDeclaration; override;
@@ -1621,6 +1624,8 @@ type
   end;
 
   TInterfaceScope = class(TScope)
+  protected
+    function GetName: string; override;
   public
     constructor Create(AUnit: TASTModule;
                        VarSpace: PVarSpace;
@@ -1632,6 +1637,7 @@ type
   private
     fIntfScope: TScope;
   protected
+    function GetName: string; override;
     function GetScopeClass: TScopeClass; override;
   public
     constructor Create(InterfaceScope: TScope); reintroduce;
@@ -1640,6 +1646,8 @@ type
   end;
 
   TConditionalScope = class(TScope)
+  protected
+    function GetName: string; override;
   end;
 
   TASTDelphiLabel = class(TIDDeclaration)
@@ -2090,6 +2098,11 @@ begin
   SetLength(Result, Length(Decls));
   for var i := 0 to Length(Decls) - 1 do
     Result[i] := Decls[i].Name;
+end;
+
+function TScope.GetName: string;
+begin
+  Result := FName;
 end;
 
 { TIDList }
@@ -5231,6 +5244,11 @@ begin
   end;
 end;
 
+function TInterfaceScope.GetName: string;
+begin
+  Result := fUnit.Name + '$intf_scope';
+end;
+
 { TImplementationScope }
 
 constructor TImplementationScope.Create(InterfaceScope: TScope);
@@ -5278,6 +5296,11 @@ begin
         Exit;
     end;
   end;
+end;
+
+function TImplementationScope.GetName: string;
+begin
+  Result := fUnit.Name + '$impl_scope';
 end;
 
 function TImplementationScope.GetScopeClass: TScopeClass;
@@ -5916,6 +5939,11 @@ begin
     Result := nil;
 end;
 
+function TStructScope.GetName: string;
+begin
+  Result := format('%s$struct_scope(parent: %s)', [fStruct.Name, Parent.Name]);
+end;
+
 function TIDClass.GetDataSize: Integer;
 begin
   Result := Package.PointerSize;
@@ -6362,6 +6390,13 @@ begin
     Result := nil;
     AbortWorkInternal('Unknown constant type');
   end;
+end;
+
+{ TConditionalScope }
+
+function TConditionalScope.GetName: string;
+begin
+  Result := format('conditional$scope(parent: %s)', [Parent.Name]);
 end;
 
 initialization

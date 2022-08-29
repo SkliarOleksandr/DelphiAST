@@ -184,6 +184,7 @@ begin
   Prj.Defines.Add('WIN32');
   Prj.Defines.Add('MSWINDOWS');
   Prj.Defines.Add('ASSEMBLER');
+  Prj.Defines.Add('UNICODE');
   Prj.OnConsoleWrite := procedure (const Module: IASTModule; Line: Integer; const Msg: string)
                         begin
                           Memo1.Lines.Add(format('#console: [%s: %d]: %s', [Module.Name, Line, Msg]));
@@ -355,11 +356,6 @@ end;
 procedure TfrmTestAppMain.Button5Click(Sender: TObject);
 begin
   edAllItems.SearchReplace(NSSearchEdit.Text, '', []);
-end;
-
-procedure Test;
-begin
-
 end;
 
 procedure TfrmTestAppMain.FormClose(Sender: TObject; var Action: TCloseAction);

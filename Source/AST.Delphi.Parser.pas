@@ -3740,7 +3740,7 @@ function TASTDelphiUnit.MatchOverloadProc(const SContext: TSContext; Item: TIDEx
     begin
       ProcItem := Addr(fProcMatches[i]);
       if ProcItem.TotalRate = AmbiguousRate then
-        Str := Str + #13#10'  ' + ProcItem.Decl.DisplayName;
+        Str := Str + #13#10'  ' + ProcItem.Decl.Module.Name + '.' + ProcItem.Decl.DisplayName;
     end;
     for var i := 0 to CallArgsCount - 1 do
       Args := AddStringSegment(Args, CallArgs[i].DataType.DisplayName, ', ');
