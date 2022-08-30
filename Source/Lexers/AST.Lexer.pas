@@ -765,6 +765,7 @@ begin
   fSource := State.Source;
   fSrcPos := State.SourcePosition;
   fRow := State.Row;
+  fLength := Length(fSource);
   fLastEnterPos := State.LastEnterPos;
   fCurrentTokenID := State.TokenID;
   fCurrentToken := State.OriginalToken;

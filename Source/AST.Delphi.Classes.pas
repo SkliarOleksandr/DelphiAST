@@ -4319,6 +4319,7 @@ begin
   inherited;
   OverloadImplicitTo(Self);
   OverloadImplicitToAny(SYSUnit.Operators.ImplicitArrayToAny);
+  OverloadImplicitFromAny(SYSUnit.Operators.ImplicitArrayFromAny);
   AddBinarySysOperator(opIn, SYSUnit.Operators.Ordinal_In_Set);
 end;
 

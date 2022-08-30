@@ -85,6 +85,7 @@ type
     ImplicitMetaClassToGUID,
     ImplicitClassToClass,
     ImplicitArrayToAny,
+    ImplicitArrayFromAny,
     ImplicitSetFromAny,
     ImplicitNullPtrToAny,
     ImplicitTVarRecToAny,
@@ -636,6 +637,7 @@ begin
   AddBinarOperator(opSubtract, _Float32, [_Int8, _UInt8, _Int16, _UInt16, _Int32, _UInt32, _Int64, _UInt64, _Float32], _Float32);
   AddBinarOperator(opSubtract, _Float64, [_Int8, _UInt8, _Int16, _UInt16, _Int32, _UInt32, _Int64, _UInt64, _Float32, _Float64], _Float64);
   AddBinarOperator(opSubtract, _Float80, [_Int8, _UInt8, _Int16, _UInt16, _Int32, _UInt32, _Int64, _UInt64, _Float32, _Float64, _Float80, _Currency], _Float80);
+  AddBinarOperator(opSubtract, _Currency, [_Int8, _UInt8, _Int16, _UInt16, _Int32, _UInt32, _Int64, _UInt64, _Float32, _Float64, _Float80, _Currency], _Currency);
 
   AddBinarOperator(opSubtract, _Variant, _Variant, _Variant);
 end;
@@ -1147,8 +1149,6 @@ begin
   fDecls._Void := TIDType.CreateAsSystem(IntfScope, 'Void');
   fDecls._Void.DataTypeID := TDataTypeID(dtUnknown);
 
-
-
   fDecls._OrdinalType := TIDOrdinal.CreateAsSystem(IntfScope, 'ordinal');
 
   RegisterTypes;
@@ -1238,6 +1238,7 @@ begin
   ImplicitMetaClassToGUID := TSysImplicitMetaClassToGUID.CreateAsSystem(Scope);
   ImplicitClassToClass := TSysImplicitClassToClass.CreateAsSystem(Scope);
   ImplicitArrayToAny := TSysImplicitArrayToAny.CreateAsSystem(Scope);
+  ImplicitArrayFromAny := TSysImplicitArrayFromAny.CreateAsSystem(Scope);
   ImplicitSetFromAny := TSysImplicitSetFromAny.CreateAsSystem(Scope);
   ImplicitNullPtrToAny := TSysImplicitNullPtrToAny.CreateAsSystem(Scope);
   ImplicitTVarRecToAny := TSysImplicitTVarRecToAny.CreateAsSystem(Scope);

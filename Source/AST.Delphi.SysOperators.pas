@@ -155,6 +155,12 @@ type
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
+  {implicit Array <- Any}
+  TSysImplicitArrayFromAny = class(TSysOpImplicit)
+  public
+    function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
+  end;
+
   {implicit Pointer -> Any}
   TSysImplicitPointerToAny = class(TSysOpImplicit)
   public
@@ -634,6 +640,16 @@ begin
   end;
 end;
 
+{ TSysImplicitArrayFromAny }
+
+function TSysImplicitArrayFromAny.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+begin
+  if Src.IsDynArrayConst then
+    Result := TASTDelphiUnit.CheckConstDynArrayImplicit(SContext, Src, Dst)
+  else
+    Result := nil;
+end;
+
 { TSysExplictPointerFromAny }
 
 function TSysExplictPointerFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
@@ -808,7 +824,6 @@ function TSysTypeCast_IsOrdinal.Check(const SContext: TSContext; const Src, Dst:
 begin
   Result := Src.IsOrdinal;
 end;
-
 
 { TSysImplicitSetFromAny }
 

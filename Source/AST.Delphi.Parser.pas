@@ -1455,7 +1455,9 @@ begin
   KW.Expression := ASTExpr;
   Expression := EContext.Result;
   CheckEmptyExpression(Expression);
-  CheckBooleanExpression(Expression);
+
+  if CheckImplicit(SContext, Expression, Sys._Boolean, {AResolveCalls:} True) = nil then
+    CheckBooleanExpression(Expression);
 
   BodySContext := SContext.MakeChild(Scope, KW.Body);
 
@@ -7879,7 +7881,10 @@ begin
   Lexer_NextToken(GAScope);
 
   {парсим заново generic-тип}
-  ParseTypeDecl(GenericType.Scope, GAScope, nil, NewID, Result);
+  ParseTypeDecl(GenericType.Scope, GAScope, nil, NewID, {out} Result);
+
+  if not Assigned(Result) then
+    AbortWorkInternal('Generic parsing error');
 
   {если есть методы, пытаемся их перекомпилировать}
   if GenericType.InheritsFrom(TIDStructure) then
