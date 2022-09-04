@@ -670,7 +670,21 @@ var
 begin
   // read argument
   Expr := EContext.RPNPopExpression();
+
+  // resolve possible function call
+  if Expr.ItemType = itProcedure then
+  begin
+    var AProc := Expr.AsProcedure;
+    if (AProc.ParamsCount = 0) and Assigned(AProc.ResultType) then
+    begin
+      var TMPVar := EContext.Proc.GetTMPVar(AProc.ResultType);
+      Expr := TIDExpression.Create(TMPVar, Expr.TextPosition);
+    end else
+     AbortWork(sArrayOrStringTypeRequired, Expr.TextPosition);
+  end;
+
   DataType := Expr.DataType.ActualDataType;
+
   case DataType.DataTypeID of
     // static array
     dtStaticArray: Result := IntConstExpression(EContext.SContext, TIDArray(DataType).Dimensions[0].ElementsCount);
@@ -680,7 +694,8 @@ begin
       if Decl.ItemType = itConst then
         Result := IntConstExpression(EContext.SContext, TIDDynArrayConstant(Decl).ArrayLength)
       else begin
-        Result := IntConstExpression(EContext.SContext, 0); // todo:
+        var TMPVar := EContext.Proc.GetTMPVar(SYSUnit._NativeInt);
+        Result := TIDExpression.Create(TMPVar, Expr.TextPosition);
       end;
     end;
     // dynamic array, string
@@ -694,6 +709,10 @@ begin
         var TMPVar := EContext.Proc.GetTMPVar(SYSUnit._NativeInt);
         Result := TIDExpression.Create(TMPVar, Expr.TextPosition);
       end;
+    end;
+    // pchar, pansichar
+    dtAnsiChar, dtChar: begin
+      Result := IntConstExpression(EContext.SContext, 1);
     end;
     // pchar, pansichar
     dtPAnsiChar, dtPWideChar: begin
