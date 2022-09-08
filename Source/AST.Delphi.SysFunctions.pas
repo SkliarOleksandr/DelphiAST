@@ -364,6 +364,16 @@ type
     class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {<dyn array type>.create(...)}
+  TSF_DynArrayCreate = class(TIDSysCompileFunction)
+  protected
+    function GetParamsCount: Integer; override;
+  public
+    function Process(const Ctx: TSysFunctionContext): TIDExpression; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
+
 implementation
 
 uses AST.Delphi.Errors, AST.Lexer;
@@ -1436,6 +1446,30 @@ begin
   var A2 := EContext.RPNPopExpression();
   var A1 := EContext.RPNPopExpression();
   Result := nil;
+end;
+
+{ TSF_DynArrayCreate }
+
+class function TSF_DynArrayCreate.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Create', SYSUnit._Void);
+end;
+
+function TSF_DynArrayCreate.GetParamsCount: Integer;
+begin
+  Result := -1;
+end;
+
+function TSF_DynArrayCreate.Process(const Ctx: TSysFunctionContext): TIDExpression;
+begin
+  for var AIndex := 0 to Ctx.ArgsCount - 1 do
+  begin
+    var Arg := Ctx.EContext.RPNPopExpression();
+    // todo:
+  end;
+
+  var AArray := Ctx.SContext.Proc.GetTMPVar(ResultType);
+  Result := TIDExpression.Create(AArray, Ctx.UN.Lexer_Position);
 end;
 
 end.

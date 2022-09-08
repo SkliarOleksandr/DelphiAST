@@ -1356,6 +1356,7 @@ begin
     ParamsBeginRow := 0;
   end;
 
+  {set default param values}
   MacroParams := FuncDecl.ExplicitParams;
   for i := 0 to FuncDecl.ParamsCount - 1 do
   begin
@@ -1367,17 +1368,21 @@ begin
     end;
   end;
 
-  // проверка кол-ва аргуметнов
-  if ArgsCount > FuncDecl.ParamsCount then
-    ERRORS.TOO_MANY_ACTUAL_PARAMS(CallExpr)
-  else if ArgsCount < FuncDecl.ParamsCount then
-    ERRORS.NOT_ENOUGH_ACTUAL_PARAMS(CallExpr);
+  {check args count}
+  if FuncDecl.ParamsCount >= 0 then
+  begin
+    if ArgsCount > FuncDecl.ParamsCount then
+      ERRORS.TOO_MANY_ACTUAL_PARAMS(CallExpr)
+    else if ArgsCount < FuncDecl.ParamsCount then
+      ERRORS.NOT_ENOUGH_ACTUAL_PARAMS(CallExpr);
+  end;
 
   Ctx.UN := Self;
   Ctx.Scope := Scope;
   Ctx.ParamsStr := ParamsText;
   Ctx.EContext := @EContext;
   Ctx.SContext := @SContext;
+  Ctx.ArgsCount := ArgsCount;
 
   MacroID := FuncDecl.FunctionID;
   case MacroID of
@@ -6705,6 +6710,8 @@ begin
     ProcFlags := [];
   end;
 
+  CallConv := TCallConvention.ConvNative;
+
   // parse proc specifiers
   while True do begin
     case Result of
@@ -8441,19 +8448,20 @@ begin
   end else
   if Decl.ItemType = itType then
   begin
-    DataType := TIDType(Decl);
-    if DataType.ClassType = TIDAliasType then
-      DataType := TIDAliasType(DataType).Original;
+    if Decl.ClassType = TIDAliasType then
+      Decl := TIDAliasType(Decl).Original;
 
-    if Assigned(DataType.Helper) then
-      SearchScope := DataType.Helper.StaticMembers
+    if Assigned(TIDType(Decl).Helper) then
+      SearchScope := TIDType(Decl).Helper.StaticMembers
     else
-    if DataType is TIDStructure then
-      SearchScope := TIDStructure(DataType).StaticMembers
+    if Decl is TIDStructure then
+      SearchScope := TIDStructure(Decl).StaticMembers
     else
     if Decl.ClassType = TIDEnum then
-      SearchScope := TIDEnum(Decl).Items;
-
+      SearchScope := TIDEnum(Decl).Items
+    else
+    if Decl.ClassType = TIDDynArray then
+      SearchScope := TIDDynArray(Decl).GetHelperScope;
   end else
   if Decl.ItemType = itProcedure then
   begin
@@ -8636,7 +8644,7 @@ end;
 
 function TASTDelphiUnit.ParseInheritedStatement(Scope: TScope; const EContext: TEContext): TTokenID;
 var
-  Proc, PrevProc: TIDProcedure;
+  Proc, InheritedProc: TIDProcedure;
   CallExpr: TIDCallExpression;
   CallArgs: TIDExpressions;
   i, ArgsCnt: Integer;
@@ -8661,31 +8669,18 @@ begin
         ERRORS.UNDECLARED_ID(ID);
       case Decl.ItemType of
         itProcedure: begin
-          PrevProc := Decl as TIDProcedure;
-//          if PrevProc.Name <> Proc.Name then
-//            ERRORS.NO_METHOD_IN_BASE_CLASS(PrevProc);
+          InheritedProc := Decl as TIDProcedure;
           Result := Lexer_NextToken(Scope);
          ArgsCnt := Length(CallArgs);
           if Result = token_openround then
           begin
-            CallExpr := TIDCallExpression.Create(PrevProc, Lexer_Line);
+            CallExpr := TIDCallExpression.Create(InheritedProc, Lexer_Line);
             CallExpr.Instance := TIDExpression.Create(Proc.SelfParameter);
             CallExpr.ArgumentsCount := ArgsCnt;
             Result := ParseEntryCall(Scope, CallExpr, EContext, nil {tmp!!!});
           end;
           Break;
         end;
-//        itType: begin
-//          if TIDType(Decl).DataTypeID <> dtClass then
-//            ERRORS.CLASS_TYPE_REQUIRED(Lexer_Position);
-//          Ancestor := Decl as TIDStructure;
-//          if (Ancestor = Proc.Struct) or not Proc.Struct.IsInheritsForm(Ancestor) then
-//            ERRORS.TYPE_IS_NOT_AN_ANCESTOR_FOR_THIS_TYPE(Ancestor, Proc.Struct);
-//          Result := Lexer_NextToken(Scope);
-//          Lexer_MatchToken(Result, token_dot);
-//          Result := Lexer_NextToken(Scope);
-//          continue;
-//        end;
       else
         ERRORS.PROC_OR_TYPE_REQUIRED(ID);
         Exit;
@@ -8698,18 +8693,27 @@ begin
     SetLength(CallArgs, ArgsCnt);
     for i := 0 to ArgsCnt - 1 do
       CallArgs[i] := TIDExpression.Create(Proc.ExplicitParams[i]);
-    PrevProc := Proc.Struct.FindVirtualProcInAncestor(Proc);
-    if not Assigned(PrevProc) then
+
+    if (pfConstructor in Proc.Flags) or (pfClass in Proc.Flags) then
+      InheritedProc := Proc.Struct.FindVirtualClassProcInAncestor(Proc)
+    else
+      InheritedProc := Proc.Struct.FindVirtualInstanceProcInAncestor(Proc);
+
+    if not Assigned(InheritedProc) and not (pfConstructor in Proc.Flags)  then
       ERRORS.NO_METHOD_IN_BASE_CLASS(Proc);
   end;
 
-  CallExpr := TIDCallExpression.Create(PrevProc, Lexer_Line);
-  CallExpr.Instance := TIDExpression.Create(Proc.SelfParameter);
-  CallExpr.ArgumentsCount := ArgsCnt;
+  // if inherited was found, generate call expression
+  if Assigned(InheritedProc) then
+  begin
+    CallExpr := TIDCallExpression.Create(InheritedProc, Lexer_Line);
+    CallExpr.Instance := TIDExpression.Create(Proc.SelfParameter);
+    CallExpr.ArgumentsCount := ArgsCnt;
 
-  ResultExpr := Process_CALL_direct(EContext.SContext, CallExpr, CallArgs);
-  if Assigned(ResultExpr) then
-    EContext.RPNPushExpression(ResultExpr);
+    ResultExpr := Process_CALL_direct(EContext.SContext, CallExpr, CallArgs);
+    if Assigned(ResultExpr) then
+      EContext.RPNPushExpression(ResultExpr);
+  end;
 end;
 
 function TASTDelphiUnit.ParseInitSection: TTokenID;

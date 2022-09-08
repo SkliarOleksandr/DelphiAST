@@ -47,6 +47,7 @@ type
     UN: TASTDelphiUnit;
     Scope: TScope;
     ParamsStr: string;
+    ArgsCount: Integer;
     EContext: ^TEContext;
     SContext: ^TSContext;
   end;

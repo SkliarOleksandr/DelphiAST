@@ -607,8 +607,11 @@ type
     property FirstField: TIDVariable read FVarSpace.FFirst;
     function IsInheritsForm(Ancestor: TIDStructure): Boolean;
     function GetLastVirtualIndex: Integer;
-    function FindVirtualProc(Proc: TIDProcedure): TIDProcedure;
-    function FindVirtualProcInAncestor(Proc: TIDProcedure): TIDProcedure;
+    function FindVirtualInstanceProc(Proc: TIDProcedure): TIDProcedure;
+    function FindVirtualClassProc(Proc: TIDProcedure): TIDProcedure;
+    function FindVirtualInstanceProcInAncestor(Proc: TIDProcedure): TIDProcedure;
+    function FindVirtualClassProcInAncestor(Proc: TIDProcedure): TIDProcedure;
+
     function AddField(const Name: string; DataType: TIDType): TIDField;
     function FindField(const Name: string): TIDField;
     function FindMethod(const Name: string): TIDProcedure;
@@ -765,6 +768,7 @@ type
   {dynamic array}
   TIDDynArray = class(TIDArray)
   private
+    FMembersScope: TScope;
     function GetDimension(Index: Integer): TIDOrdinal; override;
   protected
   public
@@ -772,6 +776,7 @@ type
     constructor CreateAsAnonymous(Scope: TScope); override;
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
     procedure CreateStandardOperators; override;
+    function GetHelperScope: TScope;
     ////////////////////////////////////////////////////////////////////////////
   end;
 
@@ -1411,6 +1416,7 @@ type
   protected
     function GetDisplayName: string; override;
     function GetIndex: Integer; override;
+    function GetParamsCount: Integer; virtual;
   public
     constructor Create(Scope: TScope; const ID: TIdentifier); override;
     constructor CreateAsAnonymous(Scope: TScope); override;
@@ -1431,7 +1437,7 @@ type
     property PrevOverload: TIDProcedure read FNextOverload write FNextOverload;
     property EntryScope: TScope read FEntryScope write SetEntryScope;
     property ParamsScope: TProcScope read FParamsScope write FParamsScope;
-    property ParamsCount: Integer read FCount;
+    property ParamsCount: Integer read GetParamsCount;
     {$warnings off}
     property ResultType: TIDType read FResultType write FResultType;
     {$warnings on}
@@ -1710,7 +1716,8 @@ uses AST.Delphi.System,
      AST.Parser.Errors,
      AST.Delphi.Errors,
      AST.Delphi.Parser,
-     AST.Delphi.SysOperators;
+     AST.Delphi.SysOperators,
+     AST.Delphi.SysFunctions;
 
 function IsClassProc(AProcType: TProcType): Boolean; inline;
 begin
@@ -2529,6 +2536,11 @@ end;
 function TIDProcedure.GetIsStatic: Boolean;
 begin
   Result := (pfOperator in Flags) or (pfStatic in Flags);
+end;
+
+function TIDProcedure.GetParamsCount: Integer;
+begin
+  Result := FCount;
 end;
 
 function TIDProcedure.GetProcSpace: PProcSpace;
@@ -3791,7 +3803,23 @@ begin
   Result := TIDProcedure(FMembers.FindMembers(Name));
 end;
 
-function TIDStructure.FindVirtualProc(Proc: TIDProcedure): TIDProcedure;
+function TIDStructure.FindVirtualClassProc(Proc: TIDProcedure): TIDProcedure;
+begin
+  var Decl := fStaticMembers.FindMembers(Proc.Name);
+  if (Decl.ItemType = itProcedure) and
+     (pfVirtual in TIDProcedure(Decl).Flags) and
+     (TIDProcedure(Decl).SameDeclaration(Proc.ExplicitParams)) and
+     (TIDProcedure(Decl).ResultType = Proc.ResultType)
+  then
+    Exit(TIDProcedure(Decl));
+
+  if Assigned(FAncestor) then
+    Result := FAncestor.FindVirtualClassProc(Proc)
+  else
+    Result := nil;
+end;
+
+function TIDStructure.FindVirtualInstanceProc(Proc: TIDProcedure): TIDProcedure;
 var
   NextProc: TIDProcedure;
 begin
@@ -3810,15 +3838,23 @@ begin
   end;
 
   if Assigned(FAncestor) then
-    Result := FAncestor.FindVirtualProc(Proc)
+    Result := FAncestor.FindVirtualInstanceProc(Proc)
   else
     Result := nil;
 end;
 
-function TIDStructure.FindVirtualProcInAncestor(Proc: TIDProcedure): TIDProcedure;
+function TIDStructure.FindVirtualInstanceProcInAncestor(Proc: TIDProcedure): TIDProcedure;
 begin
   if Assigned(FAncestor) then
-    Result := FAncestor.FindVirtualProc(Proc)
+    Result := FAncestor.FindVirtualInstanceProc(Proc)
+  else
+    Result := nil;
+end;
+
+function TIDStructure.FindVirtualClassProcInAncestor(Proc: TIDProcedure): TIDProcedure;
+begin
+  if Assigned(FAncestor) then
+    Result := FAncestor.FindVirtualClassProc(Proc)
   else
     Result := nil;
 end;
@@ -4714,6 +4750,18 @@ begin
   Result := TIDOrdinal(SYSUnit._UInt32);
 end;
 
+function TIDDynArray.GetHelperScope: TScope;
+begin
+  if not Assigned(FMembersScope) then
+  begin
+    FMembersScope := TScope.Create(stStruct, FScope);
+    var ACreateDecl := TSF_DynArrayCreate.CreateDecl(SYSUnit, Scope);
+    ACreateDecl.ResultType := Self;
+    FMembersScope.InsertID(ACreateDecl);
+  end;
+  Result := FMembersScope;
+end;
+
 { TIDSetType }
 
 constructor TIDSet.Create(Scope: TScope; const ID: TIdentifier);
@@ -5064,8 +5112,9 @@ end;
 
 function TIDAliasType.GetDisplayName: string;
 begin
-  Result := inherited GetDisplayName;
-  Result := 'alias of ' + fOriginalType.DisplayName;
+  Result := Name;
+  if Result = '' then
+    Result := 'alias of ' + fOriginalType.DisplayName;
 end;
 
 function TIDAliasType.GetIndex: Integer;
