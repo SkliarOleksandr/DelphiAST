@@ -4109,7 +4109,8 @@ end;
 
 function TASTDelphiUnit.CheckAndMakeClosure(const SContext: TSContext; const ProcDecl: TIDProcedure): TIDClosure;
 begin
-
+  // todo: recognize using out context and create an anonymous class
+  Result := nil;
 end;
 
 function TASTDelphiUnit.CheckAndParseAttribute(Scope: TScope): TTokenID;
@@ -4287,7 +4288,7 @@ begin
 
   // если generic
   if Result = token_less then
-    Result := ParseGenericsHeader(Parameters, GenericsArgs);
+    Result := ParseGenericsHeader(Parameters, {out} GenericsArgs);
 
   // парсим параметры
   if Result = token_openround then
@@ -4300,7 +4301,7 @@ begin
   begin
     Lexer_MatchToken(Result, token_colon);
     // парсим тип возвращаемого значения
-    Result := ParseTypeSpec(Parameters, ResultType);
+    Result := ParseTypeSpec(Parameters, {out} ResultType);
     AddResultParameter(Parameters, ResultType);
   end else
     ResultType := nil;
@@ -5674,7 +5675,7 @@ begin
       token_procedure, token_function: begin
         if Status = rpOperand then
           break;
-        //Result := ParseAnonymousProc(Scope, EContext, SContext, Result);
+        Result := ParseAnonymousProc(Scope, EContext, SContext, Result);
         Status := rpOperand;
         continue;
       end;
