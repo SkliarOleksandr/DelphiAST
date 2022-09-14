@@ -1791,7 +1791,6 @@ begin
     Result := TIDExpression.Create(ResVar, PExpr.TextPosition);
   end else
     Result := nil;
-
 end;
 
 function TASTDelphiUnit.process_CALL_constructor(const SContext: TSContext; CallExpression: TIDCallExpression;
@@ -2147,8 +2146,12 @@ var
   Src: TIDExpression;
   PtrType: TIDPointer;
   RefType: TIDType;
+  AWasCall: Boolean;
 begin
   Src := EContext.RPNPopExpression();
+
+  Src := CheckAndCallFuncImplicit(EContext.SContext, Src, {out} AWasCall);
+
   CheckPointerType(Src);
 
   PtrType := Src.DataType as TIDPointer;
@@ -4036,14 +4039,11 @@ var
   Expr, Res: TIDExpression;
 begin
   Expr := EContext.Result;
-  if not Assigned(Expr) then
-    Exit;
-
-  if Expr.DataTypeID <> dtProcType then
-    Exit;
-
-  if Assigned(Expr.AsProcedure.ResultType) then
+  if Assigned(Expr) and
+    (Expr.DataTypeID = dtProcType) and
+     Assigned(Expr.AsProcedure.ResultType) then
   begin
+    // todo: generate a call expression
     Res := GetTMPVarExpr(EContext, Expr.AsProcedure.ResultType, Expr.TextPosition);
     EContext.RPNPushExpression(Res);
   end;
@@ -5386,7 +5386,7 @@ begin
       end;
       token_const: Result := ParseConstSection(Decl.StaticMembers);
       token_type: Result := ParseNamedTypeDecl(Decl.StaticMembers);
-      token_public: begin
+      token_public, token_published: begin
         Visibility := vPublic;
         Result := Lexer_NextToken(Scope);
       end;
@@ -5901,11 +5901,12 @@ end;
 function TASTDelphiUnit.ParseForInStatement(Scope: TScope; const SContext: TSContext; LoopVar: TIDExpression): TTokenID;
 var
   EContext: TEContext;
-  AExpr: TIDExpression;
+  LExpr: TIDExpression;
   LoopArrayDT: TIDType;
   ASTExpr: TASTExpression;
   KW: TASTKWForIn;
   BodySContext: TSContext;
+  AWasCall: Boolean;
 begin
   ASTExpr := TASTExpression.Create(nil);
   ASTExpr.AddDeclItem(LoopVar.Declaration, LoopVar.TextPosition);
@@ -5916,18 +5917,43 @@ begin
   Lexer_NextToken(Scope);
   Result := ParseExpression(Scope, SContext, EContext, ASTExpr);
   KW.ListExpr := ASTExpr;
-  AExpr := EContext.Result;
-  CheckArrayExpression(AExpr);
-  LoopArrayDT := (AExpr.DataType as TIDArray).ElementDataType;
+  LExpr := EContext.Result;
 
-  if Assigned(LoopVar.DataType) then
+  LExpr := CheckAndCallFuncImplicit(SContext, LExpr, {out} AWasCall);
+
+  // expression is array:
+  if (LExpr.DataType is TIDArray) then
   begin
-    // если переменная цикла определена зарание
-    if MatchImplicit(LoopArrayDT, LoopVar.DataType) = nil then
-      ERRORS.INCOMPATIBLE_TYPES(LoopVar, LoopArrayDT);
-  end else begin
-    LoopVar.Declaration.DataType := LoopArrayDT;
-  end;
+    LoopArrayDT := (LExpr.DataType as TIDArray).ElementDataType;
+    if Assigned(LoopVar.DataType) then
+    begin
+      // match loop var type to the array element type
+      if MatchImplicit(LoopVar.DataType, LoopArrayDT) = nil then
+        ERRORS.INCOMPATIBLE_TYPES(LoopVar, LoopArrayDT);
+    end else begin
+      LoopVar.Declaration.DataType := LoopArrayDT;
+    end;
+  end else
+  // expression has enumerator:
+  if LExpr.DataType is TIDStructure then
+  begin
+    var LStruct := TIDStructure(LExpr.DataType);
+    var LCurrentProp: TIDProperty;
+    if LStruct.GetEnumeratorSupported({out} LCurrentProp) then
+    begin
+      // to do: check enumerator
+      if Assigned(LoopVar.DataType) then
+      begin
+        // match loop var type to the enumerator element type
+        if MatchImplicit(LoopVar.DataType, LCurrentProp.DataType) = nil then
+          ERRORS.INCOMPATIBLE_TYPES(LoopVar, LCurrentProp.DataType);
+      end else begin
+        LoopVar.Declaration.DataType := LCurrentProp.DataType;
+      end;
+    end else
+      ERRORS.ARRAY_EXPRESSION_REQUIRED(LExpr);
+  end else
+    ERRORS.ARRAY_EXPRESSION_REQUIRED(LExpr);
 
   Lexer_MatchToken(Result, token_do);
   Lexer_NextToken(Scope);

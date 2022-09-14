@@ -153,6 +153,20 @@ type
     class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {Hi}
+  TSF_HiByte = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
+  {Lo}
+  TSF_LoByte = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
   {Include}
   TSF_Include = class(TIDSysRuntimeFunction)
   public
@@ -1470,6 +1484,36 @@ begin
 
   var AArray := Ctx.SContext.Proc.GetTMPVar(ResultType);
   Result := TIDExpression.Create(AArray, Ctx.UN.Lexer_Position);
+end;
+
+{ TSF_HiByte }
+
+class function TSF_HiByte.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Hi', SYSUnit._UInt8);
+  Result.AddParam('Value', SYSUnit._Int32, [VarConst]);
+end;
+
+function TSF_HiByte.Process(var EContext: TEContext): TIDExpression;
+begin
+  var AExpr := EContext.RPNPopExpression;
+  var AResul := EContext.SContext.Proc.GetTMPVar(ResultType);
+  Result := TIDExpression.Create(AResul, AExpr.TextPosition);
+end;
+
+{ TSF_LoByte }
+
+class function TSF_LoByte.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Lo', SYSUnit._UInt8);
+  Result.AddParam('Value', SYSUnit._Int32, []);
+end;
+
+function TSF_LoByte.Process(var EContext: TEContext): TIDExpression;
+begin
+  var AExpr := EContext.RPNPopExpression;
+  var AResul := EContext.SContext.Proc.GetTMPVar(ResultType);
+  Result := TIDExpression.Create(AResul, AExpr.TextPosition);
 end;
 
 end.

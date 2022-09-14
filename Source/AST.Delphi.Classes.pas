@@ -615,11 +615,15 @@ type
     function AddField(const Name: string; DataType: TIDType): TIDField;
     function FindField(const Name: string): TIDField;
     function FindMethod(const Name: string): TIDProcedure;
+    function FindProperty(const Name: string): TIDProperty;
+
     procedure IncRefCount(RCPath: UInt32); override;
     procedure DecRefCount(RCPath: UInt32); override;
 
     property ClassConstructor: TIDProcedure read fClassConstructor write fClassConstructor;
     property ClassDestructor: TIDProcedure read FClassDestructor write FClassDestructor;
+
+    function GetEnumeratorSupported(out ACurrentProp: TIDProperty): Boolean;
   end;
 
   {record type}
@@ -3593,7 +3597,7 @@ end;
 function TIDExpression.GetDataType: TIDType;
 begin
   Result := FDeclaration.DataType;
-  Assert(Assigned(Result));
+  //Assert(Assigned(Result));
 end;
 
 function TIDExpression.GetDataTypeID: TDataTypeID;
@@ -3795,12 +3799,29 @@ end;
 
 function TIDStructure.FindField(const Name: string): TIDField;
 begin
-  Result := FMembers.FindMembers(Name) as TIDField;
+  var Decl := FMembers.FindMembers(Name);
+  if Decl is TIDField then
+    Result := TIDField(Decl)
+  else
+    Result := nil;
 end;
 
 function TIDStructure.FindMethod(const Name: string): TIDProcedure;
 begin
-  Result := TIDProcedure(FMembers.FindMembers(Name));
+  var Decl := FMembers.FindMembers(Name);
+  if Decl is TIDProcedure then
+    Result := TIDProcedure(Decl)
+  else
+    Result := nil;
+end;
+
+function TIDStructure.FindProperty(const Name: string): TIDProperty;
+begin
+  var Decl := FMembers.FindMembers(Name);
+  if Decl is TIDProperty then
+    Result := TIDProperty(Decl)
+  else
+    Result := nil;
 end;
 
 function TIDStructure.FindVirtualClassProc(Proc: TIDProcedure): TIDProcedure;
@@ -4036,6 +4057,29 @@ begin
   fOperators := TStructScope.CreateAsStruct(Scope, Self, nil, @fOperatorsSpace, Scope.DeclUnit);
   fOperators.AddScope(fStaticMembers);
   {$IFDEF DEBUG}fOperators.Name := ID.Name + '.operators';{$ENDIF}
+end;
+
+function TIDStructure.GetEnumeratorSupported(out ACurrentProp: TIDProperty): Boolean;
+begin
+  var LGetEnumeratorFunc := FindMethod('GetEnumerator');
+  if Assigned(LGetEnumeratorFunc) then
+  begin
+    var LEnumeratorType := LGetEnumeratorFunc.ResultType as TIDStructure;
+    if Assigned(LEnumeratorType) and (LEnumeratorType is TIDStructure) then
+    begin
+      var LMoveNext := LEnumeratorType.FindMethod('MoveNext');
+      var LCurrent := LEnumeratorType.FindProperty('Current');
+
+      Result := (LMoveNext.ResultType = SYSUnit._Boolean) and Assigned(LCurrent.Getter);
+      if Result then
+      begin
+        // todo: return all needed declarations to the caller
+        ACurrentProp := LCurrent;
+        Exit;
+      end;
+    end;
+  end;
+  Result := False;
 end;
 
 function TIDStructure.IsInheritsForm(Ancestor: TIDStructure): Boolean;

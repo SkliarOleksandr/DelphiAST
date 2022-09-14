@@ -1075,6 +1075,8 @@ begin
   RegisterBuiltin(TSF_GetDir);
   RegisterBuiltin(TSF_Halt);
   RegisterBuiltin(TSF_HiBound);
+  RegisterBuiltin(TSF_HiByte);
+  RegisterBuiltin(TSF_LoByte);
   RegisterBuiltin(TSF_Include);
   RegisterBuiltin(TSF_Inc);
   RegisterBuiltin(TSF_Insert);
