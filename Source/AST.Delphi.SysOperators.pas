@@ -235,6 +235,20 @@ type
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
+  {explicit Class <- Any}
+  TSysExplicitClassFromAny = class(TSysOpImplicit)
+  public
+    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
+  {explicit Interface <- Any}
+  TSysExplicitInterfaceFromAny = class(TSysOpImplicit)
+  public
+    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
+
+
   {explicit Class of -> Any}
   TSysExplicitClassOfToAny = class(TSysOpImplicit)
   public
@@ -310,6 +324,12 @@ type
 
   {explicit StaticArray -> Any}
   TSysExplicitStaticArrayToAny = class(TSysOpExplisit)
+  public
+    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
+  {explicit Variant -> Any}
+  TSysExplicitVariantToAny = class(TSysOpExplisit)
   public
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
@@ -945,6 +965,29 @@ begin
     if Assigned(Result) then
       Exit;
   end;
+end;
+
+{ TSysExplicitClassFromAny }
+
+function TSysExplicitClassFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
+begin
+  Result := (Dst.DataTypeID in [dtInt32, dtPointer, dtClass]) or (Src = SysUnit._Untyped);
+end;
+
+{ TSysExplicitInterfaceFromAny }
+
+function TSysExplicitInterfaceFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
+begin
+  Result := (Dst.DataTypeID in [dtInt32, dtPointer, dtClass]) or (Src = SysUnit._Untyped);
+end;
+
+{ TSysExplicitVariantToAny }
+
+function TSysExplicitVariantToAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
+begin
+  Result := Dst.DataTypeID in [dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean,
+                        dtFloat32, dtFloat64, dtNativeInt, dtNativeUInt, dtChar, dtAnsiChar,
+                        dtString, dtAnsiString, dtWideString, dtVariant];
 end;
 
 end.

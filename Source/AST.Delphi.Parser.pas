@@ -75,6 +75,7 @@ type
     procedure CheckLeftOperand(const Status: TRPNStatus);
     class procedure CheckAndCallFuncImplicit(const EContext: TEContext); overload; static;
     class function CheckAndCallFuncImplicit(const SContext: TSContext; Expr: TIDExpression; out WasCall: Boolean): TIDExpression; overload; static;
+    class function CheckAndCallFuncImplicit(const EContext: TEContext; Expr: TIDExpression): TIDExpression; overload; static;
 
     function CreateAnonymousConstant(Scope: TScope; var EContext: TEContext;
       const ID: TIdentifier; IdentifierType: TIdentifierType): TIDExpression;
@@ -1407,6 +1408,7 @@ var
   Item: TASTExpBlockItem;
   NewSContext: TSContext;
 begin
+  // todo: fix parsing
   Lexer_ReadNextIdentifier(Scope, VarID);
   Result := Lexer_NextToken(Scope);
   if Result = token_colon then
@@ -2149,8 +2151,7 @@ var
   AWasCall: Boolean;
 begin
   Src := EContext.RPNPopExpression();
-
-  Src := CheckAndCallFuncImplicit(EContext.SContext, Src, {out} AWasCall);
+  Src := CheckAndCallFuncImplicit(EContext, Src);
 
   CheckPointerType(Src);
 
@@ -2177,6 +2178,8 @@ var
 begin
   Dst := EContext.RPNPopExpression();
   Src := EContext.RPNPopExpression();
+  Src := CheckAndCallFuncImplicit(EContext, Src);
+
   CheckClassOrIntfType(Src.DataType, Src.TextPosition);
   CheckClassOrClassOfOrIntfType(Dst);
   Result := GetTMPVarExpr(EContext, Sys._Boolean, Dst.TextPosition);
@@ -4107,6 +4110,17 @@ begin
     Result := Expr;
 end;
 
+class function TASTDelphiUnit.CheckAndCallFuncImplicit(const EContext: TEContext; Expr: TIDExpression): TIDExpression;
+begin
+  if (Expr.DataTypeID = dtProcType) and
+      Assigned(TIDProcType(Expr.DataType).ResultType) then
+  begin
+    // todo: generate func call
+    Result := GetTMPVarExpr(EContext, TIDProcType(Expr.DataType).ResultType, Expr.TextPosition);
+  end else
+    Result := Expr;
+end;
+
 function TASTDelphiUnit.CheckAndMakeClosure(const SContext: TSContext; const ProcDecl: TIDProcedure): TIDClosure;
 begin
   // todo: recognize using out context and create an anonymous class
@@ -5843,8 +5857,6 @@ begin
       end;
     end;
     itFloat: begin
-      if Lexer_Line = 16131 then
-        sleep(1);
       FltValue := StrToFloat(Value);
       DataType := Sys.DataTypes[GetValueDataType(FltValue)];
       CItem := TIDFloatConstant.CreateAsAnonymous(Scope, DataType, FltValue);
@@ -6392,13 +6404,14 @@ begin
        (Result = token_closeblock) then
      Exit;
     VarFlags := [VarParameter];
+
+    if Result = token_openblock then
+      Result := ParseAttribute(Scope);
+
     case Result of
       token_const: begin
         Include(VarFlags, VarConst);
         Result := Lexer_NextToken(Scope);
-      end;
-      token_openblock: begin
-        Result := ParseAttribute(Scope);
       end;
       token_var: begin
         Include(VarFlags, VarInOut);
@@ -9509,8 +9522,9 @@ begin
     else
       Matched := True;
     end;
-    if not Matched then
-      ERRORS.CONST_VALUE_OVERFLOW(Src, DstDataType);
+    // todo: it doesn't work with explicit casted values
+    //if not Matched then
+    //  ERRORS.CONST_VALUE_OVERFLOW(Src, DstDataType);
   end;
   // необходимо реализовать проверку остальных типов
 end;

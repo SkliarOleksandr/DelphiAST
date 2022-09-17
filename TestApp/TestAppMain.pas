@@ -61,6 +61,7 @@ type
     //fPKG: INPPackage;
     fFiles: TStringDynArray;
     fSettings: IASTProjectSettings;
+    FStartedAt: TDateTime;
     procedure OnProgress(const Module: IASTModule; Status: TASTProcessStatusClass);
     procedure ShowAllItems(const Project: IASTDelphiProject);
     procedure ShowResult(const Project: IASTDelphiProject);
@@ -174,6 +175,9 @@ var
   Prj: IASTDelphiProject;
 begin
   Memo1.Clear;
+
+  FStartedAt := Now;
+
   Prj := TASTDelphiProject.Create('test');
   Prj.AddUnitSearchPath(ExtractFilePath(Application.ExeName));
   if chkCompileSsystemForASTParse.Checked then
@@ -197,15 +201,6 @@ begin
 
   Prj.Clear;
 end;
-
-const cRTLUsesSource =
-  'unit RTLParseTest; '#10#13 +
-  'interface'#10#13 +
-  'uses System.SysUtils;'#10#13 +
-//  'uses Winapi.Windows;'#10#13 +
-  'implementation'#10#13 +
-  'end.';
-
 
 procedure TfrmTestAppMain.OnProgress(const Module: IASTModule; Status: TASTProcessStatusClass);
 begin
@@ -251,7 +246,8 @@ begin
     else
       Msg.Add('compile fail');
 
-    Msg.Add('total lines parsed: ' + IntToStr(Project.TotalLinesParsed));
+    Msg.Add(format('total lines parsed: %d in %s', [Project.TotalLinesParsed,
+                                                    FormatDateTime('nn:ss.zzz', Now - FStartedAt)]));
 
       //ASTToTreeView2(UN, tvAST);
 
@@ -265,11 +261,25 @@ begin
 end;
 
 procedure TfrmTestAppMain.Button2Click(Sender: TObject);
+
+  procedure AddDelphiUnits(var AUsesList: string; const APath: string);
+  begin
+    var LRtlSources := GetDirectoryFiles(edSrcRoot.Text + APath, '*.pas');
+    for var LPath in LRtlSources do
+    begin
+      var LUnitName := StringReplace(ExtractFileName(LPath), '.pas', '', [rfReplaceAll]);
+      AUsesList := AddStringSegment(AUsesList, LUnitName, ',');
+    end;
+
+  end;
+
 var
   UN: TASTDelphiUnit;
   Prj: IASTDelphiProject;
 begin
   Memo1.Clear;
+
+  FStartedAt := Now;
 
   Prj := TASTDelphiProject.Create('test');
   Prj.AddUnitSearchPath(edSrcRoot.Text);
@@ -281,7 +291,19 @@ begin
   Prj.Defines.Add('ASSEMBLER');
   Prj.OnProgress := OnProgress;
 
-  UN := TASTDelphiUnit.Create(Prj, 'RTLParseTest', cRTLUsesSource);
+
+  var LUsesUntis := '';
+  AddDelphiUnits(LUsesUntis, 'rtl\sys');
+
+  var RTLUsesSourceText :=
+  'unit RTLParseTest; '#10#13 +
+  'interface'#10#13 +
+  'uses'#10#13 +
+   LUsesUntis + ';'#10#13 +
+  'implementation'#10#13 +
+  'end.';
+
+  UN := TASTDelphiUnit.Create(Prj, 'RTLParseTest', RTLUsesSourceText);
   Prj.AddUnit(UN, nil);
 
   ShowResult(Prj);

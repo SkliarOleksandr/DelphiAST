@@ -1545,9 +1545,7 @@ type
     fProcSpace: PProcSpace;     // ссылка на список процедур
     fAdditionalScopes: TScopes; // список дополнительных (присоедененных) областей
     fChilds: TList<TScope>;     // вложенные области (необходимо для корректного удаления)
-    {$IFDEF DEBUG}
     fName: string;
-   {$ENDIF}
     procedure SetParent(const Value: TScope);
   protected
     function GetName: string; virtual;
@@ -1578,7 +1576,7 @@ type
     property ScopeClass: TScopeClass read GetScopeClass;
     property DeclUnit: TASTModule read FUnit;
     property AdditionalScopes: TScopes read FAdditionalScopes;
-    {$IFDEF DEBUG}property Name: string read GetName write FName;{$ENDIF}
+    property Name: string read GetName write FName;
   end;
 
   TProcScope = class(TScope)
@@ -5725,6 +5723,7 @@ begin
     OverloadExplicitFrom(SYSUnit._NativeUInt);
     OverloadExplicitFrom(SYSUnit._NativeInt);
     OverloadImplicitTo(dtClass, SYSUnit.Operators.ImplicitClassToClass);
+    OverloadExplicitFromAny(SYSUnit.Operators.ExplicitClassFromAny);
   end;
 end;
 
@@ -5752,6 +5751,7 @@ begin
     OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
     OverloadBinarOperator2(opEqual, SYSUnit._NilPointer, SYSUnit._Boolean);
     OverloadBinarOperator2(opNotEqual, SYSUnit._NilPointer, SYSUnit._Boolean);
+    OverloadExplicitFromAny(SysUnit.Operators.ExplicitInterfaceFromAny);
   end;
 end;
 
@@ -6479,7 +6479,7 @@ begin
     dtDynArray: Result := TIDDynArrayConstant;
     dtRecord: Result := TIDRecordConstant;
     dtGuid: Result := TIDGuidConstant;
-
+    dtClass: Result := TIDPointerConstant;
   else
     Result := nil;
     AbortWorkInternal('Unknown constant type');

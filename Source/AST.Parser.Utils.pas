@@ -1324,7 +1324,7 @@ begin
     Files.Free;
   end;
 {$ELSE}
-  Result := TStrArray(TDirectory.GetFiles(SearchPath, SearchMask));
+  Result := TStrArray(TDirectory.GetFiles(SearchPath, SearchMask, TSearchOption.soAllDirectories));
  {$ENDIF}
 end;
 

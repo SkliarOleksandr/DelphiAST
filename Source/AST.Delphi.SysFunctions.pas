@@ -387,6 +387,19 @@ type
     class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {VarCast}
+  TSF_VarCast = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
+  {VarClear}
+  TSF_VarClear = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
+  end;
 
 implementation
 
@@ -1514,6 +1527,38 @@ begin
   var AExpr := EContext.RPNPopExpression;
   var AResul := EContext.SContext.Proc.GetTMPVar(ResultType);
   Result := TIDExpression.Create(AResul, AExpr.TextPosition);
+end;
+
+{ TSF_VarCast }
+
+class function TSF_VarCast.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'VarCast', nil);
+  Result.AddParam('Dest', SYSUnit._Variant, [VarInOut]);
+  Result.AddParam('Source', SYSUnit._Variant, [VarConst]);
+  Result.AddParam('VarType', SYSUnit._Int32, []);
+end;
+
+function TSF_VarCast.Process(var EContext: TEContext): TIDExpression;
+begin
+  var AVarType := EContext.RPNPopExpression;
+  var ASource := EContext.RPNPopExpression;
+  var ADest := EContext.RPNPopExpression;
+  Result := nil;
+end;
+
+{ TSF_VarClear }
+
+class function TSF_VarClear.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'VarClear', nil);
+  Result.AddParam('V', SYSUnit._Variant, [VarInOut]);
+end;
+
+function TSF_VarClear.Process(var EContext: TEContext): TIDExpression;
+begin
+  var AValue := EContext.RPNPopExpression;
+  Result := nil;
 end;
 
 end.

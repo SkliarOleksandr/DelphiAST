@@ -380,7 +380,7 @@ begin
   RegisterToken('@', token_address);
   RegisterToken('&', token_ampersand);
   RegisterToken(':=', token_assign);
-  RegisterToken('at', token_at, TTokenClass.AmbiguousPriorityKeyword);
+  RegisterToken('at', token_at, TTokenClass.AmbiguousPriorityIdentifier);
   RegisterToken('absolute', token_absolute, TTokenClass.AmbiguousPriorityKeyword);
   RegisterToken('abstract', token_abstract);
   RegisterToken('align', token_aling, TTokenClass.AmbiguousPriorityIdentifier);
@@ -439,7 +439,7 @@ begin
   RegisterToken('out', token_Out);
   RegisterToken('override', token_Override);
   RegisterToken('overload', token_Overload);
-  RegisterToken('operator', token_operator);
+  RegisterToken('operator', token_operator, TTokenClass.AmbiguousPriorityKeyword);
   RegisterToken('package', token_package);
   RegisterToken('procedure', token_procedure);
   RegisterToken('program', token_program);

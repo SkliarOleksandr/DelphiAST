@@ -97,8 +97,10 @@ type
     ExplicitStringFromAny,
     ExplicitAnsiStringFromAny,
     ExplicitTProcFromAny,
+    ExplicitClassFromAny,
     ExplicitClassOfToAny,
     ExplicitClassOfFromAny,
+    ExplicitInterfaceFromAny,
     ExplicitPointerToAny,
     ExplicitPointerFromAny,
     ExplicitRecordFromAny,
@@ -109,7 +111,8 @@ type
     ExplicitCharToAny,
     ExplicitRangeFromAny,
     ExplicitRecordToAny,
-    ExplicitStaticArrayToAny: TIDOperator;
+    ExplicitStaticArrayToAny,
+    ExplicitVariantToAny: TIDOperator;
     // any cast
     IsOrdinal: TIDOperator;
     // in
@@ -353,6 +356,8 @@ begin
   // Variant
   for i := dtInt8 to dtVariant do
     _Variant.OverloadImplicitTo(DataTypes[i], Operators.ImplicitVariantToAny);
+  _Variant.OverloadExplicitToAny(Operators.ExplicitVariantToAny);
+
 
   // float32
   with _Float32 do begin
@@ -427,6 +432,7 @@ begin
   _WideChar.OverloadImplicitTo(_AnsiString, Operators.ImplicitCharToAnsiString);
   _WideChar.OverloadImplicitTo(_AnsiChar, Operators.ImplicitCharToAnsiChar);
   _WideChar.OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
+  _WideChar.OverloadImplicitTo(_WideString);
 
   // AnsiChar
   _AnsiChar.OverloadImplicitTo(_AnsiChar);
@@ -503,6 +509,7 @@ begin
   _AnsiString.OverloadExplicitTo(_NativeUInt);
   _AnsiString.OverloadExplicitTo(_PAnsiChar);
   _AnsiString.OverloadExplicitTo(_ShortString);
+  _AnsiString.OverloadExplicitTo(_WideString);
   _AnsiString.OverloadExplicitFromAny(Operators.ExplicitAnsiStringFromAny);
 
   // WideString
@@ -523,6 +530,8 @@ begin
   _WideChar.OverloadExplicitToAny(Operators.ExplicitCharToAny);
 
   _PWideChar.OverloadExplicitTo(_UnicodeString);
+
+  _UntypedReference.OverloadExplicitTo(_ShortString);
 
   AddStandardExplicitsTo([dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtNativeInt, dtNativeUInt, dtBoolean], _WideChar);
   AddStandardExplicitsTo([dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtNativeInt, dtNativeUInt, dtBoolean], _AnsiChar);
@@ -673,6 +682,8 @@ begin
 
   // strings
   AddBinarOperator(opAdd, _UnicodeString, _UnicodeString, _UnicodeString);
+  AddBinarOperator(opAdd, _WideString, _WideString, _WideString);
+
   AddBinarOperator(opAdd, _WideChar, _WideChar, _WideChar);
   AddBinarOperator(opAdd, _AnsiString, _AnsiString, _AnsiString);
   AddBinarOperator(opAdd, _AnsiChar, _AnsiChar, _AnsiChar);
@@ -1101,6 +1112,8 @@ begin
   RegisterBuiltin(TSF_Trunc);
   RegisterBuiltin(TSF_Val);
   RegisterBuiltin(TSF_ReturnAddress);
+  RegisterBuiltin(TSF_VarCast);
+  RegisterBuiltin(TSF_VarClear);
 
   RegisterVariable(ImplScope, 'ReturnAddress', _Pointer);
   RegisterConstStr(ImplScope, 'libmmodulename', '');
@@ -1251,8 +1264,10 @@ begin
   ExplicitStringFromAny := TSysExplicitStringFromAny.CreateAsSystem(Scope);
   ExplicitAnsiStringFromAny := TSysExplicitAnsiStringFromAny.CreateAsSystem(Scope);
   ExplicitTProcFromAny := TSysExplicitTProcFromAny.CreateAsSystem(Scope);
+  ExplicitClassFromAny := TSysExplicitClassFromAny.CreateAsSystem(Scope);
   ExplicitClassOfToAny := TSysExplicitClassOfToAny.CreateAsSystem(Scope);
   ExplicitClassOfFromAny := TSysExplicitClassOfFromAny.CreateAsSystem(Scope);
+  ExplicitInterfaceFromAny := TSysExplicitInterfaceFromAny.CreateAsSystem(Scope);
   ExplicitPointerToAny := TSysExplictPointerToAny.CreateAsSystem(Scope);
   ExplicitPointerFromAny := TSysExplictPointerFromAny.CreateAsSystem(Scope);
   ExplicitRecordFromAny := TSysExplicitRecordFromAny.CreateAsSystem(Scope);
@@ -1264,6 +1279,7 @@ begin
   ExplicitRangeFromAny := TSysExplicitRangeFromAny.CreateAsSystem(Scope);
   ExplicitRecordToAny := TSysExplicitRecordToAny.CreateAsSystem(Scope);
   ExplicitStaticArrayToAny := TSysExplicitStaticArrayToAny.CreateAsSystem(Scope);
+  ExplicitVariantToAny := TSysExplicitVariantToAny.CreateAsSystem(Scope);
   // any cast
   IsOrdinal := TSysTypeCast_IsOrdinal.CreateAsSystem(Scope);
 

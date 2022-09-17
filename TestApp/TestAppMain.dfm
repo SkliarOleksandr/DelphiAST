@@ -81,6 +81,7 @@ object frmTestAppMain: TfrmTestAppMain
       Width = 798
       Height = 149
       Anchors = [akLeft, akTop, akRight, akBottom]
+      Font.Charset = DEFAULT_CHARSET
       Font.Color = clWindowText
       Font.Height = -13
       Font.Name = 'Consolas'
@@ -207,20 +208,11 @@ object frmTestAppMain: TfrmTestAppMain
             'interface'
             ''
             'implementation'
-            '   '
             ''
-            'procedure FreeAndNil(const [ref] Obj: TObject);'
-            'var'
-            '  Temp: TObject;'
-            'begin'
-            '  Temp := Obj;'
-            '  TObject(Pointer(@Obj)^) := nil;'
-            '  Temp.Free;'
-            'end;'
-            ''
-            'initialization'
+            'uses System.Variants;'
             ''
             'end.'
+            ''
             '')
           FontSmoothing = fsmNone
         end
