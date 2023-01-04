@@ -179,7 +179,7 @@ type
   public
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     constructor Create(const Project: IASTProject; const FileName: string; const Source: string); override;
-    function Compile(RunPostCompile: Boolean = True): TCompilerResult; override;
+    function Compile(ACompileIntfOnly: Boolean; RunPostCompile: Boolean = True): TCompilerResult; override;
     function CompileIntfOnly: TCompilerResult; override;
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     property DataTypes[ID: TDataTypeID]: TIDType read GetTypeByID;
@@ -1128,13 +1128,13 @@ begin
   TIDOrdinal(Result).SignedBound  := LowBound < 0;
 end;
 
-function TSYSTEMUnit.Compile(RunPostCompile: Boolean = True): TCompilerResult;
+function TSYSTEMUnit.Compile(ACompileIntfOnly: Boolean; RunPostCompile: Boolean = True): TCompilerResult;
 begin
   Result := CompileInProgress;
   try
     RegisterBuiltinFunctions;
     SystemFixup;
-    Result := inherited Compile(False);
+    Result := inherited Compile(ACompileIntfOnly, {RunPostCompile:} False);
     if Result = CompileSuccess then
     begin
       SearchSystemTypes;
@@ -1193,7 +1193,7 @@ end;
 
 function TSYSTEMUnit.CompileIntfOnly: TCompilerResult;
 begin
-  Result := Compile();
+  Result := Compile({ACompileIntfOnly:} True);
 end;
 
 function TSYSTEMUnit.RegisterTypeAlias(const TypeName: string; OriginalType: TIDType): TIDAliasType;

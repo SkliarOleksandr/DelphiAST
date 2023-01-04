@@ -403,7 +403,7 @@ begin
     for i := 0 to FUnits.Count - 1 do
     begin
       var UN := FUnits[i];
-      Result := TPascalUnit(UN).Compile;
+      Result := TPascalUnit(UN).Compile({ACompileIntfOnly:} False);
       Inc(fTotalLinesParsed, UN.TotalLinesParsed);
       if Result = CompileFail then
         Exit;

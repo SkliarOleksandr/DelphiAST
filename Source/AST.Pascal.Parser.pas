@@ -78,6 +78,13 @@ type
   PASTProcMatchItem = ^TASTProcMatchItem;
 
 
+  TUnitState = (
+    UnitNotCompiled,
+    UnitIntfCompiled,
+    UnitAllCompiled,
+    UnitCompileFailed
+  );
+
   TASTProcMachArray = array of TASTProcMatchItem;
 
   TPascalUnit = class(TASTModule)
@@ -99,6 +106,7 @@ type
     function GetMessagesText: string;
   protected
     fCompiled: TCompilerResult;
+    fUnitState: TUnitState;
     fUnitName: TIdentifier;            // the Unit declaration name
     fSysUnit: TASTModule;
     fProcMatches: TASTProcMachArray;
@@ -125,7 +133,7 @@ type
     procedure SaveBodyToStream(Stream: TStream);   // сохраняет тела всех глобальных процедур модуля
     procedure SaveTypesToStream(Stream: TStream);  // сохраняет все типы модуля
 
-    function Compile(RunPostCompile: Boolean = True): TCompilerResult; virtual;
+    function Compile(ACompileIntfOnly: Boolean; RunPostCompile: Boolean = True): TCompilerResult; virtual;
 
     function CompileIntfOnly: TCompilerResult; virtual;
 
@@ -145,6 +153,7 @@ type
     property VarSpace: TVarSpace read FVarSpace;
     property ProcSpace: TProcSpace read FProcSpace;
     property ConstSpace: TConstSpace read FConsts;
+    property UnitState: TUnitState read fUnitState;
   end;
 
 implementation
@@ -162,8 +171,9 @@ begin
   FUnitName.Name := Name;
 end;
 
-function TPascalUnit.Compile(RunPostCompile: Boolean = True): TCompilerResult;
+function TPascalUnit.Compile(ACompileIntfOnly: Boolean; RunPostCompile: Boolean = True): TCompilerResult;
 begin
+
   Result := TCompilerResult.CompileInProgress;
   FCompiled := Result;
 

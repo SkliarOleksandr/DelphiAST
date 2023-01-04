@@ -393,7 +393,7 @@ type
     procedure EnumAllDeclarations(const Proc: TEnumASTDeclProc); override;
 
     property Source: string read GetSource;
-    function Compile(RunPostCompile: Boolean = True): TCompilerResult; override;
+    function Compile(ACompileIntfOnly: Boolean; RunPostCompile: Boolean = True): TCompilerResult; override;
     function CompileIntfOnly: TCompilerResult; override;
     function CompileSource(Scope: TScope; const FileName: string; const Source: string): ICompilerMessages;
     constructor Create(const Project: IASTProject; const FileName: string; const Source: string = ''); override;
@@ -1168,7 +1168,7 @@ begin
     // compile if not compiled yet
     if LUnit.Compiled = CompileNone then
     begin
-      if LUnit.Compile() = CompileFail then
+      if LUnit.Compile({ACompileIntfOnly:} True) = CompileFail then
         StopCompile(False);
     end;
 
@@ -2296,25 +2296,34 @@ begin
     AbortWork('LABEL required', Lexer_Position);
 end;
 
-function TASTDelphiUnit.Compile(RunPostCompile: Boolean): TCompilerResult;
+function TASTDelphiUnit.Compile(ACompileIntfOnly: Boolean; RunPostCompile: Boolean): TCompilerResult;
 var
   Token: TTokenID;
   Scope: TScope;
 begin
-  fTotalLinesParsed := 0;
-  Progress(TASTStatusParseBegin);
-  Result := inherited Compile(RunPostCompile);
-  fSysDecls := TSYSTEMUnit(SysUnit).SystemDeclarations;
-  fCCalc := TExpressionCalculator.Create(Self);
-
-  Package.DoBeforeCompileUnit(Self);
-
-  Messages.Clear;
-  FRCPathCount := 1;
   try
-    Lexer.First;
-    Scope := IntfScope;
-    ParseUnitDecl(Scope);
+    if UnitState = UnitNotCompiled then
+    begin
+      fTotalLinesParsed := 0;
+      Progress(TASTStatusParseBegin);
+      Result := inherited Compile(RunPostCompile);
+      fSysDecls := TSYSTEMUnit(SysUnit).SystemDeclarations;
+      fCCalc := TExpressionCalculator.Create(Self);
+      Package.DoBeforeCompileUnit(Self);
+
+      Messages.Clear;
+      FRCPathCount := 1;
+
+      Lexer.First;
+      Scope := IntfScope;
+      ParseUnitDecl(Scope);
+    end else
+    if UnitState = UnitIntfCompiled then
+    begin
+      Scope := ImplScope;
+    end else
+      AbortWorkInternal('Invalid unit state');
+
     Token := Lexer_NextToken(Scope);
     while true do begin
       case Token of
@@ -2371,11 +2380,11 @@ begin
             ERRORS.FEATURE_NOT_SUPPORTED(Lexer_TokenLexem(Token));
           end;
         end;
-        token_weak: begin
-          CheckIntfSectionMissing(Scope);
-          Lexer_NextToken(Scope);
-          Token := ParseVarSection(Scope, vLocal, True);
-        end;
+//        token_weak: begin
+//          CheckIntfSectionMissing(Scope);
+//          Lexer_NextToken(Scope);
+//          Token := ParseVarSection(Scope, vLocal, True);
+//        end;
         token_var: begin
           CheckIntfSectionMissing(Scope);
           Lexer_NextToken(Scope);
@@ -2397,6 +2406,12 @@ begin
         end;
         token_implementation: begin
           CheckIntfSectionMissing(Scope);
+          fUnitState := UnitIntfCompiled;
+          if ACompileIntfOnly then
+          begin
+            Result := CompileSuccess;
+            Exit;
+          end;
           Scope := ImplScope;
           Token := Lexer_NextToken(Scope);
         end;
@@ -2439,7 +2454,7 @@ end;
 
 function TASTDelphiUnit.CompileIntfOnly: TCompilerResult;
 begin
-  Result := Compile;
+  Result := Compile({ACompileIntfOnly:} True);
 end;
 
 function TASTDelphiUnit.CompileSource(Scope: TScope; const FileName: string; const Source: string): ICompilerMessages;
