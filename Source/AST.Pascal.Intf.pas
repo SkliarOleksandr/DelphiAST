@@ -33,6 +33,8 @@ type
     function GetUnit(const UnitName: string): TObject; overload;
     function UsesUnit(const UnitName: string; AfterUnit: TASTModule): TASTModule;
     function GetSysUnit: TASTModule;
+    function GetStopCompileIfError: Boolean;
+    procedure SetStopCompileIfError(const Value: Boolean);
     procedure SetIncludeDebugInfo(const Value: Boolean);
     procedure SetRTTICharset(const Value: TRTTICharset);
     procedure SetTarget(const Value: string);
@@ -56,6 +58,7 @@ type
     property Messages: ICompilerMessages read GetMessages;
     property RTTICharset: TRTTICharset read GetRTTICharset write SetRTTICharset;
     property IncludeDebugInfo: Boolean read GetIncludeDebugInfo write SetIncludeDebugInfo;
+    property StopCompileIfError: Boolean read GetStopCompileIfError write SetStopCompileIfError;
     property UnitsCount: Integer read GetUnitsCount;
     property Units[Index: Integer]: TASTModule read GetUnit;
     property SearchPathes: TStrings read GetSearchPathes;

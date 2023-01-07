@@ -104,6 +104,14 @@ object frmTestAppMain: TfrmTestAppMain
       State = cbChecked
       TabOrder = 4
     end
+    object chkStopIfError: TCheckBox
+      Left = 240
+      Top = 7
+      Width = 138
+      Height = 17
+      Caption = 'Stop compile if errors'
+      TabOrder = 5
+    end
   end
   object Panel2: TPanel
     Left = 0
@@ -203,17 +211,44 @@ object frmTestAppMain: TfrmTestAppMain
           Gutter.ShowLineNumbers = True
           Highlighter = SynPasSyn1
           Lines.Strings = (
-            'unit TestUnit1;'
+            'unit TestUnit.XXX;'
             ''
             'interface'
             ''
+            '{uses TestUnit;'
+            ''
+            'var A: array [0..3] of byte;'
+            ''
+            'type'
+            '  TRec = record'
+            '  type'
+            #9' TNested = record'
+            #9#9'class var CVar: Integer;'
+            #9' end;'
+            '  end;'
+            ''
+            'var'
+            '   GVar: Integer;'
+            ''
+            'const'
+            '  GConst = 5;}'
+            ''
             'implementation'
             ''
-            'uses System.Variants;'
+            'uses System.SysUtils;'
             ''
-            'end.'
+            'procedure Test;'
+            'begin '
+            '//  var A: TestUnit.XXX.TRec.TNested;'
+            '//  TestUnit.XXX.GVar := TestUnit.XXX.GConst;'
+            '  try'
+            '  except'
+            #9'on System.SysUtils.EOverflow do;'
+            '  end;'
+            '  '
+            'end;     '
             ''
-            '')
+            'end.')
           FontSmoothing = fsmNone
         end
       end

@@ -12,7 +12,7 @@ type
     token_unknown {= -1},           // unknown token
     token_eof {= 0},                // end of file
     token_identifier,               // some id
-    token_id_keyword,               // ambiguous token: id or keyword
+    token_id_or_keyword,            // ambiguous token: id or keyword
 
     token_numbersign,               // #
     token_semicolon,                // ;
@@ -337,7 +337,7 @@ begin
   inherited Create(Source);
   IdentifireID := ord(token_identifier);
   EofID := ord(token_eof);
-  AmbiguousId := ord(token_id_keyword);
+  AmbiguousId := ord(token_id_or_keyword);
   TokenCaptions.AddObject('end of file', TObject(token_eof));
   TokenCaptions.AddObject('identifier', TObject(token_identifier));
   SeparatorChars := '#$ '''#9#10#13'%^&*@()+-{}[]\/,.;:<>=~!?';

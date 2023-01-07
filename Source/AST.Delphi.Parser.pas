@@ -25,6 +25,7 @@ uses
   AST.Delphi.Intf;
  // system
  // system.types
+ // system.TypInfo
  // system.uitypes
  // sysutils
  // sysinit
@@ -199,10 +200,12 @@ type
     class procedure CheckPointerType(Expression: TIDExpression); static; inline;
     class procedure CheckReferenceType(Expression: TIDExpression); static; inline;
     class procedure CheckRecordType(Expression: TIDExpression); static; inline;
-    class procedure CheckStructType(Expression: TIDExpression); static; inline;
+    class procedure CheckStructType(Expression: TIDExpression); overload; static; inline;
+    class procedure CheckStructType(Decl: TIDType); overload; static; inline;
     class procedure CheckExprHasMembers(Expression: TIDExpression); static;
     procedure CheckType(Expression: TIDExpression); inline;
     procedure CheckClassType(Expression: TIDExpression); inline;
+    procedure CheckExceptionType(Decl: TIDDeclaration);
     procedure CheckClassExpression(Expression: TIDExpression); inline;
     class procedure CheckSetType(Expression: TIDExpression); static; inline;
     procedure CheckClassOrIntfType(Expression: TIDExpression); overload;
@@ -242,6 +245,7 @@ type
     function Lexer_IsCurrentIdentifier: boolean; inline;
     function Lexer_IsCurrentToken(TokenID: TTokenID): boolean; inline;
 
+    function ReadNewOrExistingID(Scope: TScope; out ID: TIDentifier; out Decl: TIDDeclaration): TTokenID;
 
     procedure PutMessage(Message: TCompilerMessage); overload;
     procedure PutMessage(MessageType: TCompilerMessageType; const MessageText: string); overload;
@@ -557,7 +561,7 @@ begin
         Continue;
       end;
       {IDENTIFIER, OPEN ROUND}
-      token_identifier, token_id_keyword, token_openround:
+      token_identifier, token_id_or_keyword, token_openround:
       begin
         InitEContext({out} LEContext, SContext, ExprLValue);
         begin
@@ -783,7 +787,7 @@ begin
     /////////////////////////////////////////////////////////////////////////
     // procedural type
     /////////////////////////////////////////////////////////////////////////
-    token_id_keyword: if Lexer_AmbiguousId = token_reference then
+    token_id_or_keyword: if Lexer_AmbiguousId = token_reference then
         Result := ParseProcType(Scope, ID, GDescriptor, TIDProcType(Decl));
     token_procedure, token_function: Result := ParseProcType(Scope, ID, GDescriptor, TIDProcType(Decl));
     /////////////////////////////////////////////////////////////////////////
@@ -1168,8 +1172,9 @@ begin
     // compile if not compiled yet
     if LUnit.Compiled = CompileNone then
     begin
-      if LUnit.Compile({ACompileIntfOnly:} True) = CompileFail then
-        StopCompile(False);
+      var AResult := LUnit.Compile({ACompileIntfOnly:} True);
+      if (AResult <> CompileSuccess) and Package.StopCompileIfError then
+        StopCompile({CompileSuccess:} False);
     end;
 
     if Scope = IntfScope then
@@ -1399,39 +1404,103 @@ begin
   end;
 end;
 
+function TASTDelphiUnit.ReadNewOrExistingID(Scope: TScope; out ID: TIDentifier; out Decl: TIDDeclaration): TTokenID;
+var
+  SearchScope: TScope;
+  FullID: string;
+  PrevFoundUnitDeclID: string;
+  UnitDecl: TIDUnit;
+begin
+  Decl := nil;
+  SearchScope := nil;
+  while True do
+  begin
+    // read first ID
+    Result := Lexer_NextToken(Scope);
+    if (Result = token_identifier) or (Result = token_id_or_keyword) then
+    begin
+      Lexer_ReadCurrIdentifier(ID);
+
+      if FullID = '' then
+        FullID := ID.Name
+      else
+        FullID := FullID + '.' + ID.Name;
+
+      // read next token, assuming "."
+      Result := Lexer_NextToken(Scope);
+
+      // search a declaration
+      if SearchScope = nil then
+        Decl := FindIDNoAbort(Scope, FullID)
+      else
+        Decl := SearchScope.FindMembers(FullID);
+
+      if Result = token_dot then
+      begin
+        if Assigned(Decl) then
+        begin
+          case Decl.ItemType of
+            itType: begin
+              CheckStructType(TIDType(Decl));
+              SearchScope := TIDStructure(Decl).Members;
+              FullID := '';
+            end;
+            itUnit: begin
+              SearchScope := TIDUnit(Decl).Members;
+              PrevFoundUnitDeclID := FullID;
+              FullID := '';
+            end;
+          end;
+        end else
+        if PrevFoundUnitDeclID <> '' then
+        begin
+          FullID := PrevFoundUnitDeclID + '.' + FullID;
+          Decl := FindIDNoAbort(Scope, FullID);
+          if Assigned(Decl) and (Decl.ItemType = itUnit) then
+          begin
+            SearchScope := TIDUnit(Decl).Members;
+            PrevFoundUnitDeclID := FullID;
+            FullID := '';
+          end;
+        end;
+
+        Continue;
+      end;
+    end;
+
+    if not Assigned(Decl) and (Pos('.', FullID) > 0) then
+      ERRORS.UNDECLARED_ID(FullID, Lexer_Position);
+
+    Exit;
+  end;
+end;
+
 function TASTDelphiUnit.ParseExceptOnSection(Scope: TScope; KW: TASTKWTryBlock; const SContext: TSContext): TTokenID;
 var
-  VarID, TypeID: TIdentifier;
-  VarDecl, TypeDecl: TIDDeclaration;
+  ID, VarID, TypeID: TIdentifier;
+  Decl, VarDecl, TypeDecl: TIDDeclaration;
   VarExpr: TASTExpression;
   NewScope: TScope;
   Item: TASTExpBlockItem;
   NewSContext: TSContext;
 begin
-  // todo: fix parsing
-  Lexer_ReadNextIdentifier(Scope, VarID);
-  Result := Lexer_NextToken(Scope);
+  // try to parse...
+  Result := ReadNewOrExistingID(Scope, {out} ID, {out} Decl);
   if Result = token_colon then
   begin
     NewScope := TScope.Create(stLocal, Scope);
-    VarDecl := TIDVariable.Create(NewScope, VarID);
+    VarDecl := TIDVariable.Create(NewScope, ID);
     VarExpr := TASTExpression.Create(nil);
     VarExpr.AddDeclItem(VarDecl, Lexer_Position);
     InsertToScope(NewScope, VarDecl);
-    Lexer_ReadNextIdentifier(Scope, TypeID);
-    Result := Lexer_NextToken(Scope);
-  end else begin
-    TypeID := VarID;
-    NewScope := Scope;
-    VarDecl := TIDVariable.CreateAsTemporary(NewScope, nil);
-    VarExpr := TASTExpression.Create(nil);
-    VarExpr.AddDeclItem(VarDecl, Lexer_Position);
-  end;
-
-  TypeDecl := FindID(Scope, TypeID);
-  // check type
-  if Assigned(VarDecl) then
+    Result := ReadNewOrExistingID(Scope, {out} TypeID, {out} TypeDecl);
+    CheckExceptionType(TypeDecl);
     VarDecl.DataType := TypeDecl as TIDType;
+  end else
+  begin
+    VarExpr := nil; // todo:
+    CheckExceptionType(Decl);
+  end;
 
   Lexer_MatchToken(Result, token_do);
 
@@ -2409,6 +2478,7 @@ begin
           fUnitState := UnitIntfCompiled;
           if ACompileIntfOnly then
           begin
+            Progress(TASTStatusParseIntfSucess);
             Result := CompileSuccess;
             Exit;
           end;
@@ -3778,7 +3848,7 @@ function TASTDelphiUnit.MatchOverloadProc(const SContext: TSContext; Item: TIDEx
     // just warning, to not block parsing process
     // todo: AST parser doesn't have ability to resolve an ambiguous
     // in case argument array [..] of Char and params (1. PAnsiChar, 2. untyped ref)
-    Warning(sAmbiguousOverloadedCallFmt, [Str], Item.TextPosition);
+    // Warning(sAmbiguousOverloadedCallFmt, [Str], Item.TextPosition);
   end;
 
 const
@@ -5719,7 +5789,7 @@ begin
         Status := rpOperand;
         continue;
       end;
-      token_identifier, token_id_keyword: begin
+      token_identifier, token_id_or_keyword: begin
         // есил встретился подряд воторой идентификатор, то выходим
         if Status = rpOperand then
           Break;
@@ -6791,7 +6861,7 @@ begin
         Result := CheckAndParseDeprecated(Scope, token_deprecated);
         Result := Lexer_NextToken(Scope);
       end;
-      token_id_keyword: begin
+      token_id_or_keyword: begin
         if Lexer_AmbiguousId = token_platform then
         begin
           Result := ParsePlatform(Scope);
@@ -7052,7 +7122,7 @@ begin
         Result := CheckAndParseDeprecated(Scope, token_deprecated);
         Result := Lexer_NextToken(Scope);
       end;
-      token_id_keyword: begin
+      token_id_or_keyword: begin
         if Lexer_AmbiguousId = token_platform then
         begin
           Result := ParsePlatform(Scope);
@@ -8439,7 +8509,7 @@ begin
       end;
       PMContext.DataType := Decl.DataType;
     end;
-    {тип}
+    {type}
     itType: begin
       Expression := TIDExpression.Create(Decl, PMContext.ID.TextPosition);
       {явное преобразование типов}
@@ -9644,6 +9714,12 @@ begin
     AbortWork(sStringExpressionRequired, Expression.TextPosition);
 end;
 
+class procedure TASTDelphiUnit.CheckStructType(Decl: TIDType);
+begin
+  if not (Decl is TIDStructure) then
+    AbortWork(sStructTypeRequired, Decl.TextPosition);
+end;
+
 class procedure TASTDelphiUnit.CheckStructType(Expression: TIDExpression);
 var
   Decl: TIDDeclaration;
@@ -9710,6 +9786,14 @@ begin
   if (Decl.ItemType <> itType) or
      (TIDType(Decl).DataTypeID <> dtClass) then
     ERRORS.CLASS_TYPE_REQUIRED(Expression.TextPosition);
+end;
+
+
+procedure TASTDelphiUnit.CheckExceptionType(Decl: TIDDeclaration);
+begin
+  // todo: add System.Exception type inheritance
+  if (Decl.ItemType <> itType) or (TIDType(Decl).DataTypeID <> dtClass) {or TIDClass(Decl).IsInheritsForm()} then
+    ERRORS.CLASS_TYPE_REQUIRED(Lexer_Position);
 end;
 
 procedure TASTDelphiUnit.CheckClassExpression(Expression: TIDExpression);

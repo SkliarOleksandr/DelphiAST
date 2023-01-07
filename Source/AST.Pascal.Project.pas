@@ -49,6 +49,7 @@ type
     fRTTICharset: TRTTICharset;
     fOptions: TPackageOptions;
     fTotalLinesParsed: Integer;
+    fStopCompileIfError: Boolean;
     function GetIncludeDebugInfo: Boolean;
     function OpenUnit(const UnitName: string): TASTModule;
     function RefCount: Integer;
@@ -60,8 +61,9 @@ type
     function GetOptions: TPackageOptions;
     function GetTarget: string;
     function GetDefines: TDefines;
-
     function GetSysUnit: TASTModule;
+    function GetStopCompileIfError: Boolean;
+    procedure SetStopCompileIfError(const Value: Boolean);
     procedure SetIncludeDebugInfo(const Value: Boolean);
     procedure SetRTTICharset(const Value: TRTTICharset);
     procedure SetTarget(const Value: string);
@@ -175,6 +177,11 @@ begin
     Data.Index := Result;
     FStrLiterals.InsertNode(Key, Data);
   end;
+end;
+
+function TPascalProject.GetStopCompileIfError: Boolean;
+begin
+  Result := fStopCompileIfError;
 end;
 
 function TPascalProject.GetStringConstant(const StrConst: TIDStringConstant): Integer;
@@ -576,6 +583,11 @@ end;
 procedure TPascalProject.SetRTTICharset(const Value: TRTTICharset);
 begin
   FRTTICharset := Value;
+end;
+
+procedure TPascalProject.SetStopCompileIfError(const Value: Boolean);
+begin
+  fStopCompileIfError := Value;
 end;
 
 procedure TPascalProject.SetTarget(const Value: string);

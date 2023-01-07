@@ -17,6 +17,11 @@ type
     class function Name: string; override;
   end;
 
+  TASTStatusParseIntfSucess = class(TASTProcessStatus)
+  public
+    class function Name: string; override;
+  end;
+
   TASTStatusParseSuccess = class(TASTProcessStatus)
   public
     class function Name: string; override;
@@ -48,6 +53,13 @@ end;
 class function TASTStatusParseFail.Name: string;
 begin
   Result := 'parse fail';
+end;
+
+{ TASTStatusParseIntfSucess }
+
+class function TASTStatusParseIntfSucess.Name: string;
+begin
+  Result := 'parse intf success';
 end;
 
 end.

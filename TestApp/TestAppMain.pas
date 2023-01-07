@@ -49,6 +49,7 @@ type
     Button5: TButton;
     NSSearchEdit: TEdit;
     chkCompileSsystemForASTParse: TCheckBox;
+    chkStopIfError: TCheckBox;
     procedure Button2Click(Sender: TObject);
     procedure Button1Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
@@ -189,6 +190,8 @@ begin
   Prj.Defines.Add('MSWINDOWS');
   Prj.Defines.Add('ASSEMBLER');
   Prj.Defines.Add('UNICODE');
+  Prj.OnProgress := OnProgress;
+  Prj.StopCompileIfError := chkStopIfError.Checked;
   Prj.OnConsoleWrite := procedure (const Module: IASTModule; Line: Integer; const Msg: string)
                         begin
                           Memo1.Lines.Add(format('#console: [%s: %d]: %s', [Module.Name, Line, Msg]));
@@ -290,7 +293,7 @@ begin
   Prj.Defines.Add('MSWINDOWS');
   Prj.Defines.Add('ASSEMBLER');
   Prj.OnProgress := OnProgress;
-
+  Prj.StopCompileIfError := chkStopIfError.Checked;
 
   var LUsesUntis := '';
   AddDelphiUnits(LUsesUntis, 'rtl\sys');
