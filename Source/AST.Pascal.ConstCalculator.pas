@@ -46,13 +46,40 @@ begin
   Result.TextPosition := Left.TextPosition;
 end;
 
-function TExpressionCalculator.CalcSets(const Left, Right: TIDConstant; Operation: TOperatorID): TIDConstant;
+function SubtractSets(Left, Right: TIDSetConstant): TIDConstant;
+var
+  LList, RList: TIDExpressions;
 begin
+  LList := Left.Value;
+  RList := Right.Value;
+  // todo: implement substaction
+  Result := TIDSetConstant.CreateAsAnonymous(Left.Scope, Left.DataType, LList);
+  Result.TextPosition := Left.TextPosition;
+end;
+
+function TExpressionCalculator.CalcSets(const Left, Right: TIDConstant; Operation: TOperatorID): TIDConstant;
+
+  function DynArrayToSetIfNeeded(const AConst: TIDConstant): TIDSetConstant;
+  begin
+    if AConst is TIDSetConstant then
+      Result := TIDSetConstant(AConst)
+    else begin
+      var LExpressions := TIDDynArrayConstant(AConst).Value;
+      var LSetDataType := TIDSet.CreateAsAnonymous(AConst.Scope, TIDOrdinal(Sys._UInt8));
+      Result := TIDSetConstant.CreateAsAnonymous(AConst.Scope, LSetDataType, LExpressions);
+      Result.TextPosition := AConst.TextPosition;
+    end;
+  end;
+
+begin
+  var ALeftSet := DynArrayToSetIfNeeded(Left);
+  var ARightSet := DynArrayToSetIfNeeded(Right);
+
   case Operation of
     opEqual: Result := Sys._False; // todo:
     opNotEqual: Result := Sys._False;  // todo:
-    opAdd: Result := AddSets(Left as TIDSetConstant, Right as TIDSetConstant);
-    opSubtract: Result := Left; // todo:
+    opAdd: Result := AddSets(ALeftSet, ARightSet);
+    opSubtract: Result := SubtractSets(ALeftSet, ARightSet);
     opMultiply: Result := Left; // todo:
   else
     Result := nil;
@@ -502,7 +529,9 @@ begin
   if LeftType = TIDBooleanConstant then
     Constant := CalcBoolean(TIDBooleanConstant(L).Value, TIDBooleanConstant(R).Value, Operation)
   else
-  if (LeftType = TIDSetConstant) and (RightType = TIDSetConstant) then
+  if ((LeftType = TIDSetConstant) and (RightType = TIDSetConstant)) or
+     ((LeftType = TIDSetConstant) and (RightType = TIDDynArrayConstant)) or
+     ((LeftType = TIDDynArrayConstant) and (RightType = TIDSetConstant)) then
   begin
     Constant := CalcSets(L, R, Operation);
   end else

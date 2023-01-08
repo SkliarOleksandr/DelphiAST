@@ -345,7 +345,6 @@ type
     function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; override;
   end;
 
-
   {operator ptr IntDiv int}
   TSys_Ptr_IntDiv_Int = class(TSysOpBinary)
   public
@@ -358,8 +357,19 @@ type
     function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; override;
   end;
 
-  {operator Set * Set}
+  {operator Set + Set}
+  TSys_Add_Set = class(TSysOpBinary)
+  public
+    function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; override;
+  end;
 
+  {operator Set - Set}
+  TSys_Subtract_Set = class(TSysOpBinary)
+  public
+    function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; override;
+  end;
+
+  {operator Set * Set}
   TSys_Multiply_Set = class(TSysOpBinary)
   public
     function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; override;
@@ -907,6 +917,22 @@ end;
 function TSysExplicitStaticArrayToAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
   Result := Src.DataSize = Dst.DataSize;
+end;
+
+{ TSys_Add_Set }
+
+function TSys_Add_Set.Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression;
+begin
+  // todo:
+  Result := Left;
+end;
+
+{ TSys_Subtract_Set }
+
+function TSys_Subtract_Set.Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression;
+begin
+  // todo:
+  Result := Left;
 end;
 
 { TSys_Multiply_Set }

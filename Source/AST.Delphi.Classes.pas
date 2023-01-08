@@ -4829,9 +4829,10 @@ begin
   OverloadImplicitTo(Self);
   OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
   OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
-  OverloadBinarOperator2(opAdd, Self, Self);
   OverloadImplicitToAny(SYSUnit.Operators.ImplicitArrayToAny);
   AddBinarySysOperator(opIn, SYSUnit.Operators.Ordinal_In_Set);
+  AddBinarySysOperator(opAdd, SYSUnit.Operators.Add_Set);
+  AddBinarySysOperator(opSubtract, SYSUnit.Operators.Subtract_Set);
   AddBinarySysOperator(opMultiply, SYSUnit.Operators.Multiply_Set);
   OverloadImplicitFromAny(SYSUnit.Operators.ImplicitSetFromAny);
 end;

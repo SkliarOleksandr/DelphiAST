@@ -122,6 +122,8 @@ type
     Ptr_IntDiv_Int: TIDOperator;
     // Set Multiplay
     Multiply_Set: TIDOperator;
+    Add_Set: TIDOperator;
+    Subtract_Set: TIDOperator;
     // DynArray
     Equal_DynArray: TIDOperator;
     procedure Init(Scope: TScope);
@@ -1290,6 +1292,9 @@ begin
   Ptr_IntDiv_Int := TSys_Ptr_IntDiv_Int.CreateAsSystem(Scope);
 
   Multiply_Set := TSys_Multiply_Set.CreateAsSystem(Scope);
+  Add_Set := TSys_Add_Set.CreateAsSystem(Scope);
+  Subtract_Set := TSys_Subtract_Set.CreateAsSystem(Scope);
+
 
   Equal_DynArray := TSys_Equal_DynArray.CreateAsSystem(Scope);
 end;
