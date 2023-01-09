@@ -23,6 +23,7 @@ uses
   AST.Delphi.Options,
   AST.Delphi.Project,
   AST.Delphi.Intf;
+  //System.Generics.Defaults,
  // system
  // system.types
  // system.TypInfo
@@ -5364,6 +5365,10 @@ var
   i: Integer;
 begin
   i := 0;
+  // if this is a generic class - use generic description scope
+  if Assigned(GDescriptor) then
+    Scope := GDescriptor.Scope;
+
   while True do begin
     Lexer_NextToken(Scope);
     Result := ParseConstExpression(Scope, Expr, ExprNested);
