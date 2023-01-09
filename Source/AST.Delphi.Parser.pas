@@ -5114,7 +5114,7 @@ end;
 function TASTDelphiUnit.ParseCaseRecord(Scope: TScope; Decl: TIDRecord): TTokenID;
 var
   Expr: TIDExpression;
-  CaseSpace: PVarSpace;
+  CaseVarSpace: PVarSpace;
   CaseTypeDecl: TIDDeclaration;
   ID: TIdentifier;
 begin
@@ -5132,51 +5132,49 @@ begin
   Result := Lexer_NextToken(Scope);
   while Result <> token_eof do
   begin
-    // parse case lable const expression: (example: ... 1: (a: integer; b: integer ...
-    Result := ParseConstExpression(Scope, Expr, ExprLValue);
+    // parse case lable const expression: (example: ... 1, 2: ...
+    Result := ParseConstExpression(Scope, {out} Expr, ExprLValue);
     if Result = token_coma then
     begin
       Result := Lexer_NextToken(Scope);
       // just parse all lables for now
+      // todo: labels should be validated
       Continue;
     end;
+    // parse ":" & "("
     Lexer_MatchToken(Result, token_colon);
     Lexer_ReadToken(Scope, token_openround);
-    CaseSpace := Decl.AddCase();
+    CaseVarSpace := Decl.AddCase();
     Result := Lexer_NextToken(Scope);
+    // todo: var space must be redesigned
+    Scope.VarSpace := CaseVarSpace;
+
+    // parse fields first
+    if (Result = token_identifier) or (Result = token_id_or_keyword) then
+    begin
+      Result := ParseFieldsInCaseRecord(Scope, vPublic, Decl);
+    end;
+    // parse nested case then
     if Result = token_case then
     begin
       Result := ParseCaseRecord(Scope, Decl);
       Lexer_MatchToken(Result, token_closeround);
-      Lexer_ReadSemicolon(Scope);
-      Result := Lexer_NextToken(Scope);
-    end else
-    if Result <> token_closeround then
-    begin
-      Scope.VarSpace := CaseSpace;
-      Result := ParseFieldsInCaseRecord(Scope, vPublic, Decl);
     end;
-
+    // parse close round at the end
     if Result = token_closeround then
     begin
-      Lexer_ReadSemicolon(Scope);
       Result := Lexer_NextToken(Scope);
+      if Result = token_semicolon then
+        Result := Lexer_NextToken(Scope);
+
       case Result of
-        token_minus, token_identifier: Continue;
+        token_minus, token_identifier, token_id_or_keyword:  Continue;
         token_closeround, token_end: Exit;
       else
         ERRORS.IDENTIFIER_EXPECTED(Result);
       end;
     end else
-    if Result = token_case then
-    begin
-      Result := ParseCaseRecord(Scope, Decl);
-      Lexer_MatchToken(Result, token_closeround);
-      Lexer_ReadSemicolon(Scope);
-      Result := Lexer_NextToken(Scope);
-    end;
-    if Result = token_closeround then
-      Exit;
+     ERRORS.EXPECTED_TOKEN(token_closeround);
   end;
 end;
 
