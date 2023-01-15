@@ -307,7 +307,7 @@ type
     // функция парсинга указания типа (имени существующего или анонимного типа)
     function ParseTypeSpec(Scope: TScope; out DataType: TIDType): TTokenID;
     function ParseGenericTypeSpec(Scope: TScope; const ID: TIdentifier; out DataType: TIDType): TTokenID; virtual;
-    function ParseGenericsHeader(Params: TScope; out Args: TIDTypeList): TTokenID;
+    function ParseGenericsHeader(Params: TScope; out Args: TIDTypeArray): TTokenID;
     function ParseGenericsArgs(Scope: TScope; const SContext: TSContext; out Args: TIDExpressions): TTokenID;
     function ParseStatements(Scope: TScope; const SContext: TSContext; IsBlock: Boolean): TTokenID; overload;
     function GetPtrReferenceType(Decl: TIDPointer): TIDType;
@@ -332,7 +332,7 @@ type
     function ParseGlobalProc(Scope: TScope; ProcType: TProcType; const ID: TIdentifier; Parameters: TProcScope): TTokenID;
 
     function ParseProcName(Scope: TScope; ProcType: TProcType; out Name: TIdentifier; var Struct: TIDStructure;
-                           out ProcScope: TProcScope; out GenericParams: TIDTypeList): TTokenID;
+                           out ProcScope: TProcScope; out GenericParams: TIDTypeArray): TTokenID;
     function ParseProcBody(Proc: TASTDelphiProc): TTokenID;
     function ParseGenericProcRepeatedly(Scope: TScope; GenericProc, Proc: TASTDelphiProc; Struct: TIDStructure): TTokenID;
     function ParseOperator(Scope: TScope; Struct: TIDStructure): TTokenID;
@@ -2479,6 +2479,7 @@ begin
           fUnitState := UnitIntfCompiled;
           if ACompileIntfOnly then
           begin
+            Package.DoFinishCompileUnit(Self, {AIntfOnly:} True);
             Progress(TASTStatusParseIntfSucess);
             Result := CompileSuccess;
             Exit;
@@ -2508,7 +2509,7 @@ begin
     Result := CompileSuccess;
     FCompiled := Result;
     Progress(TASTStatusParseSuccess);
-    Package.DoFinishCompileUnit(Self);
+    Package.DoFinishCompileUnit(Self, {AIntfOnly:} False);
   except
     on e: ECompilerStop do Exit();
     on e: ECompilerSkip do Exit(CompileSkip);
@@ -4372,7 +4373,7 @@ end;
 function TASTDelphiUnit.ParseAnonymousProc(Scope: TScope; var EContext: TEContext; const SContext: TSContext; ProcType: TTokenID): TTokenID;
 var
   Parameters: TProcScope;
-  GenericsArgs: TIDTypeList;
+  GenericsArgs: TIDTypeArray;
   ResultType: TIDType;
   ProcDecl: TASTDelphiProc;
   VarSpace: TVarSpace;
@@ -6215,7 +6216,7 @@ begin
 
 end;
 
-function TASTDelphiUnit.ParseGenericsHeader(Params: TScope; out Args: TIDTypeList): TTokenID;
+function TASTDelphiUnit.ParseGenericsHeader(Params: TScope; out Args: TIDTypeArray): TTokenID;
 var
   ID: TIdentifier;
   ParamsCount, ComaCount: Integer;
@@ -6768,7 +6769,7 @@ var
   Parameters: TProcScope;
   ResultType: TIDType;
   VarSpace: TVarSpace;
-  GenericsParams: TIDTypeList;
+  GenericsParams: TIDTypeArray;
   Proc, ForwardDecl: TASTDelphiProc;
   ForwardDeclNode: TIDList.PAVLNode;
   FwdDeclState: TFwdDeclState;
@@ -7280,7 +7281,7 @@ end;
 
 function TASTDelphiUnit.ParseProcName(Scope: TScope; ProcType: TProcType; out Name: TIdentifier; var Struct: TIDStructure;
                                       out ProcScope: TProcScope;
-                                      out GenericParams: TIDTypeList): TTokenID;
+                                      out GenericParams: TIDTypeArray): TTokenID;
 
   function GetStructScope(AStruct: TIDStructure; AProcType: TProcType): TScope;
   begin
@@ -7371,9 +7372,8 @@ begin
   end;
 
   Decl := TIDProcType.Create(Scope, ID);
+  Decl.GenericDescriptor := GDescriptor;
   Result := Lexer_NextToken(Scope);
-
-
 
   if Assigned(GDescriptor) then
     ParentScope := GDescriptor.Scope
@@ -7530,7 +7530,7 @@ var
   Parameters: TProcScope;
   ResultType: TIDType;
   VarSpace: TVarSpace;
-  GenericsParams: TIDTypeList;
+  GenericsParams: TIDTypeArray;
   Proc, ForwardDecl: TASTDelphiProc;
   FwdDeclState: TFwdDeclState;
   FirstSkipCnt: Integer;
@@ -8689,7 +8689,7 @@ function TASTDelphiUnit.ParseNamedTypeDecl(Scope: TScope): TTokenID;
 var
   ID: TIdentifier;
   Decl: TIDType;
-  GenericParams: TIDTypeList;
+  GenericParams: TIDTypeArray;
   ParserPos: TParserPosition;
   GDescriptor: PGenericDescriptor;
 begin
@@ -8700,10 +8700,10 @@ begin
 
     Result := Lexer_NextToken(Scope);
 
-    {если есть символ "<" - читаем обобщенные параметры}
+    {if there is "<" - read generic params}
     if Result = token_less then begin
       GDescriptor := TGenericDescriptor.Create(Scope);
-      Result := ParseGenericsHeader(GDescriptor.Scope, GenericParams);
+      Result := ParseGenericsHeader(GDescriptor.Scope, {out} GenericParams);
       GDescriptor.GenericParams := GenericParams;
       GDescriptor.SearchName := format('%s<%d>', [ID.Name, Length(GenericParams)]);
     end else

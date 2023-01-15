@@ -61,6 +61,8 @@ type
     function GetPointerSize: Integer; virtual; abstract;
     function GetNativeIntSize: Integer; virtual; abstract;
     function GetTotalLinesParsed: Integer; virtual;
+    function GetTotalUnitsParsed: Integer; virtual;
+    function GetTotalUnitsIntfOnlyParsed: Integer; virtual;
   public
     constructor Create(const Name: string); virtual; abstract;
     property OnProgress: TASTProgressEvent read GetOnProgress write SetOnProgress;
@@ -1196,6 +1198,16 @@ begin
 end;
 
 function TASTProject.GetTotalLinesParsed: Integer;
+begin
+  Result := 0;
+end;
+
+function TASTProject.GetTotalUnitsIntfOnlyParsed: Integer;
+begin
+  Result := 0;
+end;
+
+function TASTProject.GetTotalUnitsParsed: Integer;
 begin
   Result := 0;
 end;

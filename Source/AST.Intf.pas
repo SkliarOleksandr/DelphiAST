@@ -29,9 +29,14 @@ type
     function GetPointerSize: Integer;
     function GetNativeIntSize: Integer;
     function GetTotalLinesParsed: Integer;
+    function GetTotalUnitsParsed: Integer;
+    function GetTotalUnitsIntfOnlyParsed: Integer;
+
     property PointerSize: Integer read GetPointerSize;
     property NativeIntSize: Integer read GetNativeIntSize;
     property TotalLinesParsed: Integer read GetTotalLinesParsed;
+    property TotalUnitsParsed: Integer read GetTotalUnitsParsed;
+    property TotalUnitsIntfOnlyParsed: Integer read GetTotalUnitsIntfOnlyParsed;
 
     procedure CosoleWrite(const Module: IASTModule; Line: Integer; const Message: string);
   end;

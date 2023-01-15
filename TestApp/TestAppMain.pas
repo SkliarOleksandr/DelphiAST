@@ -249,6 +249,8 @@ begin
     else
       Msg.Add('compile fail');
 
+    Msg.Add(format('total units parsed: %d (interface only: %d)',
+      [Project.TotalUnitsParsed, Project.TotalUnitsIntfOnlyParsed]));
     Msg.Add(format('total lines parsed: %d in %s', [Project.TotalLinesParsed,
                                                     FormatDateTime('nn:ss.zzz', Now - FStartedAt)]));
 

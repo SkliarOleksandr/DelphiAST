@@ -201,7 +201,7 @@ type
 
   TIDTypeClass = class of TIDType;
 
-  TIDTypeList = array of TIDType;
+  TIDTypeArray = array of TIDType;
 
   TGenericInstance = record
     Args: TIDExpressions;
@@ -216,14 +216,14 @@ type
     FScope: TScope;
     FSearchName: string;
     FGenericInstances: TGenericInstanceList;
-    FGenericParams: TIDTypeList;
+    FGenericParams: TIDTypeArray;
     FIntfSRCPosition: TParserPosition;
     FImplSRCPosition: TParserPosition;
   public
     property Scope: TScope read FScope;
     property SearchName: string read FSearchName write FSearchName;
     property GenericInstances: TGenericInstanceList read FGenericInstances;
-    property GenericParams: TIDTypeList read FGenericParams write FGenericParams;
+    property GenericParams: TIDTypeArray read FGenericParams write FGenericParams;
     property IntfSRCPosition: TParserPosition read FIntfSRCPosition write FImplSRCPosition;
     property ImplSRCPosition: TParserPosition read FImplSRCPosition write FImplSRCPosition;
     procedure AddGenericInstance(Decl: TIDDeclaration; const Args: TIDExpressions);
@@ -1469,7 +1469,7 @@ type
     procedure RemoveILReferences(var RCPathCount: UInt32); override;
 
     procedure CreateProcedureTypeIfNeed(Scope: TScope);
-    procedure CreateGenericDescriptor(const GenericParams: TIDTypeList; const SRCPosition: TParserPosition); inline;
+    procedure CreateGenericDescriptor(const GenericParams: TIDTypeArray; const SRCPosition: TParserPosition); inline;
 
     procedure Warning(const Message: string; const Params: array of const; const TextPosition: TTextPosition);
     procedure Hint(const Message: string; const Params: array of const; const TextPosition: TTextPosition);
@@ -1549,6 +1549,7 @@ type
     procedure SetParent(const Value: TScope);
   protected
     function GetName: string; virtual;
+    function GetNameEx: string; virtual;
     function GetScopeClass: TScopeClass; virtual;
     procedure AddChild(Scope: TScope);
     procedure RemoveChild(Scope: TScope);
@@ -1569,6 +1570,7 @@ type
     function FindMembers(const ID: string): TIDDeclaration; virtual;
     function GetDeclArray(Recursively: Boolean = False): TIDDeclArray;
     function GetDeclNamesArray(Recursively: Boolean = False): TStrArray;
+    function GetParentNames: string;
     property Parent: TScope read FParent write SetParent;
     property ScopeType: TScopeType read FScopeType;
     property VarSpace: PVarSpace read FVarSpace write FVarSpace;
@@ -1584,6 +1586,8 @@ type
     fOuterScope: TScope; // внешняя по отношению к методу, область видимости (секция implementation реализации метода)
   protected
     function GetScopeClass: TScopeClass; override;
+    function GetName: string; override;
+    function GetNameEx: string; override;
   public
     constructor CreateInDecl(Parent: TScope; VarSpace: PVarSpace; ProcSpace: PProcSpace); reintroduce;
     constructor CreateInBody(Parent: TScope); reintroduce;
@@ -1596,6 +1600,7 @@ type
     fStruct: TIDStructure;
   protected
     function GetName: string; override;
+    function GetNameEx: string; override;
   public
     constructor CreateAsStruct(Parent: TScope; Struct: TIDStructure; VarSpace: PVarSpace; ProcSpace: PProcSpace; DeclUnit: TASTModule); reintroduce;
     function FindIDRecurcive(const ID: string): TIDDeclaration; override;
@@ -1606,6 +1611,8 @@ type
   TRecordInitScope = class(TScope)
   private
     fStructType: TIDStructure;
+  protected
+    function GetName: string; override;
   public
     property Struct: TIDStructure read fStructType write fStructType;
   end;
@@ -1614,6 +1621,8 @@ type
   private
     fInnerScope: TScope;
     fExpression: TIDExpression;       // выражение, которое породило данный Scope (то что написано в WITH ... DO)
+  protected
+    function GetName: string; override;
   public
     constructor Create(Parent: TScope; Expression: TIDExpression); reintroduce;
     ///////////////////////////////////////
@@ -1624,7 +1633,8 @@ type
 
   TMethodScope = class(TProcScope)
   private
-    // FExpression: TIDExpression;
+  protected
+    function GetName: string; override;
   public
     constructor CreateInDecl(OuterScope, Parent: TScope; VarSpace: PVarSpace; ProcSpace: PProcSpace); reintroduce; overload;
     constructor CreateInDecl(OuterScope, Parent: TScope); overload;
@@ -2114,6 +2124,19 @@ begin
   Result := FName;
 end;
 
+function TScope.GetNameEx: string;
+begin
+  Result := Format('%s[%d]', [Name, Count]);
+end;
+
+function TScope.GetParentNames: string;
+begin
+  if Assigned(Parent) then
+    Result := Parent.GetParentNames + '->' + GetNameEx
+  else
+    Result := GetNameEx;
+end;
+
 { TIDList }
 
 function TIDList.FindID(const Identifier: string): TIDDeclaration;
@@ -2342,7 +2365,7 @@ begin
   FEntryScope := FParamsScope;
 end;
 
-procedure TIDProcedure.CreateGenericDescriptor(const GenericParams: TIDTypeList; const SRCPosition: TParserPosition);
+procedure TIDProcedure.CreateGenericDescriptor(const GenericParams: TIDTypeArray; const SRCPosition: TParserPosition);
 begin
   New(FGenericDescriptor);
   FGenericDescriptor.FScope := nil;
@@ -4120,24 +4143,24 @@ begin
   FVarSpace.Initialize;
   if Assigned(Value) then
   begin
-    if not Assigned(FGenericDescriptor) then
-    begin
-      fMembers.fAncestorScope := Value.Members;
-      fStaticMembers.fAncestorScope := Value.StaticMembers;
-    end else
-      FGenericDescriptor.Scope.Parent := Value.Members;
+    fMembers.fAncestorScope := Value.Members;
+    fStaticMembers.fAncestorScope := Value.StaticMembers;
     FAncestor.IncRefCount(1);
   end;
 end;
 
 procedure TIDStructure.SetGenericDescriptor(const Value: PGenericDescriptor);
-{var
-  ParentScope: TScope;}
 begin
   FGenericDescriptor := Value;
-  if Assigned(Value) then begin
-    //ParentScope := FMembers.Parent;
-    FMembers.Parent := Value.Scope;     // надо править скоупы.
+  if Assigned(Value) then
+  begin
+    var AGenericParam := Value.Scope.First;
+    while Assigned(AGenericParam) do
+    begin
+      fMembers.InsertID(TIDdeclaration(AGenericParam.Data));
+      fStaticMembers.InsertID(TIDdeclaration(AGenericParam.Data));
+      AGenericParam := Value.Scope.Next(AGenericParam);
+    end;
   end;
 end;
 
@@ -5339,7 +5362,7 @@ end;
 
 function TInterfaceScope.GetName: string;
 begin
-  Result := fUnit.Name + '$intf_scope';
+  Result := fUnit.Name + '$interface';
 end;
 
 { TImplementationScope }
@@ -5393,7 +5416,7 @@ end;
 
 function TImplementationScope.GetName: string;
 begin
-  Result := fUnit.Name + '$impl_scope';
+  Result := fUnit.Name + '$implementation';
 end;
 
 function TImplementationScope.GetScopeClass: TScopeClass;
@@ -5447,6 +5470,11 @@ begin
   Result := FOuterScope.FindIDRecurcive(ID);
   if not Assigned(Result) then
     Result := inherited FindIDRecurcive(ID);
+end;
+
+function TWithScope.GetName: string;
+begin
+  Result := 'with$' + fName;
 end;
 
 { TIDOpenArray }
@@ -5665,6 +5693,16 @@ begin
   Parent.AddChild(Self);
 end;
 
+function TProcScope.GetName: string;
+begin
+  Result := 'proc$' + fName;
+end;
+
+function TProcScope.GetNameEx: string;
+begin
+  Result := format('%s(outer: %s)[%d]', [GetName, fOuterScope.GetNameEx, Count]);
+end;
+
 function TProcScope.GetScopeClass: TScopeClass;
 begin
   Result := scProc;
@@ -5788,10 +5826,17 @@ end;
 
 function TMethodScope.FindIDRecurcive(const ID: string): TIDDeclaration;
 begin
+  // for methods, we search all declarations in the struct itself, and all its ancestors
   Result := inherited FindIDRecurcive(ID);
   if Assigned(Result) then
     Exit;
+  // then, we search in outer scope
   Result := FOuterScope.FindIDRecurcive(ID);
+end;
+
+function TMethodScope.GetName: string;
+begin
+  Result := 'method$' + fName;
 end;
 
 { TIDField }
@@ -6036,7 +6081,15 @@ end;
 
 function TStructScope.GetName: string;
 begin
-  Result := format('%s$struct_scope(parent: %s)', [fStruct.Name, Parent.Name]);
+  Result := fStruct.Name + '$struct_scope';
+end;
+
+function TStructScope.GetNameEx: string;
+begin
+  var LAncestorScopeName := 'nil';
+  if Assigned(fAncestorScope) then
+    LAncestorScopeName := fAncestorScope.GetNameEx;
+  Result := format('%s(ancestor: %s)[%d]', [GetName, LAncestorScopeName, Count]);
 end;
 
 function TIDClass.GetDataSize: Integer;
@@ -6491,7 +6544,14 @@ end;
 
 function TConditionalScope.GetName: string;
 begin
-  Result := format('conditional$scope(parent: %s)', [Parent.Name]);
+  Result := 'conditional$scope';
+end;
+
+{ TRecordInitScope }
+
+function TRecordInitScope.GetName: string;
+begin
+  Result := fStructType.Name + '$record_init';
 end;
 
 initialization

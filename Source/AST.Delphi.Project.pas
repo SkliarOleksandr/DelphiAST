@@ -24,7 +24,7 @@ type
     function GetSystemUnitClass: TASTUnitClass; override;
     function GetSysInitUnit: TASTModule;
     procedure DoBeforeCompileUnit(AUnit: TASTModule); override;
-    procedure DoFinishCompileUnit(AUnit: TASTModule); override;
+    procedure DoFinishCompileUnit(AUnit: TASTModule; AIntfOnly: Boolean); override;
   public
     constructor Create(const Name: string); override;
   end;
@@ -50,8 +50,9 @@ begin
     (AUnit as TASTDelphiUnit).IntfImportedUnits.AddObject('SysInit', fSysInitUnit);
 end;
 
-procedure TASTDelphiProject.DoFinishCompileUnit(AUnit: TASTModule);
+procedure TASTDelphiProject.DoFinishCompileUnit(AUnit: TASTModule; AIntfOnly: Boolean);
 begin
+  inherited;
   if AUnit.Name = 'SysInit' then
     fSysInitUnit := AUnit;
 end;

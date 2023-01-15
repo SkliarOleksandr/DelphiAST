@@ -47,7 +47,7 @@ type
     procedure EnumIntfDeclarations(const EnumProc: TEnumASTDeclProc);
     procedure EnumAllDeclarations(const EnumProc: TEnumASTDeclProc);
     procedure DoBeforeCompileUnit(AUnit: TASTModule);
-    procedure DoFinishCompileUnit(AUnit: TASTModule);
+    procedure DoFinishCompileUnit(AUnit: TASTModule; AIntfOnly: Boolean);
     function GetMessages: ICompilerMessages;
     function GetRTTICharset: TRTTICharset;
     function RefCount: Integer;

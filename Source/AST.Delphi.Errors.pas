@@ -226,7 +226,7 @@ type
     class procedure ID_REDECLARATED(Decl: TIDDeclaration); overload; static;
     class procedure ID_REDECLARATED(const ID: TIdentifier); overload; static;
     class procedure UNDECLARED_ID(const ID: TIdentifier); overload; static;
-    class procedure UNDECLARED_ID(const ID: TIdentifier; const GenericParams: TIDTypeList); overload; static;
+    class procedure UNDECLARED_ID(const ID: TIdentifier; const GenericParams: TIDTypeArray); overload; static;
     class procedure UNDECLARED_ID(const Name: string; const TextPosition: TTextPosition); overload; static;
     class procedure NOT_ENOUGH_ACTUAL_PARAMS(CallExpr: TIDExpression); static;
     class procedure TOO_MANY_ACTUAL_PARAMS(CallExpr: TIDExpression); static;
@@ -657,7 +657,7 @@ begin
   AbortWork(sUndeclaredIdentifier, [ID.Name], ID.TextPosition);
 end;
 
-class procedure TASTDelphiErrors.UNDECLARED_ID(const ID: TIdentifier; const GenericParams: TIDTypeList);
+class procedure TASTDelphiErrors.UNDECLARED_ID(const ID: TIdentifier; const GenericParams: TIDTypeArray);
 var
   i: integer;
   s: string;

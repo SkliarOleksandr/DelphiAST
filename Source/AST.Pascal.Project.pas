@@ -49,6 +49,8 @@ type
     fRTTICharset: TRTTICharset;
     fOptions: TPackageOptions;
     fTotalLinesParsed: Integer;
+    fTotalUnitsParsed: Integer;
+    fTotalUnitsIntfOnlyParsed: Integer;
     fStopCompileIfError: Boolean;
     function GetIncludeDebugInfo: Boolean;
     function OpenUnit(const UnitName: string): TASTModule;
@@ -77,7 +79,7 @@ type
     function GetNativeIntSize: Integer; override;
     procedure InitSystemUnit; virtual;
     procedure DoBeforeCompileUnit(AUnit: TASTModule); virtual;
-    procedure DoFinishCompileUnit(AUnit: TASTModule); virtual;
+    procedure DoFinishCompileUnit(AUnit: TASTModule; AIntfOnly: Boolean); virtual;
   public
     constructor Create(const Name: string); override;
     destructor Destroy; override;
@@ -91,12 +93,15 @@ type
     procedure AddUnitSearchPath(const Path: string; IncludeSubDirectories: Boolean);
     procedure Clear;
     function GetTotalLinesParsed: Integer;
+    function GetTotalUnitsParsed: Integer;
+    function GetTotalUnitsIntfOnlyParsed: Integer;
     property IncludeDebugInfo: Boolean read GetIncludeDebugInfo write SetIncludeDebugInfo;
     property RTTICharset: TRTTICharset read GetRTTICharset write SetRTTICharset;
     property Units: TUnits read FUnits;
     property SysUnit: TASTModule read fSysUnit;
     property Options: TPackageOptions read GetOptions;
     property TotalLinesParsed: Integer read fTotalLinesParsed;
+    property TotalUnitsParsed: Integer read fTotalUnitsParsed;
     function GetStringConstant(const Value: string): Integer; overload;
     function GetStringConstant(const StrConst: TIDStringConstant): Integer; overload;
     function FindUnitFile(const UnitName: string): string;
@@ -221,6 +226,16 @@ end;
 function TPascalProject.GetTotalLinesParsed: Integer;
 begin
   Result := fTotalLinesParsed;
+end;
+
+function TPascalProject.GetTotalUnitsIntfOnlyParsed: Integer;
+begin
+  Result := fTotalUnitsIntfOnlyParsed;
+end;
+
+function TPascalProject.GetTotalUnitsParsed: Integer;
+begin
+  Result := fTotalUnitsParsed;
 end;
 
 function TPascalProject.GetUnit(Index: Integer): TASTModule;
@@ -437,8 +452,11 @@ begin
   // do nothing
 end;
 
-procedure TPascalProject.DoFinishCompileUnit(AUnit: TASTModule);
+procedure TPascalProject.DoFinishCompileUnit(AUnit: TASTModule; AIntfOnly: Boolean);
 begin
+  Inc(fTotalUnitsParsed);
+  if AIntfOnly then
+    Inc(fTotalUnitsIntfOnlyParsed);
   // do nothing
 end;
 
