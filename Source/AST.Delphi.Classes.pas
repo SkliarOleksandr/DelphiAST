@@ -32,6 +32,7 @@ type
     PS_VIRTUAL,
     PS_ABSTRACT,
     PS_OVERRIDE,
+    PS_FINAL,
     PS_STATIC,
     PS_STDCALL,
     PS_FASTCALL,
@@ -290,6 +291,7 @@ type
     fCopyProc: TIDProcedure;
     fFinalProc: TIDProcedure;
     fHelper: TDlphHelper;
+    fGenericDeclInProgress: Boolean;
     function GetOperators(const Op: TOperatorID): TIDPairList;
     function GetOperatorsFor(const Op: TOperatorID): TIDPairList;
     function GetIsReferenced: Boolean; inline;
@@ -384,6 +386,8 @@ type
     property SysImplicitFromAny: TIDOperator read fSysImplicitFromAny;
     property SysBinayOperator: TSysBinaryOperators read fSysBinaryOperators;
     property Helper: TDlphHelper read fHelper write fHelper;
+    // it means the generic declaration in the parsing progress, it's needed to avoid recursive parsing
+    property GenericDeclInProgress: Boolean read fGenericDeclInProgress write fGenericDeclInProgress;
   end;
 
   TIDTypesArray = array of TIDType;
@@ -1371,6 +1375,7 @@ type
     pfCompleted,
     pfReintroduce,
     pfOverride,
+    pfFinal,
     pfClass,
     pfStatic,
     pfForward

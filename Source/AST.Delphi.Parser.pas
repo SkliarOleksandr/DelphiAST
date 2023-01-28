@@ -98,6 +98,7 @@ type
     function ProcSpec_Virtual(Scope: TScope; Struct: TIDStructure; var Flags: TProcFlags): TTokenID;
     function ProcSpec_Abstract(Scope: TScope; Struct: TIDStructure; var Flags: TProcFlags): TTokenID;
     function ProcSpec_Override(Scope: TScope; Struct: TIDStructure; var Flags: TProcFlags): TTokenID;
+    function ProcSpec_Final(Scope: TScope; Struct: TIDStructure; var Flags: TProcFlags): TTokenID;
     function ProcSpec_Reintroduce(Scope: TScope; var Flags: TProcFlags): TTokenID;
     function ProcSpec_Static(Scope: TScope; var Flags: TProcFlags; var ProcType: TProcType): TTokenID;
     function ProcSpec_FastCall(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
@@ -300,7 +301,7 @@ type
     function ParseTypeHelper(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier;
                              out Decl: TDlphHelper): TTokenID;
     // функция парсинга анонимного типа
-    function ParseTypeDecl(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
+    function ParseTypeDecl(Scope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
     function ParseTypeDeclOther(Scope: TScope; const ID: TIdentifier; out Decl: TIDType): TTokenID;
     // функция парсинга именованного типа
     function ParseNamedTypeDecl(Scope: TScope): TTokenID;
@@ -484,7 +485,7 @@ var
 begin
   Lexer_MatchToken(Lexer_NextToken(Scope), token_of);
   Result := Lexer_NextToken(Scope);
-  Result := ParseTypeDecl(Scope, nil, nil, TIdentifier.Empty, Base);
+  Result := ParseTypeDecl(Scope, nil, TIdentifier.Empty, Base);
   CheckOrdinalType(Base);
   Decl.BaseType := TIDOrdinal(Base);
   Decl.BaseType.OverloadBinarOperator2(opIn, Decl, Sys._Boolean);
@@ -743,7 +744,7 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.ParseTypeDecl(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier;
+function TASTDelphiUnit.ParseTypeDecl(Scope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier;
                                       out Decl: TIDType): TTokenID;
 var
   IsPacked: Boolean;
@@ -784,7 +785,7 @@ begin
     /////////////////////////////////////////////////////////////////////////
     // array type
     /////////////////////////////////////////////////////////////////////////
-    token_array: Result := ParseTypeArray(Scope, GenericScope, GDescriptor, ID, Decl);
+    token_array: Result := ParseTypeArray(Scope, nil, GDescriptor, ID, Decl);
     /////////////////////////////////////////////////////////////////////////
     // procedural type
     /////////////////////////////////////////////////////////////////////////
@@ -816,7 +817,7 @@ begin
     /////////////////////////////////////////////////////////////////////////
     // record
     /////////////////////////////////////////////////////////////////////////
-    token_record: Result := ParseTypeRecord(Scope, GenericScope, GDescriptor, ID, Decl);
+    token_record: Result := ParseTypeRecord(Scope, nil, GDescriptor, ID, Decl);
     /////////////////////////////////////////////////////////////////////////
     // class
     /////////////////////////////////////////////////////////////////////////
@@ -827,13 +828,13 @@ begin
       else begin
         if IsAnonimous then
           AbortWork(sClassTypeCannotBeAnonimous, Lexer.PrevPosition);
-        Result := ParseClassType(Scope, GenericScope, GDescriptor, ID, TIDClass(Decl));
+        Result := ParseClassType(Scope, nil, GDescriptor, ID, TIDClass(Decl));
       end;
     end;
     /////////////////////////////////////////////////////////////////////////
     // interface
     /////////////////////////////////////////////////////////////////////////
-    token_interface: Result := ParseInterfaceType(Scope, GenericScope, GDescriptor, ID, TIDInterface(Decl));
+    token_interface: Result := ParseInterfaceType(Scope, nil, GDescriptor, ID, TIDInterface(Decl));
     /////////////////////////////////////////////////////////////////////////
     // other
     /////////////////////////////////////////////////////////////////////////
@@ -1103,7 +1104,7 @@ begin
     DataType := nil;
     Exit;
   end;
-  Result := ParseTypeDecl(Scope, nil, nil, TIdentifier.Empty, DataType);
+  Result := ParseTypeDecl(Scope, nil, TIdentifier.Empty, DataType);
   if not Assigned(DataType) then
     ERRORS.INVALID_TYPE_DECLARATION;
 end;
@@ -6265,8 +6266,10 @@ begin
   SearchName := format('%s<%d>', [ID.Name, Length(GenericArgs)]);
   DataType := TIDType(FindIDNoAbort(Scope, SearchName));
   if Assigned(DataType) then
-    DataType := SpecializeGenericType(DataType, ID, GenericArgs)
-  else
+  begin
+    if not DataType.GenericDeclInProgress then
+      DataType := SpecializeGenericType(DataType, ID, GenericArgs);
+  end else
     AbortWorkInternal('Invalid generic type params');
 end;
 
@@ -6852,6 +6855,7 @@ begin
       token_virtual: Result := ProcSpec_Virtual(Scope, Struct, ProcFlags);
       token_abstract: Result := ProcSpec_Abstract(Scope, Struct, ProcFlags);
       token_override: Result := ProcSpec_Override(Scope, Struct, ProcFlags);
+      token_final: Result := ProcSpec_Final(Scope, Struct, ProcFlags);
       token_reintroduce: Result := ProcSpec_Reintroduce(Scope, ProcFlags);
       token_static: Result := ProcSpec_Static(Scope, ProcFlags, ProcType);
       token_stdcall: Result := ProcSpec_StdCall(Scope, CallConv);
@@ -7385,6 +7389,7 @@ begin
   begin
     VarSpace.Initialize;
     Params := TScope.Create(stLocal, @VarSpace, nil, ParentScope, Self);
+    Params.Name := ID.Name + '@params';
     ParseParameters(Params);
     Result := Lexer_NextToken(Scope);
     Decl.Params := ScopeToVarList(Params, 0);
@@ -8015,11 +8020,27 @@ begin
   Lexer.LoadState(GDescriptor.ImplSRCPosition);
   Lexer_NextToken(GAScope);
 
-  {парсим заново generic-тип}
-  ParseTypeDecl(GenericType.Scope, GAScope, nil, NewID, {out} Result);
+  GenericType.GenericDeclInProgress := True;
 
-  if not Assigned(Result) then
-    AbortWorkInternal('Generic parsing error');
+  try
+    {парсим заново generic-тип}
+    ParseTypeDecl(GAScope, nil, NewID, {out} Result);
+
+    if not Assigned(Result) then
+      AbortWorkInternal('Generic parsing error');
+  except
+    on E: ECompilerAbort do begin
+      Lexer.LoadState(ParserPos);
+      // show the original place of the error
+      PutMessage(cmtError, 'Generic specialization error: ' + NewID.Name, Lexer_Position);
+      raise;
+    end;
+    on E: Exception do
+    begin
+      Lexer.LoadState(ParserPos);
+      AbortWorkInternal(E.Message, Lexer_Position);
+    end;
+  end;
 
   {если есть методы, пытаемся их перекомпилировать}
   if GenericType.InheritsFrom(TIDStructure) then
@@ -8038,7 +8059,7 @@ begin
       SProc := TASTDelphiProc(SProc.NextItem);
     end
   end;
-
+  GenericType.GenericDeclInProgress := False;
   Lexer.LoadState(ParserPos);
 
   {добовляем специализацию в пул}
@@ -8268,6 +8289,21 @@ begin
 
   Include(Flags, pfOverride);
   Include(Flags, pfVirtual);
+  Lexer_ReadSemicolon(Scope);
+  Result := Lexer_NextToken(Scope);
+end;
+
+function TASTDelphiUnit.ProcSpec_Final(Scope: TScope; Struct: TIDStructure; var Flags: TProcFlags): TTokenID;
+var
+  PrevProc: TIDProcedure;
+begin
+  if pfFinal in Flags then
+    ERRORS.DUPLICATE_SPECIFICATION(PS_FINAL);
+
+  if not Assigned(Struct) then
+    ERRORS.STRUCT_TYPE_REQUIRED(Lexer_Position);
+
+  Include(Flags, pfFinal);
   Lexer_ReadSemicolon(Scope);
   Result := Lexer_NextToken(Scope);
 end;
@@ -8693,9 +8729,10 @@ var
   ParserPos: TParserPosition;
   GDescriptor: PGenericDescriptor;
 begin
-  Result := Lexer_NextToken(Scope);
-  Lexer_MatchIdentifier(Result);
+  Lexer_NextToken(Scope);
   repeat
+    CheckAndParseAttribute(Scope);
+
     Lexer_ReadCurrIdentifier(ID);
 
     Result := Lexer_NextToken(Scope);
@@ -8719,13 +8756,13 @@ begin
 
     Lexer_NextToken(Scope);
 
-    Result := ParseTypeDecl(Scope, nil, GDescriptor, ID, Decl);
+    Result := ParseTypeDecl(Scope, GDescriptor, ID, Decl);
     if not Assigned(Decl) then
       ERRORS.INVALID_TYPE_DECLARATION(ID);
 
     // check and parse procedural type call convention
     Result := CheckAndParseProcTypeCallConv(Scope, Result,  Decl);
-  until Result <> token_identifier;
+  until (Result <> token_identifier) and (Result <> token_openblock);
 end;
 
 function TASTDelphiUnit.ParseIndexedPropertyArgs(Scope: TScope; out ArgumentsCount: Integer; var EContext: TEContext): TTokenID;

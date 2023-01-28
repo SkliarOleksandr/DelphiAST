@@ -133,6 +133,7 @@ type
     token_object,                   // keyword: object
     token_operator,                 // keyword: operator
     token_try,                      // keyword: try
+    token_final,                    // keyword: final
     token_finally,                  // keyword: finally
     token_except,                   // keyword: except
     token_raise,                    // keyword: raise
@@ -413,6 +414,7 @@ begin
   RegisterToken('function', token_Function);
   RegisterToken('for', token_for);
   RegisterToken('forward', token_forward);
+  RegisterToken('final', token_final);
   RegisterToken('finally', token_finally);
   RegisterToken('finalization', token_finalization);
   RegisterToken('fastcall', token_fastcall);

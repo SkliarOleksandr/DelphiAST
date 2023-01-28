@@ -100,8 +100,6 @@ object frmTestAppMain: TfrmTestAppMain
       Height = 17
       Anchors = [akTop, akRight]
       Caption = 'Compile "system.pas" for AST Parse'
-      Checked = True
-      State = cbChecked
       TabOrder = 4
     end
     object chkStopIfError: TCheckBox
@@ -110,6 +108,8 @@ object frmTestAppMain: TfrmTestAppMain
       Width = 138
       Height = 17
       Caption = 'Stop compile if errors'
+      Checked = True
+      State = cbChecked
       TabOrder = 5
     end
   end
@@ -215,39 +215,18 @@ object frmTestAppMain: TfrmTestAppMain
             ''
             'interface'
             ''
-            '{uses TestUnit;'
-            ''
-            'var A: array [0..3] of byte;'
-            ''
             'type'
-            '  TRec = record'
-            '  type'
-            #9' TNested = record'
-            #9#9'class var CVar: Integer;'
-            #9' end;'
+            '  TX<T> = class'
             '  end;'
             ''
-            'var'
-            '   GVar: Integer;'
-            ''
-            'const'
-            '  GConst = 5;}'
+            '  TA<T> = class'
+            '  type'
+            '    TX = class(TX<T>)'
+            '    end;'
+            '  end;'
             ''
             'implementation'
-            ''
-            'uses System.SysUtils;'
-            ''
-            'procedure Test;'
-            'begin '
-            '//  var A: TestUnit.XXX.TRec.TNested;'
-            '//  TestUnit.XXX.GVar := TestUnit.XXX.GConst;'
-            '  try'
-            '  except'
-            #9'on System.SysUtils.EOverflow do;'
-            '  end;'
             '  '
-            'end;     '
-            ''
             'end.')
           FontSmoothing = fsmNone
         end
