@@ -25,6 +25,8 @@ uses
   AST.Delphi.Intf;
   //System.Generics.Defaults,
  // system
+ // system.Rtti
+ // System.JSON
  // system.types
  // system.TypInfo
  // system.uitypes
@@ -308,7 +310,9 @@ type
     // функция парсинга указания типа (имени существующего или анонимного типа)
     function ParseTypeSpec(Scope: TScope; out DataType: TIDType): TTokenID;
     function ParseGenericTypeSpec(Scope: TScope; const ID: TIdentifier; out DataType: TIDType): TTokenID; virtual;
-    function ParseGenericsHeader(Params: TScope; out Args: TIDTypeArray): TTokenID;
+    function ParseGenericsHeader(Scope: TScope; out Args: TIDTypeArray): TTokenID;
+    function ParseGenericsConstraint(Scope: TScope; out AConstraint: TGenericConstraint;
+                                                    out AConstraintType: TIDType): TTokenID;
     function ParseGenericsArgs(Scope: TScope; const SContext: TSContext; out Args: TIDExpressions): TTokenID;
     function ParseStatements(Scope: TScope; const SContext: TSContext; IsBlock: Boolean): TTokenID; overload;
     function GetPtrReferenceType(Decl: TIDPointer): TIDType;
@@ -5452,6 +5456,18 @@ begin
     Sys._TObject := Decl;
 
   Result := Lexer_CurTokenID;
+
+  if Result = token_abstract then
+  begin
+    // class is abstract
+    Result := Lexer_NextToken(Scope);
+  end else
+  if Result = token_sealed then
+  begin
+    // class is sealed
+    Result := Lexer_NextToken(Scope);
+  end;
+
   if Result = token_openround then
   begin
     Result := ParseClassAncestorType(Scope, GenericScope, GDescriptor, Decl);
@@ -6217,25 +6233,105 @@ begin
 
 end;
 
-function TASTDelphiUnit.ParseGenericsHeader(Params: TScope; out Args: TIDTypeArray): TTokenID;
+function TASTDelphiUnit.ParseGenericsConstraint(Scope: TScope;
+                                                out AConstraint: TGenericConstraint;
+                                                out AConstraintType: TIDType): TTokenID;
+begin
+  AConstraint := gsNone;
+  AConstraintType := nil;
+  Result := Lexer_NextToken(Scope);
+  while true do begin
+    case Result of
+      token_class: begin
+        case AConstraint of
+          gsNone: AConstraint := gsClass;
+          gsConstructor: AConstraint := gsClassAndConstructor;
+        else
+          ERRORS.GENERIC_INVALID_CONSTRAINT(Result);
+        end;
+      end;
+      token_constructor: begin
+        case AConstraint of
+          gsNone: AConstraint := gsConstructor;
+          gsClass: AConstraint := gsClassAndConstructor;
+        else
+          ERRORS.GENERIC_INVALID_CONSTRAINT(Result);
+        end;
+      end;
+      token_record: begin
+        if AConstraint = gsNone then
+        begin
+          AConstraint := gsRecord;
+          Exit;
+        end else
+          ERRORS.GENERIC_INVALID_CONSTRAINT(Result);
+      end;
+      token_identifier, token_id_or_keyword: begin
+        if AConstraint = gsNone then
+        begin
+          var AID: TIdentifier;
+          Lexer_ReadCurrIdentifier(AID);
+          var ADeclaration := FindID(Scope, AID);
+          if (ADeclaration.ItemType = itType) and
+             (TIDType(ADeclaration).DataTypeID in [dtClass, dtInterface]) then
+          begin
+            AConstraintType := TIDType(ADeclaration);
+            AConstraint := gsType;
+            Exit;
+          end;
+        end;
+        ERRORS.GENERIC_INVALID_CONSTRAINT(Result);
+      end;
+      token_above: begin
+        if AConstraint = gsNone then
+          ERRORS.GENERIC_INVALID_CONSTRAINT(Result);
+        Exit;
+      end;
+    else
+      ERRORS.GENERIC_INVALID_CONSTRAINT(Result);
+    end;
+    Result := Lexer_NextToken(Scope);
+  end;
+end;
+
+function TASTDelphiUnit.ParseGenericsHeader(Scope: TScope; out Args: TIDTypeArray): TTokenID;
 var
   ID: TIdentifier;
-  ParamsCount, ComaCount: Integer;
-  TypeDecl: TIDGenericType;
+  ParamsCount, ParamsInGroupCount, ComaCount: Integer;
+  ParamDecl: TIDGenericParam;
 begin
   ComaCount := 0;
   ParamsCount := 0;
+  ParamsInGroupCount := 0;
   while True do begin
-    Result := Lexer_NextToken(Params);
+    Result := Lexer_NextToken(Scope);
     case Result of
       token_identifier: begin
         Lexer_ReadCurrIdentifier(ID);
-        {данный обобщенный-тип не добавляется в общий пул типов}
-        TypeDecl := TIDGenericType.Create(Params, ID);
-        InsertToScope(Params, TypeDecl);
+        ParamDecl := TIDGenericParam.Create(Scope, ID);
+        InsertToScope(Scope, ParamDecl);
         Inc(ParamsCount);
+        Inc(ParamsInGroupCount);
         SetLength(Args, ParamsCount);
-        Args[ParamsCount - 1] := TypeDecl;
+        Args[ParamsCount - 1] := ParamDecl;
+      end;
+      token_colon: begin
+        if ParamsInGroupCount = 0 then
+          ERRORS.IDENTIFIER_EXPECTED();
+        // parse generic constraint
+        var AConstraint: TGenericConstraint;
+        var AConstraintType: TIDType;
+        Result := ParseGenericsConstraint(Scope, {out} AConstraint, {out} AConstraintType);
+        // set constraint to all params in the group (like in <A, B, C: class>)
+        for var AIndex := ParamsInGroupCount - 1 downto 0 do
+        begin
+          ParamDecl := TIDGenericParam(Args[ParamsInGroupCount - ParamsCount]);
+          ParamDecl.Constraint := AConstraint;
+          ParamDecl.ConstraintType := AConstraintType;
+        end;
+        if Result = token_above then
+          Break;
+        ParamsInGroupCount := 0;
       end;
       token_coma: begin
         if ComaCount >= ParamsCount then
@@ -6254,7 +6350,7 @@ begin
       ERRORS.IDENTIFIER_EXPECTED();
     end;
   end;
-  Result := Lexer_NextToken(Params);
+  Result := Lexer_NextToken(Scope);
 end;
 
 function TASTDelphiUnit.ParseGenericTypeSpec(Scope: TScope; const ID: TIdentifier; out DataType: TIDType): TTokenID;
@@ -6558,7 +6654,7 @@ begin
           DataType := Sys._UntypedReference;
         end else
         if InMacro then
-          DataType := TIDGenericType.Create(Scope, Identifier('T'))
+          DataType := TIDGenericParam.Create(Scope, Identifier('T'))
         else
           ERRORS.PARAM_TYPE_REQUIRED;
       end;
@@ -8550,8 +8646,13 @@ begin
     end;
     {type}
     itType: begin
+      {generic param}
+      if Result = token_less then
+        Result := ParseGenericTypeSpec(Scope, Decl.ID, TIdType(Decl));
+
       Expression := TIDExpression.Create(Decl, PMContext.ID.TextPosition);
-      {явное преобразование типов}
+
+      {explicit typecase}
       if Result = token_openround then
          Result := ParseExplicitCast(Scope, EContext.SContext, Expression);
 

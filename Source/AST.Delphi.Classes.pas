@@ -57,7 +57,7 @@ type
   TIDOperator = class;
   TIDExpression = class;
   TIDNameSpace = class;
-  TIDGenericType = class;
+  TIDGenericParam = class;
   TIDStringConstant = class;
   TIDProcType = class;
   TASTDelphiProc = class;
@@ -229,7 +229,7 @@ type
     property ImplSRCPosition: TParserPosition read FImplSRCPosition write FImplSRCPosition;
     procedure AddGenericInstance(Decl: TIDDeclaration; const Args: TIDExpressions);
     class function Create(Scope: TScope): PGenericDescriptor; static;
-    function FindType(const Name: string): TIDGenericType; inline;
+    function FindType(const Name: string): TIDGenericParam; inline;
   end;
 
   {namespace}
@@ -404,13 +404,24 @@ type
     property Types: TIDTypesArray read FTypes;
   end;
 
+  TGenericConstraint = (
+    gsNone,                  // <T>
+    gsClass,                 // <T: class>
+    gsConstructor,           // <T: constructor>
+    gsClassAndConstructor,   // <T: class constructor>
+    gsRecord,                // <T: record>
+    gsType                   // <T: IMyIntf, K: TMyClass>
+  );
+
   {special generic type}
-  TIDGenericType = class(TIDType)
+  TIDGenericParam = class(TIDType)
   private
-    fDefaultValue: TIDExpression;
+    fConstraint: TGenericConstraint;
+    fConstraintType: TIDType;
   public
     constructor Create(Scope: TScope; const ID: TIdentifier); override;
-    property DefaultValue: TIDExpression read FDefaultValue write FDefaultValue;
+    property Constraint: TGenericConstraint read fConstraint write fConstraint;
+    property ConstraintType: TIDType read fConstraintType write fConstraintType;
   end;
 
   {alias type}
@@ -5874,7 +5885,7 @@ end;
 
 { TIDGenericType }
 
-constructor TIDGenericType.Create(Scope: TScope; const ID: TIdentifier);
+constructor TIDGenericParam.Create(Scope: TScope; const ID: TIdentifier);
 begin
   inherited Create(Scope, ID);
   FDataTypeID := dtGeneric;
@@ -5952,13 +5963,13 @@ begin
   {$IFDEF DEBUG} Result.FScope.FName := 'gdescriptor_scope';{$ENDIF}
 end;
 
-function TGenericDescriptor.FindType(const Name: string): TIDGenericType;
+function TGenericDescriptor.FindType(const Name: string): TIDGenericParam;
 var
   Decl: TIDDeclaration;
 begin
   Decl := FScope.FindID(Name);
-  if Decl is TIDGenericType then
-    Result := TIDGenericType(Decl)
+  if Decl is TIDGenericParam then
+    Result := TIDGenericParam(Decl)
   else
     Result := nil;
 end;

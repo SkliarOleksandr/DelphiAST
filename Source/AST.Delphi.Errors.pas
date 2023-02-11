@@ -284,6 +284,9 @@ type
     class procedure ORDINAL_OR_SET_REQUIRED(const Src: TIDExpression);
     class procedure STRING_CONST_IS_NOT_ANSI(const Src: TIDExpression);
     class procedure VAR_IS_NOT_INITIALIZED(const Variable: TIDExpression);
+
+    procedure GENERIC_INVALID_CONSTRAINT(ActualToken: TTokenID);
+
     procedure NO_METHOD_IN_BASE_CLASS(Proc: TIDProcedure);
     procedure DEFAULT_PROP_MUST_BE_ARRAY_PROP;
     procedure DEFAULT_PROP_ALREADY_EXIST(Prop: TIDProperty);
@@ -760,6 +763,11 @@ end;
 class procedure TASTDelphiErrors.SETTER_MUST_BE_SUCH(const DeclString: string; const TextPosition: TTextPosition);
 begin
   AbortWork('Setter must have declaration: %s', [DeclString], TextPosition);
+end;
+
+procedure TASTDelphiErrors.GENERIC_INVALID_CONSTRAINT(ActualToken: TTokenID);
+begin
+  AbortWork('Invalid generic constraint: %s', [Lexer.TokenLexem(ActualToken)], Lexer.Position);
 end;
 
 class procedure TASTDelphiErrors.GETTER_MUST_BE_SUCH(const Getter: TIDProcedure; const DeclString: string);

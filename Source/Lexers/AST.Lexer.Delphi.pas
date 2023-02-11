@@ -90,6 +90,7 @@ type
     token_packed,                   // keyword: packed
     token_package,                  // keyword: package
     token_set,                      // keyword: set
+    token_sealed,                   // keyword: sealed
     token_array,                    // keyword: array
     token_if,                       // keyword: if
     token_in,                       // keyword: in
@@ -442,7 +443,7 @@ begin
   RegisterToken('override', token_Override);
   RegisterToken('overload', token_Overload);
   RegisterToken('operator', token_operator, TTokenClass.AmbiguousPriorityKeyword);
-  RegisterToken('package', token_package);
+  RegisterToken('package', token_package, TTokenClass.AmbiguousPriorityIdentifier);
   RegisterToken('procedure', token_procedure);
   RegisterToken('program', token_program);
   RegisterToken('property', token_property);
@@ -461,6 +462,7 @@ begin
   RegisterToken('resourcestring', token_resourcestring);
   RegisterToken('reintroduce', token_reintroduce);
   RegisterToken('set', token_set);
+  RegisterToken('sealed', token_sealed);
   RegisterToken('shl', token_shl);
   RegisterToken('shr', token_shr);
   RegisterToken('static', token_static);
