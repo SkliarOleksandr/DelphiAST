@@ -52,6 +52,7 @@ type
     fTotalUnitsParsed: Integer;
     fTotalUnitsIntfOnlyParsed: Integer;
     fStopCompileIfError: Boolean;
+    fCompileAll: Boolean;
     function GetIncludeDebugInfo: Boolean;
     function OpenUnit(const UnitName: string): TASTModule;
     function RefCount: Integer;
@@ -65,10 +66,12 @@ type
     function GetDefines: TDefines;
     function GetSysUnit: TASTModule;
     function GetStopCompileIfError: Boolean;
+    function GetCompileAll: Boolean;
     procedure SetStopCompileIfError(const Value: Boolean);
     procedure SetIncludeDebugInfo(const Value: Boolean);
     procedure SetRTTICharset(const Value: TRTTICharset);
     procedure SetTarget(const Value: string);
+    procedure SetCompileAll(const Value: Boolean);
     class function StrListCompare(const Left, Right: TStrConstKey): NativeInt; static;
   protected
     fSysUnit: TASTModule;
@@ -125,6 +128,11 @@ uses AST.Parser.Errors,
 function TPascalProject.GetOptions: TPackageOptions;
 begin
   Result := FOptions;
+end;
+
+function TPascalProject.GetCompileAll: Boolean;
+begin
+  Result := fCompileAll;
 end;
 
 function TPascalProject.GetDefines: TDefines;
@@ -421,14 +429,31 @@ begin
 
   fTotalLinesParsed := 0;
   try
-    // compile all units
+    // compile explicit project units ("uses units" will be compiled for interface only)
     for i := 0 to FUnits.Count - 1 do
     begin
-      var UN := FUnits[i];
-      Result := TPascalUnit(UN).Compile({ACompileIntfOnly:} False);
+      var UN := TPascalUnit(FUnits[i]);
+      Result := UN.Compile({ACompileIntfOnly:} False);
       Inc(fTotalLinesParsed, UN.TotalLinesParsed);
       if Result = CompileFail then
         Exit;
+    end;
+
+    // compile all units (compiling implementations)
+    if fCompileAll then
+    begin
+      for i := 0 to FUnits.Count - 1 do
+      begin
+        var AUN := TPascalUnit(FUnits[i]);
+        if AUN.UnitState = UnitIntfCompiled then
+        begin
+          Dec(fTotalLinesParsed, AUN.TotalLinesParsed); // - intf lines
+          Result := AUN.Compile({ACompileIntfOnly:} False);
+          Inc(fTotalLinesParsed, AUN.TotalLinesParsed); // + all lines
+          if Result = CompileFail then
+            Exit;
+        end;
+      end;
     end;
   finally
     for i := 0 to FUnits.Count - 1 do
@@ -591,6 +616,11 @@ end;
 procedure TPascalProject.SaveToStream(Stream: TStream);
 begin
 
+end;
+
+procedure TPascalProject.SetCompileAll(const Value: Boolean);
+begin
+  fCompileAll := Value;
 end;
 
 procedure TPascalProject.SetIncludeDebugInfo(const Value: Boolean);

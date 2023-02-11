@@ -41,14 +41,14 @@ object frmTestAppMain: TfrmTestAppMain
       200)
     object Label1: TLabel
       Left = 8
-      Top = 8
+      Top = 18
       Width = 90
       Height = 13
       Caption = 'Delphi Source Path'
     end
     object edSrcRoot: TEdit
       Left = 8
-      Top = 24
+      Top = 37
       Width = 572
       Height = 21
       Anchors = [akLeft, akTop, akRight]
@@ -57,7 +57,7 @@ object frmTestAppMain: TfrmTestAppMain
     end
     object Button1: TButton
       Left = 586
-      Top = 20
+      Top = 35
       Width = 106
       Height = 25
       Anchors = [akTop, akRight]
@@ -67,7 +67,7 @@ object frmTestAppMain: TfrmTestAppMain
     end
     object Button2: TButton
       Left = 698
-      Top = 20
+      Top = 34
       Width = 108
       Height = 25
       Anchors = [akTop, akRight]
@@ -77,9 +77,9 @@ object frmTestAppMain: TfrmTestAppMain
     end
     object Memo1: TMemo
       Left = 8
-      Top = 51
+      Top = 65
       Width = 798
-      Height = 149
+      Height = 136
       Anchors = [akLeft, akTop, akRight, akBottom]
       Font.Charset = DEFAULT_CHARSET
       Font.Color = clWindowText
@@ -94,8 +94,8 @@ object frmTestAppMain: TfrmTestAppMain
       WordWrap = False
     end
     object chkCompileSsystemForASTParse: TCheckBox
-      Left = 384
-      Top = 7
+      Left = 240
+      Top = 14
       Width = 196
       Height = 17
       Anchors = [akTop, akRight]
@@ -103,14 +103,22 @@ object frmTestAppMain: TfrmTestAppMain
       TabOrder = 4
     end
     object chkStopIfError: TCheckBox
-      Left = 240
-      Top = 7
-      Width = 138
+      Left = 112
+      Top = 14
+      Width = 122
       Height = 17
       Caption = 'Stop compile if errors'
       Checked = True
       State = cbChecked
       TabOrder = 5
+    end
+    object chkParseAll: TCheckBox
+      Left = 442
+      Top = 14
+      Width = 79
+      Height = 17
+      Caption = 'Parse Impls'
+      TabOrder = 6
     end
   end
   object Panel2: TPanel

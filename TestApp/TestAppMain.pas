@@ -50,6 +50,7 @@ type
     NSSearchEdit: TEdit;
     chkCompileSsystemForASTParse: TCheckBox;
     chkStopIfError: TCheckBox;
+    chkParseAll: TCheckBox;
     procedure Button2Click(Sender: TObject);
     procedure Button1Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
@@ -296,6 +297,7 @@ begin
   Prj.Defines.Add('ASSEMBLER');
   Prj.OnProgress := OnProgress;
   Prj.StopCompileIfError := chkStopIfError.Checked;
+  Prj.CompileAll := chkParseAll.Checked;
 
   var LUsesUntis := '';
   AddDelphiUnits(LUsesUntis, 'rtl\sys');

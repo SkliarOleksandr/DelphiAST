@@ -23,18 +23,19 @@ uses
   AST.Delphi.Options,
   AST.Delphi.Project,
   AST.Delphi.Intf;
-  //System.Generics.Defaults,
- // system
- // system.Rtti
- // System.JSON
- // system.types
- // system.TypInfo
- // system.uitypes
- // sysutils
- // sysinit
- // Windows
- // AnsiStrings
- // Character
+// System.Generics.Defaults,
+// System.Internal.GenericsHlpr
+// system
+// system.Rtti
+// System.JSON
+// system.types
+// system.TypInfo
+// system.uitypes
+// sysutils
+// sysinit
+// Windows
+// AnsiStrings
+// Character
 
 type
 
@@ -2511,6 +2512,7 @@ begin
         ERRORS.KEYWORD_EXPECTED;
       end;
     end;
+    fUnitState := UnitAllCompiled;
     Result := CompileSuccess;
     FCompiled := Result;
     Progress(TASTStatusParseSuccess);
