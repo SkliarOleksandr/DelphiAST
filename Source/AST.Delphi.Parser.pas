@@ -26,6 +26,7 @@ uses
 // System.Generics.Defaults,
 // System.Internal.GenericsHlpr
 // system
+// Winapi.ActiveX
 // system.Rtti
 // System.JSON
 // system.types
@@ -4485,13 +4486,6 @@ begin
     DimensionsCount := TIDProperty(ArrDecl).ParamsCount;
     DataType := TIDProperty(ArrDecl).DataType;
     Expr := TIDExpression.Create(ArrDecl);
-    if EContext.EPosition = ExprRValue then
-    begin
-      //Result := ParsePropertyMember(PMContext, Scope, TIDProperty(Decl), Expr, EContext);
-      DataType := nil;
-      Exit;
-    end;
-    //PMContext.Add(Expr);
   end else
   if (ArrDecl.ItemType = itType) and (TIDType(ArrDecl).DataTypeID in [dtString, dtAnsiString]) then
   begin
@@ -6665,7 +6659,7 @@ begin
       while Assigned(NextItem) do begin
         if not Assigned(NextItem.Param) then
         begin
-          Param := TIDVariable.Create(Scope, NextItem.ID, DataType, VarFlags);
+          Param := TIDParameter.Create(Scope, NextItem.ID, DataType, VarFlags);
           Param.DefaultValue := DefaultExpr;
           NextItem.Param := Param;
         end;
@@ -7058,6 +7052,7 @@ begin
 
     // Для Scope будут переопределены VarSpace и ProcSpace
     Proc.ParamsScope := Parameters;
+    Proc.EntryScope := Parameters;
     Proc.VarSpace := VarSpace;
     Proc.ResultType := ResultType;
 
@@ -7565,14 +7560,15 @@ begin
   end;
 
   // парсим тип возвращаемого значения
+  ResultType := nil;
   if Assigned(GenericProc.ResultType) then
   begin
     Lexer_MatchToken(Result, token_colon);
-    Result := ParseTypeSpec(Parameters, ResultType);
+    Result := ParseTypeSpec(Parameters, {out} ResultType);
     RetVar.DataType := ResultType;
     RetVar.TextPosition := Lexer_Position;
-  end else
-    ResultType := nil;
+    Proc.ResultType := ResultType;
+  end;
 
   Lexer_MatchToken(Result, token_semicolon);
 

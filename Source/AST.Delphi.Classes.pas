@@ -651,6 +651,7 @@ type
     function GetDataSize: Integer; override;
   public
     constructor Create(Scope: TScope; const Name: TIdentifier); override;
+    constructor CreateAsSystem(Scope: TScope; const Name: string); override;
     procedure CreateStandardOperators; override;
     property StaticConstructor: TIDProcedure read FStaticConstructor write FStaticConstructor;
     property StaticDestructor: TIDProcedure read FStaticDestructor write FStaticDestructor;
@@ -1290,7 +1291,7 @@ type
     VarIsField       // поле структуры
   );
 
-  {переменная}
+  {generic variable class}
   TIDVariable = class(TIDDeclaration)
   private
     FFlags: TVariableFlags;
@@ -1342,7 +1343,12 @@ type
     procedure SaveAndIncludeFlags(const Flags: TVariableFlags; out PrevFlags: TVariableFlags);
   end;
 
-  {поле структуры}
+  {proc parameter class}
+  TIDParameter = class(TIDVariable)
+
+  end;
+
+  {structure field class}
   TIDField = class(TIDVariable)
   private
     fStruct: TIDStructure;
@@ -3830,8 +3836,6 @@ constructor TIDStructure.CreateAsSystem(Scope: TScope; const Name: string);
 begin
   inherited;
   DoCreateStructure;
-  OverloadImplicitTo(Self);
-  OverloadExplicitTo(Self);
 end;
 
 function TIDStructure.FindField(const Name: string): TIDField;
@@ -4564,7 +4568,10 @@ begin
       Pt := Pt.Parent;
     end;
   end else
-    Result := '^' + ReferenceType.DisplayName;
+    if Assigned(ReferenceType) then
+      Result := '^' + ReferenceType.DisplayName
+    else
+      Result := '^<untyped>';
 end;
 
 procedure TIDRefType.IncRefCount(RCPath: UInt32);
@@ -4737,6 +4744,12 @@ begin
   inherited Create(Scope, Name);
   FDataTypeID := dtRecord;
   CreateStandardOperators();
+end;
+
+constructor TIDRecord.CreateAsSystem(Scope: TScope; const Name: string);
+begin
+  inherited;
+  CreateStandardOperators;
 end;
 
 { TIDEnumType }

@@ -455,7 +455,7 @@ begin
   RegisterToken('packed', token_packed);
   RegisterToken('platform', token_platform, TTokenClass.Ambiguous);
   RegisterToken('raise', token_raise);
-  RegisterToken('read', token_read);
+  RegisterToken('read', token_read, TTokenClass.AmbiguousPriorityKeyword);
   RegisterToken('record', token_record);
   RegisterToken('reference', token_reference, TTokenClass.Ambiguous);
   RegisterToken('repeat', token_repeat);
@@ -483,7 +483,7 @@ begin
   RegisterToken('weak', token_weak);
   RegisterToken('with', token_with);
   RegisterToken('while', token_while);
-  RegisterToken('write', token_write);
+  RegisterToken('write', token_write, TTokenClass.AmbiguousPriorityKeyword);
   RegisterToken('xor', token_xor);
   RegisterRemToken('{', '}', ord(token_openfigure), Ord(token_closefigure));
   RegisterRemToken('(*', '*)', ord(token_openround_asteriks), Ord(token_closeround_asteriks));

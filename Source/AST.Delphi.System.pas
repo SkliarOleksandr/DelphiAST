@@ -954,6 +954,7 @@ begin
   RegisterTypeAlias('LongInt', _Int32);
   RegisterTypeAlias('LongWord', _UInt32);
   RegisterTypeAlias('Comp', _Int64);
+  RegisterTypeAlias('Real', _Float64);
   RegisterTypeAlias('_ShortString', _ShortString);
   RegisterTypeAlias('UnicodeString', _UnicodeString);
   RegisterTypeAlias('WideChar', _WideChar);
