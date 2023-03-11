@@ -289,7 +289,6 @@ end;
 
 procedure TPascalProject.InitSystemUnit;
 var
-  Stream: TStringStream;
   SysFileName, SysSource: string;
 begin
   try
@@ -298,12 +297,12 @@ begin
       SysFileName := FindUnitFile('system');
       if FileExists(SysFileName) then
       begin
-        Stream := TStringStream.Create('');
+        var AList := TStringList.Create;
         try
-          StringStreamLoadFromFile(SysFileName, Stream);
-          SysSource := Stream.DataString;
+          AList.LoadFromFile(SysFileName);
+          SysSource := AList.Text;
         finally
-          Stream.Free;
+          AList.Free;
         end;
       end else
         SysSource := 'unit system; end.';

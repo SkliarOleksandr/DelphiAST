@@ -26,7 +26,7 @@ resourcestring
   sTypeIdExpectedButFoundFmt = 'Type identifier expected but "%s" found';
   sIdentifierRedeclaredFmt = 'Identifier redeclared: "%s"';
   sUndeclaredIdentifier = 'Undeclared identifier: "%s"';
-  sDeclDifWithPrevDecl = 'Declaration of "%s" differs from previous declaration';
+  sDeclDifWithPrevDecl = 'Declaration of "%s" differs from previous declaration:'#13#10'%s'#13#10'%s';
   sBeginEndCountAreDiffers = 'Count of BEGIN/END clauses does not equals';
   sDevisionByZero = 'Devision by zero';
   sVariableRequired = 'Variable required';
@@ -231,7 +231,7 @@ type
     class procedure NOT_ENOUGH_ACTUAL_PARAMS(CallExpr: TIDExpression); static;
     class procedure TOO_MANY_ACTUAL_PARAMS(CallExpr: TIDExpression); static;
     class procedure OVERLOADED_MUST_BE_MARKED(const ID: TIdentifier); static;
-    class procedure DECL_DIFF_WITH_PREV_DECL(const ID: TIdentifier); static;
+    class procedure DECL_DIFF_WITH_PREV_DECL(const ID: TIdentifier; const ADeclSing, AImplSign: string); static;
 
     class procedure TYPE_REQUIRED(const TextPosition: TTextPosition); static;
     class procedure STRUCT_TYPE_REQUIRED(const TextPosition: TTextPosition); static;
@@ -483,9 +483,10 @@ begin
   AbortWork(sOverloadedMustBeMarked, [ID.Name], ID.TextPosition);
 end;
 
-class procedure TASTDelphiErrors.DECL_DIFF_WITH_PREV_DECL(const ID: TIdentifier);
+class procedure TASTDelphiErrors.DECL_DIFF_WITH_PREV_DECL(const ID: TIdentifier;
+                                                          const ADeclSing, AImplSign: string);
 begin
-  AbortWork(sDeclDifWithPrevDecl, [ID.Name], ID.TextPosition);
+  AbortWork(sDeclDifWithPrevDecl, [ID.Name, ADeclSing, AImplSign], ID.TextPosition);
 end;
 
 procedure TASTDelphiErrors.DEFAULT_PROP_ALREADY_EXIST(Prop: TIDProperty);

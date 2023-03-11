@@ -1495,7 +1495,7 @@ begin
     // todo:
   end;
 
-  var AArray := Ctx.SContext.Proc.GetTMPVar(ResultType);
+  var AArray := Ctx.SContext.Proc.GetTMPVar(nil);
   Result := TIDExpression.Create(AArray, Ctx.UN.Lexer_Position);
 end;
 
@@ -1510,7 +1510,7 @@ end;
 function TSF_HiByte.Process(var EContext: TEContext): TIDExpression;
 begin
   var AExpr := EContext.RPNPopExpression;
-  var AResul := EContext.SContext.Proc.GetTMPVar(ResultType);
+  var AResul := EContext.SContext.Proc.GetTMPVar(SYSUnit._Int32);
   Result := TIDExpression.Create(AResul, AExpr.TextPosition);
 end;
 
@@ -1525,7 +1525,7 @@ end;
 function TSF_LoByte.Process(var EContext: TEContext): TIDExpression;
 begin
   var AExpr := EContext.RPNPopExpression;
-  var AResul := EContext.SContext.Proc.GetTMPVar(ResultType);
+  var AResul := EContext.SContext.Proc.GetTMPVar(SYSUnit._Int32);
   Result := TIDExpression.Create(AResul, AExpr.TextPosition);
 end;
 

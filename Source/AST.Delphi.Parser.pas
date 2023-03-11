@@ -7140,7 +7140,7 @@ begin
       if Assigned(Proc.IL) then
         ERRORS.OVERLOADED_MUST_BE_MARKED(ID)
       else
-        ERRORS.DECL_DIFF_WITH_PREV_DECL(ID);
+        ERRORS.DECL_DIFF_WITH_PREV_DECL(ID, ForwardDecl.DisplayName, Proc.DisplayName);
     end;
     Result := ParseProcBody(Proc);
     if Result = token_eof then
@@ -7363,7 +7363,7 @@ begin
       if Assigned(Proc.IL) then
         ERRORS.OVERLOADED_MUST_BE_MARKED(ID)
       else
-        ERRORS.DECL_DIFF_WITH_PREV_DECL(ID);
+        ERRORS.DECL_DIFF_WITH_PREV_DECL(ID, ForwardDecl.DisplayName, Proc.DisplayName);
     end;
     Result := ParseProcBody(Proc);
     if Result = token_eof then
@@ -7780,7 +7780,7 @@ begin
       if (FwdDeclState = dsDifferent) then
       begin
         if not Assigned(Proc.IL) then
-          ERRORS.DECL_DIFF_WITH_PREV_DECL(ID);
+          ERRORS.DECL_DIFF_WITH_PREV_DECL(ID, ForwardDecl.DisplayName, Proc.DisplayName);
       end;
       Result := ParseProcBody(Proc);
       Lexer_MatchSemicolon(Result);
