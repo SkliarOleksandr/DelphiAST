@@ -98,7 +98,6 @@ object frmTestAppMain: TfrmTestAppMain
       Top = 14
       Width = 196
       Height = 17
-      Anchors = [akTop, akRight]
       Caption = 'Compile "system.pas" for AST Parse'
       TabOrder = 4
     end

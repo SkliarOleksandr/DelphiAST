@@ -2524,10 +2524,12 @@ begin
     on e: ECompilerAbort do begin
       PutMessage(ECompilerAbort(e).CompilerMessage^);
       Progress(TASTStatusParseFail);
+      Result := CompileFail;
     end;
     on e: Exception do begin
       PutMessage(cmtInteranlError, e.Message, Lexer_Position);
       Progress(TASTStatusParseFail);
+      Result := CompileFail;
     end;
   end;
 end;
@@ -7159,14 +7161,14 @@ begin
 
   Result := Lexer_CurTokenID;
 
-  // парсим параметры
+  // parse parameters
   if Result = token_openround then
   begin
     ParseParameters(Parameters);
     Result := Lexer_NextToken(Scope);
   end;
 
-  // парсим тип возвращаемого значения
+  // parse return type
   if ProcType = ptFunc then
   begin
     if Result <> token_semicolon then
@@ -7257,7 +7259,10 @@ begin
   begin
     if (Scope.ScopeClass = scInterface) and (ForwardDecl.Scope.DeclUnit = Self) then
     begin
-      if not ((pfOveload in ForwardDecl.Flags) and (pfOveload in ProcFlags)) then
+      if not (pfOveload in ForwardDecl.Flags) then
+        ERRORS.OVERLOADED_MUST_BE_MARKED(ForwardDecl.ID)
+      else
+      if not (pfOveload in ProcFlags) then
         ERRORS.OVERLOADED_MUST_BE_MARKED(ID);
     end;
 
@@ -7315,7 +7320,8 @@ begin
       Scope.AddProcedure(Proc);
     end else begin
       // доавляем в список следующую перегруженную процедуру
-      Proc.PrevOverload := ForwardDecl;
+      if pfOveload in ProcFlags then
+        Proc.PrevOverload := ForwardDecl;
       // override the declaration if the scope the same
       if (ForwardDecl.Scope = Scope) then
         ForwardDeclNode.Data := Proc
@@ -7341,13 +7347,17 @@ begin
     Parameters.ProcSpace := Proc.ProcSpace;
     Proc.EntryScope := Parameters;
 
-    if (FwdDeclState = dsDifferent) and not (pfOveload in ProcFlags) then
+    if Assigned(ForwardDecl) and
+       (ForwardDecl.Scope = Scope) and
+       (FwdDeclState = dsDifferent) and
+       not (pfOveload in ProcFlags) then
     begin
-      if Assigned(Proc.IL) then
+      if ForwardDecl.IsCompleted then
         ERRORS.OVERLOADED_MUST_BE_MARKED(ID)
       else
         ERRORS.DECL_DIFF_WITH_PREV_DECL(ID, ForwardDecl.DisplayName, Proc.DisplayName);
     end;
+    // parse proc body
     Result := ParseProcBody(Proc);
     if Result = token_eof then
       Exit;

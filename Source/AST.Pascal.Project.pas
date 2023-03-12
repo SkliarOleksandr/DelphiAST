@@ -449,7 +449,7 @@ begin
           Dec(fTotalLinesParsed, AUN.TotalLinesParsed); // - intf lines
           Result := AUN.Compile({ACompileIntfOnly:} False);
           Inc(fTotalLinesParsed, AUN.TotalLinesParsed); // + all lines
-          if Result = CompileFail then
+          if (Result = CompileFail) and fStopCompileIfError then
             Exit;
         end;
       end;

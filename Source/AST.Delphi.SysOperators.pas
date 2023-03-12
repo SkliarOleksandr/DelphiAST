@@ -770,7 +770,7 @@ end;
 
 function TSysExplicitUntypedRefToAny.Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean;
 begin
-  Result := (Dst.DataTypeID in [dtPointer, dtStaticArray, dtClass, dtInterface]);
+  Result := Dst.IsOrdinal or (Dst.DataTypeID in [dtPointer, dtStaticArray, dtClass, dtInterface]);
 end;
 
 { TSysExplicitUntypedToAny }
