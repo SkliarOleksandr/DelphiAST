@@ -439,9 +439,9 @@ begin
   RegisterToken('of', token_of);
   RegisterToken('on', token_on);
   RegisterToken('or', token_or);
-  RegisterToken('out', token_Out);
-  RegisterToken('override', token_Override);
-  RegisterToken('overload', token_Overload);
+  RegisterToken('out', token_out, TTokenClass.AmbiguousPriorityIdentifier);
+  RegisterToken('override', token_override);
+  RegisterToken('overload', token_overload);
   RegisterToken('operator', token_operator, TTokenClass.AmbiguousPriorityKeyword);
   RegisterToken('package', token_package, TTokenClass.AmbiguousPriorityIdentifier);
   RegisterToken('procedure', token_procedure);

@@ -662,7 +662,7 @@ begin
   if Dst is TIDArray then
   begin
     DstElType := TIDArray(Dst).ElementDataType;
-    Result := (Dst.DataTypeID = dtOpenArray) and (SrcElType = DstElType);
+    Result := (Dst.DataTypeID = dtOpenArray) and SameTypes(SrcElType, DstElType);
   end else begin
     Result :=
       ((Dst = SYSUnit._PAnsiChar) and (SrcElType = SYSUnit._AnsiChar)) or

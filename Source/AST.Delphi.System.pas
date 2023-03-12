@@ -1077,6 +1077,8 @@ begin
   RegisterBuiltin(TSF_Dispose);
   RegisterBuiltin(TSCTF_Defined);
   RegisterBuiltin(TSCTF_Default);
+  RegisterBuiltin(TSCTF_IsManagedType);
+  RegisterBuiltin(TSCTF_TypeInfo);
   RegisterBuiltin(TSCTF_Console);
   RegisterBuiltin(TSCTF_TypeName);
   RegisterBuiltin(TSCTF_Declared);

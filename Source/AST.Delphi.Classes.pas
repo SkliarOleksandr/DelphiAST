@@ -1409,7 +1409,7 @@ type
     FExplicitParams: TVariableList; // actual arguments (excluding 'self', 'Result', etc...);
     FCount: Integer;                // count of parameters
     FParamsScope: TProcScope;       // only parameters scope
-    FEntryScope: TScope;            // proc body scope (params, local vars, types, procs etc...)
+    FEntryScope: TProcScope;        // proc body scope (params, local vars, types, procs etc...)
     FStruct: TIDStructure;          // self parameter
     FProcFlags: TProcFlags;         // флаги inline/pure
     FTempVars: TItemsStack;
@@ -1427,7 +1427,7 @@ type
     FFinalSection: TObject;                 // блок финализации процедуры (TIL)
   private
     procedure SetParameters(const Value: TVariableList); inline;
-    procedure SetEntryScope(const Value: TScope);
+    procedure SetEntryScope(const Value: TProcScope);
     function GetIsCompleted: Boolean; inline;
     function GetSelfDecl: TIDVariable;
     function GetProcTypeName: string;
@@ -1461,7 +1461,7 @@ type
     property TempVars: TItemsStack read FTempVars;
 
     property PrevOverload: TIDProcedure read FNextOverload write FNextOverload;
-    property EntryScope: TScope read FEntryScope write SetEntryScope;
+    property EntryScope: TProcScope read FEntryScope write SetEntryScope;
     property ParamsScope: TProcScope read FParamsScope write FParamsScope;
     property ParamsCount: Integer read GetParamsCount;
     {$warnings off}
@@ -1722,6 +1722,8 @@ type
 
   function GetBoolResultExpr(ExistExpr: TIDExpression): TIDBoolResultExpression;
   function GetItemTypeName(ItemType: TIDItemType): string;
+
+  function SameTypes(AType1, AType2: TIDType): Boolean;
 
 const
   CIsClassProc: array [TProcType] of Boolean =
@@ -2405,6 +2407,13 @@ begin
   inherited;
 end;
 
+function IsGenericParamsTheSame(AParam1, AParam2: TIDGenericParam): Boolean;
+begin
+  Result := SameText(AParam1.Name, AParam2.Name) and
+            (AParam1.Constraint = AParam2.Constraint) and
+            (AParam1.ConstraintType = AParam2.ConstraintType);
+end;
+
 function TIDProcedure.SameDeclaration(const ParamsScope: TScope): Boolean;
 var
   item1, item2: TScope.PAVLNode;
@@ -2415,9 +2424,28 @@ begin
     Exit(False);
   item1 := FParamsScope.First;
   item2 := ParamsScope.First;
-  while Assigned(item1) do begin
-    Decl1 := TIDVariable(Item1.Data);
-    Decl2 := TIDVariable(Item2.Data);
+  while Assigned(item1) do
+  begin
+    // the same params should have the same classes
+    if item1.Data.ClassType <> item2.Data.ClassType then
+      Exit(False);
+
+    // handle "Generic Params" case first
+    if (Item1.Data is TIDGenericParam) and
+       (Item2.Data is TIDGenericParam) then
+    begin
+      if IsGenericParamsTheSame(TIDGenericParam(Item1.Data),
+                                TIDGenericParam(Item2.Data)) then
+      begin
+        item1 := FParamsScope.Next(item1);
+        item2 := ParamsScope.Next(item2);
+        Continue;
+      end else
+        Exit(False);
+    end;
+
+    Decl1 := TIDParam(Item1.Data);
+    Decl2 := TIDParam(Item2.Data);
 
     if Decl1.IsExplicit <> Decl2.IsExplicit then
       Exit(False);
@@ -2428,8 +2456,16 @@ begin
     begin
       if (AType1.DataTypeID = dtOpenArray) and (AType2.DataTypeID = dtOpenArray) then
       begin
-        if TIDArray(AType1).ElementDataType <> TIDArray(AType2).ElementDataType then
-          Exit(False);
+        var AArrayElementDT1 := TIDArray(AType1).ElementDataType;
+        var AArrayElementDT2 := TIDArray(AType2).ElementDataType;
+        if AArrayElementDT1 <> AArrayElementDT2 then
+        begin
+          if (AArrayElementDT1.IsGeneric and AArrayElementDT2.IsGeneric) and
+             (AArrayElementDT1.Name = AArrayElementDT2.Name) then
+          begin
+          end else
+            Exit(False);
+        end;
       end else
       if (AType1.IsGeneric and AType2.IsGeneric) and (AType1.Name = AType2.Name) then
       begin
@@ -2461,7 +2497,7 @@ begin
   Result := True;
 end;
 
-procedure TIDProcedure.SetEntryScope(const Value: TScope);
+procedure TIDProcedure.SetEntryScope(const Value: TProcScope);
 begin
   FEntryScope := Value;
   Value.FVarSpace := @FVarSpace;
@@ -6581,6 +6617,16 @@ end;
 function TRecordInitScope.GetName: string;
 begin
   Result := fStructType.Name + '$record_init';
+end;
+
+function SameTypes(AType1, AType2: TIDType): Boolean;
+begin
+  Result := (AType1 = AType2);
+  if not Result and (AType1.IsGeneric and AType2.IsGeneric) then
+  begin
+    // todo: check constraints
+    Result := AType1.Name = AType2.Name;
+  end;
 end;
 
 initialization

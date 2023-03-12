@@ -3,7 +3,6 @@
 interface
 
 uses
-  System.Generics.Collections,
   AST.Pascal.Parser,
   AST.Lexer,
   AST.Classes,
@@ -22,7 +21,8 @@ uses
   AST.Pascal.ConstCalculator,
   AST.Delphi.Options,
   AST.Delphi.Project,
-  AST.Delphi.Intf;
+  AST.Delphi.Intf,
+  System.Generics.Collections;
 // System.Generics.Defaults,
 // System.Internal.GenericsHlpr
 // system
@@ -4008,28 +4008,6 @@ end;
 
 function TASTDelphiUnit.MatchBinarOperatorWithImplicit(const SContext: TSContext; Op: TOperatorID; var Left,
                                                        Right: TIDexpression): TIDDeclaration;
-  {function WriteImplicitCast(Implicit: TIDDeclaration; Src: TIDExpression): TIDExpression;
-  var
-    PCall: TIDCallExpression;
-  begin
-    if Implicit.ItemType = itType then
-    begin
-      Result := GetTMPVarExpr(SContext, TIDType(Implicit));
-      ILWrite(SContext, TIL.IL_Move(Result, Src));
-    end else
-    if Implicit.ItemType = itProcedure then
-    begin
-      Result := GetTMPVarExpr(SContext, Implicit.DataType);
-      PCall := TIDCallExpression.Create(Implicit);
-      PCall.TextPosition := Src.TextPosition;
-      PCall.ArgumentsCount := 2;
-      PCall.Instance := GetOperatorInstance(Op, Result, Src);
-      Result := Process_CALL_direct(SContext, PCall, TIDExpressions.Create(Result, Src));
-    end else begin
-      ERRORS.FEATURE_NOT_SUPPORTED;
-      Result := nil;
-    end;
-  end;}
 var
   LeftDT, RightDT: TIDType;
   Operators: TIDPairList;
@@ -5863,7 +5841,7 @@ end;
 
 constructor TASTDelphiUnit.Create(const Project: IASTProject; const FileName: string; const Source: string);
 var
-  Scope: TScope;
+  Scope: TProcScope;
 begin
   inherited Create(Project, FileName, Source);
 
@@ -6601,9 +6579,12 @@ begin
         Include(VarFlags, VarInOut);
         Result := Lexer_NextToken(Scope);
       end;
-      token_out: begin
-        Include(VarFlags, VarOut);
-        Result := Lexer_NextToken(Scope);
+      token_identifier: begin
+        if Lexer_AmbiguousId = token_out then
+        begin
+          Include(VarFlags, VarOut);
+          Result := Lexer_NextToken(Scope);
+        end;
       end;
     end;
 
@@ -7133,7 +7114,9 @@ begin
     Proc.VarSpace := VarSpace;
 
     Parameters.ProcSpace := Proc.ProcSpace;
-    Proc.EntryScope := Parameters;
+    // use initial EntryScope (declared parameters)
+    // just set Implementation scope as outer scope for the Entry
+    Proc.EntryScope.OuterScope := Parameters.OuterScope;
 
     if (FwdDeclState = dsDifferent) and not (pfOveload in ProcFlags) then
     begin
