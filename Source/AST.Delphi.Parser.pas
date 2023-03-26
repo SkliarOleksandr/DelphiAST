@@ -77,6 +77,7 @@ type
     fErrors: TASTDelphiErrors;
     fSysDecls: PDelphiSystemDeclarations;
     fCache: TDeclCache;
+    fForwardPtrTypes: TList<TIDPointer>;
     property Sys: PDelphiSystemDeclarations read fSysDecls;
     procedure CheckLeftOperand(const Status: TRPNStatus);
     class procedure CheckAndCallFuncImplicit(const EContext: TEContext); overload; static;
@@ -318,6 +319,7 @@ type
     function ParseGenericsArgs(Scope: TScope; const SContext: TSContext; out Args: TIDExpressions): TTokenID;
     function ParseStatements(Scope: TScope; const SContext: TSContext; IsBlock: Boolean): TTokenID; overload;
     function GetPtrReferenceType(Decl: TIDPointer): TIDType;
+    procedure CheckForwardPtrDeclarations;
 
     function ParseExpression(Scope: TScope; const SContext: TSContext; var EContext: TEContext; out ASTE: TASTExpression): TTokenID; overload;
     function ParseConstExpression(Scope: TScope; out Expr: TIDExpression; EPosition: TExpessionPosition): TTokenID;
@@ -403,6 +405,7 @@ type
 
     procedure EnumIntfDeclarations(const Proc: TEnumASTDeclProc); override;
     procedure EnumAllDeclarations(const Proc: TEnumASTDeclProc); override;
+    procedure PostCompileChecks;
 
     property Source: string read GetSource;
     function Compile(ACompileIntfOnly: Boolean; RunPostCompile: Boolean = True): TCompilerResult; override;
@@ -1610,6 +1613,16 @@ begin
   end;
 end;
 
+procedure TASTDelphiUnit.PostCompileChecks;
+begin
+  for var AIndex := 0 to fForwardPtrTypes.Count - 1 do
+  begin
+    var APtrType := fForwardPtrTypes[AIndex];
+    // abort if reference type is not found
+    GetPtrReferenceType(APtrType);
+  end;
+end;
+
 function TASTDelphiUnit.Process_CALL(var EContext: TEContext): TIDExpression;
 var
   PIndex, AIndex, ArgsCount,
@@ -1912,6 +1925,7 @@ end;
 
 destructor TASTDelphiUnit.Destroy;
 begin
+  fForwardPtrTypes.Free;
   fCache.Free;
   fDefines.Free;
   fOptions.Free;
@@ -2513,6 +2527,7 @@ begin
         ERRORS.KEYWORD_EXPECTED;
       end;
     end;
+    PostCompileChecks;
     fUnitState := UnitAllCompiled;
     Result := CompileSuccess;
     FCompiled := Result;
@@ -3484,18 +3499,6 @@ begin
         Decl := Dest.FindImplicitOperatorFrom(SDataType);
         if not Assigned(Decl) then
         begin
-
-//          if (SrcDTID = dtPointer) and (DstDTID = dtPointer) then
-//          begin
-//            // it needs to check
-//            if (TIDPointer(SDataType).ReferenceType = nil) or
-//               (TIDPointer(Dest).ReferenceType = nil) then
-//              Exit(Source);
-//
-//            if TIDPointer(SDataType).ReferenceType.ActualDataType = TIDPointer(Dest).ReferenceType.ActualDataType then
-//              Exit(Source);
-//          end;
-
           { если классы и интерфейс }
           if (SrcDTID = dtClass) and (DstDTID = dtInterface) then
           begin
@@ -4090,6 +4093,25 @@ begin
     AbortWork('Expression has no members', Expression.TextPosition);
 end;
 
+procedure TASTDelphiUnit.CheckForwardPtrDeclarations;
+begin
+  // search and assign reference type for forward pointer types
+  // for searching use current scope only
+  for var AIndex := fForwardPtrTypes.Count - 1 downto 0 do
+  begin
+    var APtrDecl := fForwardPtrTypes[AIndex];
+    var ARefDecl := APtrDecl.Scope.FindID(APtrDecl.ForwardID.Name);
+    if Assigned(ARefDecl) then
+    begin
+      if ARefDecl.ItemType <> itType then
+        AbortWork(sTypeIdExpectedButFoundFmt, [APtrDecl.ForwardID.Name], APtrDecl.ForwardID.TextPosition);
+
+      APtrDecl.ReferenceType := TIDType(ARefDecl);
+      fForwardPtrTypes.Delete(AIndex);
+    end;
+  end;
+end;
+
 class function TASTDelphiUnit.MatchExplicit(const SContext: TSContext; const Source: TIDExpression; Destination: TIDType; out Explicit: TIDDeclaration): TIDExpression;
 var
   SrcDataType: TIDType;
@@ -4440,14 +4462,14 @@ begin
 
   if DeclType.DataTypeID in [dtPointer, dtPAnsiChar, dtPWideChar] then
   begin
-    DeclType := TIDPointer(DeclType).ReferenceType;
-    if DeclType is TIDArray then
+    var APtrType := GetPtrReferenceType(TIDPointer(DeclType));
+    if APtrType is TIDArray then
     begin
-      DimensionsCount := TIDArray(DeclType).DimensionsCount;
-      DataType := TIDArray(DeclType).ElementDataType;
+      DimensionsCount := TIDArray(APtrType).DimensionsCount;
+      DataType := TIDArray(APtrType).ElementDataType;
     end else begin
       DimensionsCount := 1;
-      DataType := DeclType;
+      DataType := APtrType;
     end;
   end else
   if (ArrDecl.ItemType <> itProperty) and (DeclType is TIDArray) then
@@ -5852,6 +5874,7 @@ begin
   fUnitSContext := TSContext.Create(Self, IntfScope);
   fErrors := TASTDelphiErrors.Create(Lexer);
   fCache := TDeclCache.Create;
+  fForwardPtrTypes := TList<TIDPointer>.Create;
 
 //  FParser := TDelphiLexer.Create(Source);
 //  FMessages := TCompilerMessages.Create;
@@ -6691,18 +6714,15 @@ function TASTDelphiUnit.GetPtrReferenceType(Decl: TIDPointer): TIDType;
 begin
   Result := Decl.ReferenceType;
   // if the type has been declared as forward, find the reference type
+  // for searching use all parent scopes
   if not Assigned(Result) and Decl.NeedForward then
   begin
     var TypeDecl := FindID(Decl.Scope, Decl.ForwardID);
-    if Assigned(TypeDecl) then
-    begin
-      if TypeDecl.ItemType <> itType then
-        AbortWork(sTypeIdExpectedButFoundFmt, [Decl.ForwardID.Name], Decl.ForwardID.TextPosition);
+    if TypeDecl.ItemType <> itType then
+      AbortWork(sTypeIdExpectedButFoundFmt, [Decl.ForwardID.Name], Decl.ForwardID.TextPosition);
 
-      Decl.ReferenceType := TIDType(TypeDecl);
-      Result := TIDType(TypeDecl);
-    end else
-      ERRORS.UNDECLARED_ID(Decl.ForwardID);
+    Decl.ReferenceType := TIDType(TypeDecl);
+    Result := TIDType(TypeDecl);
   end;
 end;
 
@@ -6734,6 +6754,7 @@ begin
     Decl := TIDPointer.Create(Scope, ID);
     Decl.ForwardID := TmpID;
     Decl.NeedForward := True;
+    fForwardPtrTypes.Add(Decl);
     InsertToScope(Scope, Decl);
   end;
   Result := Lexer_NextToken(Scope);
@@ -8852,6 +8873,7 @@ begin
     if not Assigned(Decl) then
       ERRORS.INVALID_TYPE_DECLARATION(ID);
 
+    CheckForwardPtrDeclarations;
     // check and parse procedural type call convention
     Result := CheckAndParseProcTypeCallConv(Scope, Result,  Decl);
   until (Result <> token_identifier) and (Result <> token_openblock);
