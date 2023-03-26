@@ -65,7 +65,7 @@ resourcestring
   sRightExpressionHasNoResult = 'Right expression has no result';
     // parameters
   sNotEnoughActualParametersFmt = 'Not enough actual parameters for "%s"';
-  sTooManyActualParameters = 'Too many actual parameters';
+  sTooManyActualParametersFmt = 'Too many actual parameters (expected: %d, actual: %d)';
   sCannotPassConstAsVarParamFmt = 'Can not pass const as var parameter "%s"';
     // Types
   sNoOverloadOperatorForTypesFmt = 'No overload operator "%s" for types "%s" and "%s"';
@@ -229,7 +229,7 @@ type
     class procedure UNDECLARED_ID(const ID: TIdentifier; const GenericParams: TIDTypeArray); overload; static;
     class procedure UNDECLARED_ID(const Name: string; const TextPosition: TTextPosition); overload; static;
     class procedure NOT_ENOUGH_ACTUAL_PARAMS(CallExpr: TIDExpression); static;
-    class procedure TOO_MANY_ACTUAL_PARAMS(CallExpr: TIDExpression); static;
+    class procedure TOO_MANY_ACTUAL_PARAMS(CallExpr: TIDExpression; Expected, Actual: Integer); static;
     class procedure OVERLOADED_MUST_BE_MARKED(const ID: TIdentifier); static;
     class procedure DECL_DIFF_WITH_PREV_DECL(const ID: TIdentifier; const ADeclSing, AImplSign: string); static;
 
@@ -509,9 +509,9 @@ begin
   AbortWork(sDevisionByZero, Expr.TextPosition);
 end;
 
-class procedure TASTDelphiErrors.TOO_MANY_ACTUAL_PARAMS(CallExpr: TIDExpression);
+class procedure TASTDelphiErrors.TOO_MANY_ACTUAL_PARAMS(CallExpr: TIDExpression; Expected, Actual: Integer);
 begin
-  AbortWork(sTooManyActualParameters, CallExpr.TextPosition);
+  AbortWork(sTooManyActualParametersFmt, [Expected, Actual], CallExpr.TextPosition);
 end;
 
 procedure TASTDelphiErrors.SEMICOLON_EXPECTED;

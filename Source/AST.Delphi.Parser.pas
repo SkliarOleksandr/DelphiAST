@@ -1389,7 +1389,7 @@ begin
   if FuncDecl.ParamsCount >= 0 then
   begin
     if ArgsCount > FuncDecl.ParamsCount then
-      ERRORS.TOO_MANY_ACTUAL_PARAMS(CallExpr)
+      ERRORS.TOO_MANY_ACTUAL_PARAMS(CallExpr, FuncDecl.ParamsCount, ArgsCount)
     else if ArgsCount < FuncDecl.ParamsCount then
       ERRORS.NOT_ENOUGH_ACTUAL_PARAMS(CallExpr);
   end;
@@ -3594,7 +3594,7 @@ begin
   pc := Length(ProcParams);
   CallArgsCount := Length(CallArgs);
   if CallArgsCount > pc then
-    ERRORS.TOO_MANY_ACTUAL_PARAMS(CallArgs[pc]);
+    ERRORS.TOO_MANY_ACTUAL_PARAMS(CallArgs[pc], pc, CallArgsCount);
 
   ArgIdx := 0;
   for i := 0 to pc - 1 do begin

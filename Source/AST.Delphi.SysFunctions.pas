@@ -103,6 +103,13 @@ type
     class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {IsConstValue}
+  TSCTF_IsConstValue = class(TIDSysCompileFunction)
+  public
+    function Process(const Ctx: TSysFunctionContext): TIDExpression; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
   {TypeInfo}
   TSCTF_TypeInfo = class(TIDSysCompileFunction)
   public
@@ -1585,6 +1592,21 @@ function TSCTF_IsManagedType.Process(const Ctx: TSysFunctionContext): TIDExpress
 begin
   var ATypeExpr := Ctx.EContext.RPNPopExpression();
   Ctx.UN.CheckType(ATypeExpr);
+  var ResVar := Ctx.EContext.SContext.Proc.GetTMPVar(SYSUnit._Boolean);
+  Result := TIDExpression.Create(ResVar, Ctx.UN.Lexer_Position);
+end;
+
+{ TSCTF_IsConstValue }
+
+class function TSCTF_IsConstValue.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'IsConstValue', SYSUnit._Boolean);
+  Result.AddParam('T', SYSUnit._UntypedReference, [VarConst]);
+end;
+
+function TSCTF_IsConstValue.Process(const Ctx: TSysFunctionContext): TIDExpression;
+begin
+  var AValeExpr := Ctx.EContext.RPNPopExpression();
   var ResVar := Ctx.EContext.SContext.Proc.GetTMPVar(SYSUnit._Boolean);
   Result := TIDExpression.Create(ResVar, Ctx.UN.Lexer_Position);
 end;

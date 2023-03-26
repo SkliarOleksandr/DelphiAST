@@ -247,8 +247,6 @@ type
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
-
-
   {explicit Class of -> Any}
   TSysExplicitClassOfToAny = class(TSysOpImplicit)
   public
@@ -330,6 +328,12 @@ type
 
   {explicit Variant -> Any}
   TSysExplicitVariantToAny = class(TSysOpExplisit)
+  public
+    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
+  {explicit Variant <- Any}
+  TSysExplicitVariantFromAny = class(TSysOpExplisit)
   public
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
@@ -694,7 +698,8 @@ end;
 
 function TSysExplicitAnsiStringFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
-  Result := SYSUnit._PAnsiChar = Src;
+  Result := (SYSUnit._PAnsiChar = Src) or
+            (Src.DataTypeID in [dtPointer, dtUntypedRef]);
 end;
 
 function TSysExplicitAnsiStringFromAny.Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
@@ -709,8 +714,7 @@ end;
 
 function TSysExplicitStringFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
-  Result := (Src.DataTypeID = dtAnsiString) or
-            (Src.DataTypeID in [dtPointer, dtPAnsiChar, dtPWideChar]) or
+  Result := (Src.DataTypeID in [dtAnsiString, dtPointer, dtUntypedRef, dtPAnsiChar, dtPWideChar]) or
             (
               (Src.DataTypeID = dtStaticArray) and
                 (
@@ -770,7 +774,8 @@ end;
 
 function TSysExplicitUntypedRefToAny.Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean;
 begin
-  Result := Dst.IsOrdinal or (Dst.DataTypeID in [dtPointer, dtStaticArray, dtClass, dtInterface]);
+  // does Delphi support explicit cast to any type?
+  Result := True;// Dst.IsOrdinal or (Dst.DataTypeID in [dtPointer, dtStaticArray, dtClass, dtInterface, dtString, dtWideString]);
 end;
 
 { TSysExplicitUntypedToAny }
@@ -1014,6 +1019,13 @@ begin
   Result := Dst.DataTypeID in [dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean,
                         dtFloat32, dtFloat64, dtNativeInt, dtNativeUInt, dtChar, dtAnsiChar,
                         dtString, dtAnsiString, dtWideString, dtVariant];
+end;
+
+{ TSysExplicitVariantFromAny }
+
+function TSysExplicitVariantFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
+begin
+  Result := Src.DataTypeID in [dtPointer, dtUntypedRef];
 end;
 
 end.

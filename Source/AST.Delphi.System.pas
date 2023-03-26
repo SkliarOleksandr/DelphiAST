@@ -112,7 +112,8 @@ type
     ExplicitRangeFromAny,
     ExplicitRecordToAny,
     ExplicitStaticArrayToAny,
-    ExplicitVariantToAny: TIDOperator;
+    ExplicitVariantToAny,
+    ExplicitVariantFromAny: TIDOperator;
     // any cast
     IsOrdinal: TIDOperator;
     // in
@@ -359,6 +360,7 @@ begin
   for i := dtInt8 to dtVariant do
     _Variant.OverloadImplicitTo(DataTypes[i], Operators.ImplicitVariantToAny);
   _Variant.OverloadExplicitToAny(Operators.ExplicitVariantToAny);
+  _Variant.OverloadExplicitFromAny(Operators.ExplicitVariantFromAny);
 
 
   // float32
@@ -426,6 +428,8 @@ begin
 
   // WideString
   _WideString.OverloadImplicitTo(_UnicodeString);
+  _WideString.OverloadImplicitFromAny(Operators.ImplicitStringFromAny);
+  _WideString.OverloadExplicitFromAny(Operators.ExplicitStringFromAny);
 
   // WideChar
   _WideChar.OverloadImplicitTo(_WideChar);
@@ -1078,6 +1082,7 @@ begin
   RegisterBuiltin(TSCTF_Defined);
   RegisterBuiltin(TSCTF_Default);
   RegisterBuiltin(TSCTF_IsManagedType);
+  RegisterBuiltin(TSCTF_IsConstValue);
   RegisterBuiltin(TSCTF_TypeInfo);
   RegisterBuiltin(TSCTF_Console);
   RegisterBuiltin(TSCTF_TypeName);
@@ -1285,6 +1290,7 @@ begin
   ExplicitRecordToAny := TSysExplicitRecordToAny.CreateAsSystem(Scope);
   ExplicitStaticArrayToAny := TSysExplicitStaticArrayToAny.CreateAsSystem(Scope);
   ExplicitVariantToAny := TSysExplicitVariantToAny.CreateAsSystem(Scope);
+  ExplicitVariantFromAny := TSysExplicitVariantFromAny.CreateAsSystem(Scope);
   // any cast
   IsOrdinal := TSysTypeCast_IsOrdinal.CreateAsSystem(Scope);
 
