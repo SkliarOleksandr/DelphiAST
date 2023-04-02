@@ -52,6 +52,7 @@ type
     _TObject: TIDClass;
     _Exception: TIDClass;
     _EAssertClass: TIDClass;
+    _TTypeKind: TIDEnum;
     _DateTimeType: TIDType;
     _DateType: TIDType;
     _TimeType: TIDType;

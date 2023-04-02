@@ -229,6 +229,7 @@ type
     property _TObject: TIDClass read fDecls._TObject;
     property _Exception: TIDClass read fDecls._Exception;
     property _EAssert: TIDClass read fDecls._EAssertClass;
+    property _TTypeKind: TIDEnum read fDecls._TTypeKind;
     property _DateTime: TIDType read fDateTimeType;
     property _Date: TIDType read fDateType;
     property _Time: TIDType read fTimeType;
@@ -1036,6 +1037,7 @@ begin
   fDecls._TObject := GetPublicClass('TObject');
   fDecls._ResStringRecord := GetPublicType('PResStringRec');
   fDecls._TVarRec := GetPublicType('TVarRec');
+  fDecls._TTypeKind := GetPublicType('TTypeKind') as TIDEnum;
   if Assigned(fDecls._TVarRec) then
     AddTVarRecImplicitOperators;
 end;
@@ -1084,8 +1086,8 @@ begin
   RegisterBuiltin(TSCTF_IsManagedType);
   RegisterBuiltin(TSCTF_IsConstValue);
   RegisterBuiltin(TSCTF_TypeInfo);
-  RegisterBuiltin(TSCTF_Console);
   RegisterBuiltin(TSCTF_TypeName);
+  RegisterBuiltin(TSCTF_GetTypeKind);
   RegisterBuiltin(TSCTF_Declared);
   RegisterBuiltin(TSF_Delete);
   RegisterBuiltin(TSF_Exit);
@@ -1128,6 +1130,10 @@ begin
   RegisterVariable(ImplScope, 'ReturnAddress', _Pointer);
   RegisterConstStr(ImplScope, 'libmmodulename', '');
   RegisterConstInt('CompilerVersion', _Int32, 35); // Delphi 11.x
+
+  // jsut for debug purpose
+  RegisterBuiltin(TSCTF_Console);
+  RegisterBuiltin(TSCTF_Scope);
 end;
 
 function TSYSTEMUnit.RegisterOrdinal(const TypeName: string; DataType: TDataTypeID; LowBound: Int64; HighBound: UInt64): TIDType;

@@ -1605,15 +1605,17 @@ type
 
   TProcScope = class(TScope)
   private
-    fOuterScope: TScope; // внешняя по отношению к методу, область видимости (секция implementation реализации метода)
+    fProc: TIDProcedure;
+    fOuterScope: TScope; // todo: implementation scope
   protected
     function GetScopeClass: TScopeClass; override;
     function GetName: string; override;
     function GetNameEx: string; override;
   public
-    constructor CreateInDecl(Parent: TScope; VarSpace: PVarSpace; ProcSpace: PProcSpace); reintroduce;
+    constructor CreateInDecl(Parent: TScope; Proc: TIDProcedure; VarSpace: PVarSpace; ProcSpace: PProcSpace); reintroduce;
     constructor CreateInBody(Parent: TScope); reintroduce;
-    property OuterScope: TScope read FOuterScope write FOuterScope;
+    property OuterScope: TScope read fOuterScope write fOuterScope;
+    property Proc: TIDProcedure read fProc write fProc;
     function FindIDRecurcive(const ID: string): TIDDeclaration; override;
   end;
 
@@ -1627,7 +1629,7 @@ type
     constructor CreateAsStruct(Parent: TScope; Struct: TIDStructure; VarSpace: PVarSpace; ProcSpace: PProcSpace; DeclUnit: TASTModule); reintroduce;
     function FindIDRecurcive(const ID: string): TIDDeclaration; override;
     function FindMembers(const ID: string): TIDDeclaration; override;
-    property Struct: TIDStructure read FStruct;
+    property Struct: TIDStructure read fStruct;
   end;
 
   TRecordInitScope = class(TScope)
@@ -1655,12 +1657,14 @@ type
 
   TMethodScope = class(TProcScope)
   private
+    function GetStruct: TIDStructure; inline;
   protected
     function GetName: string; override;
   public
-    constructor CreateInDecl(OuterScope, Parent: TScope; VarSpace: PVarSpace; ProcSpace: PProcSpace); reintroduce; overload;
-    constructor CreateInDecl(OuterScope, Parent: TScope); overload;
+    constructor CreateInDecl(OuterScope, Parent: TScope; AProc: TIDProcedure; VarSpace: PVarSpace; ProcSpace: PProcSpace); reintroduce; overload;
+    constructor CreateInDecl(OuterScope, Parent: TScope; AProc: TIDProcedure); overload;
     function FindIDRecurcive(const ID: string): TIDDeclaration; override;
+    property Struct: TIDStructure read GetStruct;
   end;
 
   TInterfaceScope = class(TScope)
@@ -1683,6 +1687,7 @@ type
     constructor Create(InterfaceScope: TScope); reintroduce;
     function FindID(const Identifier: string): TIDDeclaration; override;
     function FindIDRecurcive(const ID: string): TIDDeclaration; override;
+    property IntfScope: TScope read fIntfScope;
   end;
 
   TConditionalScope = class(TScope)
@@ -2156,9 +2161,9 @@ end;
 function TScope.GetParentNames: string;
 begin
   if Assigned(Parent) then
-    Result := Parent.GetParentNames + '->' + GetNameEx
+    Result := Name + ' <-- ' + Parent.GetParentNames
   else
-    Result := GetNameEx;
+    Result := Name;
 end;
 
 { TIDList }
@@ -2369,7 +2374,7 @@ constructor TIDProcedure.CreateAsSystem(Scope: TScope; const Name: string);
 begin
   inherited CreateAsSystem(Scope, Name);
   ItemType := itProcedure;
-  FParamsScope := TMethodScope.CreateInDecl(Scope, Scope, addr(FVarSpace), addr(FProcSpace));
+  FParamsScope := TProcScope.CreateInDecl(Scope, Self, addr(FVarSpace), addr(FProcSpace));
   FEntryScope := FParamsScope;
 end;
 
@@ -2379,7 +2384,7 @@ var
 begin
   inherited CreateAsSystem(Scope, Name);
   ItemType := itProcedure;
-  FParamsScope := TMethodScope.CreateInDecl(Scope, Struct.Members, addr(FVarSpace), addr(FProcSpace));
+  FParamsScope := TMethodScope.CreateInDecl(Scope, Struct.Members, Self, addr(FVarSpace), addr(FProcSpace));
   if Struct.DataTypeID = dtRecord then
     SelfParam := TIDVariable.Create(FParamsScope, Identifier('Self'), Struct, [VarParameter, VarSelf, VarConst, VarInOut, VarHiddenParam])
   else
@@ -5427,7 +5432,7 @@ end;
 
 function TInterfaceScope.GetName: string;
 begin
-  Result := fUnit.Name + '$interface';
+  Result := 'unit$' + fUnit.Name + '$interface';
 end;
 
 { TImplementationScope }
@@ -5481,7 +5486,7 @@ end;
 
 function TImplementationScope.GetName: string;
 begin
-  Result := fUnit.Name + '$implementation';
+  Result := 'unit$' + fUnit.Name + '$implementation';
 end;
 
 function TImplementationScope.GetScopeClass: TScopeClass;
@@ -5532,7 +5537,7 @@ begin
     //Expression := FExpression; todo: with !!!!
     Exit;
   end;
-  Result := FOuterScope.FindIDRecurcive(ID);
+  Result := fOuterScope.FindIDRecurcive(ID);
   if not Assigned(Result) then
     Result := inherited FindIDRecurcive(ID);
 end;
@@ -5747,12 +5752,13 @@ begin
   Parent.AddChild(Self);
 end;
 
-constructor TProcScope.CreateInDecl(Parent: TScope; VarSpace: PVarSpace; ProcSpace: PProcSpace);
+constructor TProcScope.CreateInDecl(Parent: TScope; Proc: TIDProcedure; VarSpace: PVarSpace; ProcSpace: PProcSpace);
 begin
   inherited Create(StrCICompare);
   FScopeType := stLocal;
   FParent := Parent;
   FUnit := Parent.DeclUnit;
+  fProc := Proc;
   FVarSpace := VarSpace;
   FProcSpace := ProcSpace;
   Parent.AddChild(Self);
@@ -5760,7 +5766,10 @@ end;
 
 function TProcScope.GetName: string;
 begin
-  Result := 'proc$' + fName;
+  if Assigned(Proc) then
+    Result := 'proc$' + Proc.Name
+  else
+    Result := 'proc$<unassigned>';
 end;
 
 function TProcScope.GetNameEx: string;
@@ -5776,8 +5785,8 @@ end;
 function TProcScope.FindIDRecurcive(const ID: string): TIDDeclaration;
 begin
   Result := inherited FindIDRecurcive(ID);
-  if not Assigned(Result) and Assigned(FOuterScope) then
-    Result := FOuterScope.FindIDRecurcive(ID);
+  if not Assigned(Result) and Assigned(fOuterScope) then
+    Result := fOuterScope.FindIDRecurcive(ID);
 end;
 
 { TIDClassType }
@@ -5877,31 +5886,79 @@ end;
 
 { TMethodScope }
 
-constructor TMethodScope.CreateInDecl(OuterScope, Parent: TScope; VarSpace: PVarSpace; ProcSpace: PProcSpace);
+constructor TMethodScope.CreateInDecl(OuterScope, Parent: TScope; AProc: TIDProcedure; VarSpace: PVarSpace; ProcSpace: PProcSpace);
 begin
-  inherited CreateInDecl(Parent, VarSpace, ProcSpace);
-  FOuterScope := OuterScope;
+  inherited CreateInDecl(Parent, AProc, VarSpace, ProcSpace);
+  FProc := AProc;
+  fOuterScope := OuterScope;
 end;
 
-constructor TMethodScope.CreateInDecl(OuterScope, Parent: TScope);
+constructor TMethodScope.CreateInDecl(OuterScope, Parent: TScope; AProc: TIDProcedure);
 begin
-  inherited CreateInDecl(Parent, nil, nil);
-  FOuterScope := OuterScope;
+  inherited CreateInDecl(Parent, AProc, nil, nil);
+  fOuterScope := OuterScope;
 end;
 
 function TMethodScope.FindIDRecurcive(const ID: string): TIDDeclaration;
 begin
-  // for methods, we search all declarations in the struct itself, and all its ancestors
-  Result := inherited FindIDRecurcive(ID);
+  // search in local scope
+  Result := FindID(ID);
   if Assigned(Result) then
     Exit;
-  // then, we search in outer scope
-  Result := FOuterScope.FindIDRecurcive(ID);
+
+  // serach in local parent scopes
+  var ALocalScope := FParent;
+  while Assigned(ALocalScope) and (ALocalScope.ScopeType <> stStruct) do
+  begin
+    Result := ALocalScope.FindID(ID);
+    if Assigned(Result) then
+      Exit;
+    ALocalScope := ALocalScope.Parent;
+  end;
+
+  // search in the impl scope (without uses)
+  var AOuterDecl := fOuterScope.FindID(ID);
+
+  // serach in local parent scopes
+  var AStructScope := FParent;
+  while Assigned(AStructScope) and (AStructScope.ScopeType = stStruct) do
+  begin
+    var AStructDecl := AStructScope.FindID(ID);
+    if Assigned(AStructDecl) then
+    begin
+      if Assigned(AOuterDecl) and (AOuterDecl.ID.TextPosition.Col > AStructDecl.ID.TextPosition.Col) then
+        Result := AOuterDecl
+      else
+        Result := AStructDecl;
+      Exit;
+    end;
+    AStructScope := AStructScope.Parent;
+  end;
+
+  // search in the all impl uses scopes
+  Result := fOuterScope.FindIDRecurcive(ID);
+  if Assigned(Result) then
+    Exit;
+
+  // search in the all intf uses scopes
+  Result := fParent.FindIDRecurcive(ID);
 end;
 
 function TMethodScope.GetName: string;
 begin
-  Result := 'method$' + fName;
+  if Assigned(fProc) then
+  begin
+    if Assigned(fProc.Struct) then
+      Result := 'method$' + fProc.Struct.Name + ':' + fProc.Name
+    else
+      Result := 'method$<unassigned>:' + fProc.Name;
+  end else
+    Result := 'method$<unassigned>';
+end;
+
+function TMethodScope.GetStruct: TIDStructure;
+begin
+  Result := fProc.Struct;
 end;
 
 { TIDField }
@@ -6146,7 +6203,7 @@ end;
 
 function TStructScope.GetName: string;
 begin
-  Result := fStruct.Name + '$struct_scope';
+  Result := 'struct$' + fStruct.Name;
 end;
 
 function TStructScope.GetNameEx: string;

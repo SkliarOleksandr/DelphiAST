@@ -89,6 +89,13 @@ type
     class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {_scope}
+  TSCTF_Scope = class(TIDSysCompileFunction)
+  public
+    function Process(const Ctx: TSysFunctionContext): TIDExpression; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
   {_typename}
   TSCTF_TypeName = class(TIDSysCompileFunction)
   public
@@ -112,6 +119,13 @@ type
 
   {TypeInfo}
   TSCTF_TypeInfo = class(TIDSysCompileFunction)
+  public
+    function Process(const Ctx: TSysFunctionContext): TIDExpression; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
+  {GetTypeKind}
+  TSCTF_GetTypeKind = class(TIDSysCompileFunction)
   public
     function Process(const Ctx: TSysFunctionContext): TIDExpression; override;
     class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
@@ -1443,6 +1457,18 @@ begin
   Result := nil;
 end;
 
+{ TSCTF_Scope }
+
+class function TSCTF_Scope.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, '_scope', SYSUnit._Void);
+end;
+
+function TSCTF_Scope.Process(const Ctx: TSysFunctionContext): TIDExpression;
+begin
+  Ctx.UN.Package.CosoleWrite(Ctx.UN, Ctx.UN.Lexer_Line, Ctx.Scope.GetParentNames);
+  Result := nil;
+end;
 
 { TSCTF_TypeName }
 
@@ -1624,6 +1650,22 @@ begin
   var ATypeExpr := Ctx.EContext.RPNPopExpression();
   Ctx.UN.CheckType(ATypeExpr);
   var ResVar := Ctx.EContext.SContext.Proc.GetTMPVar(SYSUnit._Pointer);
+  Result := TIDExpression.Create(ResVar, Ctx.UN.Lexer_Position);
+end;
+
+{ TSCTF_GetTypeKind }
+
+class function TSCTF_GetTypeKind.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'GetTypeKind', SYSUnit._TTypeKind);
+  Result.AddParam('T', SYSUnit._TypeID, []);
+end;
+
+function TSCTF_GetTypeKind.Process(const Ctx: TSysFunctionContext): TIDExpression;
+begin
+  var ATypeExpr := Ctx.EContext.RPNPopExpression();
+  Ctx.UN.CheckType(ATypeExpr);
+  var ResVar := Ctx.EContext.SContext.Proc.GetTMPVar(SYSUnit._TTypeKind);
   Result := TIDExpression.Create(ResVar, Ctx.UN.Lexer_Position);
 end;
 

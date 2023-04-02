@@ -339,6 +339,7 @@ type
     function ParseExplicitCast(Scope: TScope; const SContext: TSContext; var DstExpression: TIDExpression): TTokenID;
     function ParseProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure = nil): TTokenID;
     function ParseGlobalProc(Scope: TScope; ProcType: TProcType; const ID: TIdentifier; Parameters: TProcScope): TTokenID;
+    function ParseNestedProc(Scope: TScope; ProcType: TProcType; const ID: TIdentifier; Parameters: TProcScope): TTokenID;
 
     function ParseProcName(Scope: TScope; ProcType: TProcType; out Name: TIdentifier; var Struct: TIDStructure;
                            out ProcScope: TProcScope; out GenericParams: TIDTypeArray): TTokenID;
@@ -4382,7 +4383,7 @@ end;
 
 function TASTDelphiUnit.ParseAnonymousProc(Scope: TScope; var EContext: TEContext; const SContext: TSContext; ProcType: TTokenID): TTokenID;
 var
-  Parameters: TProcScope;
+  EntryScope: TProcScope;
   GenericsArgs: TIDTypeArray;
   ResultType: TIDType;
   ProcDecl: TASTDelphiProc;
@@ -4391,7 +4392,7 @@ var
   Expr: TIDExpression;
 begin
   VarSpace.Initialize;
-  Parameters := TProcScope.CreateInDecl(Scope, @VarSpace, nil);
+  EntryScope := TProcScope.CreateInDecl(Scope, nil, @VarSpace, nil);
 
   // создаем Result переменную (тип будет определен позже)
 
@@ -4399,12 +4400,12 @@ begin
 
   // если generic
   if Result = token_less then
-    Result := ParseGenericsHeader(Parameters, {out} GenericsArgs);
+    Result := ParseGenericsHeader(EntryScope, {out} GenericsArgs);
 
   // парсим параметры
   if Result = token_openround then
   begin
-    ParseParameters(Parameters);
+    ParseParameters(EntryScope);
     Result := Lexer_NextToken(Scope); // move to "token_colon"
   end;
 
@@ -4412,8 +4413,8 @@ begin
   begin
     Lexer_MatchToken(Result, token_colon);
     // парсим тип возвращаемого значения
-    Result := ParseTypeSpec(Parameters, {out} ResultType);
-    AddResultParameter(Parameters, ResultType);
+    Result := ParseTypeSpec(EntryScope, {out} ResultType);
+    AddResultParameter(EntryScope, ResultType);
   end else
     ResultType := nil;
 
@@ -4421,11 +4422,13 @@ begin
 
   ProcDecl := TASTDelphiProc.CreateAsAnonymous(ImplScope);
   ProcDecl.VarSpace := VarSpace;
-  ProcDecl.ParamsScope := Parameters;
-  ProcDecl.EntryScope := Parameters;
-  ProcDecl.ExplicitParams := ScopeToVarList(Parameters, IfThen(ProcType = token_procedure, 0, 1));
+  ProcDecl.ParamsScope := EntryScope;
+  ProcDecl.EntryScope := EntryScope;
+  ProcDecl.ExplicitParams := ScopeToVarList(EntryScope, IfThen(ProcType = token_procedure, 0, 1));
   ProcDecl.ResultType := ResultType;
   ProcDecl.CreateProcedureTypeIfNeed(Scope);
+  EntryScope.Proc := ProcDecl;
+
   {парсим тело анонимной процедуры}
   Result := ParseProcBody(ProcDecl);
 
@@ -4603,7 +4606,7 @@ begin
   Result := Lexer_NextToken(Scope);
   if Result = token_openblock then begin
     VarSpace.Initialize;
-    PropParams := TProcScope.CreateInDecl(Scope, @VarSpace, nil);
+    PropParams := TProcScope.CreateInDecl(Scope, nil, @VarSpace, nil);
     Prop.Params := PropParams;
     Result := ParseParameters(PropParams);
     Lexer_MatchToken(Result, token_closeblock);
@@ -5897,14 +5900,10 @@ begin
   fCondStack := TSimpleStack<Boolean>.Create(0);
   fCondStack.OnPopError := procedure begin ERRORS.INVALID_COND_DIRECTIVE end;
 
-  Scope := TProcScope.CreateInBody(ImplScope);
-  FInitProc := TASTDelphiProc.CreateAsSystem(Scope, '$initialization');
-  FInitProc.EntryScope := Scope;
+  FInitProc := TASTDelphiProc.CreateAsSystem(ImplScope, '$initialization');
   TASTDelphiProc(FInitProc).Body := TASTBlock.Create(FInitProc);
 
-  Scope := TProcScope.CreateInBody(ImplScope);
-  FFinalProc := TASTDelphiProc.CreateAsSystem(Scope, '$finalization');
-  FFinalProc.EntryScope := Scope;
+  FFinalProc := TASTDelphiProc.CreateAsSystem(ImplScope, '$finalization');
   TASTDelphiProc(FFinalProc).Body := TASTBlock.Create(FFinalProc);
 end;
 
@@ -6885,7 +6884,10 @@ begin
 
   if not Assigned(Struct) then
   begin
-    Result := ParseGlobalProc(Scope, ProcType, ID, Parameters);
+    if Scope.ScopeClass <> scProc then
+      Result := ParseGlobalProc(Scope, ProcType, ID, Parameters)
+    else
+      Result := ParseNestedProc(Scope, ProcType, ID, Parameters);
     Exit;
   end;
 
@@ -7059,6 +7061,7 @@ begin
     Proc.EntryScope := Parameters;
     Proc.VarSpace := VarSpace;
     Proc.ResultType := ResultType;
+    Parameters.Proc := Proc;
 
     if Scope.ScopeClass = scInterface then
       Proc.Flags := Proc.Flags + [pfForward];
@@ -7326,6 +7329,7 @@ begin
     Proc.ParamsScope := Parameters;
     Proc.VarSpace := VarSpace;
     Proc.ResultType := ResultType;
+    Parameters.Proc := Proc;
 
     if Scope.ScopeClass = scInterface then
       Proc.Flags := Proc.Flags + [pfForward];
@@ -7367,6 +7371,236 @@ begin
 
     Parameters.ProcSpace := Proc.ProcSpace;
     Proc.EntryScope := Parameters;
+    Parameters.Name;
+
+    if Assigned(ForwardDecl) and
+       (ForwardDecl.Scope = Scope) and
+       (FwdDeclState = dsDifferent) and
+       not (pfOveload in ProcFlags) then
+    begin
+      if ForwardDecl.IsCompleted then
+        ERRORS.OVERLOADED_MUST_BE_MARKED(ID)
+      else
+        ERRORS.DECL_DIFF_WITH_PREV_DECL(ID, ForwardDecl.DisplayName, Proc.DisplayName);
+    end;
+    // parse proc body
+    Result := ParseProcBody(Proc);
+    if Result = token_eof then
+      Exit;
+
+    if Result <> token_semicolon then
+      ERRORS.SEMICOLON_EXPECTED;
+
+    Result := Lexer_NextToken(Scope);
+  end;
+end;
+
+function TASTDelphiUnit.ParseNestedProc(Scope: TScope; ProcType: TProcType; const ID: TIdentifier;
+  Parameters: TProcScope): TTokenID;
+type
+  TFwdDeclState = (dsNew, dsDifferent, dsSame);
+var
+  ResultType: TIDType;
+  VarSpace: TVarSpace;
+  Proc, ForwardDecl: TASTDelphiProc;
+  ForwardDeclNode: TIDList.PAVLNode;
+  FwdDeclState: TFwdDeclState;
+  FirstSkipCnt: Integer;
+  CallConv: TCallConvention;
+  ProcFlags: TProcFlags;
+begin
+  VarSpace.Initialize;
+  Parameters.VarSpace := addr(VarSpace);
+
+  Result := Lexer_CurTokenID;
+
+  // parse parameters
+  if Result = token_openround then
+  begin
+    ParseParameters(Parameters);
+    Result := Lexer_NextToken(Scope);
+  end;
+
+  // parse return type
+  if ProcType = ptFunc then
+  begin
+    if Result <> token_semicolon then
+    begin
+      Lexer_MatchToken(Result, token_colon);
+      Result := ParseTypeSpec(Parameters, ResultType);
+      AddResultParameter(Parameters, ResultType);
+    end else
+      ResultType := nil;
+  end else
+    ResultType := nil;
+
+  if Result = token_semicolon then
+    Result := Lexer_NextToken(Scope)
+  else
+  if not (Result in [token_overload, token_stdcall, token_cdecl]) then
+    ERRORS.SEMICOLON_EXPECTED;
+
+  ProcFlags := [];
+
+  // parse proc specifiers
+  while True do begin
+    case Result of
+      token_forward: Result := ProcSpec_Forward(Scope, ProcFlags);
+      token_inline: Result := ProcSpec_Inline(Scope, ProcFlags);
+      token_overload: Result := ProcSpec_Overload(Scope, ProcFlags);
+      token_stdcall: Result := ProcSpec_StdCall(Scope, CallConv);
+      token_fastcall: Result := ProcSpec_FastCall(Scope, CallConv);
+      token_cdecl: Result := ProcSpec_CDecl(Scope, CallConv);
+      token_varargs: begin
+        Lexer_ReadSemicolon(Scope);
+        Result := Lexer_NextToken(Scope);
+      end;
+      token_deprecated: begin
+        Result := CheckAndParseDeprecated(Scope, token_deprecated);
+        Result := Lexer_NextToken(Scope);
+      end;
+      token_id_or_keyword: begin
+        if Lexer_AmbiguousId = token_platform then
+        begin
+          Result := ParsePlatform(Scope);
+          Result := Lexer_NextToken(Scope);
+        end;
+      end;
+    else
+      break;
+    end;
+  end;
+
+  ForwardDecl := nil;
+  ForwardDeclNode := nil;
+
+  {search the procedure forward declaration}
+
+  // first, search the declaration in the current scope only
+  ForwardDeclNode := Scope.Find(ID.Name);
+
+  // second, search the declaration in the interface section scope
+  if not Assigned(ForwardDeclNode) and (Scope = ImplScope) then
+    ForwardDeclNode := IntfScope.Find(ID.Name);
+
+  // third, search in the uses units
+  if not Assigned(ForwardDeclNode) then
+  begin
+    if Scope = ImplScope then
+    begin
+      var LDecl := ImplScope.FindIDRecurcive(ID.Name);
+      if LDecl is TASTDelphiProc then
+        ForwardDecl := TASTDelphiProc(LDecl);
+    end else
+    begin
+      var LDecl := IntfScope.FindIDRecurcive(ID.Name);
+      if LDecl is TASTDelphiProc then
+        ForwardDecl := TASTDelphiProc(LDecl);
+    end;
+  end;
+
+  if Assigned(ForwardDeclNode) and not Assigned(ForwardDecl) then
+    ForwardDecl := TASTDelphiProc(ForwardDeclNode.Data);
+
+  Proc := nil;
+  FwdDeclState := dsDifferent;
+
+  {если найдена ранее обьявленная декларация, проверяем соответствие}
+  if Assigned(ForwardDecl) then
+  begin
+    if (Scope.ScopeClass = scInterface) and (ForwardDecl.Scope.DeclUnit = Self) then
+    begin
+      if not (pfOveload in ForwardDecl.Flags) then
+        ERRORS.OVERLOADED_MUST_BE_MARKED(ForwardDecl.ID)
+      else
+      if not (pfOveload in ProcFlags) then
+        ERRORS.OVERLOADED_MUST_BE_MARKED(ID);
+    end;
+
+    // ошибка если перекрыли идентификатор другого типа:
+    if ForwardDecl.ItemType <> itProcedure then
+      ERRORS.ID_REDECLARATED(ID);
+
+    // The case when proc impl doesn't have params at all insted of decl
+    if (Parameters.Count = 0) and (ForwardDecl.PrevOverload = nil) and (ForwardDecl.Scope = Scope) then
+    begin
+      FwdDeclState := dsSame;
+      Proc := ForwardDecl;
+      Parameters.CopyFrom(ForwardDecl.ParamsScope);
+    end else
+    if (pfOveload in ForwardDecl.Flags) then
+    begin
+      // search overload
+      var Decl := ForwardDecl;
+      while True do begin
+        if Decl.SameDeclaration(Parameters) then begin
+          FwdDeclState := dsSame;
+          if ((Decl.Scope = Scope) and not (pfForward in Decl.Flags)) or
+              ((pfCompleted in Decl.Flags) and (ForwardDecl.Scope.DeclUnit = Self)) then
+            ERRORS.ID_REDECLARATED(ID);
+          Proc := Decl;
+          Break;
+        end;
+        if not Assigned(Decl.PrevOverload) then
+          Break;
+        Decl := TASTDelphiProc(Decl.PrevOverload);
+      end;
+    end else
+      FwdDeclState := dsNew;
+  end else
+    FwdDeclState := dsNew;
+
+  {create a new declaration}
+  if not Assigned(Proc) then
+  begin
+    Proc := TASTDelphiProc.Create(Scope, ID);
+    // Для Scope будут переопределены VarSpace и ProcSpace
+    Proc.ParamsScope := Parameters;
+    Proc.VarSpace := VarSpace;
+    Proc.ResultType := ResultType;
+    Parameters.Proc := Proc;
+
+    if Scope.ScopeClass = scInterface then
+      Proc.Flags := Proc.Flags + [pfForward];
+
+    FirstSkipCnt := 0;
+    if Assigned(ResultType) then
+      Inc(FirstSkipCnt);
+    Proc.ExplicitParams := ScopeToVarList(Parameters, FirstSkipCnt);
+
+    // добовляем новую декларацию в структуру или глобольный список или к списку перегруженных процедур
+    if not Assigned(ForwardDecl) then
+    begin
+      Scope.AddProcedure(Proc);
+    end else begin
+      // доавляем в список следующую перегруженную процедуру
+      if pfOveload in ProcFlags then
+        Proc.PrevOverload := ForwardDecl;
+      // override the declaration if the scope the same
+      if (ForwardDecl.Scope = Scope) then
+        ForwardDeclNode.Data := Proc
+      else
+        Scope.InsertID(Proc);
+
+      Scope.ProcSpace.Add(Proc);
+    end;
+  end;
+
+  CallConv := ConvNative;
+  Proc.Flags := Proc.Flags + ProcFlags;
+  Proc.CallConvention := CallConv;
+
+  if (Scope.ScopeClass <> scInterface) and not (pfImport in ProcFlags)
+                                       and not (pfForward in ProcFlags) then
+  begin
+    // имена парметров реализации процедуры могут отличатся от ее определения
+    // копируем накопленный VarSpace в процедуру
+
+    Proc.VarSpace := VarSpace;
+
+    Parameters.ProcSpace := Proc.ProcSpace;
+    Proc.EntryScope := Parameters;
+    Parameters.Name;
 
     if Assigned(ForwardDecl) and
        (ForwardDecl.Scope = Scope) and
@@ -7417,10 +7651,10 @@ begin
     Result := Lexer_NextToken(Scope);
     if Result = token_less then
     begin
-      if Assigned(Struct) then
-        ProcScope := TMethodScope.CreateInDecl(Scope, GetStructScope(Struct, ProcType))
+      if Assigned(Struct) or Scope.InheritsFrom(TMethodScope) then
+        ProcScope := TMethodScope.CreateInDecl(Scope, GetStructScope(Struct, ProcType), nil)
       else
-        ProcScope := TProcScope.CreateInDecl(Scope, nil, nil);
+        ProcScope := TProcScope.CreateInDecl(Scope, nil, nil, nil);
       Result := ParseGenericsHeader(ProcScope, GenericParams);
       SearchName := Format('%s<%d>', [Name.Name, Length(GenericParams)]);
     end else
@@ -7449,11 +7683,10 @@ begin
     if not Assigned(ProcScope) then
     begin
       if Assigned(Struct) then
-        ProcScope := TMethodScope.CreateInDecl(Scope, GetStructScope(Struct, ProcType))
+        ProcScope := TMethodScope.CreateInDecl(Scope, GetStructScope(Struct, ProcType), nil)
       else
-        ProcScope := TProcScope.CreateInDecl(Scope, nil, nil);
+        ProcScope := TProcScope.CreateInDecl(Scope, nil, nil, nil);
     end;
-    {$IFDEF DEBUG}ProcScope.Name := Name.Name + '$params'; {$ENDIF}
     Exit;
   end;
 end;
@@ -7553,9 +7786,9 @@ begin
 
   VarSpace.Initialize;
   if Assigned(Struct) then
-    Parameters := TMethodScope.CreateInDecl(Scope, Struct.Members, @VarSpace, nil)
+    Parameters := TMethodScope.CreateInDecl(Scope, Struct.Members, Proc, @VarSpace, nil)
   else
-    Parameters := TProcScope.CreateInDecl(Scope, @VarSpace, nil);
+    Parameters := TProcScope.CreateInDecl(Scope, Proc, @VarSpace, nil);
 
   // создаем Result переменную (пока без имени) и добовляем ее в VarSpace чтобы зарезервировать индекс
   if Assigned(GenericProc.ResultType) then
