@@ -4878,6 +4878,7 @@ procedure TIDDynArray.CreateStandardOperators;
 begin
   inherited;
   AddBinarySysOperator(opEqual, SYSUnit.Operators.Equal_DynArray);
+  OverloadExplicitToAny(SYSUnit.Operators.ExplicitDynArrayToAny);
 end;
 
 function TIDDynArray.GetDimension(Index: Integer): TIDOrdinal;

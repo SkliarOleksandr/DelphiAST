@@ -326,6 +326,12 @@ type
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
+  {explicit DynArray -> Any}
+  TSysExplicitDynArrayToAny = class(TSysOpExplisit)
+  public
+    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
   {explicit Variant -> Any}
   TSysExplicitVariantToAny = class(TSysOpExplisit)
   public
@@ -337,7 +343,6 @@ type
   public
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
-
 
   ///////////////////////////////////////////////////////////////////////////////////////////
   /// BINARY
@@ -923,6 +928,15 @@ function TSysExplicitStaticArrayToAny.Check(const SContext: TSContext; const Src
 begin
   Result := Src.DataSize = Dst.DataSize;
 end;
+
+{ TSysExplicitDynArrayToAny }
+
+function TSysExplicitDynArrayToAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
+begin
+  Result := (Dst.DataTypeID = dtDynArray) and SameTypes(TIDDynArray(Src).ElementDataType,
+                                                        TIDDynArray(Dst).ElementDataType);
+end;
+
 
 { TSys_Add_Set }
 

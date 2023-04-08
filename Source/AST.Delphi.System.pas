@@ -112,6 +112,7 @@ type
     ExplicitRangeFromAny,
     ExplicitRecordToAny,
     ExplicitStaticArrayToAny,
+    ExplicitDynArrayToAny,
     ExplicitVariantToAny,
     ExplicitVariantFromAny: TIDOperator;
     // any cast
@@ -1088,6 +1089,7 @@ begin
   RegisterBuiltin(TSCTF_TypeInfo);
   RegisterBuiltin(TSCTF_TypeName);
   RegisterBuiltin(TSCTF_GetTypeKind);
+  RegisterBuiltin(TSCTF_HasWeakRef);
   RegisterBuiltin(TSCTF_Declared);
   RegisterBuiltin(TSF_Delete);
   RegisterBuiltin(TSF_Exit);
@@ -1295,6 +1297,7 @@ begin
   ExplicitRangeFromAny := TSysExplicitRangeFromAny.CreateAsSystem(Scope);
   ExplicitRecordToAny := TSysExplicitRecordToAny.CreateAsSystem(Scope);
   ExplicitStaticArrayToAny := TSysExplicitStaticArrayToAny.CreateAsSystem(Scope);
+  ExplicitDynArrayToAny := TSysExplicitDynArrayToAny.CreateAsSystem(Scope);
   ExplicitVariantToAny := TSysExplicitVariantToAny.CreateAsSystem(Scope);
   ExplicitVariantFromAny := TSysExplicitVariantFromAny.CreateAsSystem(Scope);
   // any cast

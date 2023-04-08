@@ -131,6 +131,13 @@ type
     class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {HasWeakRef}
+  TSCTF_HasWeakRef = class(TIDSysCompileFunction)
+  public
+    function Process(const Ctx: TSysFunctionContext): TIDExpression; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
   {Delete}
   TSF_Delete = class(TIDSysRuntimeFunction)
   public
@@ -1666,6 +1673,21 @@ begin
   var ATypeExpr := Ctx.EContext.RPNPopExpression();
   Ctx.UN.CheckType(ATypeExpr);
   var ResVar := Ctx.EContext.SContext.Proc.GetTMPVar(SYSUnit._TTypeKind);
+  Result := TIDExpression.Create(ResVar, Ctx.UN.Lexer_Position);
+end;
+
+{ TSCTF_HasWeakRef }
+
+class function TSCTF_HasWeakRef.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'HasWeakRef', SYSUnit._TTypeKind);
+  Result.AddParam('T', SYSUnit._TypeID, []);
+end;
+
+function TSCTF_HasWeakRef.Process(const Ctx: TSysFunctionContext): TIDExpression;
+begin
+  var AValeExpr := Ctx.EContext.RPNPopExpression();
+  var ResVar := Ctx.EContext.SContext.Proc.GetTMPVar(SYSUnit._Boolean);
   Result := TIDExpression.Create(ResVar, Ctx.UN.Lexer_Position);
 end;
 

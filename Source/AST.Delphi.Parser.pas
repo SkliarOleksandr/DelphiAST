@@ -8923,91 +8923,59 @@ begin
   // todo: system fail if decl is not assigned
 
   SearchScope := nil;
-  if Left is TIDCastExpression then
-  begin
-    DataType := Left.DataType.ActualDataType;
 
-    if DataType.ClassType = TIDAliasType then
-      DataType := TIDAliasType(DataType).Original;
+  case Decl.ItemType of
 
-    while DataType.DataTypeID in [dtPointer, dtClassOf] do
-      DataType := GetPtrReferenceType(TIDPointer(DataType)).ActualDataType;
-
-    if Decl.ItemType = itType then
-    begin
-      if Assigned(DataType.Helper) then
-        SearchScope := DataType.Helper.StaticMembers
+    itUnit: begin
+      // if this is the full name of THIS unit, let's search in implementation first
+      if Decl.ID.Name = Self._ID.Name then
+        SearchScope := ImplScope
       else
-      if DataType is TIDStructure then
-        SearchScope := TIDStructure(DataType).Members // todo: should be StaticMembers
-    end else begin
-      if Assigned(DataType.Helper) then
-        SearchScope := DataType.Helper.Members // todo: should be StaticMembers
-      else
-      if DataType is TIDStructure then
-        SearchScope := TIDStructure(DataType).Members // todo: should be StaticMembers
-     end;
-  end else
-  if Decl.ItemType = itUnit then
-  begin
-    // if this is the full name of THIS unit, let's search in implementation first
-    if Decl.ID.Name = Self._ID.Name then
-      SearchScope := ImplScope
-    else
-      SearchScope := TIDNameSpace(Decl).Members
-  end else
-  if Decl.ItemType = itType then
-  begin
-    if Decl.ClassType = TIDAliasType then
-      Decl := TIDAliasType(Decl).Original;
+        SearchScope := TIDNameSpace(Decl).Members
+    end;
 
-    if Assigned(TIDType(Decl).Helper) then
-      SearchScope := TIDType(Decl).Helper.StaticMembers
-    else
-    if Decl is TIDStructure then
-      SearchScope := TIDStructure(Decl).StaticMembers
-    else
-    if Decl.ClassType = TIDEnum then
-      SearchScope := TIDEnum(Decl).Items
-    else
-    if Decl.ClassType = TIDDynArray then
-      SearchScope := TIDDynArray(Decl).GetHelperScope;
-  end else
-  if Decl.ItemType = itProcedure then
-  begin
-    DataType := TIDProcedure(Decl).ResultType;
-    if Assigned(DataType) then
-    begin
-      if Assigned(DataType.Helper) then
-        SearchScope := DataType.Helper.Members // todo: should be StaticMembers
+    itType: begin
+      if Decl.ClassType = TIDAliasType then
+        Decl := TIDAliasType(Decl).Original;
+
+      if Assigned(TIDType(Decl).Helper) then
+        SearchScope := TIDType(Decl).Helper.StaticMembers
       else
-      if DataType is TIDStructure then
-        SearchScope := TIDStructure(DataType).Members // todo: should be StaticMembers
+      if Decl is TIDStructure then
+        SearchScope := TIDStructure(Decl).StaticMembers
       else
       if Decl.ClassType = TIDEnum then
-        SearchScope := TIDEnum(Decl).Items;
+        SearchScope := TIDEnum(Decl).Items
+      else
+      if Decl.ClassType = TIDDynArray then
+        SearchScope := TIDDynArray(Decl).GetHelperScope;
     end;
-  end else
-  begin
-    DataType := Left.DataType.ActualDataType;
 
-    if DataType.ClassType = TIDAliasType then
-      DataType := TIDAliasType(DataType).Original;
+    itProcedure, itVar, itConst: begin
 
-//    if DataType.DataTypeID in [dtStaticArray, dtDynArray] then            ???
-//      DataType := TIDArray(DataType).ElementDataType;
+      if Decl.ItemType = itProcedure then
+        DataType := TIDProcedure(Decl).ResultType.ActualDataType
+      else
+        DataType := Left.DataType.ActualDataType;
 
-    while DataType.DataTypeID in [dtPointer, dtClassOf] do
-      DataType := GetPtrReferenceType(TIDPointer(DataType)).ActualDataType;
+      if DataType.ClassType = TIDAliasType then
+        DataType := TIDAliasType(DataType).Original;
 
-    if Assigned(Decl.DataType.Helper) then
-      SearchScope := Decl.DataType.Helper.Members
-    else
-    if DataType is TIDStructure then
-      SearchScope := TIDStructure(DataType).Members
-    else
-    if Decl.ClassType = TIDEnum then
-      SearchScope := TIDEnum(Decl).Items
+      while DataType.DataTypeID in [dtPointer, dtClassOf] do
+        DataType := GetPtrReferenceType(TIDPointer(DataType)).ActualDataType;
+
+      if Assigned(DataType.Helper) then
+        // todo: join helper scope and decl's scope together
+        SearchScope := DataType.Helper.Members
+      else
+      if DataType is TIDStructure then
+        SearchScope := TIDStructure(DataType).Members
+      else
+      if Decl.ClassType = TIDEnum then
+        SearchScope := TIDEnum(Decl).Items
+    end;
+  else
+    AbortWorkInternal('Unsuported decl type: %d', [Ord(Decl.ItemType)])
   end;
 
   if not Assigned(SearchScope) then
