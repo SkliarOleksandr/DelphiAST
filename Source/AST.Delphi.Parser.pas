@@ -1658,11 +1658,9 @@ begin
   if Decl.ItemType = itProcedure then
   begin
     ProcDecl := TIDProcedure(Decl);
-    {if Assigned(ProcDecl.Struct) and (PExpr.Instance.Declaration is TIDField) then
-    begin
-
-    end;}
-    if Assigned(ProcDecl.GenericDescriptor) and not Assigned(SContext.Proc.GenericDescriptor) then
+    if Assigned(ProcDecl.GenericDescriptor) and
+       not Assigned(SContext.Proc.GenericDescriptor) and
+       not IsGenericTypeThisStruct(SContext.Scope, ProcDecl.Struct) then
     begin
       ProcDecl := SpecializeGenericProc(PExpr, UserArguments);
       ProcParams := ProcDecl.ExplicitParams;
@@ -6349,18 +6347,6 @@ begin
     end;
   end;
   Result := Lexer_NextToken(Scope);
-end;
-
-function IsGenericTypeThisStruct(Scope: TScope; Struct: TIDType): Boolean;
-begin
-  while Assigned(Scope) do
-  begin
-    if (Scope.ScopeType = stStruct) and
-       (TStructScope(Scope).Struct = Struct) then
-      Exit(True);
-    Scope := Scope.Parent;
-  end;
-  Result := False;
 end;
 
 function TASTDelphiUnit.ParseGenericTypeSpec(Scope: TScope; const ID: TIdentifier; out DataType: TIDType): TTokenID;

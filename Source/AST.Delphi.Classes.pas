@@ -1729,6 +1729,7 @@ type
   function GetItemTypeName(ItemType: TIDItemType): string;
 
   function SameTypes(AType1, AType2: TIDType): Boolean;
+  function IsGenericTypeThisStruct(Scope: TScope; Struct: TIDType): Boolean;
 
 const
   CIsClassProc: array [TProcType] of Boolean =
@@ -2485,18 +2486,19 @@ end;
 
 function TIDProcedure.SameDeclaration(const Params: TVariableList): Boolean;
 var
-  i, c: Integer;
-  Param1, Param2: TIDVariable;
+  LCnt: Integer;
+  LParamType1, LParamType2: TIDType;
 begin
-  c := Length(Params);
-  if c <> Length(ExplicitParams) then
+  LCnt := Length(Params);
+  if LCnt <> Length(ExplicitParams) then
     Exit(False);
 
-  for i := 0 to c - 1 do begin
-    Param1 := ExplicitParams[i];
-    Param2 := Params[i];
-    if not AnsiContainsText(Param1.Name, Param2.Name) or
-       (Param1.DataType.ActualDataType <> Param2.DataType.ActualDataType) then
+  for var LIndex := 0 to LCnt - 1 do begin
+    LParamType1 := ExplicitParams[LIndex].DataType.ActualDataType;
+    LParamType2 := Params[LIndex].DataType.ActualDataType;
+    if (LParamType1 <> LParamType2) and
+       not LParamType1.IsGeneric and
+       not LParamType2.IsGeneric then
       Exit(False);
   end;
   Result := True;
@@ -6686,6 +6688,19 @@ begin
     Result := AType1.Name = AType2.Name;
   end;
 end;
+
+function IsGenericTypeThisStruct(Scope: TScope; Struct: TIDType): Boolean;
+begin
+  while Assigned(Scope) do
+  begin
+    if (Scope.ScopeType = stStruct) and
+       (TStructScope(Scope).Struct = Struct) then
+      Exit(True);
+    Scope := Scope.Parent;
+  end;
+  Result := False;
+end;
+
 
 initialization
 
