@@ -6351,6 +6351,18 @@ begin
   Result := Lexer_NextToken(Scope);
 end;
 
+function IsGenericTypeThisStruct(Scope: TScope; Struct: TIDType): Boolean;
+begin
+  while Assigned(Scope) do
+  begin
+    if (Scope.ScopeType = stStruct) and
+       (TStructScope(Scope).Struct = Struct) then
+      Exit(True);
+    Scope := Scope.Parent;
+  end;
+  Result := False;
+end;
+
 function TASTDelphiUnit.ParseGenericTypeSpec(Scope: TScope; const ID: TIdentifier; out DataType: TIDType): TTokenID;
 var
   GenericArgs: TIDExpressions;
@@ -6361,7 +6373,8 @@ begin
   DataType := TIDType(FindIDNoAbort(Scope, SearchName));
   if Assigned(DataType) then
   begin
-    if not DataType.GenericDeclInProgress then
+    if not DataType.GenericDeclInProgress and
+       not IsGenericTypeThisStruct(Scope, DataType) then
       DataType := SpecializeGenericType(DataType, ID, GenericArgs);
   end else
     AbortWorkInternal('Invalid generic type params');
