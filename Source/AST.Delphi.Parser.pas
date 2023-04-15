@@ -26,6 +26,7 @@ uses
 // System.Generics.Defaults,
 // System.Internal.GenericsHlpr
 // system
+// system.Classes
 // Winapi.ActiveX
 // system.Rtti
 // System.JSON
@@ -101,6 +102,7 @@ type
     function ProcSpec_External(Scope: TScope; out ImportLib, ImportName: TIDDeclaration; var Flags: TProcFlags): TTokenID;
     function ProcSpec_Overload(Scope: TScope; var Flags: TProcFlags): TTokenID;
     function ProcSpec_Virtual(Scope: TScope; Struct: TIDStructure; var Flags: TProcFlags): TTokenID;
+    function ProcSpec_Dynamic(Scope: TScope; Struct: TIDStructure; var Flags: TProcFlags): TTokenID;
     function ProcSpec_Abstract(Scope: TScope; Struct: TIDStructure; var Flags: TProcFlags): TTokenID;
     function ProcSpec_Override(Scope: TScope; Struct: TIDStructure; var Flags: TProcFlags): TTokenID;
     function ProcSpec_Final(Scope: TScope; Struct: TIDStructure; var Flags: TProcFlags): TTokenID;
@@ -354,8 +356,8 @@ type
     function ParseForStatement(Scope: TScope; const SContext: TSContext): TTokenID;
     function ParseForInStatement(Scope: TScope; const SContext: TSContext; LoopVar: TIDExpression): TTokenID;
     function ParseCaseStatement(Scope: TScope; const SContext: TSContext): TTokenID;
-    function ParseBreakStatement(Scope: TScope; const SContext: TSContext): TTokenID;
-    function ParseContinueStatement(Scope: TScope; const SContext: TSContext): TTokenID;
+//    function ParseBreakStatement(Scope: TScope; const SContext: TSContext): TTokenID;
+//    function ParseContinueStatement(Scope: TScope; const SContext: TSContext): TTokenID;
     function ParseInheritedStatement(Scope: TScope; const EContext: TEContext): TTokenID;
     function ParseImmVarStatement(Scope: TScope; const SContext: TSContext): TTokenID;
     function ParseTrySection(Scope: TScope; const SContext: TSContext): TTokenID;
@@ -438,13 +440,9 @@ uses
 type
   TSContextHelper = record helper for TSContext
   private
-    function GetIsLoopBody: Boolean;
-    function GetIsTryBlock: Boolean;
     function GetSysUnit: TSYSTEMUnit;
     function GetErrors: TASTDelphiErrors;
   public
-    property IsLoopBody: Boolean read GetIsLoopBody;
-    property IsTryBlock: Boolean read GetIsTryBlock;
     property SysUnit: TSYSTEMUnit read GetSysUnit;
     property ERRORS: TASTDelphiErrors read GetErrors;
   end;
@@ -560,9 +558,9 @@ begin
       {RAISE}
       token_raise: Result := ParseRaiseStatement(Scope, SContext);
       {BREAK}
-      token_break: Result := ParseBreakStatement(Scope, SContext);
+//      token_break: Result := ParseBreakStatement(Scope, SContext);
       {CONTINUE}
-      token_continue: Result := ParseContinueStatement(Scope, SContext);
+//      token_continue: Result := ParseContinueStatement(Scope, SContext);
       {;}
       token_semicolon:;
       {VAR}
@@ -1401,6 +1399,7 @@ begin
   Ctx.EContext := @EContext;
   Ctx.SContext := @SContext;
   Ctx.ArgsCount := ArgsCount;
+  Ctx.ERRORS := ERRORS;
 
   MacroID := FuncDecl.FunctionID;
   case MacroID of
@@ -4674,7 +4673,7 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.ParseBreakStatement(Scope: TScope; const SContext: TSContext): TTokenID;
+{function TASTDelphiUnit.ParseBreakStatement(Scope: TScope; const SContext: TSContext): TTokenID;
 begin
   if not SContext.IsLoopBody then
     if not SContext.IsLoopBody then
@@ -4682,7 +4681,7 @@ begin
 
   SContext.Add(TASTKWBreak);
   Result := Lexer_NextToken(Scope);
-end;
+end;}
 
 procedure TASTDelphiUnit.ParseCondDefine(Scope: TScope; add_define: Boolean);
 var
@@ -5097,14 +5096,14 @@ begin
   until (not Lexer_IsCurrentIdentifier);
 end;
 
-function TASTDelphiUnit.ParseContinueStatement(Scope: TScope; const SContext: TSContext): TTokenID;
+{function TASTDelphiUnit.ParseContinueStatement(Scope: TScope; const SContext: TSContext): TTokenID;
 begin
   if not SContext.IsLoopBody then
     AbortWork(sBreakOrContinueAreAllowedOnlyInALoops, Lexer_Position);
 
   SContext.Add(TASTKWContinue);
   Result := Lexer_NextToken(Scope);
-end;
+end;}
 
 function TASTDelphiUnit.ParseDeprecated(Scope: TScope; out DeprecatedExpr: TIDExpression): TTokenID;
 begin
@@ -6245,6 +6244,7 @@ begin
         else
           ERRORS.GENERIC_INVALID_CONSTRAINT(Result);
         end;
+        AConstraintType := TSYSTEMUnit(SysUnit)._TObject;
       end;
       token_constructor: begin
         case AConstraint of
@@ -6253,6 +6253,7 @@ begin
         else
           ERRORS.GENERIC_INVALID_CONSTRAINT(Result);
         end;
+        AConstraintType := TSYSTEMUnit(SysUnit)._TObject;
       end;
       token_record: begin
         if AConstraint = gsNone then
@@ -6341,7 +6342,7 @@ begin
         if ComaCount >= ParamsCount then
           ERRORS.IDENTIFIER_EXPECTED();
         Break;
-      end
+      end;
     else
       ERRORS.IDENTIFIER_EXPECTED();
     end;
@@ -6753,7 +6754,8 @@ begin
     Decl.ForwardID := TmpID;
     Decl.NeedForward := True;
     fForwardPtrTypes.Add(Decl);
-    InsertToScope(Scope, Decl);
+    if ID.Name <> '' then
+      InsertToScope(Scope, Decl);
   end;
   Result := Lexer_NextToken(Scope);
 end;
@@ -6950,6 +6952,7 @@ begin
       token_external: Result := ProcSpec_External(Scope, ImportLib, ImportName, ProcFlags);
       token_overload: Result := ProcSpec_Overload(Scope, ProcFlags);
       token_virtual: Result := ProcSpec_Virtual(Scope, Struct, ProcFlags);
+      token_dynamic: Result := ProcSpec_Dynamic(Scope, Struct, ProcFlags);
       token_abstract: Result := ProcSpec_Abstract(Scope, Struct, ProcFlags);
       token_override: Result := ProcSpec_Override(Scope, Struct, ProcFlags);
       token_final: Result := ProcSpec_Final(Scope, Struct, ProcFlags);
@@ -8592,6 +8595,21 @@ begin
   Result := Lexer_NextToken(Scope);
 end;
 
+function TASTDelphiUnit.ProcSpec_Dynamic(Scope: TScope; Struct: TIDStructure; var Flags: TProcFlags): TTokenID;
+begin
+  if pfVirtual in Flags then
+    ERRORS.DUPLICATE_SPECIFICATION(PS_VIRTUAL);
+  Include(Flags, pfVirtual);
+
+  if not Assigned(Struct) then
+    ERRORS.VIRTUAL_ALLOWED_ONLY_IN_CLASSES;
+
+  //Proc.VirtualIndex := Proc.Struct.GetLastVirtualIndex + 1;
+
+  Lexer_ReadSemicolon(Scope);
+  Result := Lexer_NextToken(Scope);
+end;
+
 procedure TASTDelphiUnit.Progress(StatusClass: TASTProcessStatusClass);
 begin
   fTotalLinesParsed := Lexer_Line;
@@ -8948,6 +8966,11 @@ begin
       else
       if Decl.ClassType = TIDDynArray then
         SearchScope := TIDDynArray(Decl).GetHelperScope;
+
+      if Decl.ClassType = TIDGenericParam then
+      begin
+        SearchScope := (TIDGenericParam(Decl).ConstraintType as TIDStructure).StaticMembers;
+      end;
     end;
 
     itProcedure, itVar, itConst: begin
@@ -8962,6 +8985,9 @@ begin
 
       while DataType.DataTypeID in [dtPointer, dtClassOf] do
         DataType := GetPtrReferenceType(TIDPointer(DataType)).ActualDataType;
+
+      if (DataType.DataTypeID = dtGeneric) and Assigned(TIDGenericParam(DataType).ConstraintType) then
+        DataType := TIDGenericParam(DataType).ConstraintType;
 
       if Assigned(DataType.Helper) then
         // todo: join helper scope and decl's scope together
@@ -10307,16 +10333,6 @@ end;
 function TSContextHelper.GetErrors: TASTDelphiErrors;
 begin
   Result := TASTDelphiUnit(Module).ERRORS;
-end;
-
-function TSContextHelper.GetIsLoopBody: Boolean;
-begin
-  Result := Block.IsLoopBody;
-end;
-
-function TSContextHelper.GetIsTryBlock: Boolean;
-begin
-   Result := Block.IsTryBlock;
 end;
 
 function TSContextHelper.GetSysUnit: TSYSTEMUnit;

@@ -180,6 +180,20 @@ type
     class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {Break}
+  TCT_Break = class(TIDSysCompileFunction)
+  public
+    function Process(const Ctx: TSysFunctionContext): TIDExpression; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
+  {Continue}
+  TCT_Continue = class(TIDSysCompileFunction)
+  public
+    function Process(const Ctx: TSysFunctionContext): TIDExpression; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
   {Low}
   TSF_LoBound = class(TIDSysRuntimeFunction)
   public
@@ -443,7 +457,10 @@ type
 
 implementation
 
-uses AST.Delphi.Errors, AST.Lexer;
+uses
+  AST.Lexer,
+  AST.Classes,
+  AST.Delphi.Errors;
 
 { TSF_Now }
 
@@ -1689,6 +1706,38 @@ begin
   var AValeExpr := Ctx.EContext.RPNPopExpression();
   var ResVar := Ctx.EContext.SContext.Proc.GetTMPVar(SYSUnit._Boolean);
   Result := TIDExpression.Create(ResVar, Ctx.UN.Lexer_Position);
+end;
+
+{ TCT_Break }
+
+class function TCT_Break.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Break', SYSUnit._Void);
+end;
+
+function TCT_Break.Process(const Ctx: TSysFunctionContext): TIDExpression;
+begin
+  Result := nil;
+  if not Ctx.SContext.IsLoopBody then
+    Ctx.ERRORS.BREAK_OR_CONTINUE_ALLOWED_ONLY_IN_LOOPS;
+
+  Ctx.SContext.Add(TASTKWBreak);
+end;
+
+{ TCT_Continue }
+
+class function TCT_Continue.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Continue', SYSUnit._Void);
+end;
+
+function TCT_Continue.Process(const Ctx: TSysFunctionContext): TIDExpression;
+begin
+  Result := nil;
+  if not Ctx.SContext.IsLoopBody then
+    Ctx.ERRORS.BREAK_OR_CONTINUE_ALLOWED_ONLY_IN_LOOPS;
+
+  Ctx.SContext.Add(TASTKWContinue);
 end;
 
 end.

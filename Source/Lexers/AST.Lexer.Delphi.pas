@@ -102,8 +102,9 @@ type
     token_forward,                  // keyword: forward
     token_helper,                   // keyword: helper
 
-    token_continue,                 // keyword: continue
-    token_break,                    // keyword: break
+    // made as built-in procedures
+    // token_continue,                 // keyword: continue
+    // token_break,                    // keyword: break
 
     token_not,                      // keyword: not
     token_and,                      // keyword: and
@@ -391,12 +392,12 @@ begin
   RegisterToken('and', token_and);
   RegisterToken('array', token_array);
   RegisterToken('begin', token_begin);
-  RegisterToken('break', token_break);
+  //RegisterToken('break', token_break);
   RegisterToken('case', token_case);
   RegisterToken('cdecl', token_cdecl);
   RegisterToken('const', token_const);
   RegisterToken('constructor', token_constructor);
-  RegisterToken('continue', token_continue);
+  //RegisterToken('continue', token_continue);
   RegisterToken('class', token_class);
   RegisterToken('do', token_do);
   RegisterToken('downto', token_downto);

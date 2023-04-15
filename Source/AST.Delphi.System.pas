@@ -14,8 +14,10 @@ uses System.Classes,
      AST.Parser.Messages,
      AST.Classes,
      AST.Intf,
+     AST.Delphi.Errors,
      AST.Delphi.Contexts,
-     AST.Delphi.Parser, AST.Delphi.Intf;
+     AST.Delphi.Parser,
+     AST.Delphi.Intf;
      // System
 
 type
@@ -49,7 +51,8 @@ type
     ParamsStr: string;
     ArgsCount: Integer;
     EContext: ^TEContext;
-    SContext: ^TSContext;
+    SContext: PSContext;
+    ERRORS: TASTDelphiErrors;
   end;
 
   TIDSysCompileFunction = class(TIDBuiltInFunction)
@@ -258,7 +261,6 @@ type
 implementation
 
 uses AST.Parser.Errors,
-     AST.Delphi.Errors,
      AST.Delphi.SysFunctions,
      AST.Delphi.SysOperators,
      AST.Targets,
@@ -1091,6 +1093,8 @@ begin
   RegisterBuiltin(TSCTF_GetTypeKind);
   RegisterBuiltin(TSCTF_HasWeakRef);
   RegisterBuiltin(TSCTF_Declared);
+  RegisterBuiltin(TCT_Break);
+  RegisterBuiltin(TCT_Continue);
   RegisterBuiltin(TSF_Delete);
   RegisterBuiltin(TSF_Exit);
   RegisterBuiltin(TSF_Exclude);

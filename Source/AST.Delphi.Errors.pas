@@ -87,10 +87,7 @@ resourcestring
   sUnitRecursivelyUsesItselfFmt = 'Program or unit ''%s'' recursively uses itself';
 
   // loops
-  sContinueAllowedOnlyInLoop = 'continue allowed only in loop';
   sBreakOrContinueAreAllowedOnlyInALoops = 'BREAK and CONTINUE are allowed only in a loops';
-  sLoopLevelExprected = 'Loop level exprected';
-  sLoopLevelGreaterThenPossibleFmt = 'The loop level is greater than possible, max level is %d';
   sForLoopIndexVarsMastBeSimpleIntVar = 'For loop index variable must be local integer variable';
   sKeywordToOrDowntoExpected = 'Кeyword TO or DOWNTO are expected';
   sForOrWhileLoopExecutesZeroTimes = 'FOR or WHILE-loop executes zero times - deleted';
@@ -287,6 +284,7 @@ type
 
     procedure GENERIC_INVALID_CONSTRAINT(ActualToken: TTokenID);
 
+    procedure BREAK_OR_CONTINUE_ALLOWED_ONLY_IN_LOOPS;
     procedure NO_METHOD_IN_BASE_CLASS(Proc: TIDProcedure);
     procedure DEFAULT_PROP_MUST_BE_ARRAY_PROP;
     procedure DEFAULT_PROP_ALREADY_EXIST(Prop: TIDProperty);
@@ -471,6 +469,11 @@ end;
 class procedure TASTDelphiErrors.BOOLEAN_EXPRESSION_REQUIRED(Expr: TIDExpression);
 begin
   AbortWork(sExpressionMustBeBoolean, Expr.TextPosition);
+end;
+
+procedure TASTDelphiErrors.BREAK_OR_CONTINUE_ALLOWED_ONLY_IN_LOOPS;
+begin
+  AbortWork(sBreakOrContinueAreAllowedOnlyInALoops, Lexer.Position);
 end;
 
 class procedure TASTDelphiErrors.NOT_ENOUGH_ACTUAL_PARAMS(CallExpr: TIDExpression);
