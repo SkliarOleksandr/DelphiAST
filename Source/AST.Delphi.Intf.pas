@@ -17,6 +17,7 @@ type
   end;
 
   TDelphiSystemDeclarations = record
+    // integer types
     _Int8: TIDType;
     _Int16: TIDType;
     _Int32: TIDType;
@@ -27,10 +28,14 @@ type
     _UInt64: TIDType;
     _NativeInt: TIDType;
     _NativeUInt: TIDType;
+    // floating point types
     _Float32: TIDType;
     _Float64: TIDType;
     _Float80: TIDType;
     _Currency: TIDType;
+    _Comp: TIDType;
+    _Real: TIDType;
+    // other
     _Boolean: TIDType;
     _AnsiChar: TIDType;
     _WideChar: TIDType;
@@ -105,6 +110,7 @@ begin
     dtFloat64: Result := _Float64;
     dtFloat80: Result := _Float80;
     dtCurrency: Result := _Currency;
+    dtComp: Result := _Comp;
     dtBoolean: Result := _Boolean;
     dtAnsiChar: Result := _AnsiChar;
     dtChar: Result := _WideChar;

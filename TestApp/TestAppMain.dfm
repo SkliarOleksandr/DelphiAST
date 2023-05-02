@@ -36,88 +36,114 @@ object frmTestAppMain: TfrmTestAppMain
     Align = alTop
     BevelOuter = bvNone
     TabOrder = 0
-    DesignSize = (
-      814
-      200)
-    object Label1: TLabel
-      Left = 8
-      Top = 18
-      Width = 90
-      Height = 13
-      Caption = 'Delphi Source Path'
-    end
-    object edSrcRoot: TEdit
-      Left = 8
-      Top = 37
-      Width = 572
-      Height = 21
-      Anchors = [akLeft, akTop, akRight]
-      TabOrder = 0
-      Text = 'C:\Program Files (x86)\Embarcadero\Studio\22.0\source\'
-    end
-    object Button1: TButton
-      Left = 586
-      Top = 35
-      Width = 106
-      Height = 25
-      Anchors = [akTop, akRight]
-      Caption = 'AST Parse'
-      TabOrder = 1
-      OnClick = Button1Click
-    end
-    object Button2: TButton
-      Left = 698
-      Top = 34
-      Width = 108
-      Height = 25
-      Anchors = [akTop, akRight]
-      Caption = 'AST Parse RTL'
-      TabOrder = 2
-      OnClick = Button2Click
-    end
-    object Memo1: TMemo
-      Left = 8
-      Top = 65
-      Width = 798
-      Height = 136
-      Anchors = [akLeft, akTop, akRight, akBottom]
+    object ErrMemo: TSynMemo
+      AlignWithMargins = True
+      Left = 3
+      Top = 64
+      Width = 808
+      Height = 133
+      Align = alClient
       Font.Charset = DEFAULT_CHARSET
       Font.Color = clWindowText
-      Font.Height = -13
+      Font.Height = -15
       Font.Name = 'Consolas'
+      Font.Pitch = fpFixed
       Font.Style = []
-      Lines.Strings = (
-        'Memo1')
-      ParentFont = False
-      ScrollBars = ssVertical
-      TabOrder = 3
-      WordWrap = False
+      TabOrder = 0
+      CodeFolding.GutterShapeSize = 11
+      CodeFolding.CollapsedLineColor = clGrayText
+      CodeFolding.FolderBarLinesColor = clGrayText
+      CodeFolding.IndentGuidesColor = clGray
+      CodeFolding.IndentGuides = True
+      CodeFolding.ShowCollapsedLine = False
+      CodeFolding.ShowHintMark = True
+      UseCodeFolding = False
+      Gutter.Font.Charset = DEFAULT_CHARSET
+      Gutter.Font.Color = clWindowText
+      Gutter.Font.Height = -13
+      Gutter.Font.Name = 'Courier New'
+      Gutter.Font.Style = []
+      Gutter.Visible = False
+      Gutter.Width = 0
+      ReadOnly = True
+      WordWrap = True
+      FontSmoothing = fsmNone
     end
-    object chkCompileSsystemForASTParse: TCheckBox
-      Left = 240
-      Top = 14
-      Width = 196
-      Height = 17
-      Caption = 'Compile "system.pas" for AST Parse'
-      TabOrder = 4
-    end
-    object chkStopIfError: TCheckBox
-      Left = 112
-      Top = 14
-      Width = 122
-      Height = 17
-      Caption = 'Stop compile if errors'
-      Checked = True
-      State = cbChecked
-      TabOrder = 5
-    end
-    object chkParseAll: TCheckBox
-      Left = 442
-      Top = 14
-      Width = 79
-      Height = 17
-      Caption = 'Parse Impls'
-      TabOrder = 6
+    object Panel6: TPanel
+      Left = 0
+      Top = 0
+      Width = 814
+      Height = 61
+      Align = alTop
+      BevelOuter = bvNone
+      TabOrder = 1
+      DesignSize = (
+        814
+        61)
+      object Label1: TLabel
+        Left = 8
+        Top = 18
+        Width = 90
+        Height = 13
+        Caption = 'Delphi Source Path'
+      end
+      object edSrcRoot: TEdit
+        Left = 8
+        Top = 37
+        Width = 572
+        Height = 21
+        Anchors = [akLeft, akTop, akRight]
+        TabOrder = 0
+        Text = 'C:\Program Files (x86)\Embarcadero\Studio\22.0\source\'
+      end
+      object chkStopIfError: TCheckBox
+        Left = 112
+        Top = 14
+        Width = 122
+        Height = 17
+        Caption = 'Stop compile if errors'
+        Checked = True
+        State = cbChecked
+        TabOrder = 1
+      end
+      object chkCompileSsystemForASTParse: TCheckBox
+        Left = 240
+        Top = 14
+        Width = 196
+        Height = 17
+        Caption = 'Compile "system.pas" for AST Parse'
+        TabOrder = 2
+      end
+      object chkParseAll: TCheckBox
+        Left = 442
+        Top = 14
+        Width = 79
+        Height = 17
+        Caption = 'Parse Impls'
+        Checked = True
+        State = cbChecked
+        TabOrder = 3
+      end
+      object Button1: TButton
+        Left = 586
+        Top = 35
+        Width = 106
+        Height = 25
+        Anchors = [akTop, akRight]
+        Caption = 'AST Parse'
+        TabOrder = 4
+        OnClick = Button1Click
+      end
+      object Button2: TButton
+        Left = 698
+        Top = 34
+        Width = 108
+        Height = 25
+        Anchors = [akTop, akRight]
+        Caption = 'AST Parse RTL'
+        TabOrder = 5
+        OnClick = Button2Click
+      end
     end
   end
   object Panel2: TPanel
@@ -222,18 +248,22 @@ object frmTestAppMain: TfrmTestAppMain
             ''
             'interface'
             ''
-            'type'
-            '  TX<T> = class'
-            '  end;'
-            ''
-            '  TA<T> = class'
-            '  type'
-            '    TX = class(TX<T>)'
-            '    end;'
-            '  end;'
-            ''
             'implementation'
+            ''
+            'type'
             '  '
+            '  TSize = record'
+            '  end;'
+            ' '
+            '  TPointF = record'
+            '  end;  '
+            ''
+            '  TSizeF = record'
+            '    class operator Implicit(const Size: TSizeF): TPointF;'
+            '    class operator Implicit(const Point: TPointF): TSizeF;'
+            '    class operator Implicit(const Size: TSize): TSizeF;'
+            '  end;  '
+            ''
             'end.')
           FontSmoothing = fsmNone
         end

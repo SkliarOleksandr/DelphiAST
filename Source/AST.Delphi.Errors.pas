@@ -58,7 +58,7 @@ resourcestring
   sDuplicateSpecificationFmt = 'Duplicate "%s" specification';
   sReturnValueNotAllowedForProc = 'Return value is not allowed for procedure';
   sParameterTypeRequred = 'Parameter type required';
-
+  sProcedureCannotHaveResult = 'Procedure cannot have a result type';
 
     // Assignment
   sAssignmentIsImpossible = 'The assignment is impossible, "%s" is not a variable';
@@ -284,6 +284,7 @@ type
 
     procedure GENERIC_INVALID_CONSTRAINT(ActualToken: TTokenID);
 
+    procedure PROCEDURE_CANNOT_HAVE_RESULT;
     procedure BREAK_OR_CONTINUE_ALLOWED_ONLY_IN_LOOPS;
     procedure NO_METHOD_IN_BASE_CLASS(Proc: TIDProcedure);
     procedure DEFAULT_PROP_MUST_BE_ARRAY_PROP;
@@ -822,6 +823,11 @@ end;
 class procedure TASTDelphiErrors.ORDINAL_TYPE_REQUIRED(const Pos: TTextPosition);
 begin
   AbortWork(sOrdinalTypeRequired, Pos);
+end;
+
+procedure TASTDelphiErrors.PROCEDURE_CANNOT_HAVE_RESULT;
+begin
+  AbortWork(sProcedureCannotHaveResult, Lexer.Position);
 end;
 
 class procedure TASTDelphiErrors.PROC_OR_PROCVAR_REQUIRED(const ID: TIdentifier);

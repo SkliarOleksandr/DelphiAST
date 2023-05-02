@@ -71,6 +71,7 @@ type
     function RPNReadExpression(Index: Integer): TIDExpression; inline;
     function RPNLastOperator: TOperatorID;
     function RPNPopExpression: TIDExpression;
+    function RPNTryPopExpression: TIDExpression;
     property RPNExprCount: Integer read fRPNExprCount;
     property RPNLastOp: TOperatorID read fRPNLastOp;
     property Result: TIDExpression read GetExpression;
@@ -239,6 +240,16 @@ begin
   end;
   AbortWorkInternal('Empty Expression');
   Result := nil; // for prevent compiler warning
+end;
+
+function TASTEContext<TProc>.RPNTryPopExpression: TIDExpression;
+begin
+  if fRPNExprCount > 0 then
+  begin
+    Dec(fRPNExprCount);
+    Result := fRPNEArray[fRPNExprCount];
+  end else
+    Result := nil;
 end;
 
 function TASTEContext<TProc>.GetProc: TProc;

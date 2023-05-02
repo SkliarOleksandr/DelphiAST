@@ -50,6 +50,7 @@ type
     dtFloat64,      // Double
     dtFloat80,      // Extended
     dtCurrency,     // Currency
+    dtComp,         // Comp
     dtBoolean,      // Boolean
     dtAnsiChar,     // ansi char
     dtChar,         // utf16 char
@@ -101,6 +102,7 @@ const
     {dtFloat64}     False,
     {dtFloat80}     False,
     {dtCurrency}    False,
+    {dtComp}        False,
     {dtBoolean}     False,
     {dtAnsiChar}    False,
     {dtChar}        False,
@@ -155,6 +157,7 @@ const
     {dtFloat64}     'Double',
     {dtFloat80}     'Extended',
     {dtCurrency}    'Currency',
+    {dtComp}        'Comp',
     {dtBoolean}     'Boolean',
     {dtAnsiChar}    'AnsiChar',
     {dtChar}        'Char',
@@ -199,6 +202,7 @@ const
     {dtFloat64}     False,
     {dtFloat80}     False,
     {dtCurrency}    False,
+    {dtComp}        False,
     {dtBoolean}     False,
     {dtAnsiChar}    False,
     {dtChar}        False,
@@ -242,6 +246,7 @@ const
     {dtFloat64}     8,
     {dtFloat80}     10,
     {dtCurrency}    8,
+    {dtComp}        8,
     {dtBoolean}     1,
     {dtAnsiChar}    1,
     {dtChar}        2, // UTF16

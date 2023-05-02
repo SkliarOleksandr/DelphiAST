@@ -384,9 +384,9 @@ type
   end;
 
   {Exit}
-  TSF_Exit = class(TIDSysRuntimeFunction)
+  TSF_Exit = class(TIDSysCompileFunction)
   public
-    function Process(var EContext: TEContext): TIDExpression; override;
+    function Process(const Ctx: TSysFunctionContext): TIDExpression; override;
     class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
@@ -529,7 +529,13 @@ begin
   var Arg1 := EContext.RPNPopExpression();
   var Arg2 := EContext.RPNPopExpression();
   var Arg3 := EContext.RPNPopExpression();
-  Result := CreateTMPExpr(EContext, SYSUnit._NativeInt);
+
+  case Arg1.DataTypeID of
+    dtNativeInt: Result := CreateTMPExpr(EContext, SYSUnit._NativeInt);
+    dtPointer: Result := CreateTMPExpr(EContext, SYSUnit._Pointer);
+  else
+    Result := CreateTMPExpr(EContext, SYSUnit._Int32);
+  end;
 end;
 
 
@@ -1038,7 +1044,7 @@ end;
 
 class function TSF_Round.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
-  Result := Self.Create(Scope, 'Round', SYSUnit._Float64);
+  Result := Self.Create(Scope, 'Round', SYSUnit._Int64);
   Result.AddParam('X', SYSUnit._Float64, [VarConst]);
 end;
 
@@ -1048,7 +1054,9 @@ var
 begin
   // read argument
   Arg := EContext.RPNPopExpression();
-  Result := Arg;
+
+  var ResVar := EContext.SContext.Proc.GetTMPVar(SYSUnit._Int64);
+  Result := TIDExpression.Create(ResVar, Arg.TextPosition);
 end;
 
 { TSF_Pred }
@@ -1149,15 +1157,24 @@ end;
 class function TSF_Exit.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'Exit', SYSUnit._Void);
-  Result.AddParam('Result', SYSUnit._Void, [VarConst], SYSUnit._NullPtrExpression);
 end;
 
-function TSF_Exit.Process(var EContext: TEContext): TIDExpression;
+function TSF_Exit.Process(const Ctx: TSysFunctionContext): TIDExpression;
 var
-  AResult: TIDExpression;
+  LProc: TIDProcedure;
+  LResultExpr: TIDExpression;
 begin
   // read arguments
-  AResult := EContext.RPNPopExpression();
+  LProc := Ctx.SContext.Proc;
+  LResultExpr := Ctx.EContext.RPNTryPopExpression();
+
+  if Assigned(LResultExpr) then
+  begin
+    if not Assigned(LProc.ResultType) then
+      Ctx.ERRORS.PROCEDURE_CANNOT_HAVE_RESULT;
+
+    Ctx.UN.MatchImplicit3(Ctx.SContext^, LResultExpr, LProc.ResultType);
+  end;
   Result := nil;
 end;
 

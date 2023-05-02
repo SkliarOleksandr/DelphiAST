@@ -83,6 +83,7 @@ type
     ImplicitUntypedFromAny,
     ImplicitClosureToTMethod,
     ImplicitCharToAnsiString,
+    ImplicitAnsiStringFromAny,
     ImplicitAnsiCharToAnsiString,
     ImplicitAnsiCharToString,
     ImplicitAnsiCharToWideChar,
@@ -131,6 +132,8 @@ type
     Subtract_Set: TIDOperator;
     // DynArray
     Equal_DynArray: TIDOperator;
+    Equal_NullPtr: TIDOperator;
+    NotEqual_NullPtr: TIDOperator;
     procedure Init(Scope: TScope);
   end;
 
@@ -205,6 +208,7 @@ type
     property _Float64: TIDType read fDecls._Float64 write fDecls._Float64;
     property _Float80: TIDType read fDecls._Float80 write fDecls._Float80;
     property _Currency: TIDType read fDecls._Currency write fDecls._Currency;
+    property _Comp: TIDType read fDecls._Comp write fDecls._Comp;
     property _Boolean: TIDType read fDecls._Boolean write fDecls._Boolean;
     property _AnsiChar: TIDType read fDecls._AnsiChar write fDecls._AnsiChar;
     property _WideChar: TIDType read fDecls._WideChar write fDecls._WideChar;
@@ -341,7 +345,7 @@ procedure TSYSTEMUnit.AddImplicists;
   var
     i: TDataTypeID;
   begin
-    for i := dtInt8 to dtFloat64 do
+    for i := dtInt8 to dtComp do
       DataType.OverloadImplicitTo(DataTypes[i]);
     DataType.OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   end;
@@ -373,6 +377,7 @@ begin
     OverloadImplicitTo(_Float64);
     OverloadImplicitTo(_Float80);
     OverloadImplicitTo(_Currency);
+    OverloadImplicitTo(_Comp);
     OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   end;
 
@@ -382,6 +387,7 @@ begin
     OverloadImplicitTo(_Float64);
     OverloadImplicitTo(_Float80);
     OverloadImplicitTo(_Currency);
+    OverloadImplicitTo(_Comp);
     OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   end;
 
@@ -390,6 +396,7 @@ begin
     OverloadImplicitTo(_Float32);
     OverloadImplicitTo(_Float64);
     OverloadImplicitTo(_Currency);
+    OverloadImplicitTo(_Comp);
     OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   end;
 
@@ -398,6 +405,15 @@ begin
     OverloadImplicitTo(_Float32);
     OverloadImplicitTo(_Float64);
     OverloadImplicitTo(_Float80);
+    OverloadImplicitTo(_Comp);
+    OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
+  end;
+
+  with _Comp do begin
+    OverloadImplicitTo(_Float32);
+    OverloadImplicitTo(_Float64);
+    OverloadImplicitTo(_Float80);
+    OverloadImplicitTo(_Currency);
     OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   end;
 
@@ -429,6 +445,7 @@ begin
   _AnsiString.OverloadImplicitTo(_ShortString);
   _AnsiString.OverloadImplicitTo(_WideString);
   _AnsiString.OverloadImplicitFrom(_PAnsiChar);
+  _AnsiString.OverloadImplicitFromAny(Operators.ImplicitAnsiStringFromAny);
 
   // WideString
   _WideString.OverloadImplicitTo(_UnicodeString);
@@ -692,11 +709,26 @@ begin
 
   // strings
   AddBinarOperator(opAdd, _UnicodeString, _UnicodeString, _UnicodeString);
+  AddBinarOperator(opAdd, _UnicodeString, _WideChar, _UnicodeString);
+  AddBinarOperator(opAdd, _UnicodeString, _PWideChar, _UnicodeString);
+
+  AddBinarOperator(opAdd, _PWideChar, _PWideChar, _UnicodeString);
+  AddBinarOperator(opAdd, _PWideChar, _WideChar, _UnicodeString);
+  AddBinarOperator(opAdd, _PWideChar, _UnicodeString, _UnicodeString);
+
+  AddBinarOperator(opAdd, _WideChar, _WideChar, _UnicodeString);
+  AddBinarOperator(opAdd, _WideChar, _PWideChar, _UnicodeString);
+  AddBinarOperator(opAdd, _WideChar, _UnicodeString, _UnicodeString);
+
   AddBinarOperator(opAdd, _WideString, _WideString, _WideString);
 
-  AddBinarOperator(opAdd, _WideChar, _WideChar, _WideChar);
   AddBinarOperator(opAdd, _AnsiString, _AnsiString, _AnsiString);
-  AddBinarOperator(opAdd, _AnsiChar, _AnsiChar, _AnsiChar);
+  AddBinarOperator(opAdd, _AnsiString, _AnsiChar, _AnsiString);
+  AddBinarOperator(opAdd, _AnsiString, _PAnsiChar, _AnsiString);
+
+  AddBinarOperator(opAdd, _AnsiChar, _AnsiChar, _AnsiString);
+  AddBinarOperator(opAdd, _AnsiChar, _PAnsiChar, _AnsiString);
+  AddBinarOperator(opAdd, _AnsiChar, _AnsiString, _AnsiString);
 
   AddBinarOperator(opAdd, _Variant, _Variant, _Variant);
 end;
@@ -726,6 +758,7 @@ end;
 
 
 procedure TSYSTEMUnit.AddBitwiseOperators;
+
   function GetMaxBitwiceOpType(DtLeft, DtRight: TIDType): TIDType;
   begin
     if DtLeft.DataTypeID in [dtInt8, dtUint8, dtInt16, dtUInt16, dtInt32, dtUint32] then
@@ -770,8 +803,15 @@ procedure TSYSTEMUnit.AddCompareOperators;
     for i := dtInt8 to dtUInt64 do begin
       AddBinarOperator(Op, DataTypes[i], _Float32, _Boolean);
       AddBinarOperator(Op, DataTypes[i], _Float64, _Boolean);
+      AddBinarOperator(Op, DataTypes[i], _Float64, _Boolean);
+      AddBinarOperator(Op, DataTypes[i], _Currency, _Boolean);
+      AddBinarOperator(Op, DataTypes[i], _Comp, _Boolean);
+
       AddBinarOperator(Op, _Float32, DataTypes[i], _Boolean);
       AddBinarOperator(Op, _Float64, DataTypes[i], _Boolean);
+      AddBinarOperator(Op, _Float80, DataTypes[i], _Boolean);
+      AddBinarOperator(Op, _Currency, DataTypes[i], _Boolean);
+      AddBinarOperator(Op, _Comp, DataTypes[i], _Boolean);
     end;
 
     AddBinarOperator(Op, _Float32, _Float32, _Boolean);
@@ -886,6 +926,7 @@ begin
   _Float80 := RegisterType('Extended', TIDType, dtFloat80);
   _Currency := RegisterType('Currency', TIDType, dtCurrency);
 
+  fDecls._Comp := RegisterType('Comp', TIDType, dtComp);
   //===============================================================
   _Boolean := RegisterOrdinal('Boolean', dtBoolean, 0, 1);
   _Boolean.OverloadExplicitFromAny(Operators.IsOrdinal);
@@ -936,8 +977,11 @@ begin
   fDecls._PointerType := RegisterPointer('Pointer', nil);
   //===============================================================
 
-  // nil constant
+  // null ptr type (special type for "nil" constant)
   fDecls._NullPtrType := TIDNullPointerType.CreateAsSystem(IntfScope, 'null ptr');
+//  fDecls._NullPtrType.AddBinarySysOperator(opEqual, fOperators.Equal_NullPtr);
+//  fDecls._NullPtrType.AddBinarySysOperator(opNotEqual, fOperators.NotEqual_NullPtr);
+  // null ptr type constant
   fDecls._NullPtrConstant := TIDIntConstant.Create(IntfScope, Identifier('nil'), fDecls._NullPtrType, 0);
   fDecls._NullPtrExpression := TIDExpression.Create(fDecls._NullPtrConstant);
   IntfScope.InsertID(fDecls._NullPtrConstant);
@@ -961,8 +1005,8 @@ begin
   // Delphi system aliases
   RegisterTypeAlias('LongInt', _Int32);
   RegisterTypeAlias('LongWord', _UInt32);
-  RegisterTypeAlias('Comp', _Int64);
-  RegisterTypeAlias('Real', _Float64);
+
+  fDecls._Real := RegisterTypeAlias('Real', _Float64);
   RegisterTypeAlias('_ShortString', _ShortString);
   RegisterTypeAlias('UnicodeString', _UnicodeString);
   RegisterTypeAlias('WideChar', _WideChar);
@@ -1270,6 +1314,7 @@ begin
   ImplicitUntypedFromAny := TSysImplicitUntypedFromAny.CreateAsSystem(Scope);
   ImplicitClosureToTMethod := TSysImplicitClosureToTMethod.CreateAsSystem(Scope);
   ImplicitCharToAnsiString := TSysImplicitCharToAnsiString.CreateAsSystem(Scope);
+  ImplicitAnsiStringFromAny := TSysImplicitAnsiStringFromAny.CreateAsSystem(Scope);
   ImplicitAnsiCharToAnsiString := TSysImplicitAnsiCharToAnsiString.CreateAsSystem(Scope);
   ImplicitAnsiCharToString := TSysImplicitAnsiCharToString.CreateAsSystem(Scope);
   ImplicitAnsiCharToWideChar := TSysImplicitAnsiCharToWideChar.CreateAsSystem(Scope);
@@ -1317,8 +1362,9 @@ begin
   Add_Set := TSys_Add_Set.CreateAsSystem(Scope);
   Subtract_Set := TSys_Subtract_Set.CreateAsSystem(Scope);
 
-
   Equal_DynArray := TSys_Equal_DynArray.CreateAsSystem(Scope);
+  Equal_NullPtr := TSys_Equal_NullPtr.CreateAsSystem(Scope);
+  NotEqual_NullPtr := TSys_NotEqual_NullPtr.CreateAsSystem(Scope);
 end;
 
 initialization

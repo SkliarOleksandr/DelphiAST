@@ -7,7 +7,7 @@ uses
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, System.Generics.Collections, AST.Pascal.Project,
   AST.Pascal.Parser, AST.Delphi.Classes, SynEdit, SynEditHighlighter, SynEditCodeFolding, SynHighlighterPas, AST.Delphi.Project,
   Vcl.ComCtrls, System.Types, Vcl.ExtCtrls, AST.Intf, AST.Parser.ProcessStatuses, Vcl.CheckLst, SynEditMiscClasses,
-  SynEditSearch;   // system
+  SynEditSearch, AST.Parser.Messages, SynMemo;   // system
 
 type
   TSourceFileInfo = record
@@ -26,11 +26,6 @@ type
     tsAST: TTabSheet;
     tvAST: TTreeView;
     Panel1: TPanel;
-    Label1: TLabel;
-    edSrcRoot: TEdit;
-    Button1: TButton;
-    Button2: TButton;
-    Memo1: TMemo;
     tsNameSpace: TTabSheet;
     edAllItems: TSynEdit;
     Panel2: TPanel;
@@ -48,9 +43,15 @@ type
     Panel5: TPanel;
     Button5: TButton;
     NSSearchEdit: TEdit;
-    chkCompileSsystemForASTParse: TCheckBox;
+    ErrMemo: TSynMemo;
+    Panel6: TPanel;
+    Label1: TLabel;
+    edSrcRoot: TEdit;
     chkStopIfError: TCheckBox;
+    chkCompileSsystemForASTParse: TCheckBox;
     chkParseAll: TCheckBox;
+    Button1: TButton;
+    Button2: TButton;
     procedure Button2Click(Sender: TObject);
     procedure Button1Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
@@ -67,6 +68,7 @@ type
     procedure OnProgress(const Module: IASTModule; Status: TASTProcessStatusClass);
     procedure ShowAllItems(const Project: IASTDelphiProject);
     procedure ShowResult(const Project: IASTDelphiProject);
+    procedure CompilerMessagesToStrings(const Messages: ICompilerMessages);
   public
     { Public declarations }
     procedure IndexSources(const RootPath: string; Dict: TSourcesDict);
@@ -84,23 +86,31 @@ uses
   AST.Delphi.System,
   AST.Delphi.Parser,
   AST.Classes,
-  AST.Parser.Messages,
   AST.Writer,
   AST.Targets,
   AST.Delphi.DataTypes, AST.Parser.Utils;
 
 {$R *.dfm}
 
-procedure CompilerMessagesToStrings(const Messages: ICompilerMessages; Strings: TStrings);
+procedure TfrmTestAppMain.CompilerMessagesToStrings(const Messages: ICompilerMessages);
 var
   I: Integer;
   Msg: TCompilerMessage;
 begin
+  ErrMemo.Lines.Add('===================================================================');
   for i := 0 to Messages.Count - 1 do
   begin
     Msg := Messages[i];
-    Strings.Add(Msg.AsString);
+    ErrMemo.Lines.Add(Msg.AsString);
+    if Msg.MessageType = cmtError then
+    begin
+      ErrMemo.CaretY := ErrMemo.Lines.Count;
+      ErrMemo.CaretX := Length(Msg.AsString) + 1;
+      edUnit.CaretX := Msg.Col;
+      edUnit.CaretY := Msg.Row;
+    end;
   end;
+  edUnit.SetFocus;
 end;
 
 procedure ASTToTreeView2(ASTUnit: TASTDelphiUnit; TreeView: TTreeView);
@@ -146,8 +156,8 @@ begin
     try
       Dict.Add(FileName, FileInfo);
     except
-      Memo1.Lines.Add(FileInfo.FullPath);
-      Memo1.Lines.Add(Dict.Items[FileName].FullPath);
+      ErrMemo.Lines.Add(FileInfo.FullPath);
+      ErrMemo.Lines.Add(Dict.Items[FileName].FullPath);
     end;
   end;
 end;
@@ -176,7 +186,7 @@ var
   UN: TASTDelphiUnit;
   Prj: IASTDelphiProject;
 begin
-  Memo1.Clear;
+  ErrMemo.Clear;
 
   FStartedAt := Now;
 
@@ -195,7 +205,7 @@ begin
   Prj.StopCompileIfError := chkStopIfError.Checked;
   Prj.OnConsoleWrite := procedure (const Module: IASTModule; Line: Integer; const Msg: string)
                         begin
-                          Memo1.Lines.Add(format('#console: [%s: %d]: %s', [Module.Name, Line, Msg]));
+                          ErrMemo.Lines.Add(format('#console: [%s: %d]: %s', [Module.Name, Line, Msg]));
                         end;
 
   UN := TASTDelphiUnit.Create(Prj, 'test', edUnit.Text);
@@ -209,7 +219,7 @@ end;
 procedure TfrmTestAppMain.OnProgress(const Module: IASTModule; Status: TASTProcessStatusClass);
 begin
   //if Status = TASTStatusParseSuccess then
-    Memo1.Lines.Add(Module.Name + ' : ' + Status.Name);
+    ErrMemo.Lines.Add(Module.Name + ' : ' + Status.Name);
 end;
 
 procedure TfrmTestAppMain.ShowAllItems(const Project: IASTDelphiProject);
@@ -243,7 +253,6 @@ procedure TfrmTestAppMain.ShowResult(const Project: IASTDelphiProject);
 begin
   var Msg := TStringList.Create;
   try
-    Msg.Add('===================================================================');
     var CResult := Project.Compile;
     if CResult = CompileSuccess then
       Msg.Add('compile success')
@@ -258,9 +267,9 @@ begin
       //ASTToTreeView2(UN, tvAST);
 
     ShowAllItems(Project);
-    CompilerMessagesToStrings(Project.Messages, Msg);
+    CompilerMessagesToStrings(Project.Messages);
 
-    Memo1.Lines.AddStrings(Msg);
+    ErrMemo.Lines.AddStrings(Msg);
   finally
     Msg.Free;
   end;
@@ -283,7 +292,7 @@ var
   UN: TASTDelphiUnit;
   Prj: IASTDelphiProject;
 begin
-  Memo1.Clear;
+  ErrMemo.Clear;
 
   FStartedAt := Now;
 
@@ -336,7 +345,7 @@ var
   Prj: IASTDelphiProject;
   CResult: TCompilerResult;
 begin
-  Memo1.Clear;
+  ErrMemo.Clear;
 
   Prj := TASTDelphiProject.Create('test');
   Prj.AddUnitSearchPath(edSrcRoot.Text);
@@ -374,9 +383,9 @@ begin
       edAllItems.EndUpdate;
     end;
 
-    CompilerMessagesToStrings(Prj.Messages, Msg);
+    CompilerMessagesToStrings(Prj.Messages);
 
-    Memo1.Lines.AddStrings(Msg);
+    ErrMemo.Lines.AddStrings(Msg);
   finally
     Msg.Free;
   end;
