@@ -2233,8 +2233,6 @@ begin
   var Source := EContext.RPNPopExpression;
   var Dest := EContext.RPNPopExpression;
 
-  // todo: there are so many erros if do MatchImplicit, let's do it later))
-
   {check Implicit}
   var NewSrc := MatchImplicit3(EContext.SContext, Source, Dest.DataType, {AAbortIfError:} False);
   if not Assigned(NewSrc) then
@@ -3277,7 +3275,7 @@ begin
   if Assigned(Result) then
     Exit;
   WasCall := False;
-  Source := CheckAndCallFuncImplicit(SContext, Source, WasCall);
+  Source := CheckAndCallFuncImplicit(SContext, Source, {out} WasCall);
   if WasCall then
   begin
     Result := MatchImplicitOrNil(SContext, Source, Dest);
@@ -4185,21 +4183,35 @@ begin
 end;
 
 class function TASTDelphiUnit.CheckAndCallFuncImplicit(const SContext: TSContext; Expr: TIDExpression; out WasCall: Boolean): TIDExpression;
-var
-  ExprType: TIDType;
 begin
   WasCall := False;
-  ExprType := Expr.DataType;
+  if Expr.ItemType = itProcedure then
+  begin
+    var LProc := Expr.AsProcedure;
+    var LResultType := LProc.ResultType;
+    if Assigned(LResultType) or (pfConstructor in LProc.Flags) then
+    begin
+      WasCall := True;
+      if (pfConstructor in LProc.Flags) then
+        LResultType := (Expr as TIDCallExpression).Instance.AsType;
 
-  if ExprType.DataTypeID <> dtProcType then
-    Exit(Expr);
-
-  WasCall := True;
-
-  if Assigned(TIDProcType(ExprType).ResultType) then
-    Result := GetTMPVarExpr(SContext, TIDProcType(ExprType).ResultType, Expr.TextPosition)
-  else
-    Result := Expr;
+      Result := GetTMPVarExpr(SContext, LResultType, Expr.TextPosition);
+    end else
+      Result := Expr;
+  end else
+  begin
+    if Expr.DataTypeID = dtProcType then
+    begin
+      var LProcType := TIDProcType(Expr.DataType);
+      if Assigned(LProcType.ResultType) then
+      begin
+        WasCall := True;
+        Result := GetTMPVarExpr(SContext, LProcType.ResultType, Expr.TextPosition);
+      end else
+        Result := Expr;
+    end else
+      Result := Expr;
+  end;
 end;
 
 class function TASTDelphiUnit.CheckAndCallFuncImplicit(const EContext: TEContext; Expr: TIDExpression): TIDExpression;
@@ -8827,24 +8839,26 @@ begin
   case Decl.ItemType of
     {процедура/функция}
     itProcedure: begin
-      Expression := TIDCallExpression.Create(Decl, PMContext.ID.TextPosition);
+      var LCallExpr := TIDCallExpression.Create(Decl, PMContext.ID.TextPosition);
+      LCallExpr.Instance := PrevExpr;
+      Expression := LCallExpr;
       // если есть открытая угловая скобка, - значит generic-вызов
       if (Result = token_less) and TIDProcedure(Decl).IsGeneric then
       begin
         Result := ParseGenericsArgs(Scope, EContext.SContext, GenericArgs);
-        SetProcGenericArgs(TIDCallExpression(Expression), GenericArgs);
+        SetProcGenericArgs(LCallExpr, GenericArgs);
       end;
       // если есть открытая скобка, - значит вызов
       if Result = token_openround then
       begin
-        Result := ParseEntryCall(Scope, TIDCallExpression(Expression), EContext, ASTE);
+        Result := ParseEntryCall(Scope, LCallExpr, EContext, ASTE);
         // если это метод, подставляем self из пула
         if PMContext.Count > 0 then
         begin
           if PMContext.Count > 1 then
           begin
             Expr := nil;
-            assert(false);
+            Assert(false);
           end else
             Expr := PMContext.Last;
 
@@ -8854,30 +8868,27 @@ begin
             NExpr.TextPosition := Expr.TextPosition;
             Expr := NExpr;
           end;
-          TIDCallExpression(Expression).Instance := Expr;
+          LCallExpr.Instance := Expr;
         end else
         if (Decl.ItemType = itProcedure) and Assigned(TIDProcedure(Decl).Struct) and
            (TIDProcedure(Decl).Struct = EContext.SContext.Proc.Struct) then
         begin
           // если это собственный метод, добавляем self из списка параметров
-          TIDCallExpression(Expression).Instance := TIDExpression.Create(EContext.SContext.Proc.SelfParam);
+          LCallExpr.Instance := TIDExpression.Create(EContext.SContext.Proc.SelfParam);
         end;
-
         // process call operator
         Expression := EContext.RPNPopOperator();
-
-      end else begin // иначе создаем процедурный тип, если он отсутствовал
+      end else
+      begin // иначе создаем процедурный тип, если он отсутствовал
         TIDProcedure(Decl).CreateProcedureTypeIfNeed(Scope);
         PMContext.DataType := TIDProcedure(Decl).DataType;
         AddType(TIDProcedure(Decl).DataType);
       end;
     end;
-    {макро функция}
+    {built-in}
     itMacroFunction: begin
-      Expression := TIDExpression.Create(Decl, PMContext.ID.TextPosition);  // создание Expression под ???
-      Result := ParseBuiltinCall(Scope, Expression, EContext);
-      Expression := nil;
-      //Break;
+      var LBuiltinExpr := TIDExpression.Create(Decl, PMContext.ID.TextPosition);
+      Result := ParseBuiltinCall(Scope, LBuiltinExpr, EContext);
     end;
     {variable}
     itVar: begin

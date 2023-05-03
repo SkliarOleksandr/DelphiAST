@@ -4883,7 +4883,7 @@ begin
   if not Assigned(FMembersScope) then
   begin
     FMembersScope := TScope.Create(stStruct, FScope);
-    var ACreateDecl := TSF_DynArrayCreate.CreateDecl(SYSUnit, Scope);
+    var ACreateDecl := TCT_DynArrayCreate.CreateDecl(SYSUnit, Scope);
     ACreateDecl.ResultType := Self;
     FMembersScope.InsertID(ACreateDecl);
   end;

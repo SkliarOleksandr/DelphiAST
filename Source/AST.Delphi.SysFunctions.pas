@@ -433,7 +433,7 @@ type
   end;
 
   {<dyn array type>.create(...)}
-  TSF_DynArrayCreate = class(TIDSysCompileFunction)
+  TCT_DynArrayCreate = class(TIDSysCompileFunction)
   protected
     function GetParamsCount: Integer; override;
   public
@@ -1561,19 +1561,19 @@ begin
   Result := nil;
 end;
 
-{ TSF_DynArrayCreate }
+{ TCT_DynArrayCreate }
 
-class function TSF_DynArrayCreate.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
+class function TCT_DynArrayCreate.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'Create', SYSUnit._Void);
 end;
 
-function TSF_DynArrayCreate.GetParamsCount: Integer;
+function TCT_DynArrayCreate.GetParamsCount: Integer;
 begin
   Result := -1;
 end;
 
-function TSF_DynArrayCreate.Process(const Ctx: TSysFunctionContext): TIDExpression;
+function TCT_DynArrayCreate.Process(const Ctx: TSysFunctionContext): TIDExpression;
 begin
   for var AIndex := 0 to Ctx.ArgsCount - 1 do
   begin
@@ -1581,7 +1581,7 @@ begin
     // todo:
   end;
 
-  var AArray := Ctx.SContext.Proc.GetTMPVar(nil);
+  var AArray := Ctx.SContext.Proc.GetTMPVar(ResultType);
   Result := TIDExpression.Create(AArray, Ctx.UN.Lexer_Position);
 end;
 

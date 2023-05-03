@@ -771,7 +771,7 @@ procedure TSYSTEMUnit.AddBitwiseOperators;
   var
     i: TDataTypeID;
   begin
-    for i := dtInt8 to dtUInt64 do
+    for i := dtInt8 to dtNativeUInt do
       AddUnarOperator(Op, DataTypes[i], DataTypes[i]);
   end;
   procedure BitwiseOp(Op: TOperatorID);
@@ -779,7 +779,7 @@ procedure TSYSTEMUnit.AddBitwiseOperators;
     i, j: TDataTypeID;
   begin
     for i := dtInt8 to dtNativeUInt do
-       for j := dtInt8 to dtUInt64 do
+       for j := dtInt8 to dtNativeUInt do
          AddBinarOperator(Op, DataTypes[i], DataTypes[j], GetMaxBitwiceOpType(DataTypes[i], DataTypes[j]));
   end;
 begin
