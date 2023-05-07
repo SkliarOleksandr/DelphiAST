@@ -192,6 +192,12 @@ type
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
+  {implicit Range -> Any}
+  TSysImplicitRangeToAny = class(TSysOpImplicit)
+  public
+    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
   {implicit Set <- Any}
   TSysImplicitSetFromAny = class(TSysOpImplicit)
   public
@@ -569,8 +575,8 @@ end;
 function TSysImplicitVariantFromAny.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
   if Src.DataTypeID in [dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean,
-                        dtFloat32, dtFloat64, dtNativeInt, dtNativeUInt, dtChar, dtAnsiChar,
-                        dtString, dtAnsiString] then
+                        dtFloat32, dtFloat64, dtFloat80, dtCurrency, dtNativeInt, dtNativeUInt, dtChar, dtAnsiChar,
+                        dtString, dtWideString, dtAnsiString] then
     Result := Self
   else
     Result := nil;
@@ -903,6 +909,13 @@ end;
 function TSysImplicitRangeFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
   Result := Src.IsOrdinal;
+end;
+
+{ TSysImplicitRangeToAny }
+
+function TSysImplicitRangeToAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
+begin
+  Result := Dst.DataSize >= Src.DataSize;
 end;
 
 { TSysTypeCast_IsOrdinal }

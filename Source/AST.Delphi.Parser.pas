@@ -33,7 +33,7 @@ uses
 // System.JSON
 // system.Types
 // system.TypInfo
-// system.uitypes
+// system.UITypes
 // sysutils
 // sysinit
 // Windows
@@ -2052,6 +2052,14 @@ begin
   end;
 end;
 
+function GetImplicitFactor(ASrcType, ADestType: TIDType): Integer;
+begin
+  if (ASrcType = ADestType) then
+    Result := MaxInt8
+  else
+    ImplicitFactor2(ASrcType.DataTypeID, ADestType.DataTypeID);
+end;
+
 function TASTDelphiUnit.FindImplicitFormBinarOperators(const Operators: TBinaryOperatorsArray;
                                                        const Left, Right: TIDType;
                                                        out LLeftImplicitCast: TIDDeclaration;
@@ -2067,8 +2075,8 @@ begin
     LRightrImplicitCast := MatchImplicit({Source:} Right, {Destination:} LItemPtr.Right);
     if Assigned(LLeftImplicitCast) and Assigned(LRightrImplicitCast) then
     begin
-      var LLeftImplicitFactor := ImplicitFactor2(Left.DataTypeID, LItemPtr.Left.DataTypeID);
-      var LRightImplicitFactor := ImplicitFactor2(Right.DataTypeID, LItemPtr.Right.DataTypeID);
+      var LLeftImplicitFactor := GetImplicitFactor(Left, LItemPtr.Left);
+      var LRightImplicitFactor := GetImplicitFactor(Right, LItemPtr.Right);
       var LMinCommonFactor := Min(LLeftImplicitFactor, LRightImplicitFactor);
       if LMinCommonFactor > LBetterFactor then
       begin
@@ -4389,7 +4397,7 @@ end;
 
 function TASTDelphiUnit.ParseAnonymousProc(Scope: TScope; var EContext: TEContext; const SContext: TSContext; ProcType: TTokenID): TTokenID;
 var
-  EntryScope: TProcScope;
+  ProcScope: TProcScope;
   GenericsArgs: TIDTypeArray;
   ResultType: TIDType;
   ProcDecl: TASTDelphiProc;
@@ -4398,7 +4406,7 @@ var
   Expr: TIDExpression;
 begin
   VarSpace.Initialize;
-  EntryScope := TProcScope.CreateInDecl(Scope, nil, @VarSpace, nil);
+  ProcScope := TProcScope.CreateInDecl(Scope, nil, @VarSpace, nil);
 
   // создаем Result переменную (тип будет определен позже)
 
@@ -4406,12 +4414,12 @@ begin
 
   // если generic
   if Result = token_less then
-    Result := ParseGenericsHeader(EntryScope, {out} GenericsArgs);
+    Result := ParseGenericsHeader(ProcScope, {out} GenericsArgs);
 
   // парсим параметры
   if Result = token_openround then
   begin
-    ParseParameters(EntryScope, EntryScope.ParamsScope);
+    ParseParameters(ProcScope, ProcScope.ParamsScope);
     Result := Lexer_NextToken(Scope); // move to "token_colon"
   end;
 
@@ -4419,8 +4427,8 @@ begin
   begin
     Lexer_MatchToken(Result, token_colon);
     // парсим тип возвращаемого значения
-    Result := ParseTypeSpec(EntryScope, {out} ResultType);
-    AddResultParameter(EntryScope, ResultType);
+    Result := ParseTypeSpec(ProcScope, {out} ResultType);
+    AddResultParameter(ProcScope, ResultType);
   end else
     ResultType := nil;
 
@@ -4428,12 +4436,12 @@ begin
 
   ProcDecl := TASTDelphiProc.CreateAsAnonymous(ImplScope);
   ProcDecl.VarSpace := VarSpace;
-  ProcDecl.ParamsScope := EntryScope;
-  ProcDecl.EntryScope := EntryScope;
-  ProcDecl.ExplicitParams := ScopeToVarList(EntryScope, IfThen(ProcType = token_procedure, 0, 1));
+  ProcDecl.ParamsScope := ProcScope;
+  ProcDecl.EntryScope := ProcScope;
   ProcDecl.ResultType := ResultType;
   ProcDecl.CreateProcedureTypeIfNeed(Scope);
-  EntryScope.Proc := ProcDecl;
+  ProcScope.Proc := ProcDecl;
+  ProcDecl.ExplicitParams := ProcScope.ExplicitParams;
 
   {парсим тело анонимной процедуры}
   Result := ParseProcBody(ProcDecl);

@@ -13,10 +13,13 @@ type
   TDelphiOptions = class(TOptions)
   private
     fOptSCOPEDENUMS: TBoolOption;
+    fOptPOINTERMATH: TBoolOption;
     function GetSCOPEDENUMSValue: Boolean;
+    function GetPOINTERMATHValue: Boolean;
   public
     constructor Create(Parent: TOptions); override;
     property SCOPEDENUMS: Boolean read GetSCOPEDENUMSValue;
+    property POINTERMATH: Boolean read GetPOINTERMATHValue;
   end;
 
 
@@ -35,7 +38,7 @@ constructor TDelphiOptions.Create(Parent: TOptions);
 begin
   inherited;
   fOptSCOPEDENUMS := AddBoolOption('SCOPEDENUMS');
-
+  fOptPOINTERMATH := AddBoolOption('POINTERMATH');
 //// Align fields (Delphi)
 //{$A},{$ALIGN}
 //// Application type (Delphi)
@@ -160,6 +163,11 @@ begin
 //{$J},{$WRITEABLECONST}
 //// Zero-based strings (Delphi)
 //{$ZEROBASEDSTRINGS}
+end;
+
+function TDelphiOptions.GetPOINTERMATHValue: Boolean;
+begin
+  Result := fOptPOINTERMATH.Value;
 end;
 
 function TDelphiOptions.GetSCOPEDENUMSValue: Boolean;

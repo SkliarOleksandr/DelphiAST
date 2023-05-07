@@ -74,6 +74,7 @@ type
     ImplicitCharToAnsiChar,
     ImplicitCharToString,
     ImplicitRangeFromAny,
+    ImplicitRangeToAny,
     ImplicitStringToAnsiString,
     ImplicitStringToGUID,
     ImplicitStringToPChar,
@@ -448,6 +449,11 @@ begin
   _AnsiString.OverloadImplicitFromAny(Operators.ImplicitAnsiStringFromAny);
 
   // WideString
+  _WideString.OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
+  _WideString.OverloadImplicitTo(_PWideChar, Operators.ImplicitStringToPChar);
+  _WideString.OverloadImplicitTo(_PAnsiChar, Operators.ImplicitStringToPChar);
+  _WideString.OverloadImplicitTo(_AnsiString);
+  _WideString.OverloadImplicitTo(_ShortString);
   _WideString.OverloadImplicitTo(_UnicodeString);
   _WideString.OverloadImplicitFromAny(Operators.ImplicitStringFromAny);
   _WideString.OverloadExplicitFromAny(Operators.ExplicitStringFromAny);
@@ -1305,6 +1311,7 @@ begin
   ImplicitCharToAnsiChar := TSysImplicitCharToAnsiChar.CreateAsSystem(Scope);
   ImplicitCharToString := TSysImplicitCharToString.CreateAsSystem(Scope);
   ImplicitRangeFromAny := TSysImplicitRangeFromAny.CreateAsSystem(Scope);
+  ImplicitRangeToAny := TSysImplicitRangeToAny.CreateAsSystem(Scope);
   ImplicitStringToAnsiString := TSysImplicitStringToAnsiString.CreateAsSystem(Scope);
   ImplicitStringToGUID := TSysImplicitStringToGUID.CreateAsSystem(Scope);
   ImplicitStringToPChar := TSysImplicitStringToPChar.CreateAsSystem(Scope);

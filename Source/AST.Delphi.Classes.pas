@@ -5591,6 +5591,7 @@ begin
   OverloadBinarOperator2(opGreaterOrEqual, Self, SYSUnit._Boolean);
   OverloadExplicitFromAny(SYSUnit.Operators.ExplicitRangeFromAny);
   OverloadImplicitFromAny(SYSUnit.Operators.ImplicitRangeFromAny);
+  OverloadImplicitToAny(SYSUnit.Operators.ImplicitRangeToAny);
 end;
 
 function TIDRangeType.GetDisplayName: string;

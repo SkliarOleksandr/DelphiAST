@@ -965,6 +965,9 @@ begin
   // read argument
   Arg := EContext.RPNPopExpression();
   Result := Arg;
+
+  var ResVar := EContext.SContext.Proc.GetTMPVar(SYSUnit._Int64);
+  Result := TIDExpression.Create(ResVar, Arg.TextPosition);
 end;
 
 { TSF_Odd }
