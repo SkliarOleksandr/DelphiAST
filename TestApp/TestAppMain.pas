@@ -52,6 +52,7 @@ type
     chkParseAll: TCheckBox;
     Button1: TButton;
     Button2: TButton;
+    chkShowWarnings: TCheckBox;
     procedure Button2Click(Sender: TObject);
     procedure Button1Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
@@ -101,13 +102,16 @@ begin
   for i := 0 to Messages.Count - 1 do
   begin
     Msg := Messages[i];
-    ErrMemo.Lines.Add(Msg.AsString);
-    if Msg.MessageType = cmtError then
+    if (Msg.MessageType >= cmtError) or chkShowWarnings.Checked then
     begin
-      ErrMemo.CaretY := ErrMemo.Lines.Count;
-      ErrMemo.CaretX := Length(Msg.AsString) + 1;
-      edUnit.CaretX := Msg.Col;
-      edUnit.CaretY := Msg.Row;
+      ErrMemo.Lines.Add(Msg.AsString);
+      if Msg.MessageType = cmtError then
+      begin
+        ErrMemo.CaretY := ErrMemo.Lines.Count;
+        ErrMemo.CaretX := Length(Msg.AsString) + 1;
+        edUnit.CaretX := Msg.Col;
+        edUnit.CaretY := Msg.Row;
+      end;
     end;
   end;
   edUnit.SetFocus;

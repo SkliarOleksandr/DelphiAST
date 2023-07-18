@@ -4471,23 +4471,33 @@ var
   DimensionsCount: Integer;
   DeclType: TIDType;
   DataType: TIDType;
-
 begin
   ArrExpr := EContext.RPNPopExpression();
   ArrDecl := ArrExpr.Declaration;
   DeclType := ArrExpr.DataType;
 
-  if DeclType.DataTypeID in [dtPointer, dtPAnsiChar, dtPWideChar] then
+  if DeclType.DataTypeID = dtPointer then
   begin
-    var APtrType := GetPtrReferenceType(TIDPointer(DeclType));
-    if APtrType is TIDArray then
+    var ARefType := GetPtrReferenceType(TIDPointer(DeclType));
+    // auto-dereference for static array pointer (doesn't depend on POINTERMATH state)
+    if ARefType.DataTypeID = dtStaticArray then
     begin
-      DimensionsCount := TIDArray(APtrType).DimensionsCount;
-      DataType := TIDArray(APtrType).ElementDataType;
-    end else begin
+      DimensionsCount := TIDArray(ARefType).DimensionsCount;
+      DataType := TIDArray(ARefType).ElementDataType;
+    end else
+    // Delphi always treats System.PByte as POINTERMATH enabled type
+    if Options.POINTERMATH or (ARefType.DataTypeID in [dtUInt8]) then
+    begin
       DimensionsCount := 1;
-      DataType := APtrType;
-    end;
+      DataType := ARefType;
+    end else
+      ERRORS.ARRAY_TYPE_REQUIRED(ArrExpr.Declaration.ID, Lexer_PrevPosition);
+  end else
+  if DeclType.DataTypeID in [dtPAnsiChar, dtPWideChar] then
+  begin
+    var ARefType := GetPtrReferenceType(TIDPointer(DeclType));
+    DimensionsCount := 1;
+    DataType := ARefType;
   end else
   if (ArrDecl.ItemType <> itProperty) and (DeclType is TIDArray) then
   begin
@@ -4817,7 +4827,7 @@ begin
     Lexer.ReadNextIdentifier(OptID);
     Opt := Options.FindOption(OptID.Name);
     if not Assigned(Opt) then begin
-      // todo: warning message
+      Warning('Unknown compiler directive: %s', [OptID.Name], OptID.TextPosition);
       Exit(SkipToEnd());
     end;
 

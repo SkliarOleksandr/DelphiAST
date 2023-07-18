@@ -144,6 +144,14 @@ object frmTestAppMain: TfrmTestAppMain
         TabOrder = 5
         OnClick = Button2Click
       end
+      object chkShowWarnings: TCheckBox
+        Left = 527
+        Top = 14
+        Width = 97
+        Height = 17
+        Caption = 'Show Warnings'
+        TabOrder = 6
+      end
     end
   end
   object Panel2: TPanel
@@ -250,19 +258,31 @@ object frmTestAppMain: TfrmTestAppMain
             ''
             'implementation'
             ''
-            'type'
-            '  '
-            '  TSize = record'
-            '  end;'
-            ' '
-            '  TPointF = record'
-            '  end;  '
             ''
-            '  TSizeF = record'
-            '    class operator Implicit(const Size: TSizeF): TPointF;'
-            '    class operator Implicit(const Point: TPointF): TSizeF;'
-            '    class operator Implicit(const Size: TSize): TSizeF;'
-            '  end;  '
+            '{$POINTERMATH ON}'
+            ''
+            'type '
+            '  PString = ^string;'
+            '  PInteger = ^Integer;'
+            ''
+            'procedure AddInt(P: Pointer);'
+            'begin'
+            '  PInteger(P)[0] := 1;'
+            'end;'
+            ''
+            'procedure AddStr(P: Pointer; const Str: string);'
+            'begin'
+            '  PString(P)[0] := Str;'
+            'end;'
+            ''
+            'type'
+            '  TStrArr = array [0..5] of string;'
+            '  PStrArr = ^TStrArr;'
+            ''
+            'procedure AddStrArray(P: PStrArr; const Str: string);'
+            'begin'
+            '  P[0] := Str;'
+            'end;'
             ''
             'end.')
           FontSmoothing = fsmNone
