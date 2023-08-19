@@ -3171,6 +3171,7 @@ begin
   Msg := TCompilerMessage.Create(Self, MessageType, MessageText, SourcePosition);
   Msg.UnitName := _ID.Name;
   Messages.Add(Msg);
+  fPackage.PutMessage(Msg);
 end;
 
 procedure TASTDelphiUnit.PutMessage(MessageType: TCompilerMessageType; const MessageText: string; const SourcePosition: TTextPosition);
@@ -3180,6 +3181,7 @@ begin
   Msg := TCompilerMessage.Create(Self, MessageType, MessageText, SourcePosition);
   Msg.UnitName := GetCurrentParsedFileName(True);
   Messages.Add(Msg);
+  fPackage.PutMessage(Msg);
 end;
 
 procedure TASTDelphiUnit.PutMessage(Message: TCompilerMessage);
@@ -3191,6 +3193,7 @@ begin
     Message.Col := Lexer_Position.Col;
   end;
   Messages.Add(Message);
+  fPackage.PutMessage(Message);
 end;
 
 procedure TASTDelphiUnit.Error(const Message: string; const Params: array of const; const TextPosition: TTextPosition);

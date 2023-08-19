@@ -50,6 +50,7 @@ type
     procedure EnumAllDeclarations(const EnumProc: TEnumASTDeclProc);
     procedure DoBeforeCompileUnit(AUnit: TASTModule);
     procedure DoFinishCompileUnit(AUnit: TASTModule; AIntfOnly: Boolean);
+    procedure PutMessage(const Message: TCompilerMessage); overload;
     function GetMessages: ICompilerMessages;
     function GetRTTICharset: TRTTICharset;
     function RefCount: Integer;

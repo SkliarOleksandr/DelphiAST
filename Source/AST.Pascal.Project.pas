@@ -146,16 +146,8 @@ begin
 end;
 
 function TPascalProject.GetMessages: ICompilerMessages;
-var
-  i: Integer;
-  Module: TPascalUnit;
 begin
-  Result := TCompilerMessages.Create;
-  Result.CopyFrom(fMessages);
-  for i := 0 to FUnits.Count - 1 do begin
-    Module := TPascalUnit(FUnits[i]);
-    Result.CopyFrom(Module.Messages);
-  end;
+  Result := fMessages;
 end;
 
 function TPascalProject.GetRTTICharset: TRTTICharset;

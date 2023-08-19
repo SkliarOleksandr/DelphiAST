@@ -105,17 +105,20 @@ begin
     if (Msg.MessageType >= cmtError) or chkShowWarnings.Checked then
     begin
       ErrMemo.Lines.AddStrings(Msg.AsString.Split([sLineBreak]));
-      if (Msg.MessageType = cmtError) and (Msg.UnitName = 'TestUnit.XXX') then
+      if Msg.MessageType = cmtError then
       begin
         ErrMemo.CaretY := ErrMemo.Lines.Count;
         ErrMemo.CaretX := Length(Msg.AsString) + 1;
-        edUnit.CaretX := Msg.Col;
-        edUnit.CaretY := Msg.Row;
+        if Msg.UnitName = 'TestUnit.XXX' then
+        begin
+          edUnit.CaretX := Msg.Col;
+          edUnit.CaretY := Msg.Row;
+          if edUnit.CanFocus then
+            edUnit.SetFocus;
+        end;
       end;
     end;
   end;
-  if edUnit.CanFocus then
-    edUnit.SetFocus;
 end;
 
 procedure ASTToTreeView2(ASTUnit: TASTDelphiUnit; TreeView: TTreeView);
