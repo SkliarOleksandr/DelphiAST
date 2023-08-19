@@ -62,6 +62,7 @@ type
   TIDProcType = class;
   TASTDelphiProc = class;
   TDlphHelper = class;
+  TIDDynArrayConstant = class;
 
   TScope = class;
   TStructScope = class;
@@ -108,7 +109,12 @@ type
     stWithScope
   );
 
-  TIDDynArrayConstant = class;
+  TIDGenericArg = record
+    GParam: TIDGenericParam;
+    GArg: TIDType;
+  end;
+  TIDGenericArguments = array of TIDGenericArg;
+
 
   TVisibility = (vLocal, vPublic, vProtected, vStrictProtected, vPrivate, vStrictPrivate);
 
@@ -136,6 +142,7 @@ type
     function GetPackage: IASTPascalProject;
     procedure SetIndex(const Value: Integer);
   protected
+    function GetIsGeneric: Boolean; virtual;
     function GetOriginalDecl: TIDDeclaration; virtual;
     function GetIndex: Integer; virtual;
     function GetCValue: TIDConstant; virtual;
@@ -163,6 +170,7 @@ type
     property ImportName: Integer read FImportName write FImportName;
     property UnitID: Integer read GetUnitID;
     property IsAnonymous: Boolean read GetIsAnonymous;
+    property IsGeneric: Boolean read GetIsGeneric;
     property SpaceIndex: Integer read GetIndex;
     procedure IncRefCount(RCPath: UInt32); virtual; // добавляет зависимость
     procedure DecRefCount(RCPath: UInt32); virtual; // удаляет зависимость
@@ -171,6 +179,8 @@ type
     property Package: IASTPascalProject read GetPackage;
     property CValue: TIDConstant read GetCValue write SetCValue;
     property DepricatedExpression: TIDExpression read fDepricatedExpression write fDepricatedExpression;
+
+    function MakeCopy(AScope: TScope): TIDDeclaration; virtual;
   end;
 
   TSpace<T: class{TIDDeclaration}> = record
@@ -208,6 +218,14 @@ type
   TGenericInstance = record
     Args: TIDExpressions;
     Instance: TIDDeclaration;
+  end;
+
+  TGenericInstantiateContext = record
+    SrcDecl: TIDDeclaration;
+    DstDecl: TIDDeclaration;
+    DstScope: TScope;
+    Arguments: TIDGenericArguments;
+    DstID: TIdentifier;
   end;
 
   TGenericInstanceList = array of TGenericInstance;
@@ -305,7 +323,6 @@ type
     function GetOperatorsFor(const Op: TOperatorID): TBinaryOperatorsArray;
     function GetIsReferenced: Boolean; inline;
     function GetIsInteger: Boolean; inline;
-    function GetIsGeneric: Boolean; inline;
   protected
     function GetDataSize: Integer; virtual;
     function GetOrdinal: Boolean; virtual;
@@ -313,6 +330,7 @@ type
     function GetIsManaged: Boolean; virtual;
     function GetActualDataType: TIDType; virtual;
     function GetParent: TIDType;
+    function GetIsGeneric: Boolean; override;
     procedure SetGenericDescriptor(const Value: PGenericDescriptor); virtual;
   public
     constructor CreateAsAnonymous(Scope: TScope); override;
@@ -397,6 +415,8 @@ type
     property Helper: TDlphHelper read fHelper write fHelper;
     // it means the generic declaration in the parsing progress, it's needed to avoid recursive parsing
     property GenericDeclInProgress: Boolean read fGenericDeclInProgress write fGenericDeclInProgress;
+
+    function InstantiateGeneric(var AContext: TGenericInstantiateContext): TIDType; virtual;
   end;
 
   TIDTypesArray = array of TIDType;
@@ -609,6 +629,7 @@ type
     function GetDisplayName: string; override;
     function GetIsManaged: Boolean; override;
     function GetExtraFlags: Byte; virtual;
+    function GetIsGeneric: Boolean; override;
     procedure SetGenericDescriptor(const Value: PGenericDescriptor); override;
     procedure DoCreateStructure;
   public
@@ -648,7 +669,11 @@ type
     property ClassDestructor: TIDProcedure read FClassDestructor write FClassDestructor;
 
     function GetEnumeratorSupported(out ACurrentProp: TIDProperty): Boolean;
+
+    function InstantiateGeneric(var AContext: TGenericInstantiateContext): TIDType; override;
   end;
+
+  TIDStructureClass = class of TIDStructure;
 
   {record type}
   TIDRecord = class(TIDStructure)
@@ -752,6 +777,7 @@ type
   protected
     function GetDisplayName: string; override;
     function GetDataSize: Integer; override;
+    function GetIsGeneric: Boolean; override;
   public
     constructor Create(Scope: TScope; const Name: TIdentifier); override;
     constructor CreateAsAnonymous(Scope: TScope); overload; override;
@@ -765,6 +791,7 @@ type
     procedure IncRefCount(RCPath: UInt32); override;
     procedure DecRefCount(RCPath: UInt32); override;
     function IsOpenArrayOfConst: Boolean;
+    function InstantiateGeneric(var AContext: TGenericInstantiateContext): TIDType; override;
   end;
 
   {set}
@@ -1322,6 +1349,7 @@ type
   protected
     function GetDisplayName: string; override;
     function GetCValue: TIDConstant; override;
+    function GetIsGeneric: Boolean; override;
     procedure SetCValue(const Value: TIDConstant); override;
   public
     constructor Create(Scope: TScope; const Identifier: TIdentifier); override;
@@ -1416,7 +1444,6 @@ type
   TIDProcedure = class(TIDDeclaration)
   strict private
     FExplicitParams: TIDParamArray; // actual arguments (excluding 'self', 'Result', etc...);
-    FCount: Integer;                // count of parameters
     FParamsScope: TProcScope;       // only parameters scope
     FEntryScope: TProcScope;        // proc body scope (params, local vars, types, procs etc...)
     FStruct: TIDStructure;          // self parameter
@@ -1447,12 +1474,12 @@ type
     function GetSelfParamExpression: TIDExpression;
     function GetResultParamExpression: TIDExpression;
     function GetProcSpace: PProcSpace; inline;
-    function GetIsGeneric: Boolean; inline;
     function GetIsClassMethod: Boolean; inline;
   protected
     function GetDisplayName: string; override;
     function GetIndex: Integer; override;
     function GetParamsCount: Integer; virtual;
+    function GetIsGeneric: Boolean; override;
   public
     constructor Create(Scope: TScope; const ID: TIdentifier); override;
     constructor CreateAsAnonymous(Scope: TScope); override;
@@ -1524,6 +1551,8 @@ type
     property FinalSection: TObject read FFinalSection write FFinalSection;
     function GetDebugVariables: string;
     function GetAllOverloadSignatures(const LineSeparator: string = #13#10): string;
+
+    function InstantiateGeneric(ANewStruct: TIDStructure; var AContext: TGenericInstantiateContext): TIDProcedure;
   end;
 
   TASTDelphiProc = class(TIDProcedure)
@@ -1568,6 +1597,9 @@ type
 
   TScope = class(TIDList)
   private
+    // todo: use list as a TSpase replacement
+    // todo: rework AVL to use list inside
+    FItems: TList<TIDDeclaration>;
     fUnit: TASTModule;          // модуль (индекс модуля в пакете)
     fParent: TScope;            // Parent scope
     fScopeType: TScopeType;     // Тип scope
@@ -1627,6 +1659,7 @@ type
     FParamsScope: TParamsScope;
     function GetExplicitParams: TIDParamArray;
     function GetExplicitParamsCount: Integer; inline;
+    function GetItem(AIndex: Integer): TIDDeclaration; inline;
   protected
     function GetScopeClass: TScopeClass; override;
     function GetName: string; override;
@@ -1642,6 +1675,7 @@ type
     property ExplicitParams: TIDParamArray read GetExplicitParams;
     function FindID(const Identifier: string): TIDDeclaration; override;
     function FindIDRecurcive(const ID: string): TIDDeclaration; override;
+    property Items[AIndex: Integer]: TIDDeclaration read GetItem;
   end;
 
   TStructScope = class(TScope)
@@ -1775,6 +1809,7 @@ const
   function IsClassProc(AProcType: TProcType): Boolean; inline;
 
   function GetConstantClassByDataType(DataTypeID: TDataTypeID): TIDConstantClass;
+  function IsGenericArgMatch(ATypeArg: TIDType; const AGenericParam: TIDGenericParam): Boolean;
 
 implementation
 
@@ -1785,6 +1820,81 @@ uses AST.Delphi.System,
      AST.Delphi.Parser,
      AST.Delphi.SysOperators,
      AST.Delphi.SysFunctions;
+
+function IsGenericArgMatch(ATypeArg: TIDType; const AGenericParam: TIDGenericParam): Boolean;
+begin
+  case AGenericParam.Constraint of
+    gsClass: Result := (ATypeArg.DataTypeID = dtClass);               // <T: class
+    gsConstructor : Result := (ATypeArg.DataTypeID = dtClass);        // <T: constructor>
+    gsClassAndConstructor: Result := (ATypeArg.DataTypeID = dtClass); // <T: class constructor>
+    gsRecord: Result := (ATypeArg.DataTypeID = dtRecord {todo:});     // <T: record>
+    gsType: Result := (ATypeArg is TIDStructure) and
+                       TIDStructure(ATypeArg).IsInheritsForm(AGenericParam.ConstraintType as TIDStructure);
+  else
+    Result := True;
+  end;
+end;
+
+function GetArgByGenericParam(var AContext: TGenericInstantiateContext; AGParam: TIDType): TIDType;
+begin
+  //var AFound := False;
+  if AGParam is TIDGenericParam then
+  begin
+    for var AIndex := 0 to Length(AContext.Arguments) - 1 do
+    begin
+      if AContext.Arguments[AIndex].GParam = AGParam then
+        Exit(AContext.Arguments[AIndex].GArg)
+    end;
+    AbortWorkInternal('Unknown generic param: %s', [AGParam.DisplayName]);
+  end else begin
+    if AGParam = AContext.SrcDecl then
+      Result := TIDType(AContext.DstDecl)
+    else begin
+      Result := AGParam.InstantiateGeneric(AContext);
+    end;
+  end;
+  Result := nil;
+end;
+
+function InstantiateIfNeeded(AGenericType: TIDStructure; var AContext: TGenericInstantiateContext): TIDStructure; overload;
+begin
+  if Assigned(AGenericType) and AGenericType.IsGeneric then
+    Result := AGenericType.InstantiateGeneric(AContext) as TIDStructure
+  else
+    Result := AGenericType;
+end;
+
+function InstantiateIfNeeded(ANewScope: TScope; const AProcParams: TIDParamArray; var AContext: TGenericInstantiateContext): TIDParamArray; overload;
+begin
+  var AParamCount := Length(AProcParams);
+  SetLength(Result, AParamCount);
+  for var AIndex := 0 to AParamCount - 1 do
+  begin
+    var AParam := AProcParams[AIndex].MakeCopy(ANewScope) as TIDParam;
+    if AParam.IsGeneric then
+      AParam.DataType := GetArgByGenericParam(AContext, AParam.DataType);
+
+    Result[AIndex] := AParam;
+  end;
+end;
+
+function InstantiateIfNeeded(ANewScope: TScope; AProperty: TIDProperty; var AContext: TGenericInstantiateContext): TIDProperty; overload;
+begin
+  if Assigned(AProperty) then
+  begin
+    Result := AProperty.MakeCopy(ANewScope) as TIDProperty;
+    if AProperty.IsGeneric then
+      AProperty.DataType := GetArgByGenericParam(AContext, AProperty.DataType as TIDGenericParam);
+  end else
+    Result := nil;
+end;
+
+function InstantiateIfNeeded(ANewScope: TScope; AField: TIDField; var AContext: TGenericInstantiateContext): TIDField; overload;
+begin
+  Result := AField.MakeCopy(ANewScope) as TIDField;
+  if Result.IsGeneric then
+    Result.DataType := GetArgByGenericParam(AContext, Result.DataType);
+end;
 
 function IsClassProc(AProcType: TProcType): Boolean; inline;
 begin
@@ -1987,6 +2097,7 @@ end;
 constructor TScope.Create(ScopeType: TScopeType; DeclUnit: TASTModule);
 begin
   inherited Create(StrCICompare);
+  FItems := TList<TIDDeclaration>.Create;
   FScopeType := ScopeType;
   FUnit := DeclUnit;
   Assert(Assigned(DeclUnit));
@@ -1995,6 +2106,7 @@ end;
 constructor TScope.Create(ScopeType: TScopeType; Parent: TScope);
 begin
   inherited Create(StrCICompare);
+  FItems := TList<TIDDeclaration>.Create;
   FScopeType := ScopeType;
   FParent := Parent;
   FUnit := Parent.DeclUnit;
@@ -2006,6 +2118,7 @@ end;
 constructor TScope.Create(ScopeType: TScopeType; VarSpace: PVarSpace; ProcSpace: PProcSpace; Parent: TScope; DeclUnit: TASTModule);
 begin
   inherited Create(StrCICompare);
+  FItems := TList<TIDDeclaration>.Create;
   FScopeType := ScopeType;
   FVarSpace := VarSpace;
   FProcSpace := ProcSpace;
@@ -2025,6 +2138,7 @@ begin
       FChilds[i].Free;
     FChilds.Free;
   end;
+  FItems.Free;
   inherited;
 end;
 
@@ -2065,6 +2179,7 @@ begin
     Delete(Declaration.Name);
     FVarSpace.Delete(Declaration);
   end;
+  FItems.Remove(Declaration);
 end;
 
 procedure TScope.AddProcedure(Declaration: TIDProcedure);
@@ -2072,12 +2187,14 @@ begin
   if not InsertID(Declaration) then
     AbortWork(sIdentifierRedeclaredFmt, [Declaration.DisplayName], Declaration.SourcePosition);
   FProcSpace.Add(Declaration);
+  FItems.Add(Declaration);
 end;
 
 procedure TScope.AddProperty(Declaration: TIDProperty);
 begin
   if not InsertID(Declaration) then
     AbortWork(sIdentifierRedeclaredFmt, [Declaration.Name], Declaration.SourcePosition);
+  FItems.Add(Declaration);
 end;
 
 procedure TScope.AddVariable(Declaration: TIDVariable);
@@ -2085,6 +2202,7 @@ begin
   if not InsertID(Declaration) then
     AbortWork(sIdentifierRedeclaredFmt, [Declaration.Name], Declaration.SourcePosition);
   FVarSpace.Add(Declaration);
+  FItems.Add(Declaration);
 end;
 
 function TScope.FindIDRecurcive(const ID: string): TIDDeclaration;
@@ -2272,6 +2390,11 @@ begin
   Result := (FID.Name = '');
 end;
 
+function TIDDeclaration.GetIsGeneric: Boolean;
+begin
+  Result := DataTypeID = dtGeneric;
+end;
+
 function TIDDeclaration.GetOriginalDecl: TIDDeclaration;
 begin
   Result := self;
@@ -2302,6 +2425,21 @@ begin
     Exit;
   FRCPath := RCPath;
   Inc(FRefCount);
+end;
+
+function TIDDeclaration.MakeCopy(AScope: TScope): TIDDeclaration;
+begin
+  Result := TIDDeclarationClass(ClassType).Create(AScope, ID);
+  Result.FDataType := FDataType;
+  Result.FVisibility := FVisibility;
+  Result.FIndex := FIndex;
+  Result.FExportNameIndex := FExportNameIndex;
+  Result.FRefCount := FRefCount;
+  Result.FRCPath := FRCPath;
+  Result.FNoOverride := FNoOverride;
+  Result.FImportLib := FImportLib;
+  Result.FImportName := FImportName;
+  Result.fDepricatedExpression := fDepricatedExpression;
 end;
 
 procedure TIDDeclaration.DecRefCount(RCPath: UInt32);
@@ -2336,10 +2474,10 @@ end;
 
 procedure TIDProcedure.AddParam(const Param: TIDVariable);
 begin
-  SetLength(FExplicitParams, FCount + 1);
-  FExplicitParams[FCount] := Param;
+  var ACount := Length(FExplicitParams);
+  SetLength(FExplicitParams, ACount + 1);
+  FExplicitParams[ACount] := Param;
   FVarSpace.Add(Param);
-  Inc(FCount);
 end;
 
 function TIDProcedure.AddParam(const Name: string; DataType: TIDType): TIDParam;
@@ -2514,7 +2652,6 @@ begin
   if Assigned(FExplicitParams) then
     raise Exception.Create('Parameters alrady assigned!');
   FExplicitParams := Value;
-  FCount := Length(Value);
 end;
 
 procedure TIDProcedure.SetResult(DataType: TIDType);
@@ -2625,7 +2762,7 @@ end;
 
 function TIDProcedure.GetParamsCount: Integer;
 begin
-  Result := FCount;
+  Result := Length(FExplicitParams);
 end;
 
 function TIDProcedure.GetProcSpace: PProcSpace;
@@ -2756,6 +2893,32 @@ begin
   end;
   if Assigned(ResultType) then
     ResultType.IncRefCount(RCPath);
+end;
+
+function TIDProcedure.InstantiateGeneric(ANewStruct: TIDStructure; var AContext: TGenericInstantiateContext): TIDProcedure;
+begin
+  if not IsStatic then
+    Result := TIDProcedure(inherited MakeCopy(ANewStruct.Members))
+  else
+    Result := TIDProcedure(inherited MakeCopy(ANewStruct.StaticMembers));
+
+  Result.FExplicitParams := InstantiateIfNeeded(ParamsScope, FExplicitParams, AContext);
+  //Result.FParamsScope := FParamsScope;
+  //Result.FEntryScope := FEntryScope;
+  Result.FStruct := ANewStruct;
+  Result.FProcFlags := FProcFlags;
+  Result.FNextOverload := FNextOverload;
+//  Result.FVarSpace := FVarSpace;
+//  Result.FProcSpace := FProcSpace;
+  Result.FCallConv := FCallConv;
+  Result.FResultType := FResultType;
+  Result.FVirtualIndex := FVirtualIndex;
+  Result.FGenericDescriptor := nil;
+  Result.FGenericPrototype := nil;
+  Result.FFirstBodyLine := FFirstBodyLine;
+  Result.FLastBodyLine := FLastBodyLine;
+  Result.FFinalSection := FFinalSection;
+  Result.FInherited := FInherited;
 end;
 
 procedure TIDProcedure.MakeSelfParam;
@@ -3082,6 +3245,11 @@ begin
     Result := TStructScope(Scope).Struct
   else
     Result := nil;
+end;
+
+function TIDType.InstantiateGeneric(var AContext: TGenericInstantiateContext): TIDType;
+begin
+  Result := Self;
 end;
 
 procedure ERROR_OPERATOR_ALREADY_OVERLOADED(Op: TOperatorID; Type1, Type2: TIDDeclaration; const Position: TTextPosition); overload;
@@ -3456,6 +3624,11 @@ end;
 function TIDVariable.GetIsField: Boolean;
 begin
   Result := VarIsField in FFlags;
+end;
+
+function TIDVariable.GetIsGeneric: Boolean;
+begin
+  Result := DataType.IsGeneric;
 end;
 
 function TIDVariable.GetIsExplicit: Boolean;
@@ -4023,6 +4196,11 @@ begin
   Result := False;
 end;
 
+function TIDStructure.GetIsGeneric: Boolean;
+begin
+  Result := Assigned(fGenericDescriptor);
+end;
+
 function TIDStructure.GetIsManaged: Boolean;
 var
   Item: TIDVariable;
@@ -4089,6 +4267,68 @@ begin
     Proc.IncTypesReadCountInSignature(RCPath);
     Proc := TIDProcedure(Proc.NextItem);
   end;
+end;
+
+function TIDStructure.InstantiateGeneric(var AContext: TGenericInstantiateContext): TIDType;
+
+  function InstantiateProc(ANewStruct: TIDStructure;
+                           AProc: TIDProcedure): TIDProcedure; overload;
+  begin
+    if Assigned(AProc) then
+    begin
+      if AProc.IsGeneric then
+        Result := AProc.InstantiateGeneric(ANewStruct, AContext)
+      else
+        Result := AProc; {todo: make a copy anyway}
+    end else
+      Result := nil;
+  end;
+
+  procedure InstantiateMethods(ANewStruct: TIDStructure);
+  begin
+    var LOldProc := TIDProcedure(fProcSpace.First);
+    while Assigned(LOldProc) do
+    begin
+      var LNewProc := LOldProc.InstantiateGeneric(ANewStruct, AContext);
+      ANewStruct.Members.AddProcedure(LNewProc);
+      LOldProc := TIDProcedure(LOldProc.NextItem);
+    end;
+  end;
+
+  procedure InstantiateFields(ANewStruct: TIDStructure);
+  begin
+    var LOldField := TIDField(fVarSpace.First);
+    while Assigned(LOldField) do
+    begin
+      var LNewField := InstantiateIfNeeded(ANewStruct.Members, LOldField, AContext);
+      ANewStruct.Members.AddVariable(LNewField);
+      LOldField := TIDField(LOldField.NextItem);
+    end;
+  end;
+
+begin
+  if IsGeneric then
+  begin
+    var LNewType := TIDStructureClass(ClassType).Create(AContext.DstScope, AContext.DstID);
+    AContext.DstDecl := LNewType;
+    Result := LNewType;
+    LNewType.fAncestor := InstantiateIfNeeded(fAncestor, AContext);
+    //ANewType.fStaticMembers := fStaticMembers;
+    //ANewType.fMembers := fMembers;
+    //ANewType.fOperators := fOperators;
+    //ANewType.fVarSpace := fVarSpace;
+    //ANewType.fProcSpace := fProcSpace;
+    //ANewType.fStaticVarSpace := fStaticVarSpace;
+    //ANewType.fStaticProcSpace := fStaticProcSpace;
+    //ANewType.fOperatorsSpace := fOperatorsSpace;
+    LNewType.fStrucFlags := fStrucFlags;
+    LNewType.fDefaultProperty := InstantiateIfNeeded(Members, fDefaultProperty, AContext);
+    LNewType.fClassConstructor := InstantiateProc(LNewType, fClassConstructor);
+    LNewType.FClassDestructor :=  InstantiateProc(LNewType, fClassDestructor);
+    InstantiateFields(LNewType);
+    InstantiateMethods(LNewType);
+  end else
+    Result := Self;
 end;
 
 procedure TIDStructure.DecRefCount(RCPath: UInt32);
@@ -4534,6 +4774,11 @@ begin
     Result := Result + '<null>';
 end;
 
+function TIDArray.GetIsGeneric: Boolean;
+begin
+  Result := FElementDataType.IsGeneric;
+end;
+
 procedure TIDArray.IncRefCount(RCPath: UInt32);
 var
   i: Integer;
@@ -4545,6 +4790,13 @@ begin
   for i := 0 to FDimensionsCount - 1 do
     FDimensions[i].IncRefCount(RCPath);
   ElementDataType.IncRefCount(RCPath);
+end;
+
+function TIDArray.InstantiateGeneric(var AContext: TGenericInstantiateContext): TIDType;
+begin
+  Result := MakeCopy({todo: dif scope should be specified} AContext.DstScope) as TIDType;
+  TIDArray(Result).ElementDataType := GetArgByGenericParam(AContext, ElementDataType);
+  Result.ID := AContext.DstID;
 end;
 
 function TIDArray.IsOpenArrayOfConst: Boolean;
@@ -5399,6 +5651,7 @@ constructor TInterfaceScope.Create(AUnit: TASTModule;
                        ProcSpace: PProcSpace);
 begin
   inherited Create(StrCICompare);
+  FItems := TList<TIDDeclaration>.Create;
   FScopeType := stGlobal;
   FVarSpace := VarSpace;
   FProcSpace := ProcSpace;
@@ -5433,6 +5686,7 @@ end;
 constructor TImplementationScope.Create(InterfaceScope: TScope);
 begin
   inherited Create(StrCICompare);
+  FItems := TList<TIDDeclaration>.Create;
   FScopeType := InterfaceScope.ScopeType;
   FVarSpace := InterfaceScope.VarSpace;
   FProcSpace := InterfaceScope.ProcSpace;
@@ -5744,6 +5998,7 @@ end;
 constructor TProcScope.CreateInBody(Parent: TScope);
 begin
   inherited Create(StrCICompare);
+  FItems := TList<TIDDeclaration>.Create;
   FScopeType := stLocal;
   FParent := Parent;
   FVarSpace := Parent.VarSpace;
@@ -5755,6 +6010,7 @@ end;
 constructor TProcScope.CreateInDecl(Parent: TScope; Proc: TIDProcedure; VarSpace: PVarSpace; ProcSpace: PProcSpace);
 begin
   inherited Create(StrCICompare);
+  FItems := TList<TIDDeclaration>.Create;
   FScopeType := stLocal;
   FParent := Parent;
   FUnit := Parent.DeclUnit;
@@ -5776,6 +6032,11 @@ end;
 function TProcScope.GetExplicitParamsCount: Integer;
 begin
   Result := FParamsScope.Count;
+end;
+
+function TProcScope.GetItem(AIndex: Integer): TIDDeclaration;
+begin
+  Result := FItems[AIndex];
 end;
 
 function TProcScope.GetName: string;
@@ -6185,6 +6446,7 @@ end;
 constructor TStructScope.CreateAsStruct(Parent: TScope; Struct: TIDStructure; VarSpace: PVarSpace; ProcSpace: PProcSpace; DeclUnit: TASTModule);
 begin
   inherited Create(StrCICompare);
+  FItems := TList<TIDDeclaration>.Create;
   FScopeType := stStruct;
   FVarSpace := VarSpace;
   FProcSpace := ProcSpace;

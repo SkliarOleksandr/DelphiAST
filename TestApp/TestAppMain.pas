@@ -69,7 +69,7 @@ type
     procedure OnProgress(const Module: IASTModule; Status: TASTProcessStatusClass);
     procedure ShowAllItems(const Project: IASTDelphiProject);
     procedure ShowResult(const Project: IASTDelphiProject);
-    procedure CompilerMessagesToStrings(const Messages: ICompilerMessages);
+    procedure CompilerMessagesToStrings(const Project: IASTDelphiProject);
   public
     { Public declarations }
     procedure IndexSources(const RootPath: string; Dict: TSourcesDict);
@@ -93,19 +93,19 @@ uses
 
 {$R *.dfm}
 
-procedure TfrmTestAppMain.CompilerMessagesToStrings(const Messages: ICompilerMessages);
+procedure TfrmTestAppMain.CompilerMessagesToStrings(const Project: IASTDelphiProject);
 var
   I: Integer;
   Msg: TCompilerMessage;
 begin
   ErrMemo.Lines.Add('===================================================================');
-  for i := 0 to Messages.Count - 1 do
+  for i := 0 to Project.Messages.Count - 1 do
   begin
-    Msg := Messages[i];
+    Msg := Project.Messages[i];
     if (Msg.MessageType >= cmtError) or chkShowWarnings.Checked then
     begin
-      ErrMemo.Lines.Add(Msg.AsString);
-      if Msg.MessageType = cmtError then
+      ErrMemo.Lines.AddStrings(Msg.AsString.Split([sLineBreak]));
+      if (Msg.MessageType = cmtError) and (Msg.UnitName = 'TestUnit.XXX') then
       begin
         ErrMemo.CaretY := ErrMemo.Lines.Count;
         ErrMemo.CaretX := Length(Msg.AsString) + 1;
@@ -114,7 +114,8 @@ begin
       end;
     end;
   end;
-  edUnit.SetFocus;
+  if edUnit.CanFocus then
+    edUnit.SetFocus;
 end;
 
 procedure ASTToTreeView2(ASTUnit: TASTDelphiUnit; TreeView: TTreeView);
@@ -271,7 +272,7 @@ begin
       //ASTToTreeView2(UN, tvAST);
 
     ShowAllItems(Project);
-    CompilerMessagesToStrings(Project.Messages);
+    CompilerMessagesToStrings(Project);
 
     ErrMemo.Lines.AddStrings(Msg);
   finally
@@ -387,7 +388,7 @@ begin
       edAllItems.EndUpdate;
     end;
 
-    CompilerMessagesToStrings(Prj.Messages);
+    CompilerMessagesToStrings(Prj);
 
     ErrMemo.Lines.AddStrings(Msg);
   finally

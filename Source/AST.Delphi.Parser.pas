@@ -114,6 +114,7 @@ type
     function ProcSpec_CDecl(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
     function SpecializeGenericProc(CallExpr: TIDCallExpression; const CallArgs: TIDExpressions): TASTDelphiProc;
     function SpecializeGenericType(GenericType: TIDType; const ID: TIdentifier; const SpecializeArgs: TIDExpressions): TIDType;
+    function InstantiateGenericType(AScope: TScope; AGenericType: TIDType; const SpecializeArgs: TIDExpressions): TIDType;
     function GetWeakRefType(Scope: TScope; SourceDataType: TIDType): TIDWeekRef;
     function CreateAnonymousConstTuple(Scope: TScope; ElementDataType: TIDType): TIDExpression;
     function GetCurrentParsedFileName(OnlyFileName: Boolean): string;
@@ -1042,7 +1043,7 @@ begin
       {если это специализация обобщенного типа}
       if Result = token_less then
       begin
-        Result := ParseGenericTypeSpec(Scope, ID, DataType);
+        Result := ParseGenericTypeSpec(Scope, ID, {out} DataType);
         Exit;
       end;
 
@@ -6385,14 +6386,18 @@ var
 begin
   Result := ParseGenericsArgs(Scope, fUnitSContext, GenericArgs);
   SearchName := format('%s<%d>', [ID.Name, Length(GenericArgs)]);
-  DataType := TIDType(FindIDNoAbort(Scope, SearchName));
-  if Assigned(DataType) then
+  var LGenericType := TIDType(FindIDNoAbort(Scope, SearchName));
+  if Assigned(LGenericType) then
   begin
-    if not DataType.GenericDeclInProgress and
-       not IsGenericTypeThisStruct(Scope, DataType) then
-      DataType := SpecializeGenericType(DataType, ID, GenericArgs);
+    if not LGenericType.GenericDeclInProgress and
+       not IsGenericTypeThisStruct(Scope, LGenericType) then
+    begin
+      // new call:
+      DataType := InstantiateGenericType(Scope, LGenericType, GenericArgs);
+      //DataType := SpecializeGenericType(DataType, ID, GenericArgs);
+    end;
   end else
-    AbortWorkInternal('Invalid generic type params');
+    ERRORS.UNDECLARED_ID(ID {todo: generic params});
 end;
 
 function TASTDelphiUnit.ParseGoToStatement(Scope: TScope; const SContext: TSContext): TTokenID;
@@ -8369,6 +8374,35 @@ begin
   end;
 end;
 
+function TASTDelphiUnit.InstantiateGenericType(AScope: TScope; AGenericType: TIDType; const SpecializeArgs: TIDExpressions): TIDType;
+var
+  GDescriptor: PGenericDescriptor;
+  LContext: TGenericInstantiateContext;
+begin
+  GDescriptor := AGenericType.GenericDescriptor;
+  {find in the pool first}
+  Result := TIDType(FindGenericInstance(GDescriptor.GenericInstances, SpecializeArgs));
+  if Assigned(Result) then
+    Exit;
+
+  LContext.SrcDecl := AGenericType;
+  LContext.DstScope := AScope;
+  var AStrSufix := '';
+  var AArgsCount := Length(SpecializeArgs);
+  SetLength(LContext.Arguments, AArgsCount);
+  for var AIndex := 0 to AArgsCount - 1 do
+  begin
+    var AArgType := SpecializeArgs[AIndex].AsType;
+    LContext.Arguments[AIndex].GParam := GDescriptor.GenericParams[AIndex] as TIDGenericParam;
+    LContext.Arguments[AIndex].GArg := AArgType;
+    AStrSufix := AddStringSegment(AStrSufix, AArgType.Name, ',');
+  end;
+  LContext.DstID.Name := AGenericType.Name + '<' + AStrSufix + '>';
+  LContext.DstID.TextPosition := Lexer_Position;
+
+  Result := AGenericType.InstantiateGeneric(LContext);
+end;
+
 function TASTDelphiUnit.SpecializeGenericType(GenericType: TIDType; const ID: TIdentifier; const SpecializeArgs: TIDExpressions): TIDType;
 var
   i: Integer;
@@ -9552,7 +9586,7 @@ begin
     end;
     Lexer_MatchToken(Result, token_colon);
     // парсим тип
-    Result := ParseTypeSpec(Scope, DataType);
+    Result := ParseTypeSpec(Scope, {out} DataType);
     DeclAbsolute := nil;
     DefaultValue := nil;
 

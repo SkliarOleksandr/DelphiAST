@@ -26,7 +26,7 @@ resourcestring
   sTypeIdExpectedButFoundFmt = 'Type identifier expected but "%s" found';
   sIdentifierRedeclaredFmt = 'Identifier redeclared: "%s"';
   sUndeclaredIdentifier = 'Undeclared identifier: "%s"';
-  sDeclDifWithPrevDecl = 'Declaration of "%s" differs from previous declaration:'#13#10'%s'#13#10'%s';
+  sDeclDifWithPrevDecl = 'Declaration of "%s" differs from previous declaration:' + sLineBreak + '%s'  + sLineBreak + '%s';
   sBeginEndCountAreDiffers = 'Count of BEGIN/END clauses does not equals';
   sDevisionByZero = 'Devision by zero';
   sVariableRequired = 'Variable required';
