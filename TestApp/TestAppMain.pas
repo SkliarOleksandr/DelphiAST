@@ -7,7 +7,7 @@ uses
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, System.Generics.Collections, AST.Pascal.Project,
   AST.Pascal.Parser, AST.Delphi.Classes, SynEdit, SynEditHighlighter, SynEditCodeFolding, SynHighlighterPas, AST.Delphi.Project,
   Vcl.ComCtrls, System.Types, Vcl.ExtCtrls, AST.Intf, AST.Parser.ProcessStatuses, Vcl.CheckLst, SynEditMiscClasses,
-  SynEditSearch, AST.Parser.Messages, SynMemo;   // system
+  SynEditSearch, AST.Parser.Messages;   // system
 
 type
   TSourceFileInfo = record
@@ -43,7 +43,7 @@ type
     Panel5: TPanel;
     Button5: TButton;
     NSSearchEdit: TEdit;
-    ErrMemo: TSynMemo;
+    ErrMemo: TSynEdit;
     Panel6: TPanel;
     Label1: TLabel;
     edSrcRoot: TEdit;
@@ -53,6 +53,12 @@ type
     Button1: TButton;
     Button2: TButton;
     chkShowWarnings: TCheckBox;
+    PageControl2: TPageControl;
+    tsLogs: TTabSheet;
+    tsFiles: TTabSheet;
+    LogMemo: TSynEdit;
+    chkWriteLog: TCheckBox;
+    Splitter3: TSplitter;
     procedure Button2Click(Sender: TObject);
     procedure Button1Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
@@ -84,12 +90,13 @@ uses
   System.IOUtils,
   System.TypInfo,
   System.Rtti,
+  System.StrUtils,
   AST.Delphi.System,
   AST.Delphi.Parser,
   AST.Classes,
   AST.Writer,
   AST.Targets,
-  AST.Delphi.DataTypes, AST.Parser.Utils;
+  AST.Delphi.DataTypes, AST.Parser.Utils, AST.Parser.Log;
 
 {$R *.dfm}
 
@@ -195,6 +202,7 @@ var
   Prj: IASTDelphiProject;
 begin
   ErrMemo.Clear;
+  LogMemo.Clear;
 
   FStartedAt := Now;
 
@@ -301,6 +309,7 @@ var
   Prj: IASTDelphiProject;
 begin
   ErrMemo.Clear;
+  LogMemo.Clear;
 
   FStartedAt := Now;
 
@@ -412,8 +421,12 @@ end;
 procedure TfrmTestAppMain.FormCreate(Sender: TObject);
 begin
   fSettings := TPascalProjectSettings.Create;
+
+  TASTParserLog.Instance.OnWriteProc := procedure(const AMessage: string; ANestedLevel: Integer)
+  begin
+    if chkWriteLog.Checked then
+      LogMemo.Lines.Add(DupeString(' ', ANestedLevel) + AMessage);
+  end
 end;
 
 end.
-
-

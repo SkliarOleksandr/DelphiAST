@@ -32,7 +32,9 @@ uses
   AST.Parser.ProcessStatuses in '..\Source\AST.Parser.ProcessStatuses.pas',
   AST.Delphi.Options in '..\Source\AST.Delphi.Options.pas',
   AST.Delphi.Intf in '..\Source\AST.Delphi.Intf.pas',
-  AST.Pascal.Intf in '..\Source\AST.Pascal.Intf.pas';
+  AST.Pascal.Intf in '..\Source\AST.Pascal.Intf.pas',
+  AST.Delphi.Operators.Signatures in '..\Source\AST.Delphi.Operators.Signatures.pas',
+  AST.Parser.Log in '..\Source\AST.Parser.Log.pas';
 
 {$R *.res}
 

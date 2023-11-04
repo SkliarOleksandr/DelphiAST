@@ -102,6 +102,7 @@ type
     ExplicitStringFromAny,
     ExplicitAnsiStringFromAny,
     ExplicitTProcFromAny,
+    ExplicitClassToAny,
     ExplicitClassFromAny,
     ExplicitClassOfToAny,
     ExplicitClassOfFromAny,
@@ -1196,7 +1197,7 @@ function TSYSTEMUnit.RegisterOrdinal(const TypeName: string; DataType: TDataType
 begin
   Result := RegisterType(TypeName, TIDOrdinal, DataType);
   TIDOrdinal(Result).LowBound := LowBound;
-  TIDOrdinal(Result).HighBound := HighBound;
+  TIDOrdinal(Result).HighBound := Int64(HighBound);
   TIDOrdinal(Result).SignedBound  := LowBound < 0;
 end;
 
@@ -1338,6 +1339,7 @@ begin
   ExplicitStringFromAny := TSysExplicitStringFromAny.CreateAsSystem(Scope);
   ExplicitAnsiStringFromAny := TSysExplicitAnsiStringFromAny.CreateAsSystem(Scope);
   ExplicitTProcFromAny := TSysExplicitTProcFromAny.CreateAsSystem(Scope);
+  ExplicitClassToAny := TSysExplicitClassToAny.CreateAsSystem(Scope);
   ExplicitClassFromAny := TSysExplicitClassFromAny.CreateAsSystem(Scope);
   ExplicitClassOfToAny := TSysExplicitClassOfToAny.CreateAsSystem(Scope);
   ExplicitClassOfFromAny := TSysExplicitClassOfFromAny.CreateAsSystem(Scope);

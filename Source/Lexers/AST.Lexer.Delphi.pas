@@ -423,7 +423,7 @@ begin
   RegisterToken('goto', token_goto);
   RegisterToken('if', token_if);
   RegisterToken('is', token_is);
-  RegisterToken('in', token_in);
+  RegisterToken('in', token_in, TTokenClass.AmbiguousPriorityKeyword);
   //RegisterToken('index', token_index);
   RegisterToken('interface', token_Interface);
   RegisterToken('inherited', token_inherited);

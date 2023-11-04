@@ -43,6 +43,8 @@ implementation
 
 { EComplilerAbort }
 
+uses AST.Parser.Log;
+
 constructor ECompilerAbort.Create(const MessageText: string);
 begin
   inherited Create(MessageText);
@@ -82,6 +84,7 @@ end;
 
 procedure AbortWork(const Message: string; const SourcePosition: TTextPosition);
 begin
+  WriteLog('ERROR: ' + Message);
   raise ECompilerAbort.Create(Message, SourcePosition);
 end;
 
@@ -92,6 +95,7 @@ end;
 
 procedure AbortWorkInternal(const Message: string; const Params: array of const; const SourcePosition: TTextPosition);
 begin
+  WriteLog('INTERNAL ERROR: ' + Message, Params);
   raise ECompilerInternalError.CreateAsInteranl(Format(Message, Params), SourcePosition);
 end;
 

@@ -253,8 +253,14 @@ type
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
+  {explicit Class -> Any}
+  TSysExplicitClassToAny = class(TSysOpExplisit)
+  public
+    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
   {explicit Class <- Any}
-  TSysExplicitClassFromAny = class(TSysOpImplicit)
+  TSysExplicitClassFromAny = class(TSysOpExplisit)
   public
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
@@ -1072,6 +1078,14 @@ begin
       Exit;
   end;
   Result := nil;
+end;
+
+
+{ TSysExplicitClassToAny }
+
+function TSysExplicitClassToAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
+begin
+  Result := (Dst.DataTypeID in [dtInt32, dtUInt32, dtInt64, dtUInt64, dtPointer, dtClass]);
 end;
 
 { TSysExplicitClassFromAny }

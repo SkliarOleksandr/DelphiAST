@@ -38,14 +38,13 @@ type
       Comparison : Integer;
     end;
     TStackArray = array[1..StackSize] of TStackNode;
-  private
+  protected
     FCount: Integer;
     FRoot: PAVLNode; {Root of tree}
     FCompareFunc: TCompareFunc;
     class procedure InsBalance(var P: PAVLNode; var SubTreeInc: Boolean; CmpRes: Integer); static;
     class procedure DelBalance(var P: PAVLNode; var SubTreeDec: Boolean; CmpRes: Integer); static;
     function FreeNode(Node: PAVLNode; OtherData : Pointer): Boolean; inline;
-  protected
     class function DoCreateNode(const Key: TKey; const  Data: TData): PAVLNode; virtual;
     class procedure DoFreeNode(var Key: TKey; var Data: TData); virtual;
   public

@@ -129,6 +129,7 @@ type
     property TextPosition: TTextPosition read FID.TextPosition write FID.TextPosition;
     property SourcePosition: TTextPosition read FID.TextPosition;
     property Module: TASTModule read fModule;
+    property DisplayName: string read GetDisplayName;
   end;
 
   TASTDeclarations = array of TASTDeclaration;
@@ -638,7 +639,7 @@ end;
 
 function TASTItem.GetDisplayName: string;
 begin
-  Result := '';
+  Result := '<unknown>';
 end;
 
 { TASTKWExit }
