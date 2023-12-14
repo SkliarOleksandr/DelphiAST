@@ -113,18 +113,19 @@ begin
 end;
 
 procedure TASTWriter<TDoc, TNode>.WriteFuncs(RootNode: TNode);
-var
-  Func: TASTDelphiProc;
-  CNode: TNode;
+//var
+//  Func: TASTDelphiProc;
+//  CNode: TNode;
 begin
-  RootNode := fGetNodeProc(fDoc, RootNode, fFuncsSectionName);
-  Func := fModule.GetFirstFunc() as TASTDelphiProc;
-  while Assigned(Func) do
-  begin
-    CNode := fGetNodeProc(fDoc, RootNode, Func.Name);
-    WriteBody(CNode, Func.Body);
-    Func := Func.NextItem as TASTDelphiProc;
-  end;
+// todo:
+//  RootNode := fGetNodeProc(fDoc, RootNode, fFuncsSectionName);
+//  Func := fModule.GetFirstFunc() as TASTDelphiProc;
+//  while Assigned(Func) do
+//  begin
+//    CNode := fGetNodeProc(fDoc, RootNode, Func.Name);
+//    WriteBody(CNode, Func.Body);
+//    Func := Func.NextItem as TASTDelphiProc;
+//  end;
 end;
 
 procedure TASTWriter<TDoc, TNode>.WriteKW_Case(RootNode: TNode; KW: TASTKWCase);

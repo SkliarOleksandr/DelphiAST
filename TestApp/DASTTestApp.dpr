@@ -1,5 +1,8 @@
 program DASTTestApp;
 
+
+{.$define FullDebugMode}
+
 uses
   FastMM4,
   Vcl.Forms,

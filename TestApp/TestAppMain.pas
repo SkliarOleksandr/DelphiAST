@@ -203,6 +203,7 @@ var
 begin
   ErrMemo.Clear;
   LogMemo.Clear;
+  TASTParserLog.Instance.ResetNestedLevel;
 
   FStartedAt := Now;
 
@@ -243,23 +244,25 @@ begin
   edAllItems.BeginUpdate;
   try
     edAllItems.Clear;
-    Project.EnumAllDeclarations(
-      procedure(const Module: TASTModule; const Decl: TASTDeclaration)
-      begin
-        if not chkbShowAnonymous.Checked and (Decl.ID.Name = '') then
-          Exit;
+    var LBuilder := TStringBuilder.Create;
+    try
+      Project.EnumAllDeclarations(
+        procedure(const Module: TASTModule; const Decl: TASTDeclaration)
+        begin
+          if not chkbShowAnonymous.Checked and (Decl.ID.Name = '') then
+            Exit;
 
-        if not chkbShowSysDecls.Checked and (Module.Name = 'system') then
-          Exit;
+          if not chkbShowSysDecls.Checked and (Module.Name = 'system') then
+            Exit;
 
-        var Str := format('%s - %s.%s', [GetItemTypeName(TIDDeclaration(Decl).ItemType), Module.Name, GetDeclName(Decl)]);
+          Decl.Decl2Str(LBuilder);
+          LBuilder.Append(sLineBreak);
+        end);
 
-        if chkbShowConstValues.Checked and (Decl is TIDConstant) then
-          Str := Str + ' = ' + TIDConstant(Decl).AsString;
-
-        edAllItems.Lines.Add(Str);
-        Application.ProcessMessages;
-      end);
+    finally
+      edAllItems.Text := LBuilder.ToString;
+      LBuilder.Free;
+    end;
   finally
     edAllItems.EndUpdate;
   end;
@@ -310,6 +313,7 @@ var
 begin
   ErrMemo.Clear;
   LogMemo.Clear;
+  TASTParserLog.Instance.ResetNestedLevel;
 
   FStartedAt := Now;
 

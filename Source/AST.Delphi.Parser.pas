@@ -119,7 +119,7 @@ type
     function CreateAnonymousConstTuple(Scope: TScope; ElementDataType: TIDType): TIDExpression;
     function GetCurrentParsedFileName(OnlyFileName: Boolean): string;
     class function CreateRangeType(Scope: TScope; LoBound, HiBound: Integer): TIDRangeType; static;
-    class procedure AddSelfParameter(Params: TScope; Struct: TIDStructure; ClassMethod: Boolean); static; inline;
+    class procedure AddSelfParameter(AProcScope: TProcScope; Struct: TIDStructure; ClassMethod: Boolean); static; inline;
     function AddResultParameter(ParamsScope: TParamsScope; DataType: TIDType): TIDVariable;
     procedure CheckCorrectEndCondStatemet(var Token: TTokenID);
   public
@@ -195,8 +195,8 @@ type
     procedure CheckImplicitTypes(Src, Dst: TIDType; Position: TTextPosition); inline;
     procedure CheckEmptyExpression(Expression: TIDExpression); inline;
     procedure CheckArrayExpression(Expression: TIDExpression); inline;
-    procedure CheckIncompletedProcs(ProcSpace: PProcSpace); virtual;
-    procedure CheckIncompletedIntfProcs(ClassType: TIDClass);
+    procedure CheckIncompletedProcs; virtual;
+    procedure CheckIncompletedIntfProcs(AClassType: TIDClass);
     procedure StaticCheckBounds(ConstValue: TIDConstant; Decl: TIDDeclaration; DimNumber: Integer);
     procedure CheckIncompleteFwdTypes;
     procedure CheckEndOfFile(Token: TTokenID);
@@ -228,7 +228,7 @@ type
     procedure CheckClassOrClassOfOrIntfType(Expression: TIDExpression); overload;
     procedure CheckClassOrIntfType(DataType: TIDType; const TextPosition: TTextPosition); overload;
     class procedure CheckInterfaceType(Expression: TIDExpression); static; inline;
-    class procedure CheckIncompleteType(Fields: TScope); static;
+    procedure CheckIncompleteType(Fields: TScope);
     class procedure CheckAccessMember(SContext: PSContext; Decl: TIDDeclaration; const ID: TIdentifier);
     class procedure CheckIntConstInRange(const Expr: TIDExpression; HiBount, LowBound: Int64); static;
     procedure InsertToScope(Scope: TScope; Item: TIDDeclaration); overload; inline;
@@ -278,10 +278,6 @@ type
     class function StrictMatchProcSingnatures(const SrcParams, DstParams: TIDParamArray; const SrcResultType, DstResultType: TIDType): Boolean;
     class function StrictMatchProc(const Src, Dst: TIDProcedure): Boolean;
   public
-    function GetFirstFunc: TASTDeclaration; override;
-    function GetFirstVar: TASTDeclaration; override;
-    function GetFirstType: TASTDeclaration; override;
-    function GetFirstConst: TASTDeclaration; override;
     class function CheckImplicit(const SContext: TSContext; Source: TIDExpression; Dest: TIDType;
                                  AResolveCalls: Boolean = False): TIDDeclaration;
     class function ConstDynArrayToSet(const SContext: TSContext; const CDynArray: TIDExpression; TargetSetType: TIDSet): TIDExpression; static;
@@ -432,7 +428,6 @@ type
   function GetUnit(const SContext: PSContext): TASTDelphiUnit; overload;
   function GetUnit(const EContext: TEContext): TASTDelphiUnit; overload;
   function GetBoolResultExpr(const SContext: TSContext): TIDBoolResultExpression;
-  function ScopeToVarList(Scope: TScope; SkipFirstCount: Integer): TIDParamArray;
   function IntConstExpression(const SContext: TSContext; const Value: Int64): TIDExpression; inline;
   function StrConstExpression(const SContext: TSContext; const Value: string): TIDExpression; inline;
 
@@ -1056,7 +1051,7 @@ begin
 
       case Decl.ItemType of
         itType: begin
-          DataType := TIDType(Decl).ActualDataType;
+          DataType := TIDType(Decl);
           if Result = token_dot then
           begin
             if not (DataType is TIDStructure) then
@@ -1110,7 +1105,8 @@ begin
     DataType := nil;
     Exit;
   end;
-  Result := ParseTypeDecl(Scope, nil, TIdentifier.Empty, DataType);
+  // parse an anonymous type declaration
+  Result := ParseTypeDecl(Scope, nil, TIdentifier.Make('', Lexer_Position), DataType);
   if not Assigned(DataType) then
     ERRORS.INVALID_TYPE_DECLARATION;
 end;
@@ -1276,7 +1272,7 @@ begin
     Lexer_ReadCurrIdentifier(ID);
     Item := TIDIntConstant.Create(Decl.Items, ID);
     Item.DataType := Decl;
-    InsertToScope(Decl.Items, Item);
+    Decl.Items.AddConstant(Item);
     if not Options.SCOPEDENUMS then
       InsertToScope(Scope, Item);
     Token := Lexer_NextToken(Scope);
@@ -2383,7 +2379,7 @@ begin
   Result := TIDExpression.Create(Decl, HB.TextPosition);
 end;
 
-procedure TASTDelphiUnit.CheckIncompletedProcs(ProcSpace: PProcSpace);
+procedure TASTDelphiUnit.CheckIncompletedProcs;
 begin
 //  inherited;
 
@@ -2745,96 +2741,19 @@ begin
   Result := fErrors;
 end;
 
-function TASTDelphiUnit.GetFirstConst: TASTDeclaration;
-begin
-  Result := nil;
-end;
-
-function TASTDelphiUnit.GetFirstFunc: TASTDeclaration;
-begin
-  Result := ProcSpace.First;
-end;
-
-function TASTDelphiUnit.GetFirstType: TASTDeclaration;
-begin
-  Result := TypeSpace.First;
-end;
-
-function TASTDelphiUnit.GetFirstVar: TASTDeclaration;
-begin
-  Result := VarSpace.First;
-end;
-
 procedure TASTDelphiUnit.EnumAllDeclarations(const Proc: TEnumASTDeclProc);
-var
-  Decl: TIDDeclaration;
 begin
-  {константы}
-  Decl := ConstSpace.First;
-  while Assigned(Decl) do
-  begin
-    Proc(Self, Decl);
-    Decl := Decl.NextItem;
-  end;
-  {глобальные переменные}
-  Decl := VarSpace.First;
-  while Assigned(Decl) do
-  begin
-    Proc(Self, Decl);
-    Decl := Decl.NextItem;
-  end;
-  {типы}
-  Decl := TypeSpace.First;
-  while Assigned(Decl) do
-  begin
-    Proc(Self, Decl);
-    Decl := Decl.NextItem;
-  end;
-  {процедуры}
-  Decl := ProcSpace.First;
-  while Assigned(Decl) do
-  begin
-    Proc(Self, Decl);
-    Decl := Decl.NextItem;
-  end;
+  for var LIndex := 0 to IntfScope.Count - 1 do
+    Proc(Self, IntfScope.Items[LIndex]);
+
+  for var LIndex := 0 to ImplScope.Count - 1 do
+    Proc(Self, ImplScope.Items[LIndex]);
 end;
 
 procedure TASTDelphiUnit.EnumIntfDeclarations(const Proc: TEnumASTDeclProc);
-var
-  Decl: TIDDeclaration;
 begin
-  {константы}
-  Decl := ConstSpace.First;
-  while Assigned(Decl) do
-  begin
-    if Decl.Scope = IntfScope then
-      Proc(Self, Decl);
-    Decl := Decl.NextItem;
-  end;
-  {глобальные переменные}
-  Decl := VarSpace.First;
-  while Assigned(Decl) do
-  begin
-    if Decl.Scope = IntfScope then
-      Proc(Self, Decl);
-    Decl := Decl.NextItem;
-  end;
-  {типы}
-  Decl := TypeSpace.First;
-  while Assigned(Decl) do
-  begin
-    if Decl.Scope = IntfScope then
-      Proc(Self, Decl);
-    Decl := Decl.NextItem;
-  end;
-  {процедуры}
-  Decl := ProcSpace.First;
-  while Assigned(Decl) do
-  begin
-    if Decl.Scope = IntfScope then
-      Proc(Self, Decl);
-    Decl := Decl.NextItem;
-  end;
+  for var LIndex := 0 to IntfScope.Count - 1 do
+    Proc(Self, IntfScope.Items[LIndex]);
 end;
 
 class function TASTDelphiUnit.GetTMPVar(const EContext: TEContext; DataType: TIDType): TIDVariable;
@@ -3233,7 +3152,6 @@ procedure TASTDelphiUnit.AddType(const Decl: TIDType);
 begin
   if not (Decl is TIDAliasType) and not Decl.IsPooled then
   begin
-    TypeSpace.Add(Decl);
     Decl.IsPooled := True;
   end;
 end;
@@ -3417,21 +3335,18 @@ function TASTDelphiUnit.MatchRecordImplicit(const SContext: TSContext; Source: T
 var
   SrcRecord: TIDRecord;
   i: Integer;
-  SrcFld, DstFld: TIDVariable;
+  SrcFld, DstFld: TIDDeclaration;
 begin
-  SrcRecord :=  Source.DataType as TIDRecord;
+  SrcRecord := Source.DataType as TIDRecord;
   if SrcRecord.FieldsCount <> DstRecord.FieldsCount then
     Exit(nil);
 
-  SrcFld := SrcRecord.Fields.First;
-  DstFld := DstRecord.Fields.First;
-
-  for i := 0 to SrcRecord.FieldsCount - 1 do
+  for var LIndex := 0 to SrcRecord.Members.Count - 1 do
   begin
+    SrcFld := SrcRecord.Members.Items[LIndex];
+    DstFld := DstRecord.Members.Items[LIndex];
     if SrcFld.DataType.ActualDataType <> DstFld.DataType.ActualDataType then
       Exit(nil);
-    SrcFld :=  TIDVariable(SrcFld.NextItem);
-    DstFld :=  TIDVariable(DstFld.NextItem);
   end;
   Result := Source;
 end;
@@ -4162,10 +4077,9 @@ begin
   Result.DataType := DataType;
   Result.TextPosition := Lexer_Position;
   ParamsScope.InsertID(Result);
-  //ParamsScope.VarSpace.InsertFirst(Result);
 end;
 
-class procedure TASTDelphiUnit.AddSelfParameter(Params: TScope; Struct: TIDStructure; ClassMethod: Boolean);
+class procedure TASTDelphiUnit.AddSelfParameter(AProcScope: TProcScope; Struct: TIDStructure; ClassMethod: Boolean);
 var
   SelfParam: TIDVariable;
   DataType: TIDType;
@@ -4178,12 +4092,9 @@ begin
   if ClassMethod and (DataType is TIDClass)  then
     DataType := TIDClass(DataType).ClassOfType;
 
-//  if Struct.DataTypeID = dtRecord then
-//    SelfParam := TIDVariable.Create(Params, Identifier('Self'), DataType, [VarParameter, VarSelf, VarInOut, VarHiddenParam])
-//  else
-  SelfParam := TIDVariable.Create(Params, Identifier('Self'), DataType, [VarParameter, VarSelf, VarHiddenParam]);
-
-  Params.AddVariable(SelfParam);
+  SelfParam := TIDVariable.Create(AProcScope, Identifier('Self'), DataType, [VarParameter, VarSelf, VarHiddenParam]);
+  AProcScope.AddVariable(SelfParam);
+  AProcScope.ParamsScope.SelfParam := SelfParam;
 end;
 
 class function TASTDelphiUnit.CheckAndCallFuncImplicit(const SContext: TSContext; Expr: TIDExpression; out WasCall: Boolean): TIDExpression;
@@ -4397,12 +4308,10 @@ var
   GenericsArgs: TIDTypeArray;
   ResultType: TIDType;
   ProcDecl: TASTDelphiProc;
-  VarSpace: TVarSpace;
   Closure: TIDClosure;
   Expr: TIDExpression;
 begin
-  VarSpace.Initialize;
-  ProcScope := TProcScope.CreateInDecl(Scope, nil, @VarSpace, nil);
+  ProcScope := TProcScope.CreateInDecl(Scope, {Proc:} nil);
 
   // создаем Result переменную (тип будет определен позже)
 
@@ -4431,7 +4340,6 @@ begin
   Lexer_MatchToken(Result, token_begin);
 
   ProcDecl := TASTDelphiProc.CreateAsAnonymous(ImplScope);
-  ProcDecl.VarSpace := VarSpace;
   ProcDecl.ParamsScope := ProcScope;
   ProcDecl.EntryScope := ProcScope;
   ProcDecl.ResultType := ResultType;
@@ -4615,7 +4523,6 @@ var
   EContext: TEContext;
   DataType: TIDType;
   IndexedPropParams: TIDParamArray;
-  VarSpace: TVarSpace;
   SContext: TSContext;
   ASTE: TASTExpression;
 begin
@@ -4627,7 +4534,6 @@ begin
   if Result = token_openblock then
   begin
     // indexed propery
-    VarSpace.Initialize;
     var LParamsScope := TParamsScope.Create(stLocal, Scope);
     Prop.Params := LParamsScope;
     Result := ParseParameters(Scope, LParamsScope);
@@ -5112,7 +5018,7 @@ begin
       LConst := LConstClass.Create(Scope, Names.Items[i]) as TIDConstant;
       LConst.DataType := Expr.DataType;
       LConst.AssignValue(Expr.AsConst);
-      InsertToScope(Scope, LConst);
+      Scope.AddConstant(LConst);
       AddConstant(LConst);
     end;
     c := 0;
@@ -5143,7 +5049,6 @@ end;
 function TASTDelphiUnit.ParseCaseRecord(Scope: TScope; Decl: TIDRecord): TTokenID;
 var
   Expr: TIDExpression;
-  CaseVarSpace: PVarSpace;
   CaseTypeDecl: TIDDeclaration;
   ID: TIdentifier;
 begin
@@ -5173,10 +5078,7 @@ begin
     // parse ":" & "("
     Lexer_MatchToken(Result, token_colon);
     Lexer_ReadToken(Scope, token_openround);
-    CaseVarSpace := Decl.AddCase();
     Result := Lexer_NextToken(Scope);
-    // todo: var space must be redesigned
-    Scope.VarSpace := CaseVarSpace;
 
     // parse fields first
     if (Result = token_identifier) or (Result = token_id_or_keyword) then
@@ -5898,22 +5800,6 @@ begin
   fCache := TDeclCache.Create;
   fForwardPtrTypes := TList<TIDPointer>.Create;
 
-//  FParser := TDelphiLexer.Create(Source);
-//  FMessages := TCompilerMessages.Create;
-//  //FVisibility := vPublic;
-//  FIntfScope := TScope.Create(stGlobal, @FVarSpace, @FProcSpace, nil, Self);
-//  {$IFDEF DEBUG}FIntfScope.Name := 'unit_intf_scope';{$ENDIF}
-//  FImplScope := TImplementationScope.Create(FIntfScope, nil);
-//  {$IFDEF DEBUG}FImplScope.Name := 'unit_impl_scope';{$ENDIF}
-//  FIntfImportedUnits := TUnitList.Create;
-//  FImplImportedUnits := TUnitList.Create;
-//  //FBENodesPool := TBENodesPool.Create(16);
-//  if Assigned(SYSUnit) then
-//  begin
-//    FTypeSpace.Initialize(Sys.SystemTypesCount);
-//    // добовляем system в uses
-//    FIntfImportedUnits.AddObject('system', SYSUnit);
-//  end;
   FOptions := TDelphiOptions.Create(Package.Options);
 
   fCondStack := TSimpleStack<Boolean>.Create(0);
@@ -5939,6 +5825,7 @@ var
   CItem: TIDConstant;
   Chars: TStringDynArray;
 begin
+  CItem := nil;
   Value := ID.Name;
   case IdentifierType of
     itChar: CItem := TIDCharConstant.CreateAsAnonymous(Scope, Sys._WideChar, Value[1]);
@@ -6381,14 +6268,25 @@ begin
   Result := Lexer_NextToken(Scope);
 end;
 
+function IsTheStructIsOwner(AScope: TScope; AStruct: TIDType): Boolean;
+begin
+  while Assigned(AScope) do
+  begin
+    if (AScope.ScopeType = stStruct) and (TStructScope(AScope).Struct = AStruct) then
+      Exit(True);
+    AScope := AScope.Parent;
+  end;
+  Result := False;
+end;
+
 function TASTDelphiUnit.ParseGenericTypeSpec(Scope: TScope; const ID: TIdentifier; out DataType: TIDType): TTokenID;
 var
-  GenericArgs: TIDExpressions;
+  LGenericArgs: TIDExpressions;
   SearchName: string;
   LCanInstantiate: Boolean;
 begin
-  Result := ParseGenericsArgs(Scope, fUnitSContext, {out} GenericArgs, {out} LCanInstantiate);
-  SearchName := format('%s<%d>', [ID.Name, Length(GenericArgs)]);
+  Result := ParseGenericsArgs(Scope, fUnitSContext, {out} LGenericArgs, {out} LCanInstantiate);
+  SearchName := format('%s<%d>', [ID.Name, Length(LGenericArgs)]);
   var LGenericType := TIDType(FindIDNoAbort(Scope, SearchName));
   if Assigned(LGenericType) then
   begin
@@ -6396,9 +6294,15 @@ begin
        not LGenericType.GenericDeclInProgress and
        not IsGenericTypeThisStruct(Scope, LGenericType) then
     begin
-      DataType := InstantiateGenericType(Scope, LGenericType, GenericArgs);
+      DataType := InstantiateGenericType(Scope, LGenericType, LGenericArgs);
     end else
-      DataType := LGenericType;
+    begin
+      // check if this type is not the current parsed type
+      if not IsTheStructIsOwner(Scope, LGenericType) then
+        DataType := TIDGenericInstantiation.CreateInstantiation(Scope, LGenericType as TIDType, LGenericArgs)
+      else
+        DataType := LGenericType;
+    end;
   end else
     ERRORS.UNDECLARED_ID(ID {todo: generic params});
 end;
@@ -6673,6 +6577,8 @@ begin
 
         Continue;
       end;
+
+      DefaultExpr := nil;
       if Result = token_colon then
       begin
         // parse param type
@@ -6684,9 +6590,8 @@ begin
         if Result = token_equal then
         begin
           Lexer_NextToken(EntryScope);
-          Result := ParseConstExpression(EntryScope, DefaultExpr, ExprNested)
-        end else
-          DefaultExpr := nil;
+          Result := ParseConstExpression(EntryScope, {out} DefaultExpr, ExprNested)
+        end;
       end else begin
 
         // if type is not specified then it is untyped reference
@@ -6850,8 +6755,6 @@ begin
       token_begin: begin
         Proc.FirstBodyLine := Lexer_Line;
         Proc.Body := TASTBlock.Create(Proc);
-        //SContext.Initialize;
-        //SContext.IL := TIL(Proc.IL);
         SContext := TSContext.Create(Self, Scope, Proc, Proc.Body);
         //CheckInitVariables(@SContext, nil, @Proc.VarSpace);
         Lexer_NextToken(Scope);
@@ -6879,7 +6782,6 @@ begin
     Node := SrcScope.Next(Node);
   end;
 end;
-
 
 function SearchInstanceMethodDecl(Struct: TIDStructure;
                                   const ID: TIdentifier;
@@ -6924,7 +6826,6 @@ var
   ID: TIdentifier;
   ProcScope: TProcScope;
   ResultType: TIDType;
-  VarSpace: TVarSpace;
   GenericsParams: TIDTypeArray;
   Proc, ForwardDecl: TASTDelphiProc;
   ForwardDeclNode: TIDList.PAVLNode;
@@ -6947,9 +6848,6 @@ begin
       Result := ParseNestedProc(Scope, ProcType, ID, ProcScope);
     Exit;
   end;
-
-  VarSpace.Initialize;
-  ProcScope.VarSpace := addr(VarSpace);
 
   if ProcType in [ptFunc, ptProc, ptClassFunc, ptClassProc, ptConstructor, ptDestructor] then
     AddSelfParameter(ProcScope, Struct, (ProcType = ptClassProc) or (ProcType = ptClassFunc));
@@ -7115,10 +7013,8 @@ begin
     else if Assigned(Struct.GenericDescriptor) then
       Proc.CreateGenericDescriptor(Struct.GenericDescriptor.GenericParams, SRCProcPos);
 
-    // Для Scope будут переопределены VarSpace и ProcSpace
     Proc.ParamsScope := ProcScope;
     Proc.EntryScope := ProcScope;
-    Proc.VarSpace := VarSpace;
     Proc.ResultType := ResultType;
     ProcScope.Proc := Proc;
 
@@ -7135,7 +7031,7 @@ begin
         ptConstructor: begin
           // constructor should be added to both scopes (instance and static)
           Scope.AddProcedure(Proc);
-          Struct.StaticMembers.InsertID(Proc);
+          Struct.StaticMembers.AddProcedure(Proc);
         end;
         ptClassConstructor: begin
           // class constructor doesn't need to be added to the scope
@@ -7160,8 +7056,7 @@ begin
       if (ForwardDecl.Scope = Scope) then
         ForwardDeclNode.Data := Proc
       else
-        if not Scope.InsertID(Proc) then
-          ERRORS.ID_REDECLARATED(Proc);
+        Scope.AddProcedure(Proc);
 
       //special case for constructors, we need to place overloaded contructor in the static scope as well
       if ProcType = ptConstructor then
@@ -7173,10 +7068,10 @@ begin
           Struct.StaticMembers.InsertID(Proc);
       end;
 
-      if IsClassProc(ProcType) then
-        Struct.StaticMembers.ProcSpace.Add(Proc)
-      else
-        Struct.Members.ProcSpace.Add(Proc);
+//      if IsClassProc(ProcType) then
+//        Struct.StaticMembers.ProcSpace.Add(Proc)
+//      else
+//        Struct.Members.ProcSpace.Add(Proc);
 
       Proc.Struct := Struct;
     end;
@@ -7205,6 +7100,7 @@ begin
           Proc.InheritedProc := Struct.FindVirtualInstanceProcInAncestor(Proc)
         else
           Proc.InheritedProc := Struct.FindVirtualClassProcInAncestor(Proc);
+
         ERRORS.NO_METHOD_IN_BASE_CLASS(Proc);
       end;
     end;
@@ -7218,12 +7114,6 @@ begin
   if (Scope.ScopeClass <> scInterface) and not (pfImport in ProcFlags)
                                        and not (pfForward in ProcFlags) then
   begin
-    // имена парметров реализации процедуры могут отличатся от ее определения
-    // копируем накопленный VarSpace в процедуру
-
-    Proc.VarSpace := VarSpace;
-
-    ProcScope.ProcSpace := Proc.ProcSpace;
     // use initial EntryScope (declared parameters)
     // just set Implementation scope as outer scope for the Entry
     Proc.EntryScope.OuterScope := ProcScope.OuterScope;
@@ -7255,7 +7145,6 @@ type
   TFwdDeclState = (dsNew, dsDifferent, dsSame);
 var
   ResultType: TIDType;
-  VarSpace: TVarSpace;
   Proc, ForwardDecl: TASTDelphiProc;
   ForwardDeclNode: TIDList.PAVLNode;
   FwdDeclState: TFwdDeclState;
@@ -7263,9 +7152,6 @@ var
   ProcFlags: TProcFlags;
   ImportLib, ImportName: TIDDeclaration;
 begin
-  VarSpace.Initialize;
-  ProcScope.VarSpace := addr(VarSpace);
-
   Result := Lexer_CurTokenID;
 
   // parse parameters
@@ -7412,9 +7298,7 @@ begin
   if not Assigned(Proc) then
   begin
     Proc := TASTDelphiProc.Create(Scope, ID);
-    // Для Scope будут переопределены VarSpace и ProcSpace
     Proc.ParamsScope := ProcScope;
-    Proc.VarSpace := VarSpace;
     Proc.ResultType := ResultType;
     ProcScope.Proc := Proc;
 
@@ -7437,7 +7321,7 @@ begin
       else
         Scope.InsertID(Proc);
 
-      Scope.ProcSpace.Add(Proc);
+      //Scope.ProcSpace.Add(Proc);
     end;
   end;
 
@@ -7448,12 +7332,6 @@ begin
   if (Scope.ScopeClass <> scInterface) and not (pfImport in ProcFlags)
                                        and not (pfForward in ProcFlags) then
   begin
-    // имена парметров реализации процедуры могут отличатся от ее определения
-    // копируем накопленный VarSpace в процедуру
-
-    Proc.VarSpace := VarSpace;
-
-    ProcScope.ProcSpace := Proc.ProcSpace;
     Proc.EntryScope := ProcScope;
 
     if Assigned(ForwardDecl) and
@@ -7484,16 +7362,12 @@ type
   TFwdDeclState = (dsNew, dsDifferent, dsSame);
 var
   ResultType: TIDType;
-  VarSpace: TVarSpace;
   Proc, ForwardDecl: TASTDelphiProc;
   ForwardDeclNode: TIDList.PAVLNode;
   FwdDeclState: TFwdDeclState;
   CallConv: TCallConvention;
   ProcFlags: TProcFlags;
 begin
-  VarSpace.Initialize;
-  ProcScope.VarSpace := addr(VarSpace);
-
   Result := Lexer_CurTokenID;
 
   // parse parameters
@@ -7636,9 +7510,7 @@ begin
   if not Assigned(Proc) then
   begin
     Proc := TASTDelphiProc.Create(Scope, ID);
-    // Для Scope будут переопределены VarSpace и ProcSpace
     Proc.ParamsScope := ProcScope;
-    Proc.VarSpace := VarSpace;
     Proc.ResultType := ResultType;
     ProcScope.Proc := Proc;
 
@@ -7661,7 +7533,7 @@ begin
       else
         Scope.InsertID(Proc);
 
-      Scope.ProcSpace.Add(Proc);
+//      Scope.ProcSpace.Add(Proc);
     end;
   end;
 
@@ -7672,12 +7544,6 @@ begin
   if (Scope.ScopeClass <> scInterface) and not (pfImport in ProcFlags)
                                        and not (pfForward in ProcFlags) then
   begin
-    // имена парметров реализации процедуры могут отличатся от ее определения
-    // копируем накопленный VarSpace в процедуру
-
-    Proc.VarSpace := VarSpace;
-
-    ProcScope.ProcSpace := Proc.ProcSpace;
     Proc.EntryScope := ProcScope;
 
     if Assigned(ForwardDecl) and
@@ -7732,7 +7598,7 @@ begin
       if Assigned(Struct) or Scope.InheritsFrom(TMethodScope) then
         ProcScope := TMethodScope.CreateInDecl(Scope, GetStructScope(Struct, ProcType), nil)
       else
-        ProcScope := TProcScope.CreateInDecl(Scope, nil, nil, nil);
+        ProcScope := TProcScope.CreateInDecl(Scope, {Proc:} nil);
       Result := ParseGenericsHeader(ProcScope, GenericParams);
       SearchName := Format('%s<%d>', [Name.Name, Length(GenericParams)]);
     end else
@@ -7763,7 +7629,7 @@ begin
       if Assigned(Struct) then
         ProcScope := TMethodScope.CreateInDecl(Scope, GetStructScope(Struct, ProcType), nil)
       else
-        ProcScope := TProcScope.CreateInDecl(Scope, nil, nil, nil);
+        ProcScope := TProcScope.CreateInDecl(Scope, {Proc:} nil);
     end;
     Exit;
   end;
@@ -7773,7 +7639,6 @@ function TASTDelphiUnit.ParseProcType(Scope: TScope; const ID: TIdentifier;
                                       GDescriptor: PGenericDescriptor; out Decl: TIDProcType): TTokenID;
 var
   ParentScope: TScope;
-  VarSpace: TVarSpace;
   ResultType: TIDType;
   ProcClass: TProcTypeClass;
   IsFunction: Boolean;
@@ -7806,7 +7671,6 @@ begin
   // parsing params
   if Result = token_openround then
   begin
-    VarSpace.Initialize;
     var LParamsScope := TParamsScope.Create(stLocal, ParentScope);
     ParseParameters(ParentScope, LParamsScope);
     Result := Lexer_NextToken(Scope);
@@ -7839,7 +7703,6 @@ var
   ProcScope: TProcScope;
   ResultType: TIDType;
   RetVar: TIDVariable;
-  VarSpace: TVarSpace;
   CurParserPos: TParserPosition;
   ProcFlags: TProcFlags;
   GD: PGenericDescriptor;
@@ -7858,13 +7721,12 @@ begin
 
   Result := Lexer_CurTokenID;
 
-  VarSpace.Initialize;
   if Assigned(Struct) then
-    ProcScope := TMethodScope.CreateInDecl(Scope, Struct.Members, Proc, @VarSpace, nil)
+    ProcScope := TMethodScope.CreateInDecl(Scope, Struct.Members, Proc)
   else
-    ProcScope := TProcScope.CreateInDecl(Scope, Proc, @VarSpace, nil);
+    ProcScope := TProcScope.CreateInDecl(Scope, Proc);
 
-  // создаем Result переменную (пока без имени) и добовляем ее в VarSpace чтобы зарезервировать индекс
+  // создаем Result переменную (пока без имени)
   if Assigned(GenericProc.ResultType) then
     RetVar := AddResultParameter(ProcScope.ParamsScope, nil)
   else
@@ -7895,9 +7757,7 @@ begin
 
   if not Assigned(Struct) then
   begin
-    // Для Scope будут переопределены VarSpace и ProcSpace
     Proc.ParamsScope := ProcScope;
-    Proc.VarSpace := VarSpace;
     Proc.ResultType := ResultType;
     Proc.ExplicitParams := ProcScope.ExplicitParams;
     ImplScope.AddProcedure(Proc);   // добовляем новую декларацию в структуру или глобольный список
@@ -7923,8 +7783,6 @@ begin
 
         // имена парметров реализации процедуры могут отличатся от ее определения
         // копируем накопленный VarSpace в процедуру
-        Proc.VarSpace := ProcScope.VarSpace^;
-        // Для Scope будут переопределены VarSpace и ProcSpace
         Proc.EntryScope := ProcScope;
         Result := ParseProcBody(Proc);
         Lexer_MatchSemicolon(Result);
@@ -7946,7 +7804,6 @@ var
   ID: TIdentifier;
   ProcScope: TProcScope;
   ResultType: TIDType;
-  VarSpace: TVarSpace;
   GenericsParams: TIDTypeArray;
   Proc, ForwardDecl: TASTDelphiProc;
   FwdDeclState: TFwdDeclState;
@@ -7965,9 +7822,6 @@ begin
 
   if not Assigned(Struct) then
     ERRORS.OPERATOR_MUST_BE_DECLARED_IN_STRUCT(ID.TextPosition);
-
-  VarSpace.Initialize;
-  ProcScope.VarSpace := @VarSpace;
 
   // parse params and check signature
   Lexer_MatchToken(Result, token_openround);
@@ -8019,11 +7873,8 @@ begin
     if Assigned(GenericsParams) then
       Proc.CreateGenericDescriptor(GenericsParams, SRCProcPos);
 
-    // Для Scope будут переопределены VarSpace и ProcSpace
     Proc.ParamsScope := ProcScope;
-    Proc.VarSpace := ProcScope.VarSpace^;
     Proc.ResultType := ResultType;
-
     Proc.ExplicitParams := ProcScope.ExplicitParams;
     Proc.Struct := Struct;
 
@@ -8033,7 +7884,7 @@ begin
       Struct.Operators.AddProcedure(Proc);
     end else begin
       ForwardDecl.PrevOverload := Proc;
-      Struct.Operators.ProcSpace.Add(Proc);
+      //Struct.Operators.ProcSpace.Add(Proc);
     end;
 
     case LOperatorDef.OpID of
@@ -8076,10 +7927,6 @@ begin
         Break;
       end;
 
-      // имена парметров реализации процедуры могут отличатся от ее определения
-      // копируем накопленный VarSpace в процедуру
-      Proc.VarSpace := ProcScope.VarSpace^;
-      // Для Scope будут переопределены VarSpace и ProcSpace
       Proc.EntryScope := ProcScope;
       if (FwdDeclState = dsDifferent) then
       begin
@@ -8294,13 +8141,13 @@ begin
   Proc := CallExpr.AsProcedure;
   GDescriptor := Proc.GenericDescriptor;
   if not Assigned(GDescriptor) then
-    AbortWork(sProcHasNoGenericParams, [Proc.ProcTypeName, Proc.DisplayName], CallExpr.TextPosition);
+    AbortWork(sProcHasNoGenericParams, [Proc.ProcKindName, Proc.DisplayName], CallExpr.TextPosition);
 
   ParamsCount := Length(GDescriptor.GenericParams);
   ArgsCount := Length(Args);
 
   if ParamsCount > ArgsCount then
-    AbortWork(sProcRequiresExplicitTypeArgumentFmt, [Proc.ProcTypeName, Proc.DisplayName], CallExpr.TextPosition);
+    AbortWork(sProcRequiresExplicitTypeArgumentFmt, [Proc.ProcKindName, Proc.DisplayName], CallExpr.TextPosition);
 
   if ParamsCount < ArgsCount then
     AbortWork(sTooManyActualTypeParameters, CallExpr.TextPosition);
@@ -8329,7 +8176,7 @@ begin
     ac := Length(GDescriptor.GenericParams);
     pc := Length(Proc.ExplicitParams);
     if pc <> ac then
-      AbortWork(sProcRequiresExplicitTypeArgumentFmt, [CallExpr.AsProcedure.ProcTypeName, CallExpr.DisplayName], CallExpr.TextPosition);
+      AbortWork(sProcRequiresExplicitTypeArgumentFmt, [CallExpr.AsProcedure.ProcKindName, CallExpr.DisplayName], CallExpr.TextPosition);
     ai := 0;
     SetLength(SpecializeArgs, ac);
 
@@ -8392,7 +8239,6 @@ begin
     Exit;
 
   LContext.SrcDecl := AGenericType;
-  LContext.DstScope := AScope;
   var AStrSufix := '';
   var AArgsCount := Length(SpecializeArgs);
   SetLength(LContext.Arguments, AArgsCount);
@@ -8405,14 +8251,12 @@ begin
   end;
   LContext.DstID.Name := AGenericType.Name + '<' + AStrSufix + '>';
   LContext.DstID.TextPosition := Lexer_Position;
-  LContext.DstStruct := AGenericType;
-
-  // create a new instance if generic type and add to the pool first
-  LContext.DstType := AGenericType.MakeCopy(AGenericType.Scope);
-  GDescriptor.AddGenericInstance(LContext.DstType, SpecializeArgs);
+  LContext.Args := SpecializeArgs;
 
   try
-    Result := AGenericType.InstantiateGeneric(AScope, LContext) as TIDType;
+    Result := AGenericType.InstantiateGeneric(AScope, {ADstStruct:} nil, LContext) as TIDType;
+    // add new type to the current scope
+    AScope.AddType(Result)
   except
     Error('Generic Instantiation Error: %s', [LContext.DstID.Name], LContext.DstID.TextPosition);
     raise;
@@ -8733,8 +8577,13 @@ begin
 
   if LCanInstantiate then
     Decl := InstantiateGenericType(Scope, LGenericType as TIDType, LGenericArgs)
-  else
-    Decl := TIDGenericInstantiation.CreateInstantiation(Scope, LGenericType as TIDType, LGenericArgs);
+  else begin
+    // check if this type is not the current parsed type
+    if not IsTheStructIsOwner(Scope, (LGenericType as TIDType)) then
+      Decl := TIDGenericInstantiation.CreateInstantiation(Scope, LGenericType as TIDType, LGenericArgs)
+    else
+      Decl := LGenericType;
+  end;
 end;
 
 function TASTDelphiUnit.ParseUnknownID(Scope: TScope; const PrevExpr: TIDExpression; ID: TIdentifier; out Decl: TIDDeclaration): TTokenID;
@@ -8991,7 +8840,10 @@ begin
         DataType := TIDAliasType(DataType).Original;
 
       while DataType.DataTypeID in [dtPointer, dtClassOf] do
-        DataType := GetPtrReferenceType(TIDPointer(DataType)).ActualDataType;
+        if Assigned(TIDPointer(DataType).ReferenceType) then
+          DataType := GetPtrReferenceType(TIDPointer(DataType)).ActualDataType
+        else
+          ERRORS.IDENTIFIER_HAS_NO_MEMBERS(Decl);
 
       if (DataType.DataTypeID = dtGeneric) and Assigned(TIDGenericParam(DataType).ConstraintType) then
         DataType := TIDGenericParam(DataType).ConstraintType;
@@ -9167,6 +9019,7 @@ var
   ID: TIdentifier;
   KW: TASTKWInheritedCall;
 begin
+  ArgsCnt := 0;
   Proc := EContext.SContext.Proc;
   KW := EContext.SContext.Add(TASTKWInheritedCall) as TASTKWInheritedCall;
   InheritedProc := nil;
@@ -9189,7 +9042,7 @@ begin
           if Result = token_openround then
           begin
             CallExpr := TIDCallExpression.Create(InheritedProc, Lexer_Line);
-            CallExpr.Instance := TIDExpression.Create(Proc.SelfParameter);
+            CallExpr.Instance := Proc.SelfParamExpression;
             CallExpr.ArgumentsCount := ArgsCnt;
             Result := ParseEntryCall(Scope, CallExpr, EContext, nil {tmp!!!});
           end;
@@ -9221,7 +9074,7 @@ begin
   if Assigned(InheritedProc) then
   begin
     CallExpr := TIDCallExpression.Create(InheritedProc, Lexer_Line);
-    CallExpr.Instance := TIDExpression.Create(Proc.SelfParameter);
+    CallExpr.Instance := Proc.SelfParamExpression;
     CallExpr.ArgumentsCount := ArgsCnt;
 
     ResultExpr := Process_CALL_direct(EContext.SContext, CallExpr, CallArgs);
@@ -10195,64 +10048,59 @@ begin
     AbortWork(sIncompatibleTypesFmt, [Src.DisplayName, Dst.DisplayName], Position);
 end;
 
-procedure TASTDelphiUnit.CheckIncompletedIntfProcs(ClassType: TIDClass);
-var
-  i: Integer;
-  Intf: TIDInterface;
-  IM, CM: TIDProcedure;
-  Matched: Boolean;
+procedure TASTDelphiUnit.CheckIncompletedIntfProcs(AClassType: TIDClass);
 begin
-  for i := 0 to ClassType.InterfacesCount - 1 do
+  for var LIntfIndex := 0 to AClassType.InterfacesCount - 1 do
   begin
-    Intf := ClassType.Interfaces[i];
-    IM := Intf.Methods.First;
-    while Assigned(IM) do
+    var LIntf := AClassType.Interfaces[LIntfIndex];
+    for var LDeclIndex := 0 to LIntf.Members.ConstCount do
     begin
-      CM := ClassType.FindMethod(IM.Name);
-      if not Assigned(CM) then
-        ERRORS.INTF_METHOD_NOT_IMPLEMENTED(ClassType, IM);
+      var LDecl := LIntf.Members.Items[LDeclIndex];
+      if LDecl.ItemType = itProcedure then
+      begin
+        var LIM := TIDProcedure(LDecl);
+        var LCM := AClassType.FindMethod(LDecl.Name);
+        if not Assigned(LCM) then
+          ERRORS.INTF_METHOD_NOT_IMPLEMENTED(AClassType, LIM);
 
-      Matched := StrictMatchProc(IM, CM);
-      if not Matched then
-        ERRORS.INTF_METHOD_NOT_IMPLEMENTED(ClassType, IM); // tmp !!!
+        if not StrictMatchProc(LIM, LCM) then
+          ERRORS.INTF_METHOD_NOT_IMPLEMENTED(AClassType, LIM); // tmp !!!
 
-      ClassType.MapInterfaceMethod(Intf, IM, CM);
-      IM := TIDProcedure(IM.NextItem);
+        AClassType.MapInterfaceMethod(LIntf, LIM, LCM);
+      end;
     end;
   end;
 end;
 
 procedure TASTDelphiUnit.CheckIncompleteFwdTypes;
-var
-  T: TIDType;
-  DT: TIDDeclaration;
 begin
-  T := TypeSpace.First;
-  while Assigned(T) do
-  begin
-    if T.DataTypeID = dtPointer then
+  EnumAllDeclarations(
+    procedure (const AModule: TASTModule; const ADecl: TASTDeclaration)
     begin
-      DT := TIDPointer(T).ReferenceType; // запрос сделает инициализацию ReferenceType
-      if Assigned(DT) then;
-      // Assert(Assigned(DT));
-    end;
-    T := TIDType(T.NextItem);
-  end;
+      if ADecl is TIDPointer then
+      begin
+        // ReferenceType property will initialize the type
+        var LDataType := TIDPointer(ADecl).ReferenceType;
+        if Assigned(LDataType) then;
+      end;
+    end
+  );
 end;
 
-class procedure TASTDelphiUnit.CheckIncompleteType(Fields: TScope);
-var
-  Field: TIDDeclaration;
-  FieldType: TIDType;
+procedure TASTDelphiUnit.CheckIncompleteType(Fields: TScope);
 begin
-  Field := Fields.VarSpace.First;
-  while Assigned(Field) do begin
-    FieldType := Field.DataType;
-    if (Field.DataTypeID = dtRecord) and
-       (not(StructCompleted in TIDStructure(FieldType).StructFlags)) then
-      AbortWork(sRecurciveTypeLinkIsNotAllowed, Field.ID.TextPosition);
-    Field := Field.NextItem;
-  end;
+  EnumAllDeclarations(
+    procedure (const AModule: TASTModule; const ADecl: TASTDeclaration)
+    begin
+      if ADecl is TIDVariable then
+      begin
+        var LFieldType := TIDVariable(ADecl).DataType;
+        if (TIDVariable(ADecl).DataTypeID = dtRecord) and
+           (not (StructCompleted in TIDStructure(LFieldType).StructFlags)) then
+          AbortWork(sRecurciveTypeLinkIsNotAllowed, ADecl.ID.TextPosition);
+      end;
+    end
+  );
 end;
 
 procedure TASTDelphiUnit.CheckVarExpression(Expression: TIDExpression; VarModifyPlace: TVarModifyPlace);
@@ -10346,29 +10194,6 @@ end;
 function TSContextHelper.GetSysUnit: TSYSTEMUnit;
 begin
   Result := TASTDelphiUnit(Module).fSysUnit as TSYSTEMUnit;
-end;
-
-function ScopeToVarList(Scope: TScope; SkipFirstCount: Integer): TIDParamArray;
-var
-  item: TIDDeclaration;
-  i: Integer;
-begin
-  if Scope.VarSpace.Count > 0 then
-  begin
-    item := Scope.VarSpace.First;
-    SetLength(Result, Scope.VarSpace.Count - SkipFirstCount);
-    // пропускаем N первых элементов
-    for i := 0 to SkipFirstCount - 1 do
-      item := item.NextItem;
-
-    i := 0;
-    while Assigned(item) do begin
-      Result[i] := TIDVariable(item);
-      item := item.NextItem;
-      Inc(i);
-    end;
-  end else
-    Result := [];
 end;
 
 { TDeclCache }

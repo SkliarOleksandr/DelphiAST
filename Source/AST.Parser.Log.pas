@@ -20,6 +20,7 @@ type
     procedure Write(const AMessage: string; const AParams: array of const); overload;
     procedure WriteBegin(const AMessage: string; const AParams: array of const);
     procedure WriteEnd(const AMessage: string; const AParams: array of const);
+    procedure ResetNestedLevel;
   end;
 
 procedure WriteLog(const AMessage: string); overload;
@@ -40,6 +41,11 @@ begin
     FOnWriteProc(Format(AMessage, AParams), FNestedLevel);
 end;
 
+procedure TASTParserLog.ResetNestedLevel;
+begin
+  FNestedLevel := 0;
+end;
+
 procedure TASTParserLog.Write(const AMessage: string);
 begin
   if Assigned(FOnWriteProc) then
@@ -49,7 +55,7 @@ end;
 procedure TASTParserLog.WriteBegin(const AMessage: string; const AParams: array of const);
 begin
   if Assigned(FOnWriteProc) then
-    FOnWriteProc(Format('begin ' + AMessage, AParams), FNestedLevel);
+    FOnWriteProc(Format('< ' + AMessage, AParams), FNestedLevel);
   Inc(FNestedLevel);
 end;
 
@@ -57,7 +63,7 @@ procedure TASTParserLog.WriteEnd(const AMessage: string; const AParams: array of
 begin
   Dec(FNestedLevel);
   if Assigned(FOnWriteProc) then
-    FOnWriteProc(Format('end ' + AMessage, AParams), FNestedLevel);
+    FOnWriteProc(Format('> ' + AMessage, AParams), FNestedLevel);
 end;
 
 procedure WriteLog(const AMessage: string; const AParams: array of const);

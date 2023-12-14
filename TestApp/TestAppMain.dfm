@@ -153,7 +153,7 @@ object frmTestAppMain: TfrmTestAppMain
       end
       object Button1: TButton
         Left = 1026
-        Top = 35
+        Top = 33
         Width = 106
         Height = 25
         Anchors = [akTop, akRight]
@@ -201,8 +201,7 @@ object frmTestAppMain: TfrmTestAppMain
     Align = alClient
     Caption = 'Panel4'
     TabOrder = 1
-    ExplicitLeft = 481
-    ExplicitWidth = 783
+    ExplicitWidth = 780
     ExplicitHeight = 563
     object PageControl1: TPageControl
       AlignWithMargins = True
@@ -213,7 +212,7 @@ object frmTestAppMain: TfrmTestAppMain
       ActivePage = tsSource
       Align = alClient
       TabOrder = 0
-      ExplicitWidth = 775
+      ExplicitWidth = 772
       ExplicitHeight = 555
       object tsSource: TTabSheet
         Caption = 'Source'
@@ -266,41 +265,46 @@ object frmTestAppMain: TfrmTestAppMain
             'interface'
             ''
             'type'
+            '  TArray<T> = array of T;'
+            ''
             '  TList<TL> = class'
             '  private'
-            '    FArray: array of TL;'
+            '    FArray: TArray<TL>;'
             '  public'
-            '    function GetList: TList<TL>;'
+            '    function GetSelf: TList<TL>;'
+            '    procedure Assign(A: TList<TL>);'
             '  end;'
             ''
             '  TDict<TD> = class'
             '  type'
-            '    TList = TList<TD>;'
+            '    TListAlias = TList<TD>;'
             '  public'
-            '    function GetList: TList;'
+            '    function GetList: TListAlias;'
             '  end;'
-            ''
             ''
             'var'
             '  GDict: TDict<Integer>;'
             ''
             'implementation'
             ''
-            'function TList<TL>.GetList: TList<TL>;'
+            'function TList<TL>.GetSelf: TList<TL>;'
             'begin'
             '  Result := Self;'
             'end;'
             ''
-            'function TDict<TD>.GetList: TList;'
+            'procedure TList<TL>.Assign(A: TList<TL>);'
             'begin'
-            '  Result := TList.Create;'
+            '  FArray := A.FArray;'
             'end;'
             ''
+            'function TDict<TD>.GetList: TListAlias;'
+            'begin'
+            '  Result := nil;'
+            'end;'
             ''
-            'end;')
+            'end.'
+            '')
           SelectedColor.Alpha = 0.400000005960464500
-          ExplicitWidth = 767
-          ExplicitHeight = 527
         end
       end
       object tsAST: TTabSheet
@@ -314,7 +318,6 @@ object frmTestAppMain: TfrmTestAppMain
           Align = alClient
           Indent = 19
           TabOrder = 0
-          ExplicitWidth = 769
         end
       end
       object tsNameSpace: TTabSheet

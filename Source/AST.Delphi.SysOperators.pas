@@ -706,11 +706,11 @@ function TSysImplicitArrayToAny.Check(const SContext: TSContext; const Src, Dst:
 var
   SrcElType, DstElType: TIDType;
 begin
-  SrcElType := TIDArray(Src).ElementDataType;
+  SrcElType := TIDArray(Src).ElementDataType.ActualDataType;
   if Dst is TIDArray then
   begin
-    DstElType := TIDArray(Dst).ElementDataType;
-    Result := ((Dst.DataTypeID = dtOpenArray) and SameTypes(SrcElType, DstElType)) or
+    DstElType := TIDArray(Dst).ElementDataType.ActualDataType;
+    Result := ({(Dst.DataTypeID = dtOpenArray) and} SameTypes(SrcElType, DstElType)) or
                (SrcElType.IsGeneric and DstElType.IsGeneric);
   end else begin
     Result :=

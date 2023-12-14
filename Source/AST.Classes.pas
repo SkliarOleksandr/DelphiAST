@@ -106,10 +106,6 @@ type
     property Name: string read GetModuleName;
     property FileName: string read fFileName write SetFileName;
     property Project: IASTProject read fProject;
-    function GetFirstFunc: TASTDeclaration; virtual; abstract;
-    function GetFirstVar: TASTDeclaration; virtual; abstract;
-    function GetFirstType: TASTDeclaration; virtual; abstract;
-    function GetFirstConst: TASTDeclaration; virtual; abstract;
     function GetTotalLinesParsed: Integer;
     constructor Create(const Project: IASTProject; const FileName: string; const Source: string = ''); virtual;
     constructor CreateFromFile(const Project: IASTProject; const FileName: string); virtual;
@@ -130,6 +126,8 @@ type
     property SourcePosition: TTextPosition read FID.TextPosition;
     property Module: TASTModule read fModule;
     property DisplayName: string read GetDisplayName;
+
+    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0); virtual;
   end;
 
   TASTDeclarations = array of TASTDeclaration;
@@ -770,6 +768,11 @@ begin
 end;
 
 { TASTDeclaration }
+
+procedure TASTDeclaration.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
+begin
+  ABuilder.Append(' ', ANestedLevel*2);
+end;
 
 function TASTDeclaration.GetDisplayName: string;
 begin

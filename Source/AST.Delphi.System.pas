@@ -928,12 +928,12 @@ begin
   _UInt64 := RegisterOrdinal('UInt64', dtUInt64, 0, MaxUInt64);
   _NativeInt := RegisterOrdinal('NativeInt', dtNativeInt, MinInt64, MaxInt64);
   _NativeUInt := RegisterOrdinal('NativeUInt', dtNativeUInt, 0, MaxUInt64);
-  _Float32 := RegisterType('Single', TIDType, dtFloat32);
-  _Float64 := RegisterType('Double', TIDType, dtFloat64);
-  _Float80 := RegisterType('Extended', TIDType, dtFloat80);
-  _Currency := RegisterType('Currency', TIDType, dtCurrency);
+  _Float32 := RegisterType('Single', TIDFloat, dtFloat32);
+  _Float64 := RegisterType('Double', TIDFloat, dtFloat64);
+  _Float80 := RegisterType('Extended', TIDFloat, dtFloat80);
+  _Currency := RegisterType('Currency', TIDFloat, dtCurrency);
 
-  fDecls._Comp := RegisterType('Comp', TIDType, dtComp);
+  fDecls._Comp := RegisterType('Comp', TIDFloat, dtComp);
   //===============================================================
   _Boolean := RegisterOrdinal('Boolean', dtBoolean, 0, 1);
   _Boolean.OverloadExplicitFromAny(Operators.IsOrdinal);
