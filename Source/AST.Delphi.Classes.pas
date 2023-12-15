@@ -278,7 +278,7 @@ type
     fModule: TASTModule;
   public
     constructor Create(Scope: TScope; AUnit: TASTModule);
-    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0); override;
+    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
   end;
 
   TBinaryOperator = record
@@ -428,6 +428,7 @@ type
     property Helper: TDlphHelper read fHelper write fHelper;
     // it means the generic declaration in the parsing progress, it's needed to avoid recursive parsing
     property GenericDeclInProgress: Boolean read fGenericDeclInProgress write fGenericDeclInProgress;
+    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
   end;
 
   TIDTypesArray = array of TIDType;
@@ -464,7 +465,7 @@ type
     property ConstraintType: TIDType read fConstraintType write fConstraintType;
     function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                 const AContext: TGenericInstantiateContext): TIDDeclaration; override;
-    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0); override;
+    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
   end;
 
   {alias type}
@@ -486,7 +487,7 @@ type
     property Original: TIDType read FOriginalType;
     function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                 const AContext: TGenericInstantiateContext): TIDDeclaration; override;
-    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0); override;
+    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
   end;
 
   {special type for describing the generic type with generic arguments}
@@ -531,14 +532,14 @@ type
     constructor CreateAsAnonymous(Scope: TScope; ReferenceType: TIDType); override;
     procedure CreateStandardOperators; override;
     property ForwardDeclaration: Boolean read FForwardDeclaration write FForwardDeclaration;
-    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0); override;
+    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
   end;
 
   {untyped referenced type}
   TIDUntypedRef = class(TIDRefType)
   public
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
-    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0); override;
+    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
   end;
 
   {class of type}
@@ -550,7 +551,7 @@ type
     constructor CreateAsAnonymous(Scope: TScope; ReferenceType: TIDType); override;
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
     procedure CreateStandardOperators; override;
-    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0); override;
+    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
   end;
 
   TIDWeekRef = class(TIDPointer)
@@ -582,7 +583,7 @@ type
     property SignedBound: Boolean read FSignedBound write FSignedBound;
     property ElementsCount: UInt64 read GetElementsCount;
 
-    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0); override;
+    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
   end;
 
   {alias (for generics parameters)}
@@ -636,7 +637,7 @@ type
     constructor CreateAsAnonymous(Scope: TScope); override;
     procedure CreateStandardOperators; override;
     property Items: TScope read FItems write FItems;
-    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0); override;
+    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
   end;
 
   TStructFlags = set of (StructCompleted);
@@ -664,6 +665,7 @@ type
     function GetIsManaged: Boolean; override;
     function GetExtraFlags: Byte; virtual;
     function GetIsGeneric: Boolean; override;
+    function GetStructKeyword: string; virtual;
     procedure SetGenericDescriptor(const Value: PGenericDescriptor); override;
     procedure DoCreateStructure;
   public
@@ -683,7 +685,7 @@ type
     property ClassOfType: TIDClassOf read GetClassOfType;
     function IsInheritsForm(Ancestor: TIDStructure): Boolean;
     function FindVirtualInstanceProc(AProc: TIDProcedure): TIDProcedure;
-    function FindVirtualClassProc(Proc: TIDProcedure): TIDProcedure;
+    function FindVirtualClassProc(AProc: TIDProcedure): TIDProcedure;
     function FindVirtualInstanceProcInAncestor(Proc: TIDProcedure): TIDProcedure;
     function FindVirtualClassProcInAncestor(Proc: TIDProcedure): TIDProcedure;
 
@@ -702,7 +704,9 @@ type
 
     function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                 const AContext: TGenericInstantiateContext): TIDDeclaration; override;
-    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0); override;
+
+    procedure AncestorsDecl2Str(ABuilder: TStringBuilder); virtual;
+    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
   end;
 
   TIDStructureClass = class of TIDStructure;
@@ -715,6 +719,7 @@ type
     fCases: array of TVarSpace;
   protected
     function GetDataSize: Integer; override;
+    function GetStructKeyword: string; override;
   public
     constructor Create(Scope: TScope; const Name: TIdentifier); override;
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
@@ -730,6 +735,7 @@ type
   TIDClass = class(TIDStructure)
   private
     FInterfaces: TList<TIDInterface>;
+    FIntfGenericInstantiations: TArray<TIDGenericInstantiation>;
     FInterfacesMethods: TList<TIDMethods>;
     function GetInterfacesCount: Integer;
     function GetInterface(Index: Integer): TIDInterface;
@@ -737,6 +743,7 @@ type
     function GetDataSize: Integer; override;
     function GetIsManaged: Boolean; override;
     function GetExtraFlags: Byte; override;
+    function GetStructKeyword: string; override;
   public
     constructor Create(Scope: TScope; const Name: TIdentifier); override;
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
@@ -744,12 +751,14 @@ type
     //========================================================
     function FindInterface(const Intf: TIDInterface): Boolean;
     procedure AddInterface(const Intf: TIDInterface);
+    procedure AddGenericInterface(AGenricIntf: TIDGenericInstantiation);
     procedure MapInterfaceMethod(const Intf: TIDInterface; IntfMethod, ImplMethod: TIDProcedure);
     property InterfacesCount: Integer read GetInterfacesCount;
     property Interfaces[Index: Integer]: TIDInterface read GetInterface;
     procedure IncRefCount(RCPath: UInt32); override;
     procedure DecRefCount(RCPath: UInt32); override;
     procedure CreateStandardOperators; override;
+    procedure AncestorsDecl2Str(ABuilder: TStringBuilder); override;
   end;
 
   {helper type}
@@ -757,8 +766,11 @@ type
   private
     fTarget: TIDType;
     procedure SetTarget(const Value: TIDType);
+  protected
+    function GetStructKeyword: string; override;
   public
     property Target: TIDType read fTarget write SetTarget;
+    procedure AncestorsDecl2Str(ABuilder: TStringBuilder); override;
   end;
 
   {closure}
@@ -791,6 +803,7 @@ type
     FGUID: TGUID;
   protected
     function GetIsManaged: Boolean; override;
+    function GetStructKeyword: string; override;
   public
     constructor Create(Scope: TScope; const Name: TIdentifier); override;
     property GUID: TGUID read FGUID write FGUID;
@@ -843,7 +856,7 @@ type
     property BitsCount: UInt32 read GetBitsCount;
     property BaseType: TIDOrdinal read fBaseType write FBaseType;
     procedure IncRefCount(RCPath: UInt32); override;
-    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0); override;
+    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
   end;
 
   {static array}
@@ -867,14 +880,14 @@ type
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
     procedure CreateStandardOperators; override;
     function GetHelperScope: TScope;
-    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0); override;
+    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
   end;
 
   {ancestor of all string types}
   TIDString = class(TIDDynArray)
   public
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
-    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0); override;
+    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
   end;
 
   {ancestor of all integer types}
@@ -884,12 +897,12 @@ type
 
   {ancestor of all floating point types}
   TIDFloat = class(TIDType)
-    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0); override;
+    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
   end;
 
   {variant}
   TIDVariant = class(TIDType)
-    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0); override;
+    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
   end;
 
   {open array}
@@ -952,6 +965,7 @@ type
     property IsStatic: Boolean read GetIsStatic;
     property CallConv: TCallConvention read FCallConv write FCallConv;
     property ProcClass: TProcTypeClass read fProcClass write fProcClass;
+    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
   end;
 
   {base constant class}
@@ -977,7 +991,7 @@ type
     function CompareTo(Constant: TIDConstant): Integer; virtual; abstract;
     procedure IncRefCount(RCPath: UInt32); override;
     procedure DecRefCount(RCPath: UInt32); override;
-    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0); override;
+    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
   end;
 
   TIDConstantClass = class of TIDConstant;
@@ -1426,7 +1440,7 @@ type
     procedure IncludeFlags(const Flags: TVariableFlags);
     procedure SaveAndIncludeFlags(const Flags: TVariableFlags; out PrevFlags: TVariableFlags);
 
-    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0); override;
+    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
     function MakeCopy(AScope: TScope): TIDDeclaration; override;
     function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                 const AContext: TGenericInstantiateContext): TIDDeclaration; override;
@@ -1435,7 +1449,7 @@ type
   {proc parameter class}
   TIDParameter = class(TIDVariable)
   public
-    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0); override;
+    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
   end;
 
   {structure field class}
@@ -1451,7 +1465,7 @@ type
     property Struct: TIDStructure read fStruct;
     property FieldIndex: Integer read GetFieldIndex;
     property IsClass: Boolean read fIsClass;
-    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0); override;
+    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
   end;
 
   {свойство структуры}
@@ -1469,7 +1483,7 @@ type
     property ParamsCount: Integer read GetParamsCount;
     function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                 const AContext: TGenericInstantiateContext): TIDDeclaration; override;
-    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0); override;
+    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
   end;
 
   TProcFlag = (
@@ -1604,7 +1618,7 @@ type
     function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                 const AContext: TGenericInstantiateContext): TIDDeclaration; override;
 
-    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0); override;
+    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
   end;
 
   TASTDelphiProc = class(TIDProcedure)
@@ -1886,6 +1900,22 @@ begin
     ABuilder.Append(AType.DisplayName)
   else
     ABuilder.Append('<unassigned>');
+end;
+
+procedure Params2Str(ABuilder: TStringBuilder; const AParams: TIDParamArray);
+begin
+  if Length(AParams) > 0 then
+  begin
+    ABuilder.Append('(');
+    for var LIndex := 0 to Length(AParams) - 1 do
+    begin
+      AParams[LIndex].Decl2Str(ABuilder);
+      if LIndex < Length(AParams) - 1 then
+        ABuilder.Append('; ');
+    end;
+
+    ABuilder.Append(')');
+  end;
 end;
 
 procedure CheckVarTypeAssigned(AVariable: TIDVariable);
@@ -2910,9 +2940,9 @@ begin
   IncTypesReadCountInSignature(RCPath);
 end;
 
-procedure TIDProcedure.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
+procedure TIDProcedure.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
-  inherited;
+  ABuilder.Append(' ', ANestedLevel*2);
   ABuilder.Append(ProcKindName);
   ABuilder.Append(' ');
   ABuilder.Append(Name);
@@ -2920,18 +2950,7 @@ begin
   if Assigned(GenericDescriptor) then
     GenericDescriptor.Decl2Str(ABuilder);
 
-  if Length(ExplicitParams) > 0 then
-  begin
-    ABuilder.Append('(');
-    for var LIndex := 0 to Length(ExplicitParams) - 1 do
-    begin
-      ExplicitParams[LIndex].Decl2Str(ABuilder);
-      if LIndex < Length(ExplicitParams) - 1 then
-        ABuilder.Append('; ');
-    end;
-
-    ABuilder.Append(')');
-  end;
+  Params2Str(ABuilder, ExplicitParams);
 
   if Assigned(FResultType) then
   begin
@@ -3090,6 +3109,21 @@ end;
 procedure TIDType.CreateStandardOperators;
 begin
 
+end;
+
+procedure TIDType.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
+begin
+  if AAppendName then
+  begin
+    ABuilder.Append(' ', ANestedLevel*2);
+    ABuilder.Append('type ');
+    ABuilder.Append(Name);
+
+    if Assigned(GenericDescriptor) then
+      GenericDescriptor.Decl2Str(ABuilder);
+
+    ABuilder.Append(' = ');
+  end;
 end;
 
 destructor TIDType.Destroy;
@@ -3579,9 +3613,9 @@ begin
   FDataType.IncRefCount(RCPath);
 end;
 
-procedure TIDConstant.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
+procedure TIDConstant.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
-  inherited;
+  ABuilder.Append(' ', ANestedLevel*2);
   ABuilder.Append('const ');
   ABuilder.Append(DisplayName);
   if Assigned(FExplicitDataType) then
@@ -3711,9 +3745,9 @@ begin
   TIDVariable(Result).FAbsolute := FAbsolute;
 end;
 
-procedure TIDVariable.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
+procedure TIDVariable.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
-  inherited;
+  ABuilder.Append(' ', ANestedLevel*2);
   ABuilder.Append('var ');
   ABuilder.Append(DisplayName);
   ABuilder.Append(': ');
@@ -4159,6 +4193,16 @@ begin
   FMembers.AddVariable(Result);
 end;
 
+procedure TIDStructure.AncestorsDecl2Str(ABuilder: TStringBuilder);
+begin
+  if Assigned(fAncestor) then
+  begin
+    ABuilder.Append('(');
+    ABuilder.Append(fAncestor.Name);
+    ABuilder.Append(')');
+  end;
+end;
+
 constructor TIDStructure.Create(Scope: TScope; const Name: TIdentifier);
 begin
   inherited Create(Scope, Name);
@@ -4204,18 +4248,27 @@ begin
     Result := nil;
 end;
 
-function TIDStructure.FindVirtualClassProc(Proc: TIDProcedure): TIDProcedure;
+function TIDStructure.FindVirtualClassProc(AProc: TIDProcedure): TIDProcedure;
 begin
-  var Decl := fStaticMembers.FindMembers(Proc.Name);
-  if (Decl.ItemType = itProcedure) and
-     (pfVirtual in TIDProcedure(Decl).Flags) and
-     (TIDProcedure(Decl).SameDeclaration(Proc.ExplicitParams)) and
-     (TIDProcedure(Decl).ResultType = Proc.ResultType)
-  then
-    Exit(TIDProcedure(Decl));
+  var LDecl := fStaticMembers.FindMembers(AProc.Name);
+
+  while Assigned(LDecl) do
+  begin
+    if (LDecl.ItemType = itProcedure) then
+    begin
+      if (pfVirtual in TIDProcedure(LDecl).Flags) and
+         (TIDProcedure(LDecl).SameDeclaration(AProc.ExplicitParams)) and
+         (TIDProcedure(LDecl).ResultType = AProc.ResultType)
+      then
+        Exit(TIDProcedure(LDecl));
+
+      LDecl := TIDProcedure(LDecl).PrevOverload;
+    end else
+      Exit(nil);
+  end;
 
   if Assigned(FAncestor) then
-    Result := FAncestor.FindVirtualClassProc(Proc)
+    Result := FAncestor.FindVirtualClassProc(AProc)
   else
     Result := nil;
 end;
@@ -4223,12 +4276,21 @@ end;
 function TIDStructure.FindVirtualInstanceProc(AProc: TIDProcedure): TIDProcedure;
 begin
   var LDecl := fMembers.FindMembers(AProc.Name);
-  if (LDecl.ItemType = itProcedure) and
-     (pfVirtual in TIDProcedure(LDecl).Flags) and
-     (TIDProcedure(LDecl).SameDeclaration(AProc.ExplicitParams)) and
-     (TIDProcedure(LDecl).ResultType = AProc.ResultType)
-  then
-    Exit(TIDProcedure(LDecl));
+
+  while Assigned(LDecl) do
+  begin
+    if (LDecl.ItemType = itProcedure) then
+    begin
+      if (pfVirtual in TIDProcedure(LDecl).Flags) and
+         (TIDProcedure(LDecl).SameDeclaration(AProc.ExplicitParams)) and
+         (TIDProcedure(LDecl).ResultType = AProc.ResultType)
+      then
+        Exit(TIDProcedure(LDecl));
+
+      LDecl := TIDProcedure(LDecl).PrevOverload;
+    end else
+      Exit(nil);
+  end;
 
   if Assigned(FAncestor) then
     Result := FAncestor.FindVirtualInstanceProc(AProc)
@@ -4336,6 +4398,11 @@ begin
   Result := fMembers.ProcCount;
 end;
 
+function TIDStructure.GetStructKeyword: string;
+begin
+  Result := Format('<unknown struct keyword: %s>', [ClassName]);
+end;
+
 procedure TIDStructure.IncRefCount(RCPath: UInt32);
 //var
 //  Fld: TIDVariable;
@@ -4422,25 +4489,12 @@ begin
     Result := Self;
 end;
 
-procedure TIDStructure.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
+procedure TIDStructure.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
-  ABuilder.Append(' ', ANestedLevel*2);
-  ABuilder.Append('type ');
-  ABuilder.Append(Name);
+  inherited;
+  ABuilder.Append(GetStructKeyword);
 
-  if Assigned(GenericDescriptor) then
-    GenericDescriptor.Decl2Str(ABuilder);
-
-  ABuilder.Append(' = ');
-  if Self is TIDClass then
-    ABuilder.Append('class');
-
-  if Assigned(fAncestor) {or Assigned(FInterfaces)} then
-  begin
-    ABuilder.Append('(');
-    ABuilder.Append(fAncestor.Name);
-    ABuilder.Append(')');
-  end;
+  AncestorsDecl2Str(ABuilder);
 
   for var LIndex := 0  to fMembers.Count - 1 do
   begin
@@ -4457,7 +4511,6 @@ begin
       LDecl.Decl2Str(ABuilder, ANestedLevel + 1);
     end;
   end;
-
 
   ABuilder.Append(sLineBreak);
   ABuilder.Append(' ', ANestedLevel*2);
@@ -4959,9 +5012,9 @@ end;
 
 { TIDOrdinalType }
 
-procedure TIDOrdinal.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
+procedure TIDOrdinal.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
-  inherited;
+  ABuilder.Append(' ', ANestedLevel*2);
   ABuilder.Append('type ');
   if Name <> '' then
     ABuilder.Append(Name)
@@ -5130,9 +5183,9 @@ begin
   OverloadExplicitFromAny(SYSUnit.Operators.ExplicitPointerFromAny);
 end;
 
-procedure TIDPointer.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
+procedure TIDPointer.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
-  inherited;
+  ABuilder.Append(' ', ANestedLevel*2);
   ABuilder.Append('type ');
   ABuilder.Append(Name);
   if Assigned(ReferenceType) then
@@ -5171,6 +5224,11 @@ begin
     if CaseSize > Result then
       Result := CaseSize;
   end;
+end;
+
+function TIDRecord.GetStructKeyword: string;
+begin
+  Result := 'record';
 end;
 
 function TIDRecord.AddCase: PVarSpace;
@@ -5225,9 +5283,9 @@ begin
   OverloadExplicitToAny(SYSUnit.Operators.ExplicitEnumToAny);
 end;
 
-procedure TIDEnum.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
+procedure TIDEnum.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
-  inherited;
+  ABuilder.Append(' ', ANestedLevel*2);
   ABuilder.Append('type ');
   ABuilder.Append(Name);
   ABuilder.Append(' = (');
@@ -5299,9 +5357,9 @@ begin
   OverloadExplicitToAny(SYSUnit.Operators.ExplicitDynArrayToAny);
 end;
 
-procedure TIDDynArray.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
+procedure TIDDynArray.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
-  inherited;
+  ABuilder.Append(' ', ANestedLevel*2);
   ABuilder.Append('type ');
   ABuilder.Append(Name);
   ABuilder.Append(' = array of ');
@@ -5358,9 +5416,9 @@ begin
   OverloadImplicitFromAny(SYSUnit.Operators.ImplicitSetFromAny);
 end;
 
-procedure TIDSet.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
+procedure TIDSet.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
-  inherited;
+  ABuilder.Append(' ', ANestedLevel*2);
   ABuilder.Append('type ');
   ABuilder.Append(Name);
   ABuilder.Append(' = set of ');
@@ -5717,9 +5775,9 @@ begin
   LogEnd('inst [type: %s, dst: %s]', [ClassName, Result.DisplayName]);
 end;
 
-procedure TIDAliasType.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
+procedure TIDAliasType.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
-  inherited;
+  ABuilder.Append(' ', ANestedLevel*2);
   ABuilder.Append('type ');
   ABuilder.Append(Name);
   ABuilder.Append(' = ');
@@ -6101,6 +6159,30 @@ begin
   FSysImplicitFromAny := SYSUnit.Operators.ExplicitTProcFromAny;
 end;
 
+procedure TIDProcType.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
+begin
+  inherited;
+
+  if fProcClass = procReference then
+    ABuilder.Append('reference to ');
+
+  if Assigned(fResultType) then
+    ABuilder.Append('function')
+  else
+    ABuilder.Append('procedure');
+
+  Params2Str(ABuilder, fParams);
+
+  if Assigned(fResultType) then
+  begin
+    ABuilder.Append(': ');
+    ABuilder.Append(fResultType.DisplayName);
+  end;
+
+  if fProcClass = procMethod then
+    ABuilder.Append(' of object ');
+end;
+
 function TIDProcType.GetDataSize: Integer;
 begin
   case fProcClass of
@@ -6263,6 +6345,11 @@ end;
 
 { TIDClassType }
 
+procedure TIDClass.AddGenericInterface(AGenricIntf: TIDGenericInstantiation);
+begin
+  FIntfGenericInstantiations := FIntfGenericInstantiations + [AGenricIntf];
+end;
+
 procedure TIDClass.AddInterface(const Intf: TIDInterface);
 var
   Methods: TIDMethods;
@@ -6279,6 +6366,31 @@ begin
   if c > 0 then
     FillChar(Methods[0], PTR_SIZE*c, #0);
   FInterfacesMethods.Add(Methods);
+end;
+
+procedure TIDClass.AncestorsDecl2Str(ABuilder: TStringBuilder);
+begin
+  if Assigned(fAncestor) or Assigned(FInterfaces) then
+  begin
+    ABuilder.Append('(');
+
+    if Assigned(fAncestor) then
+    begin
+      ABuilder.Append(fAncestor.Name);
+      if Assigned(FInterfaces) then
+        ABuilder.Append(', ');
+    end;
+
+    if Assigned(FInterfaces) then
+      for var LItemIndex := 0 to FInterfaces.Count - 1 do
+      begin
+         ABuilder.Append(FInterfaces[LItemIndex].DisplayName);
+         if LItemIndex < FInterfaces.Count - 1 then
+           ABuilder.Append(', ');
+      end;
+
+    ABuilder.Append(')');
+  end;
 end;
 
 constructor TIDClass.Create(Scope: TScope; const Name: TIdentifier);
@@ -6349,9 +6461,9 @@ begin
   FItemType := itProperty;
 end;
 
-procedure TIDProperty.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
+procedure TIDProperty.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
-  inherited;
+  ABuilder.Append(' ', ANestedLevel*2);
   ABuilder.Append('property ');
   ABuilder.Append(Name);
   ABuilder.Append(': ');
@@ -6475,7 +6587,7 @@ begin
   fStruct := Struct;
 end;
 
-procedure TIDField.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
+procedure TIDField.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
   ABuilder.Append(' ', ANestedLevel*2);
   ABuilder.Append(Name);
@@ -6510,9 +6622,9 @@ begin
   FDataTypeID := dtGeneric;
 end;
 
-procedure TIDGenericParam.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
+procedure TIDGenericParam.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
-  inherited;
+  ABuilder.Append(' ', ANestedLevel*2);
   ABuilder.Append('<');
   ABuilder.Append(DisplayName);
   ABuilder.Append('>');
@@ -6700,9 +6812,8 @@ begin
   ItemType := itUnit;
 end;
 
-procedure TIDUnit.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
+procedure TIDUnit.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
-  inherited;
   ABuilder.Append('unit ');
   ABuilder.Append(Name);
 end;
@@ -6739,9 +6850,9 @@ begin
   OverloadExplicitFromAny(SYSUnit.Operators.ExplicitClassOfFromAny);
 end;
 
-procedure TIDClassOf.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
+procedure TIDClassOf.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
-  inherited;
+  ABuilder.Append(' ', ANestedLevel*2);
   ABuilder.Append('type ');
   ABuilder.Append(Name);
   ABuilder.Append(' = class of ');
@@ -6855,6 +6966,11 @@ begin
   Result := True;
 end;
 
+function TIDClass.GetStructKeyword: string;
+begin
+  Result := 'class';
+end;
+
 procedure TIDClass.IncRefCount(RCPath: UInt32);
 begin
   inherited;
@@ -6881,6 +6997,11 @@ end;
 function TIDInterface.GetIsManaged: Boolean;
 begin
   Result := True;
+end;
+
+function TIDInterface.GetStructKeyword: string;
+begin
+  Result := 'interface';
 end;
 
 { TIDGuidConstant }
@@ -6990,9 +7111,9 @@ begin
   inherited CreateAsSystem(Scope, Name);
 end;
 
-procedure TIDString.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
+procedure TIDString.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
-  inherited;
+  ABuilder.Append(' ', ANestedLevel*2);
   ABuilder.Append('type ');
   ABuilder.Append(Name);
 end;
@@ -7120,6 +7241,19 @@ end;
 
 { TIDHelper }
 
+procedure TDlphHelper.AncestorsDecl2Str(ABuilder: TStringBuilder);
+begin
+  ABuilder.Append(fTarget.Name);
+end;
+
+function TDlphHelper.GetStructKeyword: string;
+begin
+  if fTarget.DataTypeID = dtClass then
+    Result := 'class helper for '
+  else
+    Result := 'record helper for ';
+end;
+
 procedure TDlphHelper.SetTarget(const Value: TIDType);
 begin
   fTarget := Value;
@@ -7223,9 +7357,9 @@ begin
   fDataTypeID := dtUntypedRef;
 end;
 
-procedure TIDUntypedRef.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
+procedure TIDUntypedRef.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
-  inherited;
+  ABuilder.Append(' ', ANestedLevel*2);
   ABuilder.Append('<');
   ABuilder.Append(DisplayName);
   ABuilder.Append('>');
@@ -7422,7 +7556,7 @@ end;
 
 { TIDParameter }
 
-procedure TIDParameter.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
+procedure TIDParameter.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
   if VarConst in FFlags then
     ABuilder.Append('const ')
@@ -7446,18 +7580,18 @@ end;
 
 { TIDFloat }
 
-procedure TIDFloat.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
+procedure TIDFloat.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
-  inherited;
+  ABuilder.Append(' ', ANestedLevel*2);
   ABuilder.Append('type ');
   ABuilder.Append(Name);
 end;
 
 { TIDVariant }
 
-procedure TIDVariant.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
+procedure TIDVariant.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
-  inherited;
+  ABuilder.Append(' ', ANestedLevel*2);
   ABuilder.Append('type ');
   ABuilder.Append(Name);
 end;

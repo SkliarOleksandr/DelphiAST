@@ -299,7 +299,7 @@ type
 
     function ParseRecordType(Scope: TScope; Decl: TIDRecord): TTokenID;
     function ParseCaseRecord(Scope: TScope; Decl: TIDRecord): TTokenID;
-    function ParseClassAncestorType(Scope: TScope; GDescriptor: PGenericDescriptor; ClassDecl: TIDClass): TTokenID;
+    function ParseClassAncestorType(Scope: TScope; ClassDecl: TIDClass): TTokenID;
     function ParseClassType(Scope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier; out Decl: TIDClass): TTokenID;
     function ParseTypeMember(Scope: TScope; Struct: TIDStructure): TTokenID;
     function ParseClassOfType(Scope: TScope; const ID: TIdentifier; out Decl: TIDClassOf): TTokenID;
@@ -5288,17 +5288,12 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.ParseClassAncestorType(Scope: TScope; GDescriptor: PGenericDescriptor; ClassDecl: TIDClass): TTokenID;
+function TASTDelphiUnit.ParseClassAncestorType(Scope: TScope; ClassDecl: TIDClass): TTokenID;
 var
   Expr: TIDExpression;
   Decl: TIDType;
-  i: Integer;
 begin
-  i := 0;
-  // if this is a generic class - use generic description scope
-  if Assigned(GDescriptor) then
-    Scope := GDescriptor.Scope;
-
+  var LAncestorsCount := 0;
   while True do begin
     Lexer_NextToken(Scope);
     Result := ParseConstExpression(Scope, Expr, ExprNested);
@@ -5316,20 +5311,29 @@ begin
 
     if (Decl.DataTypeID = dtClass) then
     begin
-      if i = 0 then
+      if LAncestorsCount = 0 then
         ClassDecl.Ancestor := TIDClass(Decl)
       else
         AbortWork('Multiple inheritance is not supported', Expr.TextPosition);
-    end else begin
-      if ClassDecl.FindInterface(TIDInterface(Decl)) then
+    end else
+    begin
+      var LIntfDecl: TIDInterface;
+      if Decl is TIDGenericInstantiation then
+      begin
+        LIntfDecl := TIDGenericInstantiation(Decl).Original as TIDInterface;
+        ClassDecl.AddGenericInterface(TIDGenericInstantiation(Decl));
+      end else
+        LIntfDecl := TIDInterface(Decl);
+
+      if ClassDecl.FindInterface(LIntfDecl) then
         ERRORS.INTF_ALREADY_IMPLEMENTED(Expr);
-      ClassDecl.AddInterface(TIDInterface(Decl));
+      ClassDecl.AddInterface(LIntfDecl);
     end;
 
-    inc(i);
+    Inc(LAncestorsCount);
     if Result = token_coma then
-      continue;
-    break;
+      Continue;
+    Break;
   end;
   Lexer_MatchToken(Result, token_closeround);
   Result := Lexer_NextToken(Scope);
@@ -5392,7 +5396,7 @@ begin
 
   if Result = token_openround then
   begin
-    Result := ParseClassAncestorType(Scope, GDescriptor, Decl);
+    Result := ParseClassAncestorType(Decl.StaticMembers, Decl);
   end else begin
     if Self <> SYSUnit then
       Decl.Ancestor := Sys._TObject;
@@ -9115,9 +9119,12 @@ begin
   if not Assigned(FwdDecl) then
   begin
     Decl := TIDInterface.Create(Scope, ID);
-    if Assigned(GenericScope) then
-      Decl.Members.AddScope(GenericScope);
-    Decl.GenericDescriptor := GDescriptor;
+    // for generic types, we need to move all generic params into static-members scope
+    if Assigned(GDescriptor) then
+    begin
+      Decl.StaticMembers.AssingFrom(GDescriptor.Scope);
+      Decl.GenericDescriptor := GDescriptor;
+    end;
     Scope.AddType(Decl);
   end else
   begin

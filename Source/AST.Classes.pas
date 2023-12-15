@@ -127,7 +127,9 @@ type
     property Module: TASTModule read fModule;
     property DisplayName: string read GetDisplayName;
 
-    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0); virtual;
+    procedure Decl2Str(ABuilder: TStringBuilder;
+                       ANestedLevel: Integer = 0;
+                       AAppendName: Boolean = True); virtual;
   end;
 
   TASTDeclarations = array of TASTDeclaration;
@@ -769,9 +771,9 @@ end;
 
 { TASTDeclaration }
 
-procedure TASTDeclaration.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
+procedure TASTDeclaration.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
-  ABuilder.Append(' ', ANestedLevel*2);
+  ABuilder.Append(format('<unknown %s>', [ClassName]));
 end;
 
 function TASTDeclaration.GetDisplayName: string;
