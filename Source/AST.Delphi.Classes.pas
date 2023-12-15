@@ -1467,6 +1467,8 @@ type
     property Setter: TIDDeclaration read FSetter write FSetter;
     property Params: TScope read FParams write FParams;
     property ParamsCount: Integer read GetParamsCount;
+    function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
+                                const AContext: TGenericInstantiateContext): TIDDeclaration; override;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0); override;
   end;
 
@@ -3007,8 +3009,6 @@ begin
   LNewProc.FParamsScope := LNewProc.FEntryScope;
 
   LNewProc.ExplicitParams := InstantiateParams(ParamsScope, ExplicitParams, AContext);
-  //Result.FParamsScope := FParamsScope;
-  //Result.FEntryScope := FEntryScope;
   if Assigned(ResultType) then
     LNewProc.ResultType := ResultType.InstantiateGeneric(LNewProc.ParamsScope, nil, AContext) as TIDType;
 
@@ -3016,7 +3016,6 @@ begin
   LNewProc.FProcFlags := FProcFlags;
   LNewProc.FNextOverload := FNextOverload;
   LNewProc.FCallConv := FCallConv;
-  LNewProc.FResultType := FResultType;
   LNewProc.FVirtualIndex := FVirtualIndex;
   LNewProc.FGenericDescriptor := nil;
   LNewProc.FGenericPrototype := nil;
@@ -3026,7 +3025,7 @@ begin
   LNewProc.FInherited := FInherited;
   Result := LNewProc;
 
-  LogEnd('instantiate [type: %s, dst: %s]', [ClassName, Result.Name]);
+  LogEnd('inst [type: %s, dst: %s]', [ClassName, Result.Name]);
 end;
 
 procedure TIDProcedure.MakeSelfParam;
@@ -4396,6 +4395,7 @@ begin
             itVar: LNewStruct.StaticMembers.AddVariable(TIDVariable(LNewMember));
             itProcedure: LNewStruct.StaticMembers.AddProcedure(TIDProcedure(LNewMember));
             itType: LNewStruct.StaticMembers.AddType(TIDType(LNewMember));
+            itProperty: LNewStruct.StaticMembers.AddProperty(TIDProperty(LNewMember));
             // todo: AddConst, AddOperators,
             // itConst: LNewMembers.AddConst(TIDConstant(LNewMember));
           end;
@@ -4411,6 +4411,7 @@ begin
           itVar: LNewStruct.Members.AddVariable(TIDVariable(LNewMember));
           itProcedure: LNewStruct.Members.AddProcedure(TIDProcedure(LNewMember));
           itType: LNewStruct.Members.AddType(TIDType(LNewMember));
+          itProperty: LNewStruct.Members.AddProperty(TIDProperty(LNewMember));
           // todo: AddConst, AddOperators,
           // itConst: LNewMembers.AddConst(TIDConstant(LNewMember));
         end;
@@ -6373,6 +6374,25 @@ begin
     Result := FParams.Count
   else
     Result := 0;
+end;
+
+function TIDProperty.InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
+                                        const AContext: TGenericInstantiateContext): TIDDeclaration;
+begin
+  LogBegin('inst [type: %s, src: %s]', [ClassName, Name]);
+
+  var LNewProp := MakeCopy(ADstScope) as TIDProperty;
+  LNewProp.DataType := DataType.InstantiateGeneric(ADstScope, nil, AContext) as TIDType;
+
+  // todo: check signatures
+  if Assigned(Getter) then
+    LNewProp.FGetter := ADstScope.FindMembers(Getter.Name);
+  // todo: check signatures
+  if Assigned(Setter) then
+    LNewProp.FSetter := ADstScope.FindMembers(Setter.Name);
+
+  Result := LNewProp;
+  LogEnd('inst [type: %s, dst: %s]', [ClassName, Result.Name]);
 end;
 
 { TMethodScope }
