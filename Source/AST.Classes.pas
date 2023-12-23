@@ -27,6 +27,12 @@ type
     CompileSkip
   );
 
+  TUnitScopeKind = (
+    scopeBoth,
+    scopeInterface,
+    scopeImplementation
+  );
+
   TASTItem = class(TPooledObject)
   private
     fParent: TASTItem;
@@ -109,8 +115,7 @@ type
     function GetTotalLinesParsed: Integer;
     constructor Create(const Project: IASTProject; const FileName: string; const Source: string = ''); virtual;
     constructor CreateFromFile(const Project: IASTProject; const FileName: string); virtual;
-    procedure EnumIntfDeclarations(const Proc: TEnumASTDeclProc); virtual; abstract;
-    procedure EnumAllDeclarations(const Proc: TEnumASTDeclProc); virtual; abstract;
+    procedure EnumDeclarations(const AEnumProc: TEnumASTDeclProc; AUnitScope: TUnitScopeKind); virtual; abstract;
     property TotalLinesParsed: Integer read GetTotalLinesParsed;
   end;
 
@@ -127,9 +132,11 @@ type
     property Module: TASTModule read fModule;
     property DisplayName: string read GetDisplayName;
 
+    function Decl2Str(AFullName: Boolean = False): string; overload;
+
     procedure Decl2Str(ABuilder: TStringBuilder;
                        ANestedLevel: Integer = 0;
-                       AAppendName: Boolean = True); virtual;
+                       AAppendName: Boolean = True); overload; virtual;
   end;
 
   TASTDeclarations = array of TASTDeclaration;
@@ -774,6 +781,19 @@ end;
 procedure TASTDeclaration.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
   ABuilder.Append(format('<unknown %s>', [ClassName]));
+end;
+
+function TASTDeclaration.Decl2Str(AFullName: Boolean): string;
+begin
+  var LBuilder := TStringBuilder.Create;
+  try
+    if AFullName then
+      LBuilder.Append(fModule.Name);
+    Decl2Str(LBuilder);
+    Result := LBuilder.ToString;
+  finally
+    LBuilder.Free;
+  end;
 end;
 
 function TASTDeclaration.GetDisplayName: string;

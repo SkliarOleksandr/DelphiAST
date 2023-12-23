@@ -246,7 +246,7 @@ begin
     edAllItems.Clear;
     var LBuilder := TStringBuilder.Create;
     try
-      Project.EnumAllDeclarations(
+      Project.EnumDeclarations(
         procedure(const Module: TASTModule; const Decl: TASTDeclaration)
         begin
           if not chkbShowAnonymous.Checked and (Decl.ID.Name = '') then
@@ -255,10 +255,14 @@ begin
           if not chkbShowSysDecls.Checked and (Module.Name = 'system') then
             Exit;
 
-          Decl.Decl2Str(LBuilder);
-          LBuilder.Append(sLineBreak);
-        end);
-
+          try
+            Decl.Decl2Str(LBuilder, {ANestedLevel:} 0, {AAppendName:} True);
+            LBuilder.Append(sLineBreak);
+          except
+            on E: Exception do
+              LBuilder.Append(E.Message);
+          end;
+        end, {AUnitScope} scopeBoth);
     finally
       edAllItems.Text := LBuilder.ToString;
       LBuilder.Free;
@@ -394,12 +398,12 @@ begin
     edAllItems.BeginUpdate;
     try
       edAllItems.Clear;
-      Prj.EnumIntfDeclarations(
+      Prj.EnumDeclarations(
         procedure(const Module: TASTModule; const Decl: TASTDeclaration)
         begin
           edAllItems.Lines.Add(format('%s - %s.%s', [GetItemTypeName(TIDDeclaration(Decl).ItemType), Module.Name, GetDeclName(Decl)]));
           Application.ProcessMessages;
-        end);
+        end, {AUnitScope} scopeInterface);
     finally
       edAllItems.EndUpdate;
     end;

@@ -116,7 +116,7 @@ type
   TIDTypeArray = array of TIDType;
 
   TGenericInstance = record
-    Args: TIDExpressions;
+    Args: TIDTypeArray;
     Instance: TIDDeclaration;
   end;
   PGenericInstance = ^TGenericInstance;
@@ -139,11 +139,11 @@ type
     property GenericParams: TIDTypeArray read FGenericParams write FGenericParams;
     property IntfSRCPosition: TParserPosition read FIntfSRCPosition write FImplSRCPosition;
     property ImplSRCPosition: TParserPosition read FImplSRCPosition write FImplSRCPosition;
-    procedure AddGenericInstance(Decl: TIDDeclaration; const Args: TIDExpressions);
+    procedure AddGenericInstance(Decl: TIDDeclaration; const Args: TIDTypeArray);
     class function Create(Scope: TScope): PGenericDescriptor; static;
     function FindType(const Name: string): TIDGenericParam; inline;
     function IsEqual(ADescriptor: PGenericDescriptor): Boolean;
-    function TryGetInstance(const AArguments: TIDExpressions; out ADecl: TIDDeclaration): Boolean;
+    function TryGetInstance(const AArguments: TIDTypeArray; out ADecl: TIDDeclaration): Boolean;
     procedure Decl2Str(ABuilder: TStringBuilder);
   end;
 
@@ -156,8 +156,8 @@ type
   TGenericInstantiateContext = record
     SrcDecl: TIDDeclaration;
     DstProc: TIDPRocedure;
-    Arguments: TIDGenericArguments;
-    Args: TIDExpressions;
+    Params: TIDTypeArray;
+    Args: TIDTypeArray;
     DstID: TIdentifier;
     function GetArgByParam(AParam: TIDGenericParam): TIDType;
   end;
@@ -429,20 +429,20 @@ type
     // it means the generic declaration in the parsing progress, it's needed to avoid recursive parsing
     property GenericDeclInProgress: Boolean read fGenericDeclInProgress write fGenericDeclInProgress;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
+    function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
+                                const AContext: TGenericInstantiateContext): TIDDeclaration; override;
   end;
-
-  TIDTypesArray = array of TIDType;
 
   {special system internal type to describe several possible types in one}
   TIDSysVariativeType = class(TIDType)
   private
-    FTypes: TIDTypesArray;
+    FTypes: TIDTypeArray;
   protected
     function GetDisplayName: string; override;
   public
-    constructor CreateAsSystem(Scope: TScope; const Types: TIDTypesArray); reintroduce;
+    constructor CreateAsSystem(Scope: TScope; const Types: TIDTypeArray); reintroduce;
     procedure CreateStandardOperators; override;
-    property Types: TIDTypesArray read FTypes;
+    property Types: TIDTypeArray read FTypes;
   end;
 
   TGenericConstraint = (
@@ -526,6 +526,8 @@ type
   TIDPointer = class(TIDRefType)
   private
     FForwardDeclaration: Boolean;
+  protected
+    function GetIsGeneric: Boolean; override;
   public
     constructor Create(Scope: TScope; const ID: TIdentifier); override;
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
@@ -533,6 +535,8 @@ type
     procedure CreateStandardOperators; override;
     property ForwardDeclaration: Boolean read FForwardDeclaration write FForwardDeclaration;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
+    function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
+                                const AContext: TGenericInstantiateContext): TIDDeclaration; override;
   end;
 
   {untyped referenced type}
@@ -646,6 +650,7 @@ type
   TIDStructure = class(TIDType)
   private
     fAncestor: TIDStructure;
+    fAncestorDecl: TIDType;         // can be TIDGenericInstantiation or TIDStructure successor
     fStaticMembers: TStructScope;   // class (static) members
     fMembers: TStructScope;         // instance members
     fOperators: TStructScope;       // operators members
@@ -654,11 +659,13 @@ type
     fClassOfType: TIDClassOf;
     fClassConstructor: TIDProcedure;
     FClassDestructor: TIDProcedure;
+    FHasGenericMembers: Boolean;
     function GetHasInitFiels: Boolean;
     procedure SetAncestor(const Value: TIDStructure);
     function GetClassOfType: TIDClassOf;
     function GetFieldsCount: Integer; inline;
     function GetMethodCount: Integer; inline;
+    procedure SetAncestorDecl(const Value: TIDType);
   protected
     function GetDataSize: Integer; override;
     function GetDisplayName: string; override;
@@ -679,6 +686,7 @@ type
     property HasInitFiels: Boolean read GetHasInitFiels;
     property StructFlags: TStructFlags read FStrucFlags write FStrucFlags;
     property Ancestor: TIDStructure read FAncestor write SetAncestor;
+    property AncestorDecl: TIDType read fAncestorDecl write SetAncestorDecl;
     property MethodCount: Integer read GetMethodCount;
     property FieldsCount: Integer read GetFieldsCount;
     property DefaultProperty: TIDProperty read FDefaultProperty write FDefaultProperty;
@@ -702,11 +710,16 @@ type
 
     function GetEnumeratorSupported(out ACurrentProp: TIDProperty): Boolean;
 
+    procedure InstantiateGenericAncestors(ADstScope: TScope; ADstStruct: TIDStructure;
+                                          const AContext: TGenericInstantiateContext); virtual;
+
     function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                 const AContext: TGenericInstantiateContext): TIDDeclaration; override;
 
     procedure AncestorsDecl2Str(ABuilder: TStringBuilder); virtual;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
+
+    property HasGenericFields: Boolean read FHasGenericMembers;
   end;
 
   TIDStructureClass = class of TIDStructure;
@@ -759,6 +772,9 @@ type
     procedure DecRefCount(RCPath: UInt32); override;
     procedure CreateStandardOperators; override;
     procedure AncestorsDecl2Str(ABuilder: TStringBuilder); override;
+    procedure InstantiateGenericAncestors(ADstScope: TScope; ADstStruct: TIDStructure;
+                                          const AContext: TGenericInstantiateContext); override;
+
   end;
 
   {helper type}
@@ -1689,14 +1705,14 @@ type
     constructor Create(ScopeType: TScopeType; Parent: TScope; DeclUnit: TASTModule); overload;
     destructor Destroy; override;
     //////////////////////////////////////////////////////////////////////
-    procedure AddType(ADeclaration: TIDType);
-    procedure AddVariable(Declaration: TIDVariable);
-    procedure AddProcedure(Declaration: TIDProcedure; AddOverload: Boolean = False);
-    procedure AddAnonymousProcedure(Declaration: TIDProcedure);
-    procedure AddProperty(Declaration: TIDProperty);
-    procedure AddConstant(ADeclaration: TIDConstant);
+    procedure AddType(ADeclaration: TIDType); virtual;
+    procedure AddVariable(ADeclaration: TIDVariable); virtual;
+    procedure AddProcedure(ADeclaration: TIDProcedure; AddOverload: Boolean = False); virtual;
+    procedure AddAnonymousProcedure(ADeclaration: TIDProcedure); virtual;
+    procedure AddProperty(ADeclaration: TIDProperty); virtual;
+    procedure AddConstant(ADeclaration: TIDConstant); virtual;
     procedure AddScope(Scope: TScope);
-    procedure RemoveVariable(Declaration: TIDVariable);
+    procedure RemoveVariable(ADeclaration: TIDVariable);
     function FindInAdditionalScopes(const ID: string): TIDDeclaration;
     function FindIDRecurcive(const ID: string): TIDDeclaration; virtual;
     function FindMembers(const ID: string): TIDDeclaration; virtual;
@@ -1766,6 +1782,9 @@ type
     function FindIDRecurcive(const ID: string): TIDDeclaration; override;
     function FindMembers(const ID: string): TIDDeclaration; override;
     property Struct: TIDStructure read fStruct;
+
+    procedure AddType(ADeclaration: TIDType); override;
+    procedure AddVariable(ADeclaration: TIDVariable); override;
   end;
 
   TRecordInitScope = class(TScope)
@@ -2210,9 +2229,9 @@ begin
   Inc(FTypeCount);
 end;
 
-procedure TScope.AddAnonymousProcedure(Declaration: TIDProcedure);
+procedure TScope.AddAnonymousProcedure(ADeclaration: TIDProcedure);
 begin
-
+  // ?
 end;
 
 procedure TScope.AddChild(Scope: TScope);
@@ -2235,36 +2254,36 @@ begin
     FChilds.Remove(Scope);
 end;
 
-procedure TScope.RemoveVariable(Declaration: TIDVariable);
+procedure TScope.RemoveVariable(ADeclaration: TIDVariable);
 var
   Node: PAVLNode;
 begin
   Assert(False, 'Not Supported!');
-  Node := Find(Declaration.Name);
-  if Assigned(Node) and (Node.Data = Declaration) then
+  Node := Find(ADeclaration.Name);
+  if Assigned(Node) and (Node.Data = ADeclaration) then
   begin
-    Delete(Declaration.Name);
+    Delete(ADeclaration.Name);
 //    FVarSpace.Delete(Declaration);
   end;
 end;
 
-procedure TScope.AddProcedure(Declaration: TIDProcedure; AddOverload: Boolean = False);
+procedure TScope.AddProcedure(ADeclaration: TIDProcedure; AddOverload: Boolean = False);
 begin
-  if not AddOverload and not InsertID(Declaration) then
-    AbortWork(sIdentifierRedeclaredFmt, [Declaration.DisplayName], Declaration.SourcePosition);
+  if not AddOverload and not InsertID(ADeclaration) then
+    AbortWork(sIdentifierRedeclaredFmt, [ADeclaration.DisplayName], ADeclaration.SourcePosition);
   Inc(FProcCount);
 end;
 
-procedure TScope.AddProperty(Declaration: TIDProperty);
+procedure TScope.AddProperty(ADeclaration: TIDProperty);
 begin
-  if not InsertID(Declaration) then
-    AbortWork(sIdentifierRedeclaredFmt, [Declaration.Name], Declaration.SourcePosition);
+  if not InsertID(ADeclaration) then
+    AbortWork(sIdentifierRedeclaredFmt, [ADeclaration.Name], ADeclaration.SourcePosition);
 end;
 
-procedure TScope.AddVariable(Declaration: TIDVariable);
+procedure TScope.AddVariable(ADeclaration: TIDVariable);
 begin
-  if not InsertID(Declaration) then
-    AbortWork(sIdentifierRedeclaredFmt, [Declaration.Name], Declaration.SourcePosition);
+  if not InsertID(ADeclaration) then
+    AbortWork(sIdentifierRedeclaredFmt, [ADeclaration.Name], ADeclaration.SourcePosition);
   Inc(FVarCount);
 end;
 
@@ -2508,8 +2527,10 @@ end;
 function TIDDeclaration.InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                            const AContext: TGenericInstantiateContext): TIDDeclaration;
 begin
-  Result := nil;
-  AbortWork('Declaration %s is not a generic', [DisplayName], TextPosition);
+  if IsGeneric then
+    AbortWork('Declaration %s is not a generic', [DisplayName], TextPosition);
+
+  Result := Self;
 end;
 
 function TIDDeclaration.MakeCopy(AScope: TScope): TIDDeclaration;
@@ -2957,6 +2978,26 @@ begin
     ABuilder.Append(': ');
     ABuilder.Append(FResultType.DisplayName);
   end;
+
+  ABuilder.Append(';');
+
+  if (pfVirtual in FProcFlags) and not (pfOverride in FProcFlags) then
+    ABuilder.Append(' virtual;');
+
+  if pfOveload in FProcFlags then
+    ABuilder.Append(' overload;');
+
+  if pfOverride in FProcFlags then
+    ABuilder.Append(' override;');
+
+  if pfAbstract in FProcFlags then
+    ABuilder.Append(' abstract;');
+
+  if pfStatic in FProcFlags then
+    ABuilder.Append(' static;');
+
+  if pfInline in FProcFlags then
+    ABuilder.Append(' inline;');
 end;
 
 procedure TIDProcedure.DecRefCount(RCPath: UInt32);
@@ -3029,7 +3070,7 @@ begin
 
   LNewProc.ExplicitParams := InstantiateParams(ParamsScope, ExplicitParams, AContext);
   if Assigned(ResultType) then
-    LNewProc.ResultType := ResultType.InstantiateGeneric(LNewProc.ParamsScope, nil, AContext) as TIDType;
+    LNewProc.ResultType := ResultType.InstantiateGeneric(ADstScope, nil, AContext) as TIDType;
 
   LNewProc.FStruct := ADstStruct;
   LNewProc.FProcFlags := FProcFlags;
@@ -3324,7 +3365,18 @@ end;
 
 function TIDType.GetDisplayName: string;
 begin
-  Result := FID.Name;
+//  if ID.Name <> '' then
+//  begin
+//    var LParent := Parent;
+//    while Assigned(LParent) do
+//    begin
+//      Result := AddStringSegment(LParent.DisplayName, Result, '.');
+//      LParent := LParent.Parent;
+//    end;
+//  end;
+
+  Result := ID.Name;
+
   if Assigned(FGenericDescriptor) then
     Result := Result + GenericDescriptorAsText(FGenericDescriptor);
 end;
@@ -3371,6 +3423,22 @@ begin
     Result := TStructScope(Scope).Struct
   else
     Result := nil;
+end;
+
+function TIDType.InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
+  const AContext: TGenericInstantiateContext): TIDDeclaration;
+begin
+  // first, try to find this type in the parent struct (if it's nested)
+  if Assigned(Parent) and Assigned(ADstStruct) then
+  begin
+    Result := ADstStruct.StaticMembers.FindMembers(Name);
+    if Assigned(Result) then
+      Exit;
+  end;
+  if IsGeneric then
+    Result := nil
+  else
+    Result := Self;
 end;
 
 procedure ERROR_OPERATOR_ALREADY_OVERLOADED(Op: TOperatorID; Type1, Type2: TIDDeclaration; const Position: TTextPosition); overload;
@@ -3758,6 +3826,8 @@ begin
     ABuilder.Append(' := ');
     ABuilder.Append(DefaultValue.Text);
   end;
+
+  ABuilder.Append(';');
 end;
 
 procedure TIDVariable.DecRefCount(RCPath: UInt32);
@@ -4283,7 +4353,7 @@ begin
     begin
       if (pfVirtual in TIDProcedure(LDecl).Flags) and
          (TIDProcedure(LDecl).SameDeclaration(AProc.ExplicitParams)) and
-         (TIDProcedure(LDecl).ResultType = AProc.ResultType)
+         SameTypes(TIDProcedure(LDecl).ResultType, AProc.ResultType)
       then
         Exit(TIDProcedure(LDecl));
 
@@ -4379,7 +4449,7 @@ end;
 
 function TIDStructure.GetIsGeneric: Boolean;
 begin
-  Result := Assigned(fGenericDescriptor);
+  Result := Assigned(fGenericDescriptor) or HasGenericFields;
 end;
 
 function TIDStructure.GetIsManaged: Boolean;
@@ -4433,22 +4503,42 @@ begin
 //  end;
 end;
 
+procedure TIDStructure.InstantiateGenericAncestors(ADstScope: TScope; ADstStruct: TIDStructure;
+                                                   const AContext: TGenericInstantiateContext);
+begin
+  if Assigned(AncestorDecl) then
+    ADstStruct.AncestorDecl := AncestorDecl.InstantiateGeneric(ADstScope, nil, AContext) as TIDType;
+end;
+
 function TIDStructure.InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                          const AContext: TGenericInstantiateContext): TIDDeclaration;
 begin
-  if IsGeneric  then
+  Result := inherited;
+  if Assigned(Result) then
+    Exit;
+
+  if IsGeneric then
   begin
-    if not GenericDescriptor.TryGetInstance(AContext.Args, {out} Result) then
+    if not Assigned(GenericDescriptor) or
+       not GenericDescriptor.TryGetInstance(AContext.Args, {out} Result) then
     begin
       LogBegin('inst [type: %s, src: %s]', [ClassName, DisplayName]);
+
       // create a new instance if generic type and add to the pool first
       var LNewStruct := TIDStructure(MakeCopy(ADstScope));
-      LNewStruct.ID := AContext.DstID;
-      Result := LNewStruct;
-      // add this instance to the its pool
-      GenericDescriptor.AddGenericInstance(LNewStruct, AContext.Args);
+
+      if Assigned(GenericDescriptor)  then
+      begin
+        // override name according to the generic arguments
+        LNewStruct.ID := AContext.DstID;
+        // add this instance to the its pool
+        GenericDescriptor.AddGenericInstance(LNewStruct, AContext.Args);
+      end;
 
       LNewStruct.fStrucFlags := fStrucFlags;
+
+      // instantiate ancestor(and implemented interfaces)
+      InstantiateGenericAncestors(ADstScope, LNewStruct, AContext);
 
       // instantiate Static Members
       for var LIndex := 0 to fStaticMembers.Count - 1 do
@@ -4463,8 +4553,8 @@ begin
             itProcedure: LNewStruct.StaticMembers.AddProcedure(TIDProcedure(LNewMember));
             itType: LNewStruct.StaticMembers.AddType(TIDType(LNewMember));
             itProperty: LNewStruct.StaticMembers.AddProperty(TIDProperty(LNewMember));
-            // todo: AddConst, AddOperators,
-            // itConst: LNewMembers.AddConst(TIDConstant(LNewMember));
+            itConst: LNewStruct.StaticMembers.AddConstant(TIDConstant(LNewMember));
+            // todo: AddConst (need implement SizeOf(T)), AddOperators,
           end;
         end;
       end;
@@ -4477,13 +4567,19 @@ begin
         case LMember.ItemType of
           itVar: LNewStruct.Members.AddVariable(TIDVariable(LNewMember));
           itProcedure: LNewStruct.Members.AddProcedure(TIDProcedure(LNewMember));
-          itType: LNewStruct.Members.AddType(TIDType(LNewMember));
           itProperty: LNewStruct.Members.AddProperty(TIDProperty(LNewMember));
-          // todo: AddConst, AddOperators,
-          // itConst: LNewMembers.AddConst(TIDConstant(LNewMember));
+        else
+          Assert(False, 'invalid member type');
         end;
       end;
-      LogEnd('inst [type: %s, dst: %s]', [ClassName, Result.DisplayName]);
+
+      // add the new type to the original scope only in case it's not a nested one
+      if not Assigned(ADstStruct) then
+        Scope.AddType(LNewStruct);
+
+      Result := LNewStruct;
+
+      LogEnd('inst [type: %s, dst: %s]', [ClassName, LNewStruct.DisplayName]);
     end;
   end else
     Result := Self;
@@ -4617,6 +4713,11 @@ begin
     fStaticMembers.fAncestorScope := Value.StaticMembers;
     FAncestor.IncRefCount(1);
   end;
+end;
+
+procedure TIDStructure.SetAncestorDecl(const Value: TIDType);
+begin
+  fAncestorDecl := Value;
 end;
 
 procedure TIDStructure.SetGenericDescriptor(const Value: PGenericDescriptor);
@@ -4953,7 +5054,7 @@ end;
 
 function TIDArray.GetIsGeneric: Boolean;
 begin
-  Result := FElementDataType.IsGeneric;
+  Result := Assigned(FElementDataType) and FElementDataType.IsGeneric;
 end;
 
 procedure TIDArray.IncRefCount(RCPath: UInt32);
@@ -4972,16 +5073,27 @@ end;
 function TIDArray.InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                      const AContext: TGenericInstantiateContext): TIDDeclaration;
 begin
-  if not GenericDescriptor.TryGetInstance(AContext.Args, {out} Result) then
+  if IsGeneric then
   begin
-    LogBegin('inst [type: %s, src: %s]', [ClassName, DisplayName]);
-    Result := MakeCopy(ADstScope) as TIDType;
-    Result.ID := AContext.DstID;
-    // add this instance to the its pool
-    GenericDescriptor.AddGenericInstance(Result, AContext.Args);
-    // instantiate array element type
-    TIDArray(Result).ElementDataType := ElementDataType.InstantiateGeneric(ADstScope, nil, AContext) as TIDType;
-    LogEnd('inst [type: %s, dst: %s]', [ClassName, Result.DisplayName]);
+    if not Assigned(GenericDescriptor) or
+       not GenericDescriptor.TryGetInstance(AContext.Args, {out} Result) then
+    begin
+      LogBegin('inst [type: %s, src: %s]', [ClassName, DisplayName]);
+      Result := MakeCopy(ADstScope) as TIDType;
+      if Assigned(GenericDescriptor) then
+      begin
+        // override name according to the generic arguments
+        Result.ID := AContext.DstID;
+        // add this instance to the its pool
+        GenericDescriptor.AddGenericInstance(Result, AContext.Args);
+      end;
+      // instantiate array element type
+      TIDArray(Result).ElementDataType := ElementDataType.InstantiateGeneric(ADstScope, ADstStruct, AContext) as TIDType;
+      LogEnd('inst [type: %s, dst: %s]', [ClassName, Result.DisplayName]);
+    end;
+  end else
+  begin
+    Result := Self;
   end;
 end;
 
@@ -5191,8 +5303,27 @@ begin
   if Assigned(ReferenceType) then
   begin
     ABuilder.Append(' = ^');
-    ABuilder.Append(ReferenceType.Name);
+    ABuilder.Append(ReferenceType.DisplayName);
   end;
+end;
+
+function TIDPointer.GetIsGeneric: Boolean;
+begin
+  Result := Assigned(ReferenceType) and ReferenceType.IsGeneric;
+end;
+
+function TIDPointer.InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
+                                       const AContext: TGenericInstantiateContext): TIDDeclaration;
+begin
+  if IsGeneric then
+  begin
+    LogBegin('inst [type: %s, src: %s]', [ClassName, DisplayName]);
+    var LNewPtr := MakeCopy(ADstScope) as TIDPointer;
+    LNewPtr.ReferenceType := ReferenceType.InstantiateGeneric(ADstScope, ADstStruct, AContext) as TIDType;
+    Result := LNewPtr;
+    LogEnd('inst [type: %s, dst: %s]', [ClassName, Result.DisplayName]);
+  end else
+    Result := Self;
 end;
 
 { TIDRecordType }
@@ -6478,6 +6609,7 @@ begin
     ABuilder.Append(' write ');
     ABuilder.Append(FSetter.Name);
   end;
+  ABuilder.Append(';');
 end;
 
 function TIDProperty.GetParamsCount: Integer;
@@ -6593,6 +6725,7 @@ begin
   ABuilder.Append(Name);
   ABuilder.Append(': ');
   TypeNameToString(DataType, ABuilder);
+  ABuilder.Append(';');
 end;
 
 function TIDField.GetFieldIndex: Integer;
@@ -6634,11 +6767,11 @@ function TIDGenericParam.InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDSt
                                             const AContext: TGenericInstantiateContext): TIDDeclaration;
 begin
   Result := nil;
-  for var AIndex := 0 to Length(AContext.Arguments) - 1 do
+  for var AIndex := 0 to Length(AContext.Params) - 1 do
   begin
-    if AContext.Arguments[AIndex].GParam = Self then
+    if AContext.Params[AIndex] = Self then
     begin
-      Result := AContext.Arguments[AIndex].GArg;
+      Result := AContext.Args[AIndex];
       Exit;
     end;
   end;
@@ -6679,7 +6812,7 @@ end;
 
 { TGenericDescriptor }
 
-procedure TGenericDescriptor.AddGenericInstance(Decl: TIDDeclaration; const Args: TIDExpressions);
+procedure TGenericDescriptor.AddGenericInstance(Decl: TIDDeclaration; const Args: TIDTypeArray);
 var
   c: Integer;
 begin
@@ -6758,21 +6891,19 @@ begin
     Result := False;
 end;
 
-function TGenericDescriptor.TryGetInstance(const AArguments: TIDExpressions; out ADecl: TIDDeclaration): Boolean;
+function TGenericDescriptor.TryGetInstance(const AArguments: TIDTypeArray; out ADecl: TIDDeclaration): Boolean;
 begin
   for var LItemIndex := 0 to Length(GenericInstances) - 1 do
   begin
     var LItem := PGenericInstance(@GenericInstances[LItemIndex]);
     var LArgsCount := Length(AArguments);
-    if LArgsCount <> Length(LItem.Args) then
+    if LArgsCount < Length(LItem.Args) then
       AbortWorkInternal('Wrong length generics arguments');
     for var LArgIndex := 0 to LArgsCount - 1 do
     begin
-      var LDstArg := LItem.Args[LArgIndex];
-      var LSrcArg := AArguments[LArgIndex];
       // simple check
-      var LDstType := LDstArg.AsType.ActualDataType;
-      var LSrcType := LSrcArg.AsType.ActualDataType;
+      var LDstType := LItem.Args[LArgIndex].ActualDataType;
+      var LSrcType := AArguments[LArgIndex].ActualDataType;
       if LDstType <> LSrcType then
       begin
         if (LSrcType.DataTypeID = dtGeneric) and (LDstType.DataTypeID = dtGeneric) then
@@ -6887,6 +7018,20 @@ end;
 
 { TStructScope }
 
+procedure TStructScope.AddType(ADeclaration: TIDType);
+begin
+  inherited;
+  if ADeclaration.IsGeneric then
+    fStruct.FHasGenericMembers := True;
+end;
+
+procedure TStructScope.AddVariable(ADeclaration: TIDVariable);
+begin
+  inherited;
+  if ADeclaration.IsGeneric then
+    fStruct.FHasGenericMembers := True;
+end;
+
 constructor TStructScope.CreateAsStruct(Parent: TScope; Struct: TIDStructure; DeclUnit: TASTModule);
 begin
   inherited Create(StrCICompare);
@@ -6975,6 +7120,19 @@ procedure TIDClass.IncRefCount(RCPath: UInt32);
 begin
   inherited;
 
+end;
+
+procedure TIDClass.InstantiateGenericAncestors(ADstScope: TScope; ADstStruct: TIDStructure;
+  const AContext: TGenericInstantiateContext);
+begin
+  inherited;
+  for var LIntfIndex := 0 to Length(FIntfGenericInstantiations) - 1 do
+  begin
+    var LNewIntf := FIntfGenericInstantiations[LIntfIndex].InstantiateGeneric(ADstScope,
+                                                                              nil,
+                                                                              AContext) as TIDInterface;
+    FInterfaces[LIntfIndex] := LNewIntf;
+  end;
 end;
 
 procedure TIDClass.DecRefCount(RCPath: UInt32);
@@ -7367,7 +7525,7 @@ end;
 
 { TIDSysVariativeType }
 
-constructor TIDSysVariativeType.CreateAsSystem(Scope: TScope; const Types: TIDTypesArray);
+constructor TIDSysVariativeType.CreateAsSystem(Scope: TScope; const Types: TIDTypeArray);
 begin
   inherited CreateAsSystem(Scope, '');
   FTypes := Types;
@@ -7523,33 +7681,29 @@ var
   LNewContext: TGenericInstantiateContext;
 begin
   // Original - is the generic type that needs to be instantiated
-  if not Original.GenericDescriptor.TryGetInstance(AContext.Args, {out} Result) then
+  LNewContext.SrcDecl := Original;
+  LNewContext.Params := Original.GenericDescriptor.GenericParams;
+  var LGParamsCount := Length(LNewContext.Params);
+  SetLength(LNewContext.Args, LGParamsCount);
+
+  var LStrSufix := '';
+  for var LIndex := 0 to LGParamsCount - 1 do
+  begin
+    var LGArg := FGenericArguments[LIndex].AsType;
+    if LGArg is TIDGenericParam then
+      LGArg := AContext.GetArgByParam(TIDGenericParam(LGArg));
+
+    LNewContext.Args[LIndex] := LGArg;
+    LStrSufix := AddStringSegment(LStrSufix, LGArg.Name, ',');
+  end;
+
+  LNewContext.DstID.Name := Original.Name + '<' + LStrSufix + '>';
+  LNewContext.DstID.TextPosition := TextPosition;
+
+  if not Original.GenericDescriptor.TryGetInstance(LNewContext.Args, {out} Result) then
   begin
     LogBegin('inst [type: %s, src: %s]', [ClassName, Original.DisplayName]);
-
-    LNewContext.SrcDecl := Original;
-    var LGParams := Original.GenericDescriptor.GenericParams;
-    var LGParamsCount := Length(LGParams);
-    SetLength(LNewContext.Arguments, LGParamsCount);
-
-    var LStrSufix := '';
-    for var LIndex := 0 to LGParamsCount - 1 do
-    begin
-      var LGArg := FGenericArguments[LIndex].AsType;
-      if LGArg is TIDGenericParam then
-        LGArg := AContext.GetArgByParam(TIDGenericParam(LGArg));
-
-      LNewContext.Arguments[LIndex].GParam := LGParams[LIndex] as TIDGenericParam;
-      LNewContext.Arguments[LIndex].GArg := LGArg;
-      LStrSufix := AddStringSegment(LStrSufix, LGArg.Name, ',');
-    end;
-
-    LNewContext.DstID.Name := Original.Name + '<' + LStrSufix + '>';
-    LNewContext.DstID.TextPosition := TextPosition;
-    LNewContext.Args := FGenericArguments;
-
     Result := Original.InstantiateGeneric(ADstScope, nil, LNewContext);
-
     LogEnd('inst [class: %s, dst: %s]', [ClassName, LNewContext.DstID.Name]);
   end;
 end;
@@ -7600,9 +7754,9 @@ end;
 
 function TGenericInstantiateContext.GetArgByParam(AParam: TIDGenericParam): TIDType;
 begin
-  for var LIndex := 0 to Length(Arguments) - 1 do
-    if Arguments[LIndex].GParam = AParam then
-      Exit(Arguments[LIndex].GArg);
+  for var LIndex := 0 to Length(Params) - 1 do
+    if Params[LIndex] = AParam then
+      Exit(Args[LIndex]);
 
   AbortWorkInternal('Unknown generic param: %s', [AParam.Name]);
   Result := nil;

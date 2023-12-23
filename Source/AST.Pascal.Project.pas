@@ -112,8 +112,7 @@ type
     function GetMessages: ICompilerMessages;
     function Compile: TCompilerResult; virtual;
     function CompileInterfacesOnly: TCompilerResult; virtual;
-    procedure EnumIntfDeclarations(const EnumProc: TEnumASTDeclProc);
-    procedure EnumAllDeclarations(const EnumProc: TEnumASTDeclProc);
+    procedure EnumDeclarations(const AEnumProc: TEnumASTDeclProc; AUnitScope: TUnitScopeKind);
     procedure PutMessage(const Message: TCompilerMessage); overload;
     procedure PutMessage(MessageType: TCompilerMessageType; const MessageText: string); overload;
     procedure PutMessage(MessageType: TCompilerMessageType; const MessageText: string; const SourcePosition: TTextPosition); overload;
@@ -476,28 +475,10 @@ begin
   // do nothing
 end;
 
-procedure TPascalProject.EnumAllDeclarations(const EnumProc: TEnumASTDeclProc);
-var
-  i: Integer;
-  Module: TASTModule;
+procedure TPascalProject.EnumDeclarations(const AEnumProc: TEnumASTDeclProc; AUnitScope: TUnitScopeKind);
 begin
-  for i := 0 to FUnits.Count - 1 do
-  begin
-    Module := FUnits[i];
-    Module.EnumAllDeclarations(EnumProc);
-  end;
-end;
-
-procedure TPascalProject.EnumIntfDeclarations(const EnumProc: TEnumASTDeclProc);
-var
-  i: Integer;
-  Module: TASTModule;
-begin
-  for i := 0 to FUnits.Count - 1 do
-  begin
-    Module := FUnits[i];
-    Module.EnumIntfDeclarations(EnumProc);
-  end;
+  for var LIndex := 0 to FUnits.Count - 1 do
+    FUnits[LIndex].EnumDeclarations(AEnumProc, AUnitScope);
 end;
 
 function TPascalProject.OpenUnit(const UnitName: string): TASTModule;

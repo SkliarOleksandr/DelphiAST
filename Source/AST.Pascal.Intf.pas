@@ -46,8 +46,7 @@ type
     procedure AddUnitSource(const Source: string); overload;
     procedure AddUnitSearchPath(const Path: string; IncludeSubDirectories: Boolean = True);
     procedure Clear;
-    procedure EnumIntfDeclarations(const EnumProc: TEnumASTDeclProc);
-    procedure EnumAllDeclarations(const EnumProc: TEnumASTDeclProc);
+    procedure EnumDeclarations(const AEnumProc: TEnumASTDeclProc; AUnitScope: TUnitScopeKind);
     procedure DoBeforeCompileUnit(AUnit: TASTModule);
     procedure DoFinishCompileUnit(AUnit: TASTModule; AIntfOnly: Boolean);
     procedure PutMessage(const Message: TCompilerMessage); overload;

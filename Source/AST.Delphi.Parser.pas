@@ -362,8 +362,6 @@ type
     function ParseForStatement(Scope: TScope; const SContext: TSContext): TTokenID;
     function ParseForInStatement(Scope: TScope; const SContext: TSContext; LoopVar: TIDExpression): TTokenID;
     function ParseCaseStatement(Scope: TScope; const SContext: TSContext): TTokenID;
-//    function ParseBreakStatement(Scope: TScope; const SContext: TSContext): TTokenID;
-//    function ParseContinueStatement(Scope: TScope; const SContext: TSContext): TTokenID;
     function ParseInheritedStatement(Scope: TScope; const EContext: TEContext): TTokenID;
     function ParseImmVarStatement(Scope: TScope; const SContext: TSContext): TTokenID;
     function ParseTrySection(Scope: TScope; const SContext: TSContext): TTokenID;
@@ -413,8 +411,7 @@ type
     procedure ParseCondDefine(Scope: TScope; add_define: Boolean);
     function ParseCondOptions(Scope: TScope): TTokenID;
 
-    procedure EnumIntfDeclarations(const Proc: TEnumASTDeclProc); override;
-    procedure EnumAllDeclarations(const Proc: TEnumASTDeclProc); override;
+    procedure EnumDeclarations(const AEnumProc: TEnumASTDeclProc; AUnitScope: TUnitScopeKind); override;
     procedure PostCompileChecks;
 
     property Source: string read GetSource;
@@ -2741,19 +2738,15 @@ begin
   Result := fErrors;
 end;
 
-procedure TASTDelphiUnit.EnumAllDeclarations(const Proc: TEnumASTDeclProc);
+procedure TASTDelphiUnit.EnumDeclarations(const AEnumProc: TEnumASTDeclProc; AUnitScope: TUnitScopeKind);
 begin
-  for var LIndex := 0 to IntfScope.Count - 1 do
-    Proc(Self, IntfScope.Items[LIndex]);
+  if AUnitScope in [scopeBoth, scopeInterface] then
+    for var LIndex := 0 to IntfScope.Count - 1 do
+      AEnumProc(Self, IntfScope.Items[LIndex]);
 
-  for var LIndex := 0 to ImplScope.Count - 1 do
-    Proc(Self, ImplScope.Items[LIndex]);
-end;
-
-procedure TASTDelphiUnit.EnumIntfDeclarations(const Proc: TEnumASTDeclProc);
-begin
-  for var LIndex := 0 to IntfScope.Count - 1 do
-    Proc(Self, IntfScope.Items[LIndex]);
+  if AUnitScope in [scopeBoth, scopeImplementation] then
+    for var LIndex := 0 to ImplScope.Count - 1 do
+      AEnumProc(Self, ImplScope.Items[LIndex]);
 end;
 
 class function TASTDelphiUnit.GetTMPVar(const EContext: TEContext; DataType: TIDType): TIDVariable;
@@ -5312,8 +5305,10 @@ begin
     if (Decl.DataTypeID = dtClass) then
     begin
       if LAncestorsCount = 0 then
-        ClassDecl.Ancestor := TIDClass(Decl)
-      else
+      begin
+        ClassDecl.Ancestor := Decl.ActualDataType as TIDStructure;
+        ClassDecl.AncestorDecl := Decl;
+      end else
         AbortWork('Multiple inheritance is not supported', Expr.TextPosition);
     end else
     begin
@@ -6980,7 +6975,7 @@ begin
       // search overload
       var Decl := ForwardDecl;
       while True do begin
-        if Decl.SameDeclaration(ProcScope.ExplicitParams) then 
+        if Decl.SameDeclaration(ProcScope.ExplicitParams) then
         begin
           if Decl.Scope = Scope then
           begin
@@ -8102,40 +8097,6 @@ begin
   Result := CheckAndParseDeprecated(Scope, Result);
 end;
 
-function FindGenericInstance(const GenericInstances: TGenericInstanceList; const SpecializeArgs: TIDExpressions): TIDDeclaration;
-var
-  i, ac, ai: Integer;
-  Item: ^TGenericInstance;
-  SrcArg, DstArg: TIDExpression;
-  SrcType, DstType: TIDType;
-begin
-  for i := 0 to Length(GenericInstances) - 1 do
-  begin
-    Item := addr(GenericInstances[i]);
-    ac := Length(SpecializeArgs);
-    if ac <> Length(Item.Args) then
-      AbortWorkInternal('Wrong length generics arguments');
-    for ai := 0 to ac - 1 do
-    begin
-      DstArg := Item.Args[ai];
-      SrcArg := SpecializeArgs[ai];
-      // тут упрощенная проверка:
-      SrcType := SrcArg.AsType.ActualDataType;
-      DstType := DstArg.AsType.ActualDataType;
-      if SrcType <> DstType then
-      begin
-        if (SrcType.DataTypeID = dtGeneric) and (DstType.DataTypeID = dtGeneric) then
-          continue;
-        Item := nil;
-        break;
-      end;
-    end;
-    if Assigned(Item) then
-      Exit(Item.Instance);
-  end;
-  Result := nil;
-end;
-
 procedure TASTDelphiUnit.SetProcGenericArgs(CallExpr: TIDCallExpression; Args: TIDExpressions);
 var
   Proc: TIDProcedure;
@@ -8199,9 +8160,10 @@ begin
     end;
   end;
 
-  Result := TASTDelphiProc(FindGenericInstance(GDescriptor.GenericInstances, SpecializeArgs));
-  if Assigned(Result) then
-    Exit;
+// todo:
+//  Result := TASTDelphiProc(FindGenericInstance(GDescriptor.GenericInstances, SpecializeArgs));
+//  if Assigned(Result) then
+//    Exit;
 
   Scope := TScope.Create(Proc.Scope.ScopeType, Proc.EntryScope);
   {$IFDEF DEBUG}Scope.Name := Proc.DisplayName + '.generic_alias_scope';{$ENDIF}
@@ -8219,7 +8181,8 @@ begin
   Result := TASTDelphiProc.Create(Proc.Scope, Identifier(ProcName, Proc.ID.TextPosition));
 
   {добовляем специализацию в пул }
-  GDescriptor.AddGenericInstance(Result, SpecializeArgs);
+  // todo:
+  //GDescriptor.AddGenericInstance(Result, SpecializeArgs);
 
   try
     ParseGenericProcRepeatedly(Scope, Proc, Result, Proc.Struct);
@@ -8235,32 +8198,39 @@ function TASTDelphiUnit.InstantiateGenericType(AScope: TScope; AGenericType: TID
 var
   GDescriptor: PGenericDescriptor;
   LContext: TGenericInstantiateContext;
+  LGArgs: TIDTypeArray;
+  LGArgsCount: Integer;
 begin
   GDescriptor := AGenericType.GenericDescriptor;
   {find in the pool first}
-  Result := TIDType(FindGenericInstance(GDescriptor.GenericInstances, SpecializeArgs));
-  if Assigned(Result) then
+
+  LGArgsCount := Length(SpecializeArgs);
+  SetLength(LGArgs, LGArgsCount);
+  for var LIndex := 0 to LGArgsCount - 1 do
+    LGArgs[LIndex] := SpecializeArgs[LIndex].AsType;
+
+  var LDecl: TIDDeclaration;
+  if GDescriptor.TryGetInstance(LGArgs, {out} LDecl) then
+  begin
+    Result := LDecl as TIDType;
     Exit;
+  end;
 
   LContext.SrcDecl := AGenericType;
   var AStrSufix := '';
   var AArgsCount := Length(SpecializeArgs);
-  SetLength(LContext.Arguments, AArgsCount);
+  LContext.Args := LGArgs;
+  LContext.Params := GDescriptor.GenericParams;
   for var AIndex := 0 to AArgsCount - 1 do
   begin
     var AArgType := SpecializeArgs[AIndex].AsType;
-    LContext.Arguments[AIndex].GParam := GDescriptor.GenericParams[AIndex] as TIDGenericParam;
-    LContext.Arguments[AIndex].GArg := AArgType;
     AStrSufix := AddStringSegment(AStrSufix, AArgType.Name, ',');
   end;
   LContext.DstID.Name := AGenericType.Name + '<' + AStrSufix + '>';
   LContext.DstID.TextPosition := Lexer_Position;
-  LContext.Args := SpecializeArgs;
 
   try
     Result := AGenericType.InstantiateGeneric(AScope, {ADstStruct:} nil, LContext) as TIDType;
-    // add new type to the current scope
-    AScope.AddType(Result)
   except
     Error('Generic Instantiation Error: %s', [LContext.DstID.Name], LContext.DstID.TextPosition);
     raise;
@@ -9146,6 +9116,7 @@ begin
       AbortWork(sRecurciveTypeLinkIsNotAllowed, Expr.TextPosition);
     Lexer_MatchToken(Result, token_closeround);
     Decl.Ancestor := Ancestor as TIDInterface;
+    Decl.AncestorDecl := Expr.AsType;
     Result := Lexer_NextToken(Scope);
   end;
 
@@ -10081,7 +10052,7 @@ end;
 
 procedure TASTDelphiUnit.CheckIncompleteFwdTypes;
 begin
-  EnumAllDeclarations(
+  EnumDeclarations(
     procedure (const AModule: TASTModule; const ADecl: TASTDeclaration)
     begin
       if ADecl is TIDPointer then
@@ -10090,13 +10061,12 @@ begin
         var LDataType := TIDPointer(ADecl).ReferenceType;
         if Assigned(LDataType) then;
       end;
-    end
-  );
+    end, {AUnitScope} scopeBoth);
 end;
 
 procedure TASTDelphiUnit.CheckIncompleteType(Fields: TScope);
 begin
-  EnumAllDeclarations(
+  EnumDeclarations(
     procedure (const AModule: TASTModule; const ADecl: TASTDeclaration)
     begin
       if ADecl is TIDVariable then
@@ -10106,8 +10076,7 @@ begin
            (not (StructCompleted in TIDStructure(LFieldType).StructFlags)) then
           AbortWork(sRecurciveTypeLinkIsNotAllowed, ADecl.ID.TextPosition);
       end;
-    end
-  );
+    end, {AUnitScope} scopeBoth);
 end;
 
 procedure TASTDelphiUnit.CheckVarExpression(Expression: TIDExpression; VarModifyPlace: TVarModifyPlace);
