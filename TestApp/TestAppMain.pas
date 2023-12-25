@@ -434,7 +434,7 @@ begin
   begin
     if chkWriteLog.Checked then
       LogMemo.Lines.Add(DupeString(' ', ANestedLevel) + AMessage);
-  end
+  end;
 end;
 
 end.

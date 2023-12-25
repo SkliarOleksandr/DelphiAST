@@ -657,6 +657,9 @@ begin
   AddUnarOperator(opNegative, _NativeUInt, _NativeInt);
   AddUnarOperator(opNegative, _Float32, _Float32);
   AddUnarOperator(opNegative, _Float64, _Float64);
+  AddUnarOperator(opNegative, _Float80, _Float80);
+  AddUnarOperator(opNegative, _Currency, _Currency);
+  AddUnarOperator(opNegative, _Comp, _Comp);
 end;
 
 procedure TSYSTEMUnit.AddSubOperators;

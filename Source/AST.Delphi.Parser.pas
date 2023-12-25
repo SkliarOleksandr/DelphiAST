@@ -155,7 +155,6 @@ type
     function Process_operator_Is(var EContext: TEContext): TIDExpression;
     function Process_operator_As(var EContext: TEContext): TIDExpression;
     function Process_operator_Period(var EContext: TEContext): TIDExpression;
-    function Process_operator_dot(var EContext: TEContext): TIDExpression;
     function MatchImplicitOrNil(const SContext: TSContext; Source: TIDExpression; Dest: TIDType): TIDExpression;
     function MatchArrayImplicit(const SContext: TSContext; Source: TIDExpression; DstArray: TIDArray): TIDExpression;
     function MatchRecordImplicit(const SContext: TSContext; Source: TIDExpression; DstRecord: TIDRecord): TIDExpression;
@@ -1504,6 +1503,7 @@ begin
   end else
   begin
     VarExpr := nil; // todo:
+    NewScope := nil;
     CheckExceptionType(Decl);
   end;
 
@@ -1938,7 +1938,7 @@ end;
 
 function TASTDelphiUnit.EmitCreateClosure(const SContext: TSContext; Closure: TIDClosure): TIDExpression;
 begin
-
+  Result := nil;
 end;
 
 function TASTDelphiUnit.MatchBinarOperatorWithTuple(const SContext: TSContext; Op: TOperatorID; var CArray: TIDExpression; const SecondArg: TIDExpression): TIDDeclaration;
@@ -2042,7 +2042,7 @@ begin
   if (ASrcType = ADestType) then
     Result := MaxInt8
   else
-    ImplicitFactor2(ASrcType.DataTypeID, ADestType.DataTypeID);
+    Result := ImplicitFactor2(ASrcType.DataTypeID, ADestType.DataTypeID);
 end;
 
 function TASTDelphiUnit.FindImplicitFormBinarOperators(const Operators: TBinaryOperatorsArray;
@@ -2097,6 +2097,8 @@ begin
       Left := EContext.RPNPopExpression();
 
       Op := FindBinaryOperator(EContext.SContext, OpID, Left, Right);
+
+      TmpVar := nil;
 
       // если аргументы - константы, производим константные вычисления
       if Left.IsConstant and Right.IsConstant then
@@ -2259,10 +2261,6 @@ begin
     RefType := Sys._Untyped;
 
   Result := GetTMPVarExpr(EContext, RefType, Src.TextPosition);
-end;
-
-function TASTDelphiUnit.Process_operator_dot(var EContext: TEContext): TIDExpression;
-begin
 end;
 
 function TASTDelphiUnit.Process_operator_In(var EContext: TEContext; const Left, Right: TIDExpression): TIDExpression;
@@ -2542,7 +2540,7 @@ begin
     Progress(TASTStatusParseSuccess);
     Package.DoFinishCompileUnit(Self, {AIntfOnly:} False);
   except
-    on e: ECompilerStop do Exit();
+    on e: ECompilerStop do Exit(CompileFail);
     on e: ECompilerSkip do Exit(CompileSkip);
     on e: ECompilerAbort do begin
       PutMessage(ECompilerAbort(e).CompilerMessage^);
@@ -3370,6 +3368,8 @@ begin
     if Assigned(OpDecl) then
       Exit(Source);
   end;
+
+  Result := nil;
 end;
 
 function TASTDelphiUnit.MatchImplicitOrNil(const SContext: TSContext; Source: TIDExpression; Dest: TIDType): TIDExpression;
@@ -4372,7 +4372,8 @@ begin
   ArrExpr := EContext.RPNPopExpression();
   ArrDecl := ArrExpr.Declaration;
   DeclType := ArrExpr.DataType;
-
+  DataType := nil;
+  DimensionsCount := 0;
   if DeclType.DataTypeID = dtPointer then
   begin
     var ARefType := GetPtrReferenceType(TIDPointer(DeclType));
@@ -4479,7 +4480,7 @@ end;
 
 function TASTDelphiUnit.ParseAsmSpecifier: TTokenID;
 begin
-
+  Result := token_unknown;
 end;
 
 function TASTDelphiUnit.ParseASMStatement(Scope: TScope; const SContext: TSContext): TTokenID;
@@ -4487,6 +4488,7 @@ var
   KW: TASTKWAsm;
 begin
   KW := SContext.Add(TASTKWAsm) as TASTKWAsm;
+  Result := Lexer_CurTokenID;
   while (Result <> token_end) do
   begin
     // skip all to end
@@ -6373,28 +6375,26 @@ end;
 
 function TASTDelphiUnit.ParseImmVarStatement(Scope: TScope; const SContext: TSContext): TTokenID;
 var
-  i, c: Integer;
   DataType: TIDType;
-  Expr: TIDExpression;
   Variable: TIDVariable;
-  Names: TIdentifiersPool;
+  LVarID: TIdentifier;
   EContext: TEContext;
-  Vars: array of TIDVariable;
   KW: TASTKWInlineVarDecl;
 begin
-  c := 0;
-  Names := TIdentifiersPool.Create(1);
   Result := Lexer_NextToken(Scope);
-
   KW := SContext.Add(TASTKWInlineVarDecl) as TASTKWInlineVarDecl;
 
+  var LVarCount := 0;
   while True do begin
     Lexer_MatchIdentifier(Result);
-    Names.Add;
-    Lexer_ReadCurrIdentifier(Names.Items[c]);
+    Lexer_ReadCurrIdentifier(LVarID);
+
+    if LVarCount > 0 then
+      ERRORS.CANNOT_INIT_MULTIPLE_VARS(LVarID);
+
     Result := Lexer_NextToken(Scope);
     if Result = token_Coma then begin
-      Inc(c);
+      Inc(LVarCount);
       Result := Lexer_NextToken(Scope);
       Continue;
     end;
@@ -6405,18 +6405,13 @@ begin
     else
       DataType := nil;
 
-    SetLength(Vars, c + 1);
-    for i := 0 to c do
-    begin
-      Variable := TIDVariable.Create(Scope, Names.Items[i]);
-      Variable.DataType := DataType;
-      Variable.Visibility := vLocal;
-      Variable.DefaultValue := nil;
-      Variable.Absolute := nil;
-      Scope.AddVariable(Variable);
-      Vars[i] := Variable;
-      KW.AddDecl(Variable);
-    end;
+    Variable := TIDVariable.Create(Scope, LVarID);
+    Variable.DataType := DataType;
+    Variable.Visibility := vLocal;
+    Variable.DefaultValue := nil;
+    Variable.Absolute := nil;
+    Scope.AddVariable(Variable);
+    KW.AddDecl(Variable);
 
     // parse a default value if declared
     if Result = token_assign then
@@ -6436,8 +6431,7 @@ begin
         if DataType = Sys._Untyped then
           ERRORS.COULD_NOT_INFER_VAR_TYPE_FROM_UNTYPED(EContext.Result);
 
-        for i := 0 to c do
-          Vars[i].DataType := DataType
+        Variable.DataType := DataType;
       end;
 
       EContext.RPNPushOperator(opAssignment);

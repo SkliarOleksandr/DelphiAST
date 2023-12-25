@@ -1021,7 +1021,7 @@ type
   public
     constructor Create(Scope: TScope; const Identifier: TIdentifier; DataType: TIDType; Value: T); overload;
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
-    constructor CreateAsAnonymous(Scope: TScope; DataType: TIDType; Value: T);
+    constructor CreateAsAnonymous(Scope: TScope; DataType: TIDType; Value: T); reintroduce;
     constructor CreateWithoutScope(DataType: TIDType; Value: T);
     procedure AssignValue(Source: TIDConstant); override;
     property Value: T read FValue write FValue;
@@ -1101,6 +1101,9 @@ type
     function ValueDataType: TDataTypeID; override;
     function ValueByteSize: Integer; override;
     function AsString: string; override;
+    function AsInt64: Int64; override;
+    function AsVariant: Variant; override;
+    function CompareTo(Constant: TIDConstant): Integer; override;
     procedure AssignValue(Source: TIDConstant); override;
   end;
 
@@ -5782,7 +5785,6 @@ end;
 procedure TSpace<T>.Delete(const Declaration: T);
 var
   Item, PrevItem: TIDDeclaration;
-  Idx: Integer;
 begin
   PrevItem := nil;
   Item := TIDDeclaration(FFirst);
@@ -7479,6 +7481,11 @@ end;
 
 { TIDPointerConstant }
 
+function TIDPointerConstant.AsInt64: Int64;
+begin
+  Result := 0;
+end;
+
 procedure TIDPointerConstant.AssignValue(Source: TIDConstant);
 begin
   FValue := Source;
@@ -7490,6 +7497,16 @@ begin
     Result := TIDConstant(FValue).AsString
   else
     Result := '<uknown>';
+end;
+
+function TIDPointerConstant.AsVariant: Variant;
+begin
+  Result := 0;
+end;
+
+function TIDPointerConstant.CompareTo(Constant: TIDConstant): Integer;
+begin
+  Result := 0;
 end;
 
 procedure TIDPointerConstant.SetAsVariant(const AValue: Variant);

@@ -216,6 +216,7 @@ type
     class procedure INVALID_EXPLICIT_TYPECAST(const Src: TIDExpression; Dst: TIDType); static;
     class procedure VAR_EXPRESSION_REQUIRED(Expr: TIDExpression); static;
     class procedure VAR_OR_PROC_EXPRESSION_REQUIRED(Expr: TIDExpression); static;
+    class procedure CANNOT_INIT_MULTIPLE_VARS(AVarID: TIdentifier); static;
     class procedure CANNOT_MODIFY_FOR_LOOP_VARIABLE(Expr: TIDExpression); static;
     class procedure CANNOT_MODIFY_CONSTANT(Expr: TIDExpression); static;
     class procedure BOOLEAN_EXPRESSION_REQUIRED(Expr: TIDExpression); static;
@@ -918,6 +919,11 @@ end;
 class procedure TASTDelphiErrors.CANNOT_ASSIGN_TEMPORARRY_OBJECT(Expr: TIDExpression);
 begin
   AbortWork('Cannot modify a temporary object', Expr.TextPosition);
+end;
+
+class procedure TASTDelphiErrors.CANNOT_INIT_MULTIPLE_VARS(AVarID: TIdentifier);
+begin
+  AbortWork('Cannot initialize multiple variables', AVarID.TextPosition);
 end;
 
 procedure TASTDelphiErrors.NEED_SPECIFY_NINDEXES(const Decl: TIDDeclaration);
