@@ -92,7 +92,7 @@ end;
 
 function TOptions.AddOption(const OptShortName, OptName: string; OptionClass: TOptionClass): TOption;
 begin
-
+  Result := nil;
 end;
 
 constructor TOptions.Create(Parent: TOptions);

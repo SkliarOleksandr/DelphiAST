@@ -651,7 +651,6 @@ type
   private
     fAncestor: TIDStructure;
     fAncestorDecl: TIDType;         // can be TIDGenericInstantiation or TIDStructure successor
-    fStaticMembers: TStructScope;   // class (static) members
     fMembers: TStructScope;         // instance members
     fOperators: TStructScope;       // operators members
     fStrucFlags: TStructFlags;
@@ -681,7 +680,6 @@ type
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
     ////////////////////////////////////////////////////////////////////////////
     property Members: TStructScope read FMembers;
-    property StaticMembers: TStructScope read FStaticMembers;
     property Operators: TStructScope read fOperators;
     property HasInitFiels: Boolean read GetHasInitFiels;
     property StructFlags: TStructFlags read FStrucFlags write FStrucFlags;
@@ -3434,7 +3432,7 @@ begin
   // first, try to find this type in the parent struct (if it's nested)
   if Assigned(Parent) and Assigned(ADstStruct) then
   begin
-    Result := ADstStruct.StaticMembers.FindMembers(Name);
+    Result := ADstStruct.Members.FindMembers(Name);
     if Assigned(Result) then
       Exit;
   end;
@@ -4323,7 +4321,7 @@ end;
 
 function TIDStructure.FindVirtualClassProc(AProc: TIDProcedure): TIDProcedure;
 begin
-  var LDecl := fStaticMembers.FindMembers(AProc.Name);
+  var LDecl := fMembers.FindMembers(AProc.Name);
 
   while Assigned(LDecl) do
   begin
@@ -4331,7 +4329,8 @@ begin
     begin
       if (pfVirtual in TIDProcedure(LDecl).Flags) and
          (TIDProcedure(LDecl).SameDeclaration(AProc.ExplicitParams)) and
-         (TIDProcedure(LDecl).ResultType = AProc.ResultType)
+         (TIDProcedure(LDecl).ResultType = AProc.ResultType) and
+          TIDProcedure(LDecl).IsClassMethod
       then
         Exit(TIDProcedure(LDecl));
 
@@ -4543,36 +4542,22 @@ begin
       // instantiate ancestor(and implemented interfaces)
       InstantiateGenericAncestors(ADstScope, LNewStruct, AContext);
 
-      // instantiate Static Members
-      for var LIndex := 0 to fStaticMembers.Count - 1 do
-      begin
-        var LMember := fStaticMembers.Items[LIndex];
-        // ignore generic params (they are not needed in the new instance)
-        if not (LMember is TIDGenericParam) then
-        begin
-          var LNewMember := LMember.InstantiateGeneric(LNewStruct.StaticMembers, LNewStruct, AContext);
-          case LMember.ItemType of
-            itVar: LNewStruct.StaticMembers.AddVariable(TIDVariable(LNewMember));
-            itProcedure: LNewStruct.StaticMembers.AddProcedure(TIDProcedure(LNewMember));
-            itType: LNewStruct.StaticMembers.AddType(TIDType(LNewMember));
-            itProperty: LNewStruct.StaticMembers.AddProperty(TIDProperty(LNewMember));
-            itConst: LNewStruct.StaticMembers.AddConstant(TIDConstant(LNewMember));
-            // todo: AddConst (need implement SizeOf(T)), AddOperators,
-          end;
-        end;
-      end;
-
-      // instantiate Instance Members
+      // instantiate struct members
       for var LIndex := 0 to fMembers.Count - 1 do
       begin
         var LMember := fMembers.Items[LIndex];
-        var LNewMember := LMember.InstantiateGeneric(LNewStruct.Members, LNewStruct, AContext);
-        case LMember.ItemType of
-          itVar: LNewStruct.Members.AddVariable(TIDVariable(LNewMember));
-          itProcedure: LNewStruct.Members.AddProcedure(TIDProcedure(LNewMember));
-          itProperty: LNewStruct.Members.AddProperty(TIDProperty(LNewMember));
-        else
-          Assert(False, 'invalid member type');
+        // ignore generic params (they are not needed in the new instance)
+        if not (LMember is TIDGenericParam) then
+        begin
+          var LNewMember := LMember.InstantiateGeneric(LNewStruct.Members, LNewStruct, AContext);
+          case LMember.ItemType of
+            itVar: LNewStruct.Members.AddVariable(TIDVariable(LNewMember));
+            itProcedure: LNewStruct.Members.AddProcedure(TIDProcedure(LNewMember));
+            itType: LNewStruct.Members.AddType(TIDType(LNewMember));
+            itProperty: LNewStruct.Members.AddProperty(TIDProperty(LNewMember));
+            itConst: LNewStruct.Members.AddConstant(TIDConstant(LNewMember));
+            // todo: AddConst (need implement SizeOf(T)), AddOperators,
+          end;
         end;
       end;
 
@@ -4597,13 +4582,7 @@ begin
 
   for var LIndex := 0  to fMembers.Count - 1 do
   begin
-    ABuilder.Append(sLineBreak);
-    fMembers.Items[LIndex].Decl2Str(ABuilder, ANestedLevel + 1);
-  end;
-
-  for var LStaticIndex := 0  to fStaticMembers.Count - 1 do
-  begin
-    var LDecl := fStaticMembers.Items[LStaticIndex];
+    var LDecl := fMembers.Items[LIndex];
     if not (LDecl is TIDGenericParam) then
     begin
       ABuilder.Append(sLineBreak);
@@ -4648,13 +4627,9 @@ end;
 
 procedure TIDStructure.DoCreateStructure;
 begin
-  fStaticMembers := TStructScope.CreateAsStruct(Scope, Self, Scope.DeclUnit);
-  {$IFDEF DEBUG}fStaticMembers.Name := ID.Name + '.staticmembers';{$ENDIF}
   fMembers := TStructScope.CreateAsStruct(Scope, Self, Scope.DeclUnit);
-  fMembers.AddScope(fStaticMembers);
   {$IFDEF DEBUG}fMembers.Name := ID.Name + '.members';{$ENDIF}
   fOperators := TStructScope.CreateAsStruct(Scope, Self, Scope.DeclUnit);
-  fOperators.AddScope(fStaticMembers);
   {$IFDEF DEBUG}fOperators.Name := ID.Name + '.operators';{$ENDIF}
 end;
 
@@ -4713,7 +4688,6 @@ begin
   if Assigned(Value) then
   begin
     fMembers.fAncestorScope := Value.Members;
-    fStaticMembers.fAncestorScope := Value.StaticMembers;
     FAncestor.IncRefCount(1);
   end;
 end;
@@ -4732,7 +4706,6 @@ begin
     while Assigned(AGenericParam) do
     begin
       fMembers.InsertID(TIDdeclaration(AGenericParam.Data));
-      fStaticMembers.InsertID(TIDdeclaration(AGenericParam.Data));
       AGenericParam := Value.Scope.Next(AGenericParam);
     end;
   end;
