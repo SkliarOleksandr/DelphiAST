@@ -256,6 +256,10 @@ begin
             Exit;
 
           try
+//            LBuilder.Append('//scope: ' + TIDDeclaration(Decl).Scope.Name);
+//            LBuilder.Append(sLineBreak);
+//            LBuilder.Append('//class: ' + Decl.ClassName);
+//            LBuilder.Append(sLineBreak);
             Decl.Decl2Str(LBuilder, {ANestedLevel:} 0, {AAppendName:} True);
             LBuilder.Append(sLineBreak);
           except

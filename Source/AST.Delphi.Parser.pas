@@ -438,7 +438,8 @@ uses
    AST.Parser.Errors,
    AST.Delphi.System,
    AST.Delphi.SysOperators,
-   AST.Delphi.Operators.Signatures;
+   AST.Delphi.Operators.Signatures,
+   AST.Parser.Log;
 
 type
   TSContextHelper = record helper for TSContext
@@ -6127,7 +6128,7 @@ begin
     SetLength(Args, ArgsCount);
     var AArgExpression := EContext.RPNPopExpression();
     var AArgType := AArgExpression.AsType;
-    if (AArgType is TIDGenericParam) and AArgType.IsGeneric then
+    if (AArgType is TIDGenericParam) or AArgType.IsGeneric then
       ACanInstantiate := False;
 
     Args[ArgsCount - 1] := AArgExpression;
@@ -8207,12 +8208,13 @@ begin
   for var AIndex := 0 to AArgsCount - 1 do
   begin
     var AArgType := SpecializeArgs[AIndex].AsType;
-    AStrSufix := AddStringSegment(AStrSufix, AArgType.Name, ',');
+    AStrSufix := AddStringSegment(AStrSufix, AArgType.Name, ', ');
   end;
   LContext.DstID.Name := AGenericType.Name + '<' + AStrSufix + '>';
   LContext.DstID.TextPosition := Lexer_Position;
 
   try
+    WriteLog('# (%s: %d): %s', [Name, Lexer_Line, LContext.DstID.Name]);
     Result := AGenericType.InstantiateGeneric(AScope, {ADstStruct:} nil, LContext) as TIDType;
   except
     Error('Generic Instantiation Error: %s', [LContext.DstID.Name], LContext.DstID.TextPosition);
