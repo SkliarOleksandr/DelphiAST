@@ -3817,7 +3817,7 @@ function TIDVariable.InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStruct
 begin
   LogBegin('inst [type: %s, src: %s]', [ClassName, DisplayName]);
   Result := MakeCopy(ADstScope);
-  Result.DataType := DataType.InstantiateGeneric(ADstScope, nil, AContext) as TIDType;
+  Result.DataType := DataType.InstantiateGeneric(ADstScope, ADstStruct, AContext) as TIDType;
   LogEnd('inst [type: %s, dst: %s]', [ClassName, Result.DisplayName]);
 end;
 
