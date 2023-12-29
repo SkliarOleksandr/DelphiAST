@@ -427,6 +427,7 @@ type
     property SysImplicitFromAny: TIDOperator read fSysImplicitFromAny;
     property SysBinayOperator: TSysBinaryOperators read fSysBinaryOperators;
     property Helper: TDlphHelper read fHelper write fHelper;
+    function MakeCopy(AScope: TScope): TIDDeclaration; override;
     // it means the generic declaration in the parsing progress, it's needed to avoid recursive parsing
     property GenericDeclInProgress: Boolean read fGenericDeclInProgress write fGenericDeclInProgress;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
@@ -3058,7 +3059,7 @@ function TIDProcedure.InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStruc
     begin
       var AParam := AProcParams[AIndex].MakeCopy(ANewScope) as TIDParam;
       if AParam.IsGeneric then
-        AParam.DataType := AParam.DataType.InstantiateGeneric(ANewScope, nil, AContext) as TIDType;
+        AParam.DataType := AParam.DataType.InstantiateGeneric(ANewScope, ADstStruct, AContext) as TIDType;
 
       Result[AIndex] := AParam;
     end;
@@ -3168,6 +3169,9 @@ begin
       GenericDescriptor.Decl2Str(ABuilder);
 
     ABuilder.Append(' = ');
+
+    if IsPacked then
+      ABuilder.Append('packed ');
   end;
 end;
 
@@ -3443,6 +3447,14 @@ begin
     Result := nil
   else
     Result := Self;
+end;
+
+function TIDType.MakeCopy(AScope: TScope): TIDDeclaration;
+begin
+  var LNewCopy := TIDType(inherited);
+  LNewCopy.fDataTypeID := DataTypeID;
+  LNewCopy.fPacked := fPacked;
+  Result := LNewCopy;
 end;
 
 procedure ERROR_OPERATOR_ALREADY_OVERLOADED(Op: TOperatorID; Type1, Type2: TIDDeclaration; const Position: TTextPosition); overload;
@@ -6676,7 +6688,7 @@ begin
   LogBegin('inst [type: %s, src: %s]', [ClassName, Name]);
 
   var LNewProp := MakeCopy(ADstScope) as TIDProperty;
-  LNewProp.DataType := DataType.InstantiateGeneric(ADstScope, nil, AContext) as TIDType;
+  LNewProp.DataType := DataType.InstantiateGeneric(ADstScope, ADstStruct, AContext) as TIDType;
 
   // todo: check signatures
   if Assigned(Getter) then
