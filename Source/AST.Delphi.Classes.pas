@@ -141,6 +141,7 @@ type
     property ImplSRCPosition: TParserPosition read FImplSRCPosition write FImplSRCPosition;
     procedure AddGenericInstance(Decl: TIDDeclaration; const Args: TIDTypeArray);
     class function Create(Scope: TScope): PGenericDescriptor; static;
+    function SameParams(const AParams: TIDTypeArray): Boolean;
     function FindType(const Name: string): TIDGenericParam; inline;
     function IsEqual(ADescriptor: PGenericDescriptor): Boolean;
     function TryGetInstance(const AArguments: TIDTypeArray; out ADecl: TIDDeclaration): Boolean;
@@ -762,7 +763,9 @@ type
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
     destructor Destroy; override;
     //========================================================
-    function FindInterface(const Intf: TIDInterface): Boolean;
+    function FindInterface(const Intf: TIDInterface): Boolean; overload;
+    function FindInterface(const AIntfName: string;
+                           const AGenericParams: TIDTypeArray = []): TIDInterface; overload;
     procedure AddInterface(const Intf: TIDInterface);
     procedure AddGenericInterface(AGenricIntf: TIDGenericInstantiation);
     procedure MapInterfaceMethod(const Intf: TIDInterface; IntfMethod, ImplMethod: TIDProcedure);
@@ -6625,6 +6628,25 @@ begin
   inherited;
 end;
 
+function TIDClass.FindInterface(const AIntfName: string;
+                                const AGenericParams: TIDTypeArray): TIDInterface;
+begin
+  for var LIndex := 0 to FInterfaces.Count - 1 do
+  begin
+    var LIntf := FInterfaces[LIndex];
+    if SameText(LIntf.Name, AIntfName) then
+    begin
+      if Assigned(LIntf.GenericDescriptor) and
+         Assigned(AGenericParams) and
+         LIntf.GenericDescriptor.SameParams(AGenericParams) then
+      begin
+        Exit(LIntf);
+      end;
+    end;
+  end;
+  Result := nil;
+end;
+
 function TIDClass.FindInterface(const Intf: TIDInterface): Boolean;
 begin
   Result := Assigned(FInterfaces) and (FInterfaces.IndexOf(Intf) >= 0);
@@ -6951,6 +6973,20 @@ begin
     Result := True;
   end else
     Result := False;
+end;
+
+function TGenericDescriptor.SameParams(const AParams: TIDTypeArray): Boolean;
+begin
+  var LParamsCount := Length(AParams);
+  Result := (LParamsCount = Length(FGenericParams));
+//  if Result then
+//  begin
+//    for var LParamIndex := 0 to LParamsCount - 1 do
+//    begin
+//      var LThatParam := AParams[LParamIndex];
+//      var LThisParam := FGenericParams[LParamIndex];
+//    end;
+//  end;
 end;
 
 function TGenericDescriptor.TryGetInstance(const AArguments: TIDTypeArray; out ADecl: TIDDeclaration): Boolean;

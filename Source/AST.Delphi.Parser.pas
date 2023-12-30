@@ -347,9 +347,13 @@ type
     function ParseProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure = nil): TTokenID;
     function ParseGlobalProc(Scope: TScope; ProcType: TProcType; const ID: TIdentifier; ProcScope: TProcScope): TTokenID;
     function ParseNestedProc(Scope: TScope; ProcType: TProcType; const ID: TIdentifier; ProcScope: TProcScope): TTokenID;
-
-    function ParseProcName(Scope: TScope; ProcType: TProcType; out Name: TIdentifier; var Struct: TIDStructure;
-                           out ProcScope: TProcScope; out GenericParams: TIDTypeArray): TTokenID;
+    function ParseIntfMethodDelegation(Scope: TScope; AClass: TIDClass; const ID: TIdentifier): TTokenID;
+    function ParseProcName(AScope: TScope;
+                           AProcType: TProcType;
+                           out AName: TIdentifier;
+                           var AStruct: TIDStructure;
+                           out AProcScope: TProcScope;
+                           out AGenericParams: TIDTypeArray): TTokenID;
     function ParseProcBody(Proc: TASTDelphiProc): TTokenID;
     function ParseGenericProcRepeatedly(Scope: TScope; GenericProc, Proc: TASTDelphiProc; Struct: TIDStructure): TTokenID;
     function ParseOperator(Scope: TScope; Struct: TIDStructure): TTokenID;
@@ -6813,6 +6817,22 @@ begin
   end;
 end;
 
+function TASTDelphiUnit.ParseIntfMethodDelegation(Scope: TScope; AClass: TIDClass; const ID: TIdentifier): TTokenID;
+var
+  LProcID: TIdentifier;
+begin
+  Lexer_ReadNextIdentifier(Scope, {var} LProcID);
+
+  var LMethod := AClass.FindMethod(LProcID.Name);
+  if not Assigned(LMethod) then
+    ERRORS.UNDECLARED_ID(LProcID);
+
+  // todo: add intf method delegation entry
+
+  Lexer_ReadSemicolon(Scope);
+  Result := Lexer_NextToken(Scope);
+end;
+
 function TASTDelphiUnit.ParseProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure): TTokenID;
 type
   TFwdDeclState = (dsNew, dsDifferent, dsSame);
@@ -6833,6 +6853,12 @@ begin
   ForwardScope := Scope;
   Result := ParseProcName(Scope, ProcType, {out} ID, {var} Struct,
                           {out} ProcScope, {out} GenericsParams);
+
+  if (Result = token_equal) and Assigned(Struct) then
+  begin
+    Result := ParseIntfMethodDelegation(Scope, Struct as TIDClass, ID);
+    Exit;
+  end;
 
   if not Assigned(Struct) then
   begin
@@ -7554,16 +7580,19 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.ParseProcName(Scope: TScope; ProcType: TProcType; out Name: TIdentifier; var Struct: TIDStructure;
-                                      out ProcScope: TProcScope;
-                                      out GenericParams: TIDTypeArray): TTokenID;
+function TASTDelphiUnit.ParseProcName(AScope: TScope;
+                                      AProcType: TProcType;
+                                      out AName: TIdentifier;
+                                      var AStruct: TIDStructure;
+                                      out AProcScope: TProcScope;
+                                      out AGenericParams: TIDTypeArray): TTokenID;
 
   function GetStructScope(AStruct: TIDStructure; AProcType: TProcType): TScope;
   begin
     if AProcType = ptOperator then
-      Result := Struct.Operators
+      Result := AStruct.Operators
     else
-      Result := Struct.Members;
+      Result := AStruct.Members;
   end;
 
 var
@@ -7571,48 +7600,68 @@ var
   SearchName: string;
   SearchScope: TScope;
 begin
-  ProcScope := nil;
-  SearchScope := Scope;
+  AProcScope := nil;
+  SearchScope := AScope;
+  var LIntfMathedDelegation := False;
   while True do begin
-    Lexer_ReadNextIdentifier(Scope, Name);
-    Result := Lexer_NextToken(Scope);
+    Lexer_ReadNextIdentifier(AScope, {var} AName);
+    Result := Lexer_NextToken(AScope);
     if Result = token_less then
     begin
-      if Assigned(Struct) or Scope.InheritsFrom(TMethodScope) then
-        ProcScope := TMethodScope.CreateInDecl(Scope, GetStructScope(Struct, ProcType), nil)
+      if Assigned(AStruct) or AScope.InheritsFrom(TMethodScope) then
+        AProcScope := TMethodScope.CreateInDecl(AScope, GetStructScope(AStruct, AProcType), nil)
       else
-        ProcScope := TProcScope.CreateInDecl(Scope, {Proc:} nil);
-      Result := ParseGenericsHeader(ProcScope, GenericParams);
-      SearchName := Format('%s<%d>', [Name.Name, Length(GenericParams)]);
+        AProcScope := TProcScope.CreateInDecl(AScope, {Proc:} nil);
+      Result := ParseGenericsHeader(AProcScope, AGenericParams);
+      SearchName := Format('%s<%d>', [AName.Name, Length(AGenericParams)]);
     end else
-      SearchName := Name.Name;
+      SearchName := AName.Name;
 
     if Result = token_dot then
     begin
-      Decl := SearchScope.FindID(SearchName);
-      if not Assigned(Decl) then
-        ERRORS.UNDECLARED_ID(Name, GenericParams);
+      // there are two possible options here:
+      // - this is a method implementation
+      // - this is an interface method delegation
+      Decl := nil;
+      if AScope.ScopeClass <> scInterface then
+      begin
+        Decl := SearchScope.FindID(SearchName);
+        if not Assigned(Decl) then
+          ERRORS.UNDECLARED_ID(AName, AGenericParams);
+      end else
+      if Assigned(AStruct) and (AStruct.DataTypeID = dtClass) then
+      begin
+        var LIntf := TIDClass(AStruct).FindInterface(AName.Name, AGenericParams);
+        if Assigned(LIntf) then
+        begin
+          LIntfMathedDelegation := True;
+          SearchScope := LIntf.Members;
+          Continue;
+        end else
+          ERRORS.UNDECLARED_ID(AName, AGenericParams);
+      end else
+        ERRORS.UNDECLARED_ID(AName, AGenericParams);
 
       if Decl is TIDStructure then
       begin
-        Struct := TIDStructure(Decl);
-        SearchScope := Struct.Members;
+        AStruct := TIDStructure(Decl);
+        SearchScope := AStruct.Members;
         {т.к это имплементация обобщенного метода, то очищаем дупликатные обобщенные параметры}
-        if Assigned(ProcScope) then begin
-          ProcScope.OuterScope := Scope;
-          ProcScope.Parent := GetStructScope(Struct, ProcType);
-          ProcScope.Clear;
+        if Assigned(AProcScope) then begin
+          AProcScope.OuterScope := AScope;
+          AProcScope.Parent := GetStructScope(AStruct, AProcType);
+          AProcScope.Clear;
         end;
       end else
-        ERRORS.STRUCT_TYPE_REQUIRED(Name.TextPosition);
-      continue;
+        ERRORS.STRUCT_TYPE_REQUIRED(AName.TextPosition);
+      Continue;
     end;
-    if not Assigned(ProcScope) then
+    if not Assigned(AProcScope) and not LIntfMathedDelegation then
     begin
-      if Assigned(Struct) then
-        ProcScope := TMethodScope.CreateInDecl(Scope, GetStructScope(Struct, ProcType), nil)
+      if Assigned(AStruct) then
+        AProcScope := TMethodScope.CreateInDecl(AScope, GetStructScope(AStruct, AProcType), nil)
       else
-        ProcScope := TProcScope.CreateInDecl(Scope, {Proc:} nil);
+        AProcScope := TProcScope.CreateInDecl(AScope, {Proc:} nil);
     end;
     Exit;
   end;
