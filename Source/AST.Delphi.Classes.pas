@@ -114,6 +114,7 @@ type
   TIDTypeClass = class of TIDType;
 
   TIDTypeArray = array of TIDType;
+  TIDFieldArray = array of TIDField;
 
   TGenericInstance = record
     Args: TIDTypeArray;
@@ -730,7 +731,7 @@ type
   private
     fStaticConstructor: TIDProcedure;
     fStaticDestructor: TIDProcedure;
-    fCases: array of TVarSpace;
+    fCases: array of TIDFieldArray;
   protected
     function GetDataSize: Integer; override;
     function GetStructKeyword: string; override;
@@ -740,7 +741,7 @@ type
     procedure CreateStandardOperators; override;
     property StaticConstructor: TIDProcedure read FStaticConstructor write FStaticConstructor;
     property StaticDestructor: TIDProcedure read FStaticDestructor write FStaticDestructor;
-    function AddCase: PVarSpace;
+    procedure AddCase(const AFields: TIDFieldArray);
   end;
 
   TIDMethods = array of TIDProcedure;
@@ -5365,16 +5366,15 @@ begin
     Exit(inherited GetDataSize);
 
   Result := 0;
-  for var i := 0 to Length(fCases) - 1 do
+  for var LCaseIndex := 0 to Length(fCases) - 1 do
   begin
-    var CaseSize: Integer := 0;
-    var Field := TIDField(FCases[i].First);
-    while Assigned(Field) do begin
-      CaseSize := CaseSize + Field.DataType.DataSize;
-      Field := TIDField(Field.NextItem);
-    end;
-    if CaseSize > Result then
-      Result := CaseSize;
+    var LCaseSize: Integer := 0;
+    var LFieldArray := FCases[LCaseIndex];
+    for var LFieldIndex := 0 to Length(LFieldArray) - 1 do
+      LCaseSize := LCaseSize + LFieldArray[LFieldIndex].DataType.DataSize;
+
+    if LCaseSize > Result then
+      Result := LCaseSize;
   end;
 end;
 
@@ -5383,13 +5383,11 @@ begin
   Result := 'record';
 end;
 
-function TIDRecord.AddCase: PVarSpace;
-var
-  Len: Integer;
+procedure TIDRecord.AddCase(const AFields: TIDFieldArray);
 begin
-  Len := Length(fCases);
-  SetLength(fCases, Len + 1);
-  Result := addr(fCases[Len]);
+  var LArrayLen := Length(fCases);
+  SetLength(fCases, LArrayLen + 1);
+  fCases[LArrayLen] := AFields;
 end;
 
 constructor TIDRecord.Create(Scope: TScope; const Name: TIdentifier);

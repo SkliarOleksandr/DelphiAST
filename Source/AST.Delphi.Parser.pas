@@ -381,7 +381,7 @@ type
     function ParseConstSection(Scope: TScope): TTokenID;
     function ParseVarSection(Scope: TScope; Visibility: TVisibility; IsWeak: Boolean = False): TTokenID;
     function ParseFieldsSection(Scope: TScope; Visibility: TVisibility; Struct: TIDStructure; IsClass: Boolean): TTokenID;
-    function ParseFieldsInCaseRecord(Scope: TScope; Visibility: TVisibility; Struct: TIDStructure): TTokenID;
+    function ParseFieldsInCaseRecord(Scope: TScope; Visibility: TVisibility; ARecord: TIDRecord): TTokenID;
     function ParseParameters(EntryScope: TScope; ParamsScope: TParamsScope): TTokenID;
     function ParseParametersAndResult(EntryScope: TScope; ParamsScope: TParamsScope; out AResultType: TIDType): TTokenID;
     function ParseAnonymousProc(Scope: TScope; var EContext: TEContext; const SContext: TSContext; ProcType: TTokenID): TTokenID;
@@ -9262,13 +9262,13 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.ParseFieldsInCaseRecord(Scope: TScope; Visibility: TVisibility; Struct: TIDStructure): TTokenID;
+function TASTDelphiUnit.ParseFieldsInCaseRecord(Scope: TScope; Visibility: TVisibility; ARecord: TIDRecord): TTokenID;
 var
   i, c: Integer;
   DataType: TIDType;
-  Field: TIDVariable;
   Names: TIdentifiersPool;
   VarFlags: TVariableFlags;
+  LCaseFields: TIDFieldArray;
 begin
   c := 0;
   Names := TIdentifiersPool.Create(2);
@@ -9289,12 +9289,13 @@ begin
     Result := ParseTypeSpec(Scope, DataType);
 
     for i := 0 to c do begin
-      Field := TIDField.Create(Struct, Names.Items[i]);
-      Field.DataType := DataType;
-      Field.Visibility := Visibility;
-      Field.DefaultValue := nil;
-      Field.Flags := Field.Flags + VarFlags;
-      Scope.AddVariable(Field);
+      var LField := TIDField.Create(ARecord, Names.Items[i]);
+      LField.DataType := DataType;
+      LField.Visibility := Visibility;
+      LField.DefaultValue := nil;
+      LField.Flags := LField.Flags + VarFlags;
+      Scope.AddVariable(LField);
+      LCaseFields := LCaseFields + [LField];
     end;
 
     if Result = token_semicolon then
@@ -9308,6 +9309,8 @@ begin
     end;
     Break;
   end;
+  // add a new case entry with all fields
+  ARecord.AddCase(LCaseFields);
 end;
 
 function TASTDelphiUnit.ParseVarRecordDefaultValue(Scope: TScope; Struct: TIDStructure; out DefaultValue: TIDExpression): TTokenID;
