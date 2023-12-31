@@ -706,7 +706,7 @@ function TSysImplicitArrayToAny.Check(const SContext: TSContext; const Src, Dst:
 var
   SrcElType, DstElType: TIDType;
 begin
-  SrcElType := TIDArray(Src).ElementDataType.ActualDataType;
+  SrcElType := (Src as TIDArray).ElementDataType.ActualDataType;
   if Dst is TIDArray then
   begin
     DstElType := TIDArray(Dst).ElementDataType.ActualDataType;
@@ -955,7 +955,7 @@ begin
   if Src.IsDynArrayConst then
   begin
     var Implicit := TASTDelphiUnit.CheckConstDynArrayImplicit(SContext, Src, Dst);
-    if Assigned(Implicit) and (Src.DataTypeID <> dtSet) then
+    if Assigned(Implicit) then
     begin
       var Decl := TIDSetConstant.CreateAsAnonymous(SContext.Scope, Dst, Src.AsDynArrayConst.Value);
       Result := TIDExpression.Create(Decl, Src.TextPosition);

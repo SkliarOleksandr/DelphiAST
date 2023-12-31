@@ -35,7 +35,7 @@ uses
 // system.TypInfo
 // system.UITypes
 // System.SyncObjs
-// sysutils
+// System.SysUtils
 // sysinit
 // Windows
 // AnsiStrings
@@ -4958,54 +4958,72 @@ begin
 end;
 
 function TASTDelphiUnit.ParseConstSection(Scope: TScope): TTokenID;
+
+  function CheckAndCorrectType(AExpr: TIDExpression): TIDType;
+  begin
+    // AST parser infers array of <type> by default for anonymous constants
+    // Delphi expects set of <type> for named consts, so let's convert it
+    if (AExpr.DataTypeID = dtDynArray) then
+    begin
+      var LArrayType := AExpr.DataType as TIDDynArray;
+      if LArrayType.ElementDataType.IsOrdinal then
+      begin
+        Result := TIDSet.CreateAsAnonymous(LArrayType.Scope,
+                                                 TIDOrdinal(LArrayType.ElementDataType));
+      end else
+      begin
+        ERRORS.ORDINAL_TYPE_REQUIRED(AExpr.TextPosition);
+        Result := nil;
+      end;
+    end else
+      Result := AExpr.DataType;
+  end;
+
 var
-  i, c: Integer;
-  DataType: TIDType;
+  LConstCnt: Integer;
+  LExplicitType: TIDType;
   LConst: TIDConstant;
-  Expr: TIDExpression;
+  LExpr: TIDExpression;
   Names: TIdentifiersPool;
 begin
-  c := 0;
+  LConstCnt := 0;
   Names := TIdentifiersPool.Create(2);
   Lexer_MatchIdentifier(Lexer_NextToken(Scope));
   repeat
     Names.Add;
-    Lexer_ReadCurrIdentifier(Names.Items[c]); // read name
+    Lexer_ReadCurrIdentifier(Names.Items[LConstCnt]); // read name
     Result := Lexer_NextToken(Scope);
     if Result = token_Coma then begin
-      Inc(c);
+      Inc(LConstCnt);
       Result := Lexer_NextToken(Scope);
       Lexer_MatchIdentifier(Result);
       Continue;
     end;
     if Result = token_colon then
-      Result := ParseTypeSpec(Scope, DataType)
+      Result := ParseTypeSpec(Scope, {out} LExplicitType)
     else
-      DataType := nil;
+      LExplicitType := nil;
 
     // =
     Lexer_MatchToken(Result, token_equal);
 
-    if Assigned(DataType) then
+    if Assigned(LExplicitType) then
     begin
-      Result := ParseVarDefaultValue(Scope, DataType, Expr);
-      if Expr.IsAnonymous then
+      Result := ParseVarDefaultValue(Scope, LExplicitType, {out} LExpr);
+      if LExpr.IsAnonymous then
       begin
-        Expr.Declaration.DataType := DataType;
-        Expr.AsConst.ExplicitDataType := DataType;
+        LExpr.Declaration.DataType := LExplicitType;
+        LExpr.AsConst.ExplicitDataType := LExplicitType;
       end;
     end else begin
       // читаем значение константы
       Lexer_NextToken(Scope);
-      Result := ParseConstExpression(Scope, {out} Expr, ExprRValue);
-      CheckEmptyExpression(Expr);
+      Result := ParseConstExpression(Scope, {out} LExpr, ExprRValue);
+      CheckEmptyExpression(LExpr);
     end;
+    CheckConstExpression(LExpr);
 
-    CheckConstExpression(Expr);
-
-    var LConstClass := GetConstantClassByDataType(Expr.DataTypeID);
-
-   // AddConstant(Expr.AsConst);
+    var LConstClass := GetConstantClassByDataType(LExpr.DataTypeID);
 
     if Lexer_IsCurrentToken(token_platform) then
       Result := ParsePlatform(Scope);
@@ -5014,14 +5032,17 @@ begin
 
     Lexer_MatchToken(Result, token_semicolon);
 
-    for i := 0 to c do begin
-      LConst := LConstClass.Create(Scope, Names.Items[i]) as TIDConstant;
-      LConst.DataType := Expr.DataType;
-      LConst.AssignValue(Expr.AsConst);
+    for var LIndex := 0 to LConstCnt do begin
+      LConst := LConstClass.Create(Scope, Names.Items[LIndex]) as TIDConstant;
+      if Assigned(LExplicitType) then
+        LConst.DataType := LExplicitType
+      else
+        LConst.DataType := CheckAndCorrectType(LExpr);
+      LConst.AssignValue(LExpr.AsConst);
       Scope.AddConstant(LConst);
       AddConstant(LConst);
     end;
-    c := 0;
+    LConstCnt := 0;
     Result := Lexer_NextToken(Scope);
   until (not Lexer_IsCurrentIdentifier);
 end;
@@ -5313,7 +5334,6 @@ begin
     begin
       if LAncestorsCount = 0 then
       begin
-        ClassDecl.Ancestor := Decl.ActualDataType as TIDStructure;
         ClassDecl.AncestorDecl := Decl;
       end else
         AbortWork('Multiple inheritance is not supported', Expr.TextPosition);
@@ -5401,7 +5421,7 @@ begin
     Result := ParseClassAncestorType(Decl.Members, Decl);
   end else begin
     if Self <> SYSUnit then
-      Decl.Ancestor := Sys._TObject;
+      Decl.AncestorDecl := Sys._TObject;
   end;
 
   // если найден символ ; - то это forward-декларация
@@ -9149,7 +9169,6 @@ begin
     if Ancestor = Decl then
       AbortWork(sRecurciveTypeLinkIsNotAllowed, Expr.TextPosition);
     Lexer_MatchToken(Result, token_closeround);
-    Decl.Ancestor := Ancestor as TIDInterface;
     Decl.AncestorDecl := Expr.AsType;
     Result := Lexer_NextToken(Scope);
   end;

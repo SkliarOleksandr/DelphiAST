@@ -481,6 +481,7 @@ type
     function GetActualDataType: TIDType; override;
     function GetOrdinal: Boolean; override;
     function GetIndex: Integer; override;
+    function GetOriginalDecl: TIDDeclaration; override;
     function GetDisplayName: string; override;
   public
     constructor CreateAlias(Scope: TScope; const ID: TIdentifier; OriginalType: TIDType);
@@ -488,7 +489,7 @@ type
     procedure IncRefCount(RCPath: UInt32); override;
     procedure DecRefCount(RCPath: UInt32); override;
     property LinkedType: TIDType read FLinkedType;
-    property Original: TIDType read FOriginalType;
+    property Original: TIDType read fOriginalType;
     function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                 const AContext: TGenericInstantiateContext): TIDDeclaration; override;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
@@ -653,7 +654,7 @@ type
   {base structure type}
   TIDStructure = class(TIDType)
   private
-    fAncestor: TIDStructure;
+    fAncestor: TIDStructure;        // origianl type of fAncestorDecl
     fAncestorDecl: TIDType;         // can be TIDGenericInstantiation or TIDStructure successor
     fMembers: TStructScope;         // instance members
     fOperators: TStructScope;       // operators members
@@ -664,7 +665,6 @@ type
     FClassDestructor: TIDProcedure;
     FHasGenericMembers: Boolean;
     function GetHasInitFiels: Boolean;
-    procedure SetAncestor(const Value: TIDStructure);
     function GetClassOfType: TIDClassOf;
     function GetFieldsCount: Integer; inline;
     function GetMethodCount: Integer; inline;
@@ -687,7 +687,7 @@ type
     property Operators: TStructScope read fOperators;
     property HasInitFiels: Boolean read GetHasInitFiels;
     property StructFlags: TStructFlags read FStrucFlags write FStrucFlags;
-    property Ancestor: TIDStructure read FAncestor write SetAncestor;
+    property Ancestor: TIDStructure read FAncestor;
     property AncestorDecl: TIDType read fAncestorDecl write SetAncestorDecl;
     property MethodCount: Integer read GetMethodCount;
     property FieldsCount: Integer read GetFieldsCount;
@@ -3713,6 +3713,7 @@ begin
   end;
   ABuilder.Append(' = ');
   ABuilder.Append(AsString);
+  ABuilder.Append(';');
 end;
 
 procedure TIDConstant.DecRefCount(RCPath: UInt32);
@@ -4652,7 +4653,7 @@ procedure TIDStructure.DoCreateStructure;
 begin
   fMembers := TStructScope.CreateAsStruct(Scope, Self, Scope.DeclUnit);
   {$IFDEF DEBUG}fMembers.Name := ID.Name + '.members';{$ENDIF}
-  fOperators := TStructScope.CreateAsStruct(Scope, Self, Scope.DeclUnit);
+  fOperators := TStructScope.CreateAsStruct(FMembers, Self, Scope.DeclUnit);
   {$IFDEF DEBUG}fOperators.Name := ID.Name + '.operators';{$ENDIF}
 end;
 
@@ -4705,19 +4706,15 @@ begin
   Result := TIDExpression.Create(GetSelfParam);
 end;
 
-procedure TIDStructure.SetAncestor(const Value: TIDStructure);
-begin
-  FAncestor := Value;
-  if Assigned(Value) then
-  begin
-    fMembers.fAncestorScope := Value.Members;
-    FAncestor.IncRefCount(1);
-  end;
-end;
-
 procedure TIDStructure.SetAncestorDecl(const Value: TIDType);
 begin
   fAncestorDecl := Value;
+  if Assigned(Value) then
+  begin
+    fAncestor := Value.Original as TIDStructure;
+    fMembers.fAncestorScope := fAncestor.Members;
+  end else
+    fAncestor := nil;
 end;
 
 procedure TIDStructure.SetGenericDescriptor(const Value: PGenericDescriptor);
@@ -5558,7 +5555,7 @@ begin
   OverloadImplicitTo(Self);
   OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
   OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
-  OverloadImplicitToAny(SYSUnit.Operators.ImplicitArrayToAny);
+  //OverloadImplicitToAny(SYSUnit.Operators.ImplicitSetToAny);
   AddBinarySysOperator(opIn, SYSUnit.Operators.Ordinal_In_Set);
   AddBinarySysOperator(opAdd, SYSUnit.Operators.Add_Set);
   AddBinarySysOperator(opSubtract, SYSUnit.Operators.Subtract_Set);
@@ -5905,6 +5902,11 @@ end;
 function TIDAliasType.GetOrdinal: Boolean;
 begin
   Result := FLinkedType.IsOrdinal;
+end;
+
+function TIDAliasType.GetOriginalDecl: TIDDeclaration;
+begin
+  Result := fOriginalType;
 end;
 
 procedure TIDAliasType.IncRefCount(RCPath: UInt32);
@@ -7514,7 +7516,7 @@ begin
   if Value is TIDStructure then
   begin
     fMembers.FAncestorScope := TIDStructure(Value).Members;
-    fAncestor := TIDStructure(Value);
+    fAncestorDecl := Value as TIDStructure;
   end;
 end;
 
