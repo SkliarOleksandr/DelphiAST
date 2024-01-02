@@ -131,15 +131,11 @@ type
     FSearchName: string;
     FGenericInstances: TGenericInstanceList;
     FGenericParams: TIDTypeArray;
-    FIntfSRCPosition: TParserPosition;
-    FImplSRCPosition: TParserPosition;
   public
     property Scope: TScope read FScope;
     property SearchName: string read FSearchName write FSearchName;
     property GenericInstances: TGenericInstanceList read FGenericInstances;
     property GenericParams: TIDTypeArray read FGenericParams write FGenericParams;
-    property IntfSRCPosition: TParserPosition read FIntfSRCPosition write FImplSRCPosition;
-    property ImplSRCPosition: TParserPosition read FImplSRCPosition write FImplSRCPosition;
     procedure AddGenericInstance(Decl: TIDDeclaration; const Args: TIDTypeArray);
     class function Create(Scope: TScope): PGenericDescriptor; static;
     function SameParams(const AParams: TIDTypeArray): Boolean;
@@ -1498,13 +1494,13 @@ type
   private
     FGetter: TIDDeclaration;
     FSetter: TIDDeclaration;
-    FParams: TScope;
+    FParams: TParamsScope;
     function GetParamsCount: Integer;
   public
     constructor Create(Scope: TScope; const Identifier: TIdentifier); override;
     property Getter: TIDDeclaration read FGetter write FGetter;
     property Setter: TIDDeclaration read FSetter write FSetter;
-    property Params: TScope read FParams write FParams;
+    property Params: TParamsScope read FParams write FParams;
     property ParamsCount: Integer read GetParamsCount;
     function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                 const AContext: TGenericInstantiateContext): TIDDeclaration; override;
@@ -1617,7 +1613,7 @@ type
     procedure RemoveILReferences(var RCPathCount: UInt32); override;
 
     procedure CreateProcedureTypeIfNeed(Scope: TScope);
-    procedure CreateGenericDescriptor(const GenericParams: TIDTypeArray; const SRCPosition: TParserPosition); inline;
+    procedure CreateGenericDescriptor(const GenericParams: TIDTypeArray); inline;
 
     procedure Warning(const Message: string; const Params: array of const; const TextPosition: TTextPosition);
     procedure Hint(const Message: string; const Params: array of const; const TextPosition: TTextPosition);
@@ -2596,14 +2592,14 @@ end;
 
 function TIDProcedure.AddParam(const Name: string; DataType: TIDType): TIDParam;
 begin
-  Result := TIDVariable.Create(ParamsScope, Identifier(Name));
+  Result := TIDParam.Create(ParamsScope, Identifier(Name));
   Result.DataType := DataType;
   AddParam(Result);
 end;
 
 function TIDProcedure.AddParam(const Name: string; DataType: TIDType; Flags: TVariableFlags; DefaultValue: TIDExpression = nil): TIDParam;
 begin
-  Result := TIDVariable.Create(ParamsScope, Identifier(Name));
+  Result := TIDParam.Create(ParamsScope, Identifier(Name));
   Result.DataType := DataType;
   Result.Flags := Flags + [varParameter];
   Result.DefaultValue := DefaultValue;
@@ -2648,13 +2644,11 @@ begin
   FEntryScope := FParamsScope;
 end;
 
-procedure TIDProcedure.CreateGenericDescriptor(const GenericParams: TIDTypeArray; const SRCPosition: TParserPosition);
+procedure TIDProcedure.CreateGenericDescriptor(const GenericParams: TIDTypeArray);
 begin
   New(FGenericDescriptor);
   FGenericDescriptor.FScope := nil;
   FGenericDescriptor.FGenericParams := GenericParams;
-  FGenericDescriptor.FIntfSRCPosition := SRCPosition;
-  FGenericDescriptor.FImplSRCPosition := SRCPosition;
 end;
 
 destructor TIDProcedure.Destroy;
@@ -2972,6 +2966,12 @@ end;
 
 procedure TIDProcedure.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
+  if Assigned(PrevOverload) and (PrevOverload.Struct = Struct) then
+  begin
+    PrevOverload.Decl2Str(ABuilder, ANestedLevel, AAppendName);
+    ABuilder.AppendLine;
+  end;
+
   ABuilder.Append(' ', ANestedLevel*2);
   ABuilder.Append(ProcKindName);
   ABuilder.Append(' ');
@@ -3077,6 +3077,7 @@ begin
   LNewProc.FEntryScope := TProcScopeClass(EntryScope.ClassType).CreateInDecl(ADstScope, LNewProc);
   LNewProc.FParamsScope := LNewProc.FEntryScope;
 
+  // todo: what about implicit params (self, open array len, etc)?
   LNewProc.ExplicitParams := InstantiateParams(ParamsScope, ExplicitParams, AContext);
   if Assigned(ResultType) then
     LNewProc.ResultType := ResultType.InstantiateGeneric(ADstScope, ADstStruct, AContext) as TIDType;
@@ -3093,6 +3094,19 @@ begin
   LNewProc.FFinalSection := FFinalSection;
   LNewProc.FInherited := FInherited;
   Result := LNewProc;
+
+  if not Assigned(ADstStruct) then
+  begin
+    LNewProc.ID := AContext.DstID;
+    ADstScope.AddProcedure(LNewProc);
+  end;
+
+  // instantiate overloads
+  if Assigned(PrevOverload) and (PrevOverload.Struct = Struct) then
+  begin
+    WriteLog('overload:', [ClassName, Result.Name]);
+    LNewProc.PrevOverload := PrevOverload.InstantiateGeneric(ADstScope, ADstStruct, AContext) as TIDProcedure;
+  end;
 
   LogEnd('inst [type: %s, dst: %s]', [ClassName, Result.Name]);
 end;
@@ -6711,6 +6725,20 @@ begin
 
   var LNewProp := MakeCopy(ADstScope) as TIDProperty;
   LNewProp.DataType := DataType.InstantiateGeneric(ADstScope, ADstStruct, AContext) as TIDType;
+
+  // instantiate indexed params
+  if Assigned(FParams) and (FParams.Count > 0) then
+  begin
+    var LNewParams := TParamsScope.Create(stLocal, ADstScope);
+    for var LIndex := 0 to FParams.Count - 1 do
+    begin
+      var LNewParam := FParams.Items[LIndex].MakeCopy(ADstScope) as TIDParam;
+      if LNewParam.IsGeneric then
+        LNewParam.DataType := LNewParam.DataType.InstantiateGeneric(ADstScope, ADstStruct, AContext) as TIDType;
+      LNewParams.AddExplicitParam(LNewParam);
+    end;
+    LNewProp.FParams := LNewParams;
+  end;
 
   // todo: check signatures
   if Assigned(Getter) then

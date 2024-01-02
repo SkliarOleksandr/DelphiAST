@@ -447,7 +447,7 @@ end;
 
 function TSysTypeCast.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
-  if Check(SContext, Src.DataType, Dst) then
+  if Check(SContext, Src.DataType.ActualDataType, Dst) then
     Result := Dst
   else
     Result := nil;
