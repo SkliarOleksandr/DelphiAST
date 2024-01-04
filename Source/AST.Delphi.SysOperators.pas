@@ -977,8 +977,17 @@ end;
 function TSysImplicitPointerFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
   Result := (
-    ((Dst.DataTypeID in [dtPAnsiChar]) and (Src.DataTypeID = dtStaticArray) and (TIDStaticArray(Src).ElementDataType = SYSUnit._AnsiChar)) or
-    ((Dst.DataTypeID in [dtPWideChar]) and (Src.DataTypeID = dtStaticArray) and (TIDStaticArray(Src).ElementDataType = SYSUnit._WideChar))
+    (
+      (Dst.DataTypeID in [dtPAnsiChar]) and
+      (Src.DataTypeID = dtStaticArray) and
+      (TIDStaticArray(Src).ElementDataType = SYSUnit._AnsiChar)
+    ) or
+    (
+      (Dst.DataTypeID in [dtPWideChar]) and
+      (Src.DataTypeID = dtStaticArray) and
+      (TIDStaticArray(Src).ElementDataType = SYSUnit._WideChar)
+    ) or
+      (Src.DataTypeID = dtDynArray)
   );
 end;
 

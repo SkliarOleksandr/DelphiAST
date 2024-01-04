@@ -1652,7 +1652,6 @@ begin
   ProcDecl := nil;
   Decl := PExpr.Declaration;
 
-
   {прямой вызов}
   if Decl.ItemType = itProcedure then
   begin
@@ -6317,7 +6316,6 @@ begin
   if Assigned(LGenericType) then
   begin
     if LCanInstantiate and
-       not LGenericType.GenericDeclInProgress and
        not IsGenericTypeThisStruct(Scope, LGenericType) then
     begin
       DataType := InstantiateGenericType(Scope, LGenericType, LGenericArgs);
@@ -7206,6 +7204,7 @@ begin
     ERRORS.SEMICOLON_EXPECTED;
 
   ProcFlags := [];
+  CallConv := ConvNative;
 
   // parse proc specifiers
   while True do begin

@@ -5,6 +5,7 @@ object frmTestAppMain: TfrmTestAppMain
   ClientHeight = 774
   ClientWidth = 1266
   Color = clBtnFace
+  DoubleBuffered = True
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -11
@@ -265,44 +266,24 @@ object frmTestAppMain: TfrmTestAppMain
             'interface'
             ''
             'type'
-            '  TArray<T> = array of T;'
             ''
-            '  TList<TL> = class'
-            '  private'
-            '    FArray: TArray<TL>;'
-            '  public'
-            '    function GetSelf: TList<TL>;'
-            '    procedure Assign(A: TList<TL>);'
-            '  end;'
-            ''
-            '  TDict<TD> = class'
+            '  TA1<T> = class'
             '  type'
-            '    TListAlias = TList<TD>;'
-            '  public'
-            '    function GetList: TListAlias;'
+            '    TRec = record'
+            '      A, B: T;'
+            '    end;'
+            '  private'
+            '    Fld2: T;'
             '  end;'
             ''
             'var'
-            '  GDict: TDict<Integer>;'
+            '  X: TA1<string>;'
+            '  Y: TA1<Integer>.TRec;'
             ''
             'implementation'
             ''
-            'function TList<TL>.GetSelf: TList<TL>;'
-            'begin'
-            '  Result := Self;'
-            'end;'
-            ''
-            'procedure TList<TL>.Assign(A: TList<TL>);'
-            'begin'
-            '  FArray := A.FArray;'
-            'end;'
-            ''
-            'function TDict<TD>.GetList: TListAlias;'
-            'begin'
-            '  Result := nil;'
-            'end;'
-            ''
             'end.'
+            ''
             '')
           SelectedColor.Alpha = 0.400000005960464500
         end
@@ -463,7 +444,7 @@ object frmTestAppMain: TfrmTestAppMain
         Gutter.Font.Name = 'Courier New'
         Gutter.Font.Style = []
         Gutter.Font.Quality = fqClearTypeNatural
-        Gutter.Visible = False
+        Gutter.ShowLineNumbers = True
         Gutter.Bands = <
           item
             Kind = gbkMarks
