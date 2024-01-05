@@ -827,7 +827,8 @@ end;
 
 function TSysExplicitUntypedToAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
-  Result := Dst.DataSize = Src.DataSize;
+  // Delphi supports explicit cast to any type from Untyped
+  Result :=True;
 end;
 
 

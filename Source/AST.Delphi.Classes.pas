@@ -4725,7 +4725,7 @@ begin
   var LGetEnumeratorFunc := FindMethod('GetEnumerator');
   if Assigned(LGetEnumeratorFunc) then
   begin
-    var LEnumeratorType := LGetEnumeratorFunc.ResultType as TIDStructure;
+    var LEnumeratorType := LGetEnumeratorFunc.ResultType.Original as TIDStructure;
     if Assigned(LEnumeratorType) and (LEnumeratorType is TIDStructure) then
     begin
       var LMoveNext := LEnumeratorType.FindMethod('MoveNext');
