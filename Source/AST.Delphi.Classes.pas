@@ -131,15 +131,18 @@ type
     FSearchName: string;
     FGenericInstances: TGenericInstanceList;
     FGenericParams: TIDTypeArray;
+    function GetParamsCount: Integer; inline;
   public
     property Scope: TScope read FScope;
     property SearchName: string read FSearchName write FSearchName;
     property GenericInstances: TGenericInstanceList read FGenericInstances;
     property GenericParams: TIDTypeArray read FGenericParams write FGenericParams;
+    property ParamsCount: Integer read GetParamsCount;
     procedure AddGenericInstance(Decl: TIDDeclaration; const Args: TIDTypeArray);
     class function Create(Scope: TScope): PGenericDescriptor; static;
     function SameParams(const AParams: TIDTypeArray): Boolean;
-    function FindType(const Name: string): TIDGenericParam; inline;
+    function FindType(const ATypeName: string): TIDGenericParam; inline;
+    function IndexOfType(const ATypeName: string): Integer; inline;
     function IsEqual(ADescriptor: PGenericDescriptor): Boolean;
     function TryGetInstance(const AArguments: TIDTypeArray; out ADecl: TIDDeclaration): Boolean;
     procedure Decl2Str(ABuilder: TStringBuilder);
@@ -1329,9 +1332,13 @@ type
   TIDCallExpression = class(TIDExpression)
   private
     FArgumentsCount: Integer;
+    FArguments: TIDExpressions;
     FInstance: TIDExpression;
     FGenericArgs: TIDExpressions;
+    function GetProc: TIDProcedure; inline;
   public
+    property Proc: TIDProcedure read GetProc;
+    property Arguments: TIDExpressions read FArguments write FArguments;
     property ArgumentsCount: Integer read FArgumentsCount write FArgumentsCount;
     property Instance: TIDExpression read FInstance write FInstance;
     property GenericArgs: TIDExpressions read FGenericArgs write FGenericArgs;
@@ -1890,6 +1897,7 @@ type
 
   function SameTypes(ASrcType, ADstType: TIDType): Boolean;
   function IsGenericTypeThisStruct(Scope: TScope; Struct: TIDType): Boolean;
+  function GenericNeedsInstantiate(AGenericArgs: TIDExpressions): Boolean;
 
 const
   CIsClassProc: array [TProcType] of Boolean =
@@ -7040,15 +7048,28 @@ begin
   ABuilder.Append('>');
 end;
 
-function TGenericDescriptor.FindType(const Name: string): TIDGenericParam;
+function TGenericDescriptor.FindType(const ATypeName: string): TIDGenericParam;
 var
   Decl: TIDDeclaration;
 begin
-  Decl := FScope.FindID(Name);
+  Decl := FScope.FindID(ATypeName);
   if Decl is TIDGenericParam then
     Result := TIDGenericParam(Decl)
   else
     Result := nil;
+end;
+
+function TGenericDescriptor.GetParamsCount: Integer;
+begin
+  Result := Length(FGenericParams);
+end;
+
+function TGenericDescriptor.IndexOfType(const ATypeName: string): Integer;
+begin
+  for var LIndex := 0 to High(FGenericParams) do
+    if SameText(ATypeName, FGenericParams[LIndex].Name) then
+       Exit(LIndex);
+  Result := -1;
 end;
 
 function TGenericDescriptor.IsEqual(ADescriptor: PGenericDescriptor): Boolean;
@@ -7833,6 +7854,17 @@ begin
   Result := False;
 end;
 
+function GenericNeedsInstantiate(AGenericArgs: TIDExpressions): Boolean;
+begin
+  for var LArgIndex := 0 to High(AGenericArgs) do
+  begin
+    var LArgType := AGenericArgs[LArgIndex].AsType;
+    if (LArgType is TIDGenericParam) or LArgType.IsGeneric then
+     Exit(False);
+  end;
+  Result := True;
+end;
+
 { TParamsScope }
 
 procedure TParamsScope.AddExplicitParam(AParam: TIDParam);
@@ -7983,6 +8015,13 @@ begin
 
   AbortWorkInternal('Unknown generic param: %s', [AParam.Name]);
   Result := nil;
+end;
+
+{ TIDCallExpression }
+
+function TIDCallExpression.GetProc: TIDProcedure;
+begin
+  Result := fDeclaration as TIDProcedure;
 end;
 
 initialization

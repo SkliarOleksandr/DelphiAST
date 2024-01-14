@@ -197,6 +197,7 @@ resourcestring
   sProcHasNoGenericParams = 'The %s "%s" has no generic parameters';
   sProcRequiresExplicitTypeArgumentFmt = 'The %s "%s" requires explicit type argument(s)';
   sTooManyActualTypeParameters = 'Too many actual type arguments';
+  sNoGenericMethodWithSuchParamsFmt = 'There is no type parameterized methods of %s that can be used with these number of type parameters';
 
   // conditional statements
   sInvalidConditionalStatement = 'Invalid conditional statement';

@@ -114,9 +114,9 @@ type
     function ProcSpec_StdCall(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
     function ProcSpec_CDecl(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
     function InstantiateGenericType(AScope: TScope; AGenericType: TIDType;
-                                    const SpecializeArgs: TIDExpressions): TIDType;
+                                    const AGenericArgs: TIDExpressions): TIDType;
     function InstantiateGenericProc(AScope: TScope; AGenericProc: TIDProcedure;
-                                    const SpecializeArgs: TIDExpressions): TIDProcedure;
+                                    const AGenericArgs: TIDExpressions): TIDProcedure;
     function GetWeakRefType(Scope: TScope; SourceDataType: TIDType): TIDWeekRef;
     function CreateAnonymousConstTuple(Scope: TScope; ElementDataType: TIDType): TIDExpression;
     function GetCurrentParsedFileName(OnlyFileName: Boolean): string;
@@ -186,7 +186,7 @@ type
     class function MatchProcedureTypes(Src: TIDProcType; Dst: TIDProcType): TIDType; static;
     procedure MatchPropSetter(Prop: TIDProperty; Setter: TIDExpression; const PropParams: TIDParamArray);
     procedure MatchPropGetter(Prop: TIDProperty; Getter: TIDProcedure; const PropParams: TIDParamArray);
-    procedure SetProcGenericArgs(CallExpr: TIDCallExpression; Args: TIDExpressions);
+    procedure SetProcGenericArgs(ACallExpr: TIDCallExpression; AGenericArgs: TIDExpressions);
     class function MatchImplicit(Source, Destination: TIDType): TIDDeclaration; static; inline;
     procedure CheckVarParamConformity(Param: TIDVariable; Arg: TIDExpression);
     function IsConstValueInRange(Value: TIDExpression; RangeExpr: TIDRangeConstant): Boolean;
@@ -1225,6 +1225,9 @@ begin
     Result := ParseExpression(Scope, EContext.SContext, InnerEContext, ASTExpr);
     //ASTCall.AddArg(ASTExpr);
     Expr := InnerEContext.Result;
+
+    CallExpr.Arguments := CallExpr.Arguments + [Expr];
+
     if Assigned(Expr) then begin
       {if Expr.DataType = Sys._Boolean then
       begin
@@ -1623,6 +1626,42 @@ begin
   end;
 end;
 
+function GetCommonType(AType1, AType2: TIDType): TIDType;
+begin
+  // todo: implement
+  Result := AType1;
+end;
+
+procedure InferImplicitGenericArgs(ACallExpr: TIDCallExpression);
+begin
+  var LProc := ACallExpr.Proc;
+  var LDescriptor := LProc.GenericDescriptor;
+  Assert(LProc.ParamsCount = ACallExpr.ArgumentsCount);
+  // set generic array len according to proc params
+  var LGenericArgs: TIDExpressions;
+  SetLength(LGenericArgs, LDescriptor.ParamsCount);
+  for var LIndex := 0 to LProc.ParamsCount - 1 do
+  begin
+    var LArg := ACallExpr.Arguments[LIndex];
+    var LParam := LProc.ExplicitParams[LIndex];
+    if Assigned(LArg) and LParam.IsGeneric then
+    begin
+      var LParamTypeName := LParam.DataType.Name;
+      var LParamTypeIndex := LDescriptor.IndexOfType(LParamTypeName);
+      Assert(LParamTypeIndex >= 0);
+
+      var LCurArgType := LArg.DataType;
+      if not Assigned(LGenericArgs[LParamTypeIndex]) then
+        LGenericArgs[LParamTypeIndex] := TIDExpression.Create(LCurArgType)
+      else begin
+        var LPrevArgType := LGenericArgs[LParamTypeIndex].AsType;
+        LGenericArgs[LParamTypeIndex].Declaration := GetCommonType(LCurArgType, LPrevArgType);
+      end;
+    end;
+  end;
+  ACallExpr.GenericArgs := LGenericArgs;
+end;
+
 function TASTDelphiUnit.Process_CALL(var EContext: TEContext): TIDExpression;
 var
   PIndex, AIndex, ArgsCount,
@@ -1656,14 +1695,6 @@ begin
   if Decl.ItemType = itProcedure then
   begin
     ProcDecl := TIDProcedure(Decl);
-    if Assigned(ProcDecl.GenericDescriptor) and
-       not Assigned(SContext.Proc.GenericDescriptor) and
-       not IsGenericTypeThisStruct(SContext.Scope, ProcDecl.Struct) then
-    begin
-      ProcDecl := InstantiateGenericProc(ProcDecl.Scope, ProcDecl, PExpr.GenericArgs);
-      ProcParams := ProcDecl.ExplicitParams;
-      PExpr.Declaration := ProcDecl;
-    end;
 
     {поиск подходящей декларации}
     if Assigned(ProcDecl.PrevOverload) then begin
@@ -1674,6 +1705,20 @@ begin
       ProcParams := ProcDecl.ExplicitParams;
       MatchProc(EContext.SContext, PExpr, ProcParams, UserArguments);
     end;
+
+    if Assigned(ProcDecl.GenericDescriptor) and
+       not Assigned(SContext.Proc.GenericDescriptor) and
+       not IsGenericTypeThisStruct(SContext.Scope, ProcDecl.Struct) and
+       GenericNeedsInstantiate(PExpr.GenericArgs) then
+    begin
+      if not Assigned(PExpr.GenericArgs)  then
+        InferImplicitGenericArgs(PExpr);
+
+      ProcDecl := InstantiateGenericProc(ProcDecl.Scope, ProcDecl, PExpr.GenericArgs);
+      ProcParams := ProcDecl.ExplicitParams;
+      PExpr.Declaration := ProcDecl;
+    end;
+
 
     ProcResult := ProcDecl.ResultType;
 
@@ -8033,31 +8078,29 @@ begin
   Result := CheckAndParseDeprecated(Scope, Result);
 end;
 
-procedure TASTDelphiUnit.SetProcGenericArgs(CallExpr: TIDCallExpression; Args: TIDExpressions);
-var
-  Proc: TIDProcedure;
-  ArgsCount, ParamsCount: Integer;
-  GDescriptor: PGenericDescriptor;
+procedure TASTDelphiUnit.SetProcGenericArgs(ACallExpr: TIDCallExpression; AGenericArgs: TIDExpressions);
 begin
-  Proc := CallExpr.AsProcedure;
-  GDescriptor := Proc.GenericDescriptor;
-  if not Assigned(GDescriptor) then
-    AbortWork(sProcHasNoGenericParams, [Proc.ProcKindName, Proc.DisplayName], CallExpr.TextPosition);
-
-  ParamsCount := Length(GDescriptor.GenericParams);
-  ArgsCount := Length(Args);
-
-  if ParamsCount > ArgsCount then
-    AbortWork(sProcRequiresExplicitTypeArgumentFmt, [Proc.ProcKindName, Proc.DisplayName], CallExpr.TextPosition);
-
-  if ParamsCount < ArgsCount then
-    AbortWork(sTooManyActualTypeParameters, CallExpr.TextPosition);
-
-  CallExpr.GenericArgs := Args;
+  var LProc := ACallExpr.AsProcedure;
+  while Assigned(LProc) do
+  begin
+    var LDescriptor := LProc.GenericDescriptor;
+    if Assigned(LDescriptor) then
+    begin
+      if LDescriptor.ParamsCount = Length(AGenericArgs) then
+      begin
+        ACallExpr.GenericArgs := AGenericArgs;
+        // set correct overloaded version
+        ACallExpr.Declaration := LProc;
+        Exit;
+      end;
+    end;
+    LProc := LProc.PrevOverload;
+  end;
+  AbortWork(sNoGenericMethodWithSuchParamsFmt, [ACallExpr.Declaration.Name], ACallExpr.TextPosition);
 end;
 
 function TASTDelphiUnit.InstantiateGenericProc(AScope: TScope; AGenericProc: TIDProcedure;
-                                               const SpecializeArgs: TIDExpressions): TIDProcedure;
+                                               const AGenericArgs: TIDExpressions): TIDProcedure;
 var
   GDescriptor: PGenericDescriptor;
   LContext: TGenericInstantiateContext;
@@ -8066,10 +8109,10 @@ var
 begin
   GDescriptor := AGenericProc.GenericDescriptor;
 
-  LGArgsCount := Length(SpecializeArgs);
+  LGArgsCount := Length(AGenericArgs);
   SetLength(LGArgs, LGArgsCount);
   for var LIndex := 0 to LGArgsCount - 1 do
-    LGArgs[LIndex] := SpecializeArgs[LIndex].AsType;
+    LGArgs[LIndex] := AGenericArgs[LIndex].AsType;
 
   {find in the pool first}
   var LDecl: TIDDeclaration;
@@ -8081,12 +8124,12 @@ begin
 
   LContext.SrcDecl := AGenericProc;
   var AStrSufix := '';
-  var AArgsCount := Length(SpecializeArgs);
+  var AArgsCount := Length(AGenericArgs);
   LContext.Args := LGArgs;
   LContext.Params := GDescriptor.GenericParams;
   for var AIndex := 0 to AArgsCount - 1 do
   begin
-    var AArgType := SpecializeArgs[AIndex].AsType;
+    var AArgType := AGenericArgs[AIndex].AsType;
     AStrSufix := AddStringSegment(AStrSufix, AArgType.Name, ', ');
   end;
   LContext.DstID.Name := AGenericProc.Name + '<' + AStrSufix + '>';
@@ -8101,7 +8144,8 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.InstantiateGenericType(AScope: TScope; AGenericType: TIDType; const SpecializeArgs: TIDExpressions): TIDType;
+function TASTDelphiUnit.InstantiateGenericType(AScope: TScope; AGenericType: TIDType;
+                                               const AGenericArgs: TIDExpressions): TIDType;
 var
   GDescriptor: PGenericDescriptor;
   LContext: TGenericInstantiateContext;
@@ -8110,10 +8154,10 @@ var
 begin
   GDescriptor := AGenericType.GenericDescriptor;
 
-  LGArgsCount := Length(SpecializeArgs);
+  LGArgsCount := Length(AGenericArgs);
   SetLength(LGArgs, LGArgsCount);
   for var LIndex := 0 to LGArgsCount - 1 do
-    LGArgs[LIndex] := SpecializeArgs[LIndex].AsType;
+    LGArgs[LIndex] := AGenericArgs[LIndex].AsType;
 
   {find in the pool first}
   var LDecl: TIDDeclaration;
@@ -8125,12 +8169,12 @@ begin
 
   LContext.SrcDecl := AGenericType;
   var AStrSufix := '';
-  var AArgsCount := Length(SpecializeArgs);
+  var AArgsCount := Length(AGenericArgs);
   LContext.Args := LGArgs;
   LContext.Params := GDescriptor.GenericParams;
   for var AIndex := 0 to AArgsCount - 1 do
   begin
-    var AArgType := SpecializeArgs[AIndex].AsType;
+    var AArgType := AGenericArgs[AIndex].AsType;
     AStrSufix := AddStringSegment(AStrSufix, AArgType.Name, ', ');
   end;
   LContext.DstID.Name := AGenericType.Name + '<' + AStrSufix + '>';
@@ -8492,6 +8536,18 @@ begin
   ERRORS.UNDECLARED_ID(ID);
 end;
 
+function ProcCanBeGeneric(AProc: TIDProcedure): Boolean;
+begin
+  while Assigned(AProc) do
+  begin
+    if AProc.IsGeneric then
+      Exit(True);
+
+    AProc := AProc.PrevOverload;
+  end;
+  Result := False;
+end;
+
 function TASTDelphiUnit.ParseIdentifier(Scope, SearchScope: TScope; out Expression: TIDExpression; var EContext: TEContext;
                                         const PrevExpr: TIDExpression; const ASTE: TASTExpression): TTokenID;
 var
@@ -8499,7 +8555,6 @@ var
   Indexes: TIDExpressions;
   i: Integer;
   Expr, NExpr: TIDExpression;
-  GenericArgs: TIDExpressions;
   PMContext: TPMContext;
   WasProperty, StrictSearch: Boolean;
 begin
@@ -8556,15 +8611,15 @@ begin
   case Decl.ItemType of
     {процедура/функция}
     itProcedure: begin
+      var LGenericArgs: TIDExpressions;
       var LCallExpr := TIDCallExpression.Create(Decl, PMContext.ID.TextPosition);
       LCallExpr.Instance := PrevExpr;
       Expression := LCallExpr;
-      // если есть открытая угловая скобка, - значит generic-вызов
-      if (Result = token_less) and TIDProcedure(Decl).IsGeneric then
+      // parse explicit generic arguments
+      if (Result = token_less) and ProcCanBeGeneric(TIDProcedure(Decl)) then
       begin
         var LAllArgsGeneric: Boolean;
-        Result := ParseGenericsArgs(Scope, EContext.SContext, {out} GenericArgs, {out} LAllArgsGeneric);
-        SetProcGenericArgs(LCallExpr, GenericArgs);
+        Result := ParseGenericsArgs(Scope, EContext.SContext, {out} LGenericArgs, {out} LAllArgsGeneric);
       end;
       // если есть открытая скобка, - значит вызов
       if Result = token_openround then
@@ -8594,6 +8649,11 @@ begin
           // если это собственный метод, добавляем self из списка параметров
           LCallExpr.Instance := TIDExpression.Create(EContext.SContext.Proc.SelfParam);
         end;
+
+        // set explicit generic arguments for a generic method
+        if Assigned(LGenericArgs) then
+          SetProcGenericArgs(LCallExpr, LGenericArgs);
+
         // process call operator
         Expression := EContext.RPNPopOperator();
       end else
