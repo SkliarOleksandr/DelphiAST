@@ -7053,16 +7053,11 @@ begin
       // search overload
       var Decl := ForwardDecl;
       while True do begin
-        if Decl.SameDeclaration(ProcScope.ExplicitParams) then
+        if Decl.SameDeclaration(ProcScope.ExplicitParams, {ACheckNames:} True) then
         begin
           if Decl.Scope = Scope then
-          begin
-            FwdDeclState := dsSame;
-            if not (pfForward in Decl.Flags) or
-                   (pfCompleted in Decl.Flags) then
-              ERRORS.ID_REDECLARATED(ID);
-            Proc := Decl;
-          end else
+            ERRORS.THE_SAME_METHOD_EXISTS(ID)
+          else
           if (Decl.Scope.ScopeClass = scInterface) and
              (Scope.ScopeClass = scImplementation) then
           begin

@@ -224,6 +224,7 @@ type
     class procedure ARRAY_EXPRESSION_REQUIRED(Expr: TIDExpression); static;
     class procedure ID_REDECLARATED(Decl: TIDDeclaration); overload; static;
     class procedure ID_REDECLARATED(const ID: TIdentifier); overload; static;
+    class procedure THE_SAME_METHOD_EXISTS(const ID: TIdentifier); overload; static;
     class procedure UNDECLARED_ID(const ID: TIdentifier); overload; static;
     class procedure UNDECLARED_ID(const ID: TIdentifier; const GenericParams: TIDTypeArray); overload; static;
     class procedure UNDECLARED_ID(const Name: string; const TextPosition: TTextPosition); overload; static;
@@ -513,6 +514,11 @@ end;
 class procedure TASTDelphiErrors.DIVISION_BY_ZERO(Expr: TIDExpression);
 begin
   AbortWork(sDevisionByZero, Expr.TextPosition);
+end;
+
+class procedure TASTDelphiErrors.THE_SAME_METHOD_EXISTS(const ID: TIdentifier);
+begin
+  AbortWork('Method ''%s'' with identical parameters already exists', [ID.Name], ID.TextPosition);
 end;
 
 class procedure TASTDelphiErrors.TOO_MANY_ACTUAL_PARAMS(CallExpr: TIDExpression; Expected, Actual: Integer);

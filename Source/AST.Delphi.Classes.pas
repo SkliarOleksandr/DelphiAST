@@ -1589,8 +1589,8 @@ type
     //////////////////////////////////////////////////////////////////////////////////
     property ExplicitParams: TIDParamArray read FExplicitParams write SetParameters;
     function SameDeclaration(const ParamsScope: TScope): Boolean; overload;
-    function SameDeclaration(const Params: TIDParamArray): Boolean; overload;
-
+    function SameDeclaration(const AParams: TIDParamArray;
+                             ACheckNames: Boolean = False): Boolean; overload;
     // Temporary variable alloc
     function GetTMPVar(DataType: TIDType; Reference: Boolean = False): TIDVariable; overload;
     function GetTMPVar(DataType: TIDType; VarFlags: TVariableFlags): TIDVariable; overload;
@@ -2748,19 +2748,24 @@ begin
   Result := True;
 end;
 
-function TIDProcedure.SameDeclaration(const Params: TIDParamArray): Boolean;
+function TIDProcedure.SameDeclaration(const AParams: TIDParamArray;
+                                      ACheckNames: Boolean): Boolean;
 var
   LCnt: Integer;
-  LParamType1, LParamType2: TIDType;
 begin
-  LCnt := Length(Params);
+  LCnt := Length(AParams);
   if LCnt <> Length(ExplicitParams) then
     Exit(False);
 
-  for var LIndex := 0 to LCnt - 1 do begin
-    LParamType1 := ExplicitParams[LIndex].DataType.ActualDataType;
-    LParamType2 := Params[LIndex].DataType.ActualDataType;
-    if not SameTypes(LParamType1, LParamType2) then
+  for var LIndex := 0 to LCnt - 1 do
+  begin
+    var LParam1 := ExplicitParams[LIndex];
+    var LParam2 := AParams[LIndex];
+    var LParamType1 := LParam1.DataType.ActualDataType;
+    var LParamType2 := LParam2.DataType.ActualDataType;
+    if not SameTypes(LParamType1, LParamType2) or
+       (ACheckNames and not SameText(LParam1.Name, LParam2.Name))
+    then
       Exit(False);
   end;
   Result := True;
@@ -7817,9 +7822,6 @@ begin
   begin
     if ASrcType.IsGeneric and ADstType.IsGeneric then
     begin
-      if Assigned(ASrcType.GenericDescriptor) and Assigned(ADstType.GenericDescriptor) then
-        Result := ASrcType.GenericDescriptor.IsEqual(ADstType.GenericDescriptor)
-      else
       if (ASrcType.ClassType = TIDGenericParam) and
          (ADstType.ClassType = TIDGenericParam) then
         Result := TIDGenericParam(ASrcType).SameConstraint(TIDGenericParam(ADstType))

@@ -610,6 +610,9 @@ begin
 
   AddBinarOperator(opModDiv, _Int64, [_Int8, _UInt8, _Int16, _UInt16, _Int32, _UInt32, _Int64, _UInt64], _Int64);
   AddBinarOperator(opModDiv, _UInt64, [_UInt8, _UInt16, _UInt32, _UInt64], _UInt64);
+
+  AddBinarOperator(opModDiv, _NativeInt, [_Int8, _UInt8, _Int16, _UInt16, _Int32, _UInt32, _Int64, _UInt64], _NativeInt);
+  AddBinarOperator(opModDiv, _NativeUInt, [_Int8, _UInt8, _Int16, _UInt16, _Int32, _UInt32, _Int64, _UInt64], _NativeUInt);
 end;
 
 procedure TSYSTEMUnit.AddMulOperators;
