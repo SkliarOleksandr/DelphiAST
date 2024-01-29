@@ -985,7 +985,7 @@ end;
 
 procedure TASTDelphiErrors.NO_METHOD_IN_BASE_CLASS(Proc: TIDProcedure);
 begin
-  AbortWork('Method %s is not found in base classes', [Proc.DisplayName], Lexer.Position);
+  AbortWork('Method %s is not found in base classes', [Proc.DisplayName], Proc.ID.TextPosition);
 end;
 
 procedure TASTDelphiErrors.HINT_TEXT_AFTER_END;

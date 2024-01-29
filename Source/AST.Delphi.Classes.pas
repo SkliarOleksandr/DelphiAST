@@ -695,10 +695,8 @@ type
     property DefaultProperty: TIDProperty read FDefaultProperty write FDefaultProperty;
     property ClassOfType: TIDClassOf read GetClassOfType;
     function IsInheritsForm(Ancestor: TIDStructure): Boolean;
-    function FindVirtualInstanceProc(AProc: TIDProcedure): TIDProcedure;
-    function FindVirtualClassProc(AProc: TIDProcedure): TIDProcedure;
-    function FindVirtualInstanceProcInAncestor(Proc: TIDProcedure): TIDProcedure;
-    function FindVirtualClassProcInAncestor(Proc: TIDProcedure): TIDProcedure;
+    function FindVirtualProc(AProc: TIDProcedure): TIDProcedure;
+    function FindVirtualProcInAncestor(Proc: TIDProcedure): TIDProcedure;
 
     function AddField(const Name: string; DataType: TIDType): TIDField;
     function FindField(const Name: string): TIDField;
@@ -4384,20 +4382,31 @@ begin
     Result := nil;
 end;
 
-function TIDStructure.FindVirtualClassProc(AProc: TIDProcedure): TIDProcedure;
+function TIDStructure.FindVirtualProc(AProc: TIDProcedure): TIDProcedure;
 begin
   var LDecl := fMembers.FindMembers(AProc.Name);
-
   while Assigned(LDecl) do
   begin
     if (LDecl.ItemType = itProcedure) then
     begin
-      if (pfVirtual in TIDProcedure(LDecl).Flags) and
-         (TIDProcedure(LDecl).SameDeclaration(AProc.ExplicitParams)) and
-         (TIDProcedure(LDecl).ResultType = AProc.ResultType) and
-          TIDProcedure(LDecl).IsClassMethod
-      then
-        Exit(TIDProcedure(LDecl));
+      var LMethod := TIDProcedure(LDecl);
+      if (pfVirtual in LMethod.Flags) and
+         (LMethod.SameDeclaration(AProc.ExplicitParams)) and
+          LMethod.IsClassMethod = AProc.IsClassMethod then
+      begin
+        var LResultType1 := LMethod.ResultType;
+        var LResultType2 := AProc.ResultType;
+        if (
+             Assigned(LResultType1) and
+             Assigned(LResultType2) and
+             SameTypes(LResultType1.ActualDataType, LResultType2.ActualDataType)
+           ) or
+           (
+             not Assigned(LResultType1) and not Assigned(LResultType2)
+           )
+        then
+          Exit(TIDProcedure(LDecl));
+      end;
 
       LDecl := TIDProcedure(LDecl).PrevOverload;
     end else
@@ -4405,48 +4414,15 @@ begin
   end;
 
   if Assigned(FAncestor) then
-    Result := FAncestor.FindVirtualClassProc(AProc)
+    Result := FAncestor.FindVirtualProc(AProc)
   else
     Result := nil;
 end;
 
-function TIDStructure.FindVirtualInstanceProc(AProc: TIDProcedure): TIDProcedure;
-begin
-  var LDecl := fMembers.FindMembers(AProc.Name);
-
-  while Assigned(LDecl) do
-  begin
-    if (LDecl.ItemType = itProcedure) then
-    begin
-      if (pfVirtual in TIDProcedure(LDecl).Flags) and
-         (AProc.SameDeclaration(TIDProcedure(LDecl).ExplicitParams)) and
-         SameTypes(AProc.ResultType, TIDProcedure(LDecl).ResultType)
-      then
-        Exit(TIDProcedure(LDecl));
-
-      LDecl := TIDProcedure(LDecl).PrevOverload;
-    end else
-      Exit(nil);
-  end;
-
-  if Assigned(FAncestor) then
-    Result := FAncestor.FindVirtualInstanceProc(AProc)
-  else
-    Result := nil;
-end;
-
-function TIDStructure.FindVirtualInstanceProcInAncestor(Proc: TIDProcedure): TIDProcedure;
+function TIDStructure.FindVirtualProcInAncestor(Proc: TIDProcedure): TIDProcedure;
 begin
   if Assigned(FAncestor) then
-    Result := FAncestor.FindVirtualInstanceProc(Proc)
-  else
-    Result := nil;
-end;
-
-function TIDStructure.FindVirtualClassProcInAncestor(Proc: TIDProcedure): TIDProcedure;
-begin
-  if Assigned(FAncestor) then
-    Result := FAncestor.FindVirtualClassProc(Proc)
+    Result := FAncestor.FindVirtualProc(Proc)
   else
     Result := nil;
 end;
@@ -6442,7 +6418,7 @@ begin
     for i := 0 to Length(FParams) - 1 do
     begin
       Param := FParams[i];
-      Result := AddStringSegment(Result, Param.Name + ': ' + Param.DataType.DisplayName, ';')
+      Result := AddStringSegment(Result, Param.Name + ': ' + Param.DataType.DisplayName, '; ')
     end;
     if Assigned(FResultType) then
       Result := 'function(' + Result + '): ' + FResultType.DisplayName

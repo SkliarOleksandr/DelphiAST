@@ -192,6 +192,7 @@ type
     function IsConstValueInRange(Value: TIDExpression; RangeExpr: TIDRangeConstant): Boolean;
     function IsConstRangesIntersect(const Left, Right: TIDRangeConstant): Boolean;
     function IsConstEqual(const Left, Right: TIDExpression): Boolean;
+    function IsStructsMethod(AStruct: TIDStructure; AProc: TIDProcedure): Boolean;
     procedure CheckIntfSectionMissing(Scope: TScope); inline;
     procedure CheckImplicitTypes(Src, Dst: TIDType; Position: TTextPosition); inline;
     procedure CheckEmptyExpression(Expression: TIDExpression); inline;
@@ -1707,6 +1708,7 @@ begin
     end;
 
     if Assigned(ProcDecl.GenericDescriptor) and
+       not IsStructsMethod(SContext.Proc.Struct, ProcDecl) and
        not Assigned(SContext.Proc.GenericDescriptor) and
        not IsGenericTypeThisStruct(SContext.Scope, ProcDecl.Struct) and
        GenericNeedsInstantiate(PExpr.GenericArgs) then
@@ -1882,9 +1884,13 @@ begin
 
   if Assigned(ProcDecl.GenericDescriptor) then
   begin
-    ProcDecl := InstantiateGenericProc(ProcDecl.Scope, ProcDecl, PExpr.GenericArgs);
-    ProcParams := ProcDecl.ExplicitParams;
-    PExpr.Declaration := ProcDecl;
+    // don't instantiate proc if this is a current struct's method
+    if not IsStructsMethod(SContext.Proc.Struct, ProcDecl) then
+    begin
+      ProcDecl := InstantiateGenericProc(ProcDecl.Scope, ProcDecl, PExpr.GenericArgs);
+      ProcParams := ProcDecl.ExplicitParams;
+      PExpr.Declaration := ProcDecl;
+    end;
   end;
 
    if Length(ProcParams) < ArgsCount then
@@ -2900,6 +2906,14 @@ begin
 
   Expr := fCCalc.ProcessConstOperation(Value, RangeExpr.Value.HBExpression, opLessOrEqual);
   Result := TIDBooleanConstant(Expr.Declaration).Value;
+end;
+
+function TASTDelphiUnit.IsStructsMethod(AStruct: TIDStructure; AProc: TIDProcedure): Boolean;
+begin
+  Result := Assigned(AStruct) and
+            Assigned(AProc.Struct) and
+            ((AStruct = AProc.Struct) or
+             (AStruct.IsInheritsForm(AProc.Struct)));
 end;
 
 procedure TASTDelphiUnit.InsertToScope(Scope: TScope; Item: TIDDeclaration);
@@ -7151,19 +7165,11 @@ begin
   begin
     if pfOverride in ProcFlags then
     begin
-      if not Proc.IsClassMethod then
-        Proc.InheritedProc := Struct.FindVirtualInstanceProcInAncestor(Proc)
-      else
-        Proc.InheritedProc := Struct.FindVirtualClassProcInAncestor(Proc);
-
+      Proc.InheritedProc := Struct.FindVirtualProcInAncestor(Proc);
       if not Assigned(Proc.InheritedProc) then
       begin
-         // todo: tmp
-        if not Proc.IsClassMethod then
-          Proc.InheritedProc := Struct.FindVirtualInstanceProcInAncestor(Proc)
-        else
-          Proc.InheritedProc := Struct.FindVirtualClassProcInAncestor(Proc);
-
+        // todo: tmp
+        Proc.InheritedProc := Struct.FindVirtualProcInAncestor(Proc);
         ERRORS.NO_METHOD_IN_BASE_CLASS(Proc);
       end;
     end;
@@ -8213,39 +8219,38 @@ begin
   Result := StrictMatchProcSingnatures(Src.ExplicitParams, Dst.ExplicitParams, Src.ResultType, Dst.ResultType);
 end;
 
-class function TASTDelphiUnit.StrictMatchProcSingnatures(const SrcParams, DstParams: TIDParamArray; const SrcResultType,
-  DstResultType: TIDType): Boolean;
+class function TASTDelphiUnit.StrictMatchProcSingnatures(const SrcParams, DstParams: TIDParamArray;
+                                                         const SrcResultType, DstResultType: TIDType): Boolean;
 var
-  i: Integer;
   SParamsCount,
   DParamsCount: Integer;
   SParamType, DParamType: TIDType;
 begin
-  // проверяем на соответсвтие возвращаемый результат (если есть)
+  // check matching for the result (if exists)
   if SrcResultType <> DstResultType then
     Exit(False);
 
   if Assigned(DstResultType) and Assigned(DstResultType) then
   begin
-    if SrcResultType.ActualDataType <> DstResultType.ActualDataType then
+    if not SameTypes(SrcResultType.ActualDataType, DstResultType.ActualDataType) then
       Exit(False);
   end;
 
   SParamsCount := Length(SrcParams);
   DParamsCount := Length(DstParams);
 
-  // проверяем на соответсвтие кол-во параметров
-  if SParamsCount <> DParamsCount then
-    Exit(False);
-
-  // проверяем на соответсвтие типов параметров
-  for i := 0 to SParamsCount - 1 do begin
-    SParamType := SrcParams[i].DataType.ActualDataType;
-    DParamType := DstParams[i].DataType.ActualDataType;
-    if SParamType <> DParamType then
-      Exit(False);
-  end;
-  Result := True;
+  // check matching for each parameter
+  if SParamsCount = DParamsCount then
+  begin
+    for var LIndex := 0 to SParamsCount - 1 do begin
+      SParamType := SrcParams[LIndex].DataType.ActualDataType;
+      DParamType := DstParams[LIndex].DataType.ActualDataType;
+      if not SameTypes(SParamType, DParamType) then
+        Exit(False);
+    end;
+    Result := True;
+  end else
+    Result := False;
 end;
 
 function TASTDelphiUnit.ParseRepeatStatement(Scope: TScope; const SContext: TSContext): TTokenID;
@@ -8984,10 +8989,7 @@ begin
     for i := 0 to ArgsCnt - 1 do
       CallArgs[i] := TIDExpression.Create(Proc.ExplicitParams[i]);
 
-    if (pfConstructor in Proc.Flags) or (pfClass in Proc.Flags) then
-      InheritedProc := Proc.Struct.FindVirtualClassProcInAncestor(Proc)
-    else
-      InheritedProc := Proc.Struct.FindVirtualInstanceProcInAncestor(Proc);
+    InheritedProc := Proc.Struct.FindVirtualProcInAncestor(Proc);
 
     if not Assigned(InheritedProc) and not (pfConstructor in Proc.Flags)  then
       ERRORS.NO_METHOD_IN_BASE_CLASS(Proc);
