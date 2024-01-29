@@ -859,6 +859,9 @@ begin
     AddType(Decl);
   end;
   Result := CheckAndParseDeprecated(Scope, Result);
+
+  if Lexer_IsCurrentToken(token_platform) then
+    Result := ParsePlatform(Scope);
 end;
 
 function TASTDelphiUnit.ParseTypeDeclOther(Scope: TScope; const ID: TIdentifier; out Decl: TIDType): TTokenID;
@@ -974,8 +977,12 @@ begin
     token_destructor: Result := ParseProcedure(Struct.Members, ptClassDestructor, Struct);
     token_var: begin
       Lexer_NextToken(Scope);
-      Result := ParseFieldsSection(Struct.Members, vLocal, Struct, True);
-    end
+      Result := ParseFieldsSection(Struct.Members, vLocal, Struct, {IsClass:} True);
+    end;
+    token_threadvar: begin
+      Lexer_NextToken(Scope);
+      Result := ParseFieldsSection(Struct.Members, vLocal, Struct, {IsClass:} True);
+    end;
   else
     ERRORS.PROC_OR_PROP_OR_VAR_REQUIRED;
   end;

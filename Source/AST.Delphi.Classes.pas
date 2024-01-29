@@ -2837,7 +2837,7 @@ function GenericArgsAsText(const AArguments: TIDExpressions): string;
 begin
   var LStr := '';
   for var LIndex := 0 to Length(AArguments) - 1 do
-    LStr := AddStringSegment(LStr, AArguments[LIndex].Declaration.Name, ', ');
+    LStr := AddStringSegment(LStr, AArguments[LIndex].DisplayName, ', ');
   Result := '<' + LStr + '>';
 end;
 
@@ -4399,7 +4399,7 @@ begin
         if (
              Assigned(LResultType1) and
              Assigned(LResultType2) and
-             SameTypes(LResultType1.ActualDataType, LResultType2.ActualDataType)
+             SameTypes(LResultType1, LResultType2)
            ) or
            (
              not Assigned(LResultType1) and not Assigned(LResultType2)
@@ -6628,13 +6628,13 @@ end;
 
 procedure TIDClass.AncestorsDecl2Str(ABuilder: TStringBuilder);
 begin
-  if Assigned(fAncestor) or Assigned(FInterfaces) then
+  if Assigned(fAncestorDecl) or Assigned(FInterfaces) then
   begin
     ABuilder.Append('(');
 
-    if Assigned(fAncestor) then
+    if Assigned(fAncestorDecl) then
     begin
-      ABuilder.Append(fAncestor.Name);
+      ABuilder.Append(fAncestorDecl.DisplayName);
       if Assigned(FInterfaces) then
         ABuilder.Append(', ');
     end;
@@ -7793,7 +7793,7 @@ end;
 
 function SameTypes(ASrcType, ADstType: TIDType): Boolean;
 begin
-  Result := (ASrcType = ADstType);
+  Result := (ASrcType.ActualDataType = ADstType.ActualDataType);
   if not Result then
   begin
     if ASrcType.IsGeneric and ADstType.IsGeneric then
