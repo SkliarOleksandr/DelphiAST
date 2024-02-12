@@ -1586,8 +1586,9 @@ type
     destructor Destroy; override;
     //////////////////////////////////////////////////////////////////////////////////
     property ExplicitParams: TIDParamArray read FExplicitParams write SetParameters;
-    function SameDeclaration(const ParamsScope: TScope): Boolean; overload;
+
     function SameDeclaration(const AParams: TIDParamArray;
+                             AResultType: TIDType;
                              ACheckNames: Boolean = False): Boolean; overload;
     // Temporary variable alloc
     function GetTMPVar(DataType: TIDType; Reference: Boolean = False): TIDVariable; overload;
@@ -2682,71 +2683,8 @@ begin
             (AParam1.ConstraintType = AParam2.ConstraintType);
 end;
 
-function TIDProcedure.SameDeclaration(const ParamsScope: TScope): Boolean;
-var
-  item1, item2: TScope.PAVLNode;
-  Decl1, Decl2: TIDParam;
-  AType1, AType2: TIDType;
-begin
-  if FParamsScope.Count <> ParamsScope.Count then
-    Exit(False);
-  item1 := FParamsScope.First;
-  item2 := ParamsScope.First;
-  while Assigned(item1) do
-  begin
-    // the same params should have the same classes
-    if item1.Data.ClassType <> item2.Data.ClassType then
-      Exit(False);
-
-    // handle "Generic Params" case first
-    if (Item1.Data is TIDGenericParam) and
-       (Item2.Data is TIDGenericParam) then
-    begin
-      if IsGenericParamsTheSame(TIDGenericParam(Item1.Data),
-                                TIDGenericParam(Item2.Data)) then
-      begin
-        item1 := FParamsScope.Next(item1);
-        item2 := ParamsScope.Next(item2);
-        Continue;
-      end else
-        Exit(False);
-    end;
-
-    Decl1 := TIDParam(Item1.Data);
-    Decl2 := TIDParam(Item2.Data);
-
-    if Decl1.IsExplicit <> Decl2.IsExplicit then
-      Exit(False);
-
-    AType1 := Decl1.DataType.ActualDataType;
-    AType2 := Decl2.DataType.ActualDataType;
-    if AType1 <> AType2 then
-    begin
-      if (AType1.DataTypeID = dtOpenArray) and (AType2.DataTypeID = dtOpenArray) then
-      begin
-        var AArrayElementDT1 := TIDArray(AType1).ElementDataType;
-        var AArrayElementDT2 := TIDArray(AType2).ElementDataType;
-        if AArrayElementDT1 <> AArrayElementDT2 then
-        begin
-          if (AArrayElementDT1.IsGeneric and AArrayElementDT2.IsGeneric) and
-             (AArrayElementDT1.Name = AArrayElementDT2.Name) then
-          begin
-          end else
-            Exit(False);
-        end;
-      end else
-      if (AType1.IsGeneric and AType2.IsGeneric) and (AType1.Name = AType2.Name) then
-      begin
-      end else
-        Exit(False);
-    end;
-    item1 := FParamsScope.Next(item1);
-    item2 := ParamsScope.Next(item2);
-  end;
-  Result := True;
-end;
-
 function TIDProcedure.SameDeclaration(const AParams: TIDParamArray;
+                                      AResultType: TIDType;
                                       ACheckNames: Boolean): Boolean;
 var
   LCnt: Integer;
@@ -2766,7 +2704,13 @@ begin
     then
       Exit(False);
   end;
-  Result := True;
+
+  // treat a generic result as a parameter
+  if (Assigned(ResultType) and not Assigned(AResultType) and ResultType.IsGeneric) or
+     (not Assigned(ResultType) and Assigned(AResultType) and AResultType.IsGeneric) then
+    Result := False
+  else
+    Result := True;
 end;
 
 procedure TIDProcedure.SetEntryScope(const Value: TProcScope);
@@ -4391,7 +4335,7 @@ begin
     begin
       var LMethod := TIDProcedure(LDecl);
       if (pfVirtual in LMethod.Flags) and
-         (LMethod.SameDeclaration(AProc.ExplicitParams)) and
+         (LMethod.SameDeclaration(AProc.ExplicitParams, AProc.ResultType)) and
           LMethod.IsClassMethod = AProc.IsClassMethod then
       begin
         var LResultType1 := LMethod.ResultType;
@@ -6698,9 +6642,14 @@ begin
     var LIntf := FInterfaces[LIndex];
     if SameText(LIntf.Name, AIntfName) then
     begin
-      if Assigned(LIntf.GenericDescriptor) and
-         Assigned(AGenericParams) and
-         LIntf.GenericDescriptor.SameParams(AGenericParams) then
+      if (
+           Assigned(LIntf.GenericDescriptor) and
+           Assigned(AGenericParams) and
+           LIntf.GenericDescriptor.SameParams(AGenericParams)
+          ) or (
+           not Assigned(LIntf.GenericDescriptor) and
+           not Assigned(AGenericParams)
+          ) then
       begin
         Exit(LIntf);
       end;

@@ -101,6 +101,7 @@ type
     token_else,                     // keyword: else
     token_forward,                  // keyword: forward
     token_helper,                   // keyword: helper
+    token_stored,                   // keyword: stored
 
     // made as built-in procedures
     // token_continue,                 // keyword: continue
@@ -469,6 +470,8 @@ begin
   RegisterToken('static', token_static);
   RegisterToken('strict', token_strict);
   RegisterToken('stdcall', token_stdcall);
+  RegisterToken('stored', token_stored, TTokenClass.AmbiguousPriorityKeyword);
+
   RegisterToken('then', token_then);
   RegisterToken('to', token_to);
   RegisterToken('try', token_try);

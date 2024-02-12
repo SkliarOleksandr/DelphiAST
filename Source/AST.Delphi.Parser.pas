@@ -4651,6 +4651,25 @@ begin
     Prop.Setter := Expr.Declaration;
   end;
 
+  // stored propery (note: stored is ambiguous keyword)
+  if Lexer_IsCurrentToken(token_stored) then
+  begin
+    var LStoredExpr: TIDExpression;
+    Lexer_NextToken(Scope);
+    Result := ParseConstExpression(Scope, {out} LStoredExpr, ExprRValue);
+    CheckEmptyExpression(LStoredExpr);
+    CheckBooleanExpression(LStoredExpr);
+  end;
+
+  // default value (note: default is ambiguous keyword)
+  if Lexer_IsCurrentToken(token_default) then
+  begin
+    var LDefaultExpr: TIDExpression;
+    Lexer_NextToken(Scope);
+    Result := ParseConstExpression(Scope, {out} LDefaultExpr, ExprRValue);
+    CheckEmptyExpression(LDefaultExpr);
+  end;
+
   Lexer_MatchToken(Result, token_semicolon);
   Result := Lexer_NextToken(Scope);
 
@@ -6874,12 +6893,14 @@ begin
   if not Assigned(ForwardDeclNode) then
   begin
     // second, search the decl including ancestors
-    Result := Struct.Members.FindMembers(ID.Name) as TASTDelphiProc;
+    var LDecl := Struct.Members.FindMembers(ID.Name);
+    if LDecl is TASTDelphiProc then
+      Result := TASTDelphiProc(LDecl)
+    else
     // third, if this is a helper, search the decl in the helper's target
-    if not Assigned(Result) and
-       (Struct is TDlphHelper) and
+    if (Struct is TDlphHelper) and
        (TDlphHelper(Struct).Target is TIDStructure) then
-    ForwardDeclNode := TIDStructure(TDlphHelper(Struct).Target).Members.Find(ID.Name);
+      ForwardDeclNode := TIDStructure(TDlphHelper(Struct).Target).Members.Find(ID.Name);
   end;
 end;
 
@@ -6908,10 +6929,11 @@ begin
   Lexer_ReadNextIdentifier(Scope, {var} LProcID);
 
   var LMethod := AClass.FindMethod(LProcID.Name);
-  if not Assigned(LMethod) then
-    ERRORS.UNDECLARED_ID(LProcID);
 
-  // todo: add intf method delegation entry
+  // todo: add intf method delegation entry, supporting "late binding"
+  //if not Assigned(LMethod) then
+  //  ERRORS.UNDECLARED_ID(LProcID);
+
 
   Lexer_ReadSemicolon(Scope);
   Result := Lexer_NextToken(Scope);
@@ -7074,7 +7096,7 @@ begin
       // search overload
       var Decl := ForwardDecl;
       while True do begin
-        if Decl.SameDeclaration(ProcScope.ExplicitParams, {ACheckNames:} True) then
+        if Decl.SameDeclaration(ProcScope.ExplicitParams, ResultType, {ACheckNames:} True) then
         begin
           if Decl.Scope = Scope then
             ERRORS.THE_SAME_METHOD_EXISTS(ID)
@@ -7350,7 +7372,7 @@ begin
       // search overload
       var Decl := ForwardDecl;
       while True do begin
-        if Decl.SameDeclaration(ProcScope.ExplicitParams) then begin
+        if Decl.SameDeclaration(ProcScope.ExplicitParams, ResultType) then begin
           FwdDeclState := dsSame;
 
           if (Decl.Scope = Scope) then
@@ -7564,7 +7586,7 @@ begin
       // search overload
       var Decl := ForwardDecl;
       while True do begin
-        if Decl.SameDeclaration(ProcScope.ExplicitParams) then begin
+        if Decl.SameDeclaration(ProcScope.ExplicitParams, ResultType) then begin
           FwdDeclState := dsSame;
           if ((Decl.Scope = Scope) and not (pfForward in Decl.Flags)) or
               ((pfCompleted in Decl.Flags) and (ForwardDecl.Scope.DeclUnit = Self)) then
@@ -7835,7 +7857,7 @@ begin
       ERRORS.ID_REDECLARATED(ID);
     // ищем подходящую декларацию в списке перегруженных:
     while True do begin
-      if ForwardDecl.SameDeclaration(ProcScope.ExplicitParams) then begin
+      if ForwardDecl.SameDeclaration(ProcScope.ExplicitParams, ResultType) then begin
         // нашли подходящую декларацию
         FwdDeclState := dsSame;
         if ForwardDecl.IsCompleted then
