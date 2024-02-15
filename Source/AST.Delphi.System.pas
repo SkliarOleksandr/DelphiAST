@@ -132,6 +132,8 @@ type
     Multiply_Set: TIDOperator;
     Add_Set: TIDOperator;
     Subtract_Set: TIDOperator;
+    Equal_Set: TIDOperator;
+    NotEqual_Set: TIDOperator;
     // DynArray
     Equal_DynArray: TIDOperator;
     Equal_NullPtr: TIDOperator;
@@ -253,6 +255,7 @@ type
     property _MetaType: TIDType read fDecls._MetaType;
     property _Void: TIDType read fDecls._Void;
     property _ResStringRecord: TIDType read fDecls._ResStringRecord;
+    property _EmptySetType: TIDSet read fDecls._EmptySetType;
     property Operators: TSystemOperatos read fOperators;
   end;
 
@@ -1070,11 +1073,13 @@ begin
   // constant ""
   fDecls._EmptyStrConstant := TIDStringConstant.CreateAsAnonymous(IntfScope, _UnicodeString, '');
   fDecls._EmptyStrExpression := TIDExpression.Create(fDecls._EmptyStrConstant);
+  // empty set type
+  fDecls._EmptySetType := TIDSet.CreateAsSystem(IntfScope, '');
   // constant "[]"
-  fDecls._EmptyArrayConstant := TIDDynArrayConstant.CreateAsAnonymous(IntfScope, _Void, []);
+  fDecls._EmptyArrayConstant := TIDDynArrayConstant.CreateAsAnonymous(IntfScope, _EmptySetType, []);
 
   // constant for deprecated
-  fDecls._DeprecatedDefaultStr := TIDStringConstant.CreateAsSystem(IntfScope, 'The declaration is deprecated');
+  fDecls._DeprecatedDefaultStr := TIDStringConstant.CreateAsSystem(IntfScope, 'The declaration is deprecated', _AnsiString);
 
   AddImplicists;
   AddExplicists;
@@ -1285,16 +1290,14 @@ end;
 
 function TSYSTEMUnit.RegisterConstInt(const Name: string; DataType: TIDType; Value: Int64): TIDIntConstant;
 begin
-  Result := TIDIntConstant.CreateAsSystem(IntfScope, Name);
-  Result.DataType := DataType;
+  Result := TIDIntConstant.CreateAsSystem(IntfScope, Name, DataType);
   Result.Value := Value;
   InsertToScope(Result);
 end;
 
 function TSYSTEMUnit.RegisterConstStr(Scope: TScope; const Name, Value: string): TIDStringConstant;
 begin
-  Result := TIDStringConstant.CreateAsSystem(Scope, Name);
-  Result.DataType := _UnicodeString;
+  Result := TIDStringConstant.CreateAsSystem(Scope, Name, _UnicodeString);
   Result.Value := Value;
   InsertToScope(Result);
 end;
@@ -1376,6 +1379,8 @@ begin
   Multiply_Set := TSys_Multiply_Set.CreateAsSystem(Scope);
   Add_Set := TSys_Add_Set.CreateAsSystem(Scope);
   Subtract_Set := TSys_Subtract_Set.CreateAsSystem(Scope);
+  Equal_Set := TSys_Equal_Set.CreateAsSystem(Scope);
+  NotEqual_Set := TSys_NotEqual_Set.CreateAsSystem(Scope);
 
   Equal_DynArray := TSys_Equal_DynArray.CreateAsSystem(Scope);
   Equal_NullPtr := TSys_Equal_NullPtr.CreateAsSystem(Scope);

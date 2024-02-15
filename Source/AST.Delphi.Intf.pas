@@ -77,6 +77,7 @@ type
     _EmptyStrConstant: TIDStringConstant;
     _EmptyStrExpression: TIDExpression;
     _DeprecatedDefaultStr: TIDStringConstant;
+    _EmptySetType: TIDSet;
     _EmptyArrayConstant: TIDDynArrayConstant;
     _ResStringRecord: TIDType;
     _TVarRec: TIDType;

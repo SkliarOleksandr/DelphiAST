@@ -181,6 +181,7 @@ type
     FRefCount: Integer;              // кол-во зависимостей
     FRCPath: UInt32;                 // номер прохода increfcount/decrefcount (необходим для алгоритма проставления зависимостей)
     FNoOverride: Boolean;            // запрещено ли переопределять
+    FSystemDecl: Boolean;            // system declaration
     FImportLib: Integer;             // имя (индекс) билиотеки импорта
     FImportName: Integer;            // имя (индекс) функции импорта
     fDepricatedExpression: TIDExpression;
@@ -222,6 +223,7 @@ type
     property UnitID: Integer read GetUnitID;
     property IsAnonymous: Boolean read GetIsAnonymous;
     property IsGeneric: Boolean read GetIsGeneric;
+    property IsSystem: Boolean read FSystemDecl;
     property SpaceIndex: Integer read GetIndex;
     procedure IncRefCount(RCPath: UInt32); virtual; // добавляет зависимость
     procedure DecRefCount(RCPath: UInt32); virtual; // удаляет зависимость
@@ -871,6 +873,7 @@ type
     function GetDataSize: Integer; override;
   public
     constructor CreateAsAnonymous(Scope: TScope; BaseType: TIDOrdinal); reintroduce;
+    constructor CreateAsSystem(Scope: TScope; const Name: string); override;
     constructor Create(Scope: TScope; const ID: TIdentifier); override;
     procedure CreateStandardOperators; override;
     ////////////////////////////////////////////////////////////////////////////
@@ -1027,7 +1030,7 @@ type
     procedure SetAsVariant(const AValue: Variant); virtual; abstract;
   public
     constructor Create(Scope: TScope; const Identifier: TIdentifier; DataType: TIDType; Value: T); overload;
-    constructor CreateAsSystem(Scope: TScope; const Name: string); override;
+    constructor CreateAsSystem(AScope: TScope; const AName: string; ADataType: TIDType); reintroduce;
     constructor CreateAsAnonymous(Scope: TScope; DataType: TIDType; Value: T); reintroduce;
     constructor CreateWithoutScope(DataType: TIDType; Value: T);
     procedure AssignValue(Source: TIDConstant); override;
@@ -2466,6 +2469,7 @@ begin
   FScope := Scope;
   FID.Name := Name;
   fModule := Scope.DeclUnit;
+  FSystemDecl := True;
 end;
 
 destructor TIDDeclaration.Destroy;
@@ -3930,10 +3934,11 @@ begin
     Include(FFlags, VarHasDefault);
 end;
 
-constructor TIDXXXConstant<T>.CreateAsSystem(Scope: TScope; const Name: string);
+constructor TIDXXXConstant<T>.CreateAsSystem(AScope: TScope; const AName: string; ADataType: TIDType);
 begin
-  inherited;
-  fItemType := itConst;
+  inherited CreateAsSystem(AScope, AName);
+  FDataType := ADataType;
+  FItemType := itConst;
 end;
 
 constructor TIDXXXConstant<T>.CreateWithoutScope(DataType: TIDType; Value: T);
@@ -5555,6 +5560,14 @@ begin
     CreateStandardOperators;
 end;
 
+constructor TIDSet.CreateAsSystem(Scope: TScope; const Name: string);
+begin
+  inherited;
+  fDataTypeID := dtSet;
+  if Assigned(SYSUnit) then
+    CreateStandardOperators;
+end;
+
 procedure TIDSet.CreateStandardOperators;
 begin
   inherited;
@@ -5566,6 +5579,9 @@ begin
   AddBinarySysOperator(opAdd, SYSUnit.Operators.Add_Set);
   AddBinarySysOperator(opSubtract, SYSUnit.Operators.Subtract_Set);
   AddBinarySysOperator(opMultiply, SYSUnit.Operators.Multiply_Set);
+  AddBinarySysOperator(opEqual, SYSUnit.Operators.Equal_Set);
+  AddBinarySysOperator(opNotEqual, SYSUnit.Operators.NotEqual_Set);
+
   OverloadImplicitFromAny(SYSUnit.Operators.ImplicitSetFromAny);
 end;
 
@@ -5596,8 +5612,13 @@ end;
 function TIDSet.GetDisplayName: string;
 begin
   Result := Name;
-  if Name = '' then
-    Result := 'set of ' + FBaseType.DisplayName;
+  if (Name = '') then
+  begin
+    if Assigned(FBaseType) then
+      Result := 'set of ' + FBaseType.DisplayName
+    else
+      Result := 'set';
+  end;
 end;
 
 procedure TIDSet.IncRefCount(RCPath: UInt32);
@@ -5638,7 +5659,6 @@ end;
 function TIDDynArrayConstant.AsVariant: Variant;
 begin
   Result := NULL;
-  AbortWorkInternal('Not supported', []);
 end;
 
 function TIDDynArrayConstant.ValueByteSize: Integer;

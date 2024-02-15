@@ -408,6 +408,18 @@ type
     function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; override;
   end;
 
+  {operator Set = Set}
+  TSys_Equal_Set = class(TSysOpBinary)
+  public
+    function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; override;
+  end;
+
+  {operator Set <> Set}
+  TSys_NotEqual_Set = class(TSysOpBinary)
+  public
+    function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; override;
+  end;
+
   {operator [...] = [...]}
   TSys_Equal_DynArray = class(TSysOpBinary)
   public
@@ -945,7 +957,8 @@ begin
   begin
     var DstSetType := TIDSet(Dst);
     var SrcSetType := TIDSet(Src.DataType);
-    if DstSetType.BaseType.ActualDataType = SrcSetType.BaseType.ActualDataType then
+    if (Src.Declaration = SYSUnit.SystemDeclarations._EmptyArrayConstant) or
+       (DstSetType.BaseType.ActualDataType = SrcSetType.BaseType.ActualDataType) then
       Exit(DstSetType);
   end;
 end;
@@ -1037,6 +1050,22 @@ function TSys_Multiply_Set.Match(const SContext: TSContext; const Left, Right: T
 begin
   // todo:
   Result := Left;
+end;
+
+{ TSys_Equal_Set }
+
+function TSys_Equal_Set.Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression;
+begin
+  // todo:
+  Result := SYSUnit._TrueExpression;
+end;
+
+{ TSys_NotEqual_Set }
+
+function TSys_NotEqual_Set.Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression;
+begin
+  // todo:
+  Result := SYSUnit._TrueExpression;
 end;
 
 { TSys_Equal_DynArray }

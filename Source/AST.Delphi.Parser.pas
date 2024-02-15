@@ -36,6 +36,7 @@ uses
 // system.UITypes
 // System.SyncObjs
 // System.SysUtils
+// System.Math
 // sysinit
 // Windows
 // AnsiStrings
@@ -497,15 +498,12 @@ end;
 
 function TASTDelphiUnit.ParseSetType(Scope: TScope; Decl: TIDSet): TTokenID;
 var
-  ID: TIdentifier;
-  Base: TIDType;
-  Expression: TIDExpression;
+  LBaseType: TIDType;
 begin
   Lexer_MatchToken(Lexer_NextToken(Scope), token_of);
-  Result := Lexer_NextToken(Scope);
-  Result := ParseTypeDecl(Scope, nil, TIdentifier.Empty, Base);
-  CheckOrdinalType(Base);
-  Decl.BaseType := TIDOrdinal(Base);
+  Result := ParseTypeSpec(Scope, {out} LBaseType);
+  CheckOrdinalType(LBaseType);
+  Decl.BaseType := TIDOrdinal(LBaseType);
   Decl.BaseType.OverloadBinarOperator2(opIn, Decl, Sys._Boolean);
 end;
 
@@ -1028,7 +1026,7 @@ var
   SearchScope: TScope;
 begin
   Result := Lexer_NextToken(Scope);
-  if Result = token_identifier then
+  if (Result = token_identifier) and (Lexer_IdentifireType = itIdentifier) then
   begin
     SearchScope := nil;
     while True do begin
@@ -9198,12 +9196,17 @@ begin
     CheckEmptyExpression(DefaultValue);
 
     if CheckImplicit(SContext, DefaultValue, DataType) = nil then
+    begin
+      CheckImplicit(SContext, DefaultValue, DataType);
       ERRORS.INCOMPATIBLE_TYPES(DefaultValue, DataType);
+    end;
 
     DefaultValue := MatchImplicit3(SContext, DefaultValue, DataType);
 
-    if DefaultValue.IsAnonymous then
-      DefaultValue.Declaration.DataType := DataType; // подгоняем фактичиский тип константы под необходимый
+    //todo: do we still need it?
+    // // replace actual anonymous constant type to the required
+    // if DefaultValue.IsAnonymous and not DefaultValue.Declaration.IsSystem then
+    //   DefaultValue.Declaration.DataType := DataType;
   end;
 end;
 
@@ -9661,6 +9664,7 @@ begin
         AddConstant(AConst);
     end;
   end else
+    // treats empty brackets [] as empty array always
     AConst := Sys._EmptyArrayConstant;
 
   Expr := TIDExpression.Create(AConst, Lexer.Position);
