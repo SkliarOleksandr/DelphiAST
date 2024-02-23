@@ -26,6 +26,7 @@ uses
 // System.Generics.Defaults,
 // System.Internal.GenericsHlpr
 // system
+// sysinit
 // GETMEM.INC
 // system.Classes
 // Winapi.ActiveX
@@ -37,7 +38,6 @@ uses
 // System.SyncObjs
 // System.SysUtils
 // System.Math
-// sysinit
 // Windows
 // AnsiStrings
 // Character
@@ -381,7 +381,7 @@ type
     function ParseVarStaticArrayDefaultValue(Scope: TScope; ArrType: TIDArray; out DefaultValue: TIDExpression): TTokenID;
     function ParseVarRecordDefaultValue(Scope: TScope; Struct: TIDStructure; out DefaultValue: TIDExpression): TTokenID;
     function ParseRecordInitValue(Scope: TRecordInitScope; var FirstField: TIDExpression): TTokenID;
-    function ParseConstSection(Scope: TScope): TTokenID;
+    function ParseConstSection(Scope: TScope; AInlineConst: Boolean = False): TTokenID;
     function ParseVarSection(Scope: TScope; Visibility: TVisibility; IsWeak: Boolean = False): TTokenID;
     function ParseFieldsSection(Scope: TScope; Visibility: TVisibility; Struct: TIDStructure; IsClass: Boolean): TTokenID;
     function ParseFieldsInCaseRecord(Scope: TScope; Visibility: TVisibility; ARecord: TIDRecord): TTokenID;
@@ -565,14 +565,12 @@ begin
       end;
       {RAISE}
       token_raise: Result := ParseRaiseStatement(Scope, SContext);
-      {BREAK}
-//      token_break: Result := ParseBreakStatement(Scope, SContext);
-      {CONTINUE}
-//      token_continue: Result := ParseContinueStatement(Scope, SContext);
       {;}
       token_semicolon:;
       {VAR}
       token_var: Result := ParseImmVarStatement(Scope, SContext);
+      {CONST}
+      token_const: Result := ParseConstSection(Scope, {AInlineConst:} True);
       {@}
       token_address: begin
         Result := Lexer_NextToken(Scope);
@@ -2246,12 +2244,15 @@ begin
     AddType(DataType);
   end;
 
-  if Expr.IsConstant and (Expr.DataTypeID in [dtString, dtAnsiString]) then
+  if Expr.IsConstant or Expr.IsProcedure then
   begin
     // resourcestring -> PResStringRec support
-    var LConst := TIDPointerConstant.CreateAsAnonymous(IntfScope,
-                                                       Sys._ResStringRecord,
-                                                       Expr.AsConst);
+    var LConst := TIDPointerConstant.CreateAsAnonymous(IntfScope, {DataType:} nil, Expr.Declaration);
+    if Expr.DataTypeID in [dtString, dtAnsiString] then
+      LConst.DataType := Sys._ResStringRecord
+    else
+      LConst.DataType := Sys._PointerType;
+
     Result := TIDExpression.Create(LConst, Expr.TextPosition);
   end else
   if Expr.IsTMPVar and Expr.AsVariable.Reference then
@@ -4685,16 +4686,6 @@ begin
   end;
 end;
 
-{function TASTDelphiUnit.ParseBreakStatement(Scope: TScope; const SContext: TSContext): TTokenID;
-begin
-  if not SContext.IsLoopBody then
-    if not SContext.IsLoopBody then
-    AbortWork(sBreakOrContinueAreAllowedOnlyInALoops, Lexer_Position);
-
-  SContext.Add(TASTKWBreak);
-  Result := Lexer_NextToken(Scope);
-end;}
-
 procedure TASTDelphiUnit.ParseCondDefine(Scope: TScope; add_define: Boolean);
 var
   ID: TIdentifier;
@@ -5039,7 +5030,7 @@ begin
     CheckConstExpression(Expr);
 end;
 
-function TASTDelphiUnit.ParseConstSection(Scope: TScope): TTokenID;
+function TASTDelphiUnit.ParseConstSection(Scope: TScope; AInlineConst: Boolean): TTokenID;
 
   function CheckAndCorrectType(AExpr: TIDExpression): TIDType;
   begin
@@ -5062,25 +5053,15 @@ function TASTDelphiUnit.ParseConstSection(Scope: TScope): TTokenID;
   end;
 
 var
-  LConstCnt: Integer;
   LExplicitType: TIDType;
   LConst: TIDConstant;
   LExpr: TIDExpression;
-  Names: TIdentifiersPool;
+  LConstID: TIdentifier;
 begin
-  LConstCnt := 0;
-  Names := TIdentifiersPool.Create(2);
   Lexer_MatchIdentifier(Lexer_NextToken(Scope));
   repeat
-    Names.Add;
-    Lexer_ReadCurrIdentifier(Names.Items[LConstCnt]); // read name
+    Lexer_ReadCurrIdentifier(LConstID); // read name
     Result := Lexer_NextToken(Scope);
-    if Result = token_Coma then begin
-      Inc(LConstCnt);
-      Result := Lexer_NextToken(Scope);
-      Lexer_MatchIdentifier(Result);
-      Continue;
-    end;
     if Result = token_colon then
       Result := ParseTypeSpec(Scope, {out} LExplicitType)
     else
@@ -5098,14 +5079,27 @@ begin
         LExpr.AsConst.ExplicitDataType := LExplicitType;
       end;
     end else begin
-      // читаем значение константы
+      // read constant value
       Lexer_NextToken(Scope);
       Result := ParseConstExpression(Scope, {out} LExpr, ExprRValue);
       CheckEmptyExpression(LExpr);
     end;
     CheckConstExpression(LExpr);
 
-    var LConstClass := GetConstantClassByDataType(LExpr.DataTypeID);
+    LConst := LExpr.AsConst;
+    if LConst.IsAnonymous then
+      LConst.ID := LConstID
+    else begin
+      // create a const alias
+      var LNewConst := LConst.MakeCopy(Scope) as TIDConstant;
+      LNewConst.ID := LConstID;
+      LNewConst.DataType := LConst.DataType;
+      LNewConst.AssignValue(LConst);
+      LConst := LNewConst;
+    end;
+
+    if not Assigned(LExplicitType) then
+      LConst.DataType := CheckAndCorrectType(LExpr);
 
     if Lexer_IsCurrentToken(token_platform) then
       Result := ParsePlatform(Scope);
@@ -5114,29 +5108,13 @@ begin
 
     Lexer_MatchToken(Result, token_semicolon);
 
-    for var LIndex := 0 to LConstCnt do begin
-      LConst := LConstClass.Create(Scope, Names.Items[LIndex]) as TIDConstant;
-      if Assigned(LExplicitType) then
-        LConst.DataType := LExplicitType
-      else
-        LConst.DataType := CheckAndCorrectType(LExpr);
-      LConst.AssignValue(LExpr.AsConst);
-      Scope.AddConstant(LConst);
-      AddConstant(LConst);
-    end;
-    LConstCnt := 0;
+    Scope.AddConstant(LConst);
+    // AddConstant() already called in ParseVector
+    //AddConstant(LConst);
+
     Result := Lexer_NextToken(Scope);
-  until (not Lexer_IsCurrentIdentifier);
+  until (not Lexer_IsCurrentIdentifier) or AInlineConst;
 end;
-
-{function TASTDelphiUnit.ParseContinueStatement(Scope: TScope; const SContext: TSContext): TTokenID;
-begin
-  if not SContext.IsLoopBody then
-    AbortWork(sBreakOrContinueAreAllowedOnlyInALoops, Lexer_Position);
-
-  SContext.Add(TASTKWContinue);
-  Result := Lexer_NextToken(Scope);
-end;}
 
 function TASTDelphiUnit.ParseDeprecated(Scope: TScope; out DeprecatedExpr: TIDExpression): TTokenID;
 begin

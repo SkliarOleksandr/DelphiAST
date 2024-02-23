@@ -1919,7 +1919,6 @@ const
 
   function IsClassProc(AProcType: TProcType): Boolean; inline;
 
-  function GetConstantClassByDataType(DataTypeID: TDataTypeID): TIDConstantClass;
   function IsGenericArgMatch(ATypeArg: TIDType; const AGenericParam: TIDGenericParam): Boolean;
 
 implementation
@@ -7640,10 +7639,17 @@ end;
 
 function TIDPointerConstant.AsString: string;
 begin
-  if Assigned(FValue) and (FValue.ItemType = itConst) then
-    Result := TIDConstant(FValue).AsString
-  else
-    Result := '<uknown>';
+  if Assigned(FValue) then
+  begin
+    if FValue.ItemType = itConst then
+      Result := TIDConstant(FValue).AsString
+    else
+    if FValue.ItemType = itProcedure then
+      Result := TIDProcedure(FValue).Name
+    else
+      AbortWorkInternal('Unsupported Constant Declaration');
+ end else
+   Result := '<uknown>';
 end;
 
 function TIDPointerConstant.AsVariant: Variant;
@@ -7707,43 +7713,6 @@ begin
   for var AType in FTypes do
     Result := AddStringSegment(Result, AType.DisplayName, ' or ');
   Result := Result + '>';
-end;
-
-
-function GetConstantClassByDataType(DataTypeID: TDataTypeID): TIDConstantClass;
-begin
-  case DataTypeID of
-    dtInt8, dtInt16, dtInt32, dtInt64,
-    dtUInt8, dtUInt16, dtUInt32, dtUInt64,
-    dtNativeInt, dtNativeUInt, dtEnum, dtRange: Result := TIDIntConstant;
-
-    dtFloat32, dtFloat64, dtFloat80, dtCurrency: Result := TIDFloatConstant;
-
-    dtBoolean: Result := TIDBooleanConstant;
-
-    dtAnsiChar,
-    dtChar: Result := TIDCharConstant;
-
-    dtShortString,
-    dtAnsiString,
-    dtString,
-    dtWideString: Result := TIDStringConstant;
-
-    dtPAnsiChar,
-    dtPWideChar,
-    dtPointer: Result := TIDPointerConstant;
-
-    dtSet: Result := TIDSetConstant;
-
-    dtStaticArray,
-    dtDynArray: Result := TIDDynArrayConstant;
-    dtRecord: Result := TIDRecordConstant;
-    dtGuid: Result := TIDGuidConstant;
-    dtClass: Result := TIDPointerConstant;
-  else
-    Result := nil;
-    AbortWorkInternal('Unknown constant type');
-  end;
 end;
 
 { TConditionalScope }
