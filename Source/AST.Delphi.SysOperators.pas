@@ -183,7 +183,7 @@ type
   {implicit Pointer <- Any}
   TSysImplicitPointerFromAny = class(TSysOpImplicit)
   public
-    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
+    function Check(const SContext: TSContext; const ASrc: TIDType; const ADst: TIDType): Boolean; override;
   end;
 
   {implicit Range <- Any}
@@ -229,6 +229,13 @@ type
     function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
   end;
 
+  {implicit TProc <- Any}
+  TSysImplicitTProcFromAny = class(TSysOpImplicit)
+  public
+    function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
+    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
 
   ///////////////////////////////////////////////////////////////////////////////////////////
   /// EXPLICIT
@@ -249,8 +256,7 @@ type
   {explicit TProc <- Any}
   TSysExplicitTProcFromAny = class(TSysOpImplicit)
   public
-    function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
-    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
+    function Check(const SContext: TSContext; const ASrc: TIDType; const ADst: TIDType): Boolean; override;
   end;
 
   {explicit Class -> Any}
@@ -296,16 +302,16 @@ type
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
-  {explicit Pointer -> Any}
-  TSysExplictPointerToAny = class(TSysOpExplisit)
+  {explicit RefType -> Any}
+  TSysExplicitRefTypeToAny = class(TSysOpExplisit)
   public
-    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
+    function Check(const SContext: TSContext; const ASrc: TIDType; const ADst: TIDType): Boolean; override;
   end;
 
-  {explicit Pointer <- Any}
-  TSysExplictPointerFromAny = class(TSysOpExplisit)
+  {explicit RefType <- Any}
+  TSysExplicitRefTypeFromAny = class(TSysOpExplisit)
   public
-    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
+    function Check(const SContext: TSContext; const ASrc: TIDType; const ADst: TIDType): Boolean; override;
   end;
 
   {explicit Untyped Ref -> Any}
@@ -619,9 +625,9 @@ begin
   Result := Src.IsOrdinal;
 end;
 
-{ TSysExplicitTProcFromAny }
+{ TSysImplicitTProcFromAny }
 
-function TSysExplicitTProcFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
+function TSysImplicitTProcFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
   Result := (Src.DataTypeID = dtProcType) or
             (
@@ -629,7 +635,8 @@ begin
             );
 end;
 
-function TSysExplicitTProcFromAny.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
+function TSysImplicitTProcFromAny.Check(const SContext: TSContext; const Src: TIDExpression;
+  const Dst: TIDType): TIDDeclaration;
 begin
   var LDstProcType := Dst as TIDProcType;
 
@@ -660,6 +667,32 @@ begin
   end;
 
   Result := nil;
+end;
+
+{ TSysExplicitTProcFromAny }
+
+function TSysExplicitTProcFromAny.Check(const SContext: TSContext; const ASrc, ADst: TIDType): Boolean;
+begin
+  var IsRecordWithTheSameSize := (ASrc.DataTypeID in [dtRecord, dtStaticArray]) and
+                                 (ASrc.DataSize = Package.PointerSize);
+  case TIDProcType(ADst).ProcClass of
+
+    procStatic: Result := ASrc.IsOrdinal or
+                          ASrc.IsReferenced or
+                          IsRecordWithTheSameSize;
+
+    procMethod: Result := (
+                            (ASrc.DataTypeID = dtProcType) and
+                            (TIDProcType(ASrc).ProcClass = procMethod)
+                          );
+
+    procReference: Result := ASrc.IsOrdinal or
+                             ASrc.IsReferenced and
+                             not (ASrc.DataTypeID = dtClass) or
+                             IsRecordWithTheSameSize;
+  else
+    Result := False;
+  end;
 end;
 
 { TSysExplicitEnumToAny }
@@ -694,7 +727,7 @@ end;
 
 function TSysImplicitPointerToAny.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
-  if Dst.DataTypeID in [dtPointer, dtPAnsiChar, dtPWideChar, dtClassOf] then
+  if Dst.DataTypeID in [dtPointer, dtPAnsiChar, dtPWideChar, dtClassOf, dtClass] then
     Result := Dst
   else
     Result := nil;
@@ -741,14 +774,14 @@ begin
     Result := nil;
 end;
 
-{ TSysExplictPointerFromAny }
+{ TSysExplicitRefTypeFromAny }
 
-function TSysExplictPointerFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
+function TSysExplicitRefTypeFromAny.Check(const SContext: TSContext; const ASrc, ADst: TIDType): Boolean;
 begin
-  Result := Src.IsOrdinal or (Src.DataTypeID in [dtPointer, dtClass, dtInterface, dtWideString, dtString, dtAnsiString, dtDynArray]);
-
-  if (Src.DataTypeID = dtRecord) and (Src.DataSize = 4) then   // todo: platform
-    Result := True;
+  Result := ASrc.IsOrdinal or
+            (ASrc.DataTypeID in [dtPointer, dtClass, dtClassOf, dtInterface,
+                                 dtWideString, dtString, dtAnsiString, dtDynArray]) or
+            ((ASrc.DataTypeID in [dtRecord, dtStaticArray]) and (ASrc.DataSize = Package.PointerSize));
 end;
 
 { TSysExplicitAnsiStringFromAny }
@@ -781,11 +814,11 @@ begin
             );
 end;
 
-{ TSysExplictPointerToAny }
+{ TSysExplicitRefTypeToAny }
 
-function TSysExplictPointerToAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
+function TSysExplicitRefTypeToAny.Check(const SContext: TSContext; const ASrc, ADst: TIDType): Boolean;
 begin
-  Result := Dst.IsOrdinal or (Dst.DataTypeID in [dtPointer,
+  Result := ADst.IsOrdinal or (ADst.DataTypeID in [dtPointer,
                                                  dtPAnsiChar,
                                                  dtPWideChar,
                                                  dtProcType,
@@ -796,6 +829,8 @@ begin
                                                  dtAnsiString,
                                                  dtString,
                                                  dtWideString]);
+  if not Result then
+    Result := False;
 end;
 
 { TSysOrdinalInSet }
@@ -907,7 +942,7 @@ end;
 
 function TSysImplicitClassToClass.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
-  Result := TIDClass(Src).IsInheritsForm(TIDClass(Dst));
+  Result := (Src.DataTypeID = dtClass) and TIDClass(Src).IsInheritsForm(TIDClass(Dst));
 end;
 
 { TSysExplicitRangeFromAny }
@@ -988,20 +1023,20 @@ end;
 
 { TSysImplicitPointerFromAny }
 
-function TSysImplicitPointerFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
+function TSysImplicitPointerFromAny.Check(const SContext: TSContext; const ASrc, ADst: TIDType): Boolean;
 begin
   Result := (
     (
-      (Dst.DataTypeID in [dtPAnsiChar]) and
-      (Src.DataTypeID = dtStaticArray) and
-      (TIDStaticArray(Src).ElementDataType = SYSUnit._AnsiChar)
+      (ADst.DataTypeID in [dtPAnsiChar]) and
+      (ASrc.DataTypeID = dtStaticArray) and
+      (TIDStaticArray(ASrc).ElementDataType = SYSUnit._AnsiChar)
     ) or
     (
-      (Dst.DataTypeID in [dtPWideChar]) and
-      (Src.DataTypeID = dtStaticArray) and
-      (TIDStaticArray(Src).ElementDataType = SYSUnit._WideChar)
+      (ADst.DataTypeID in [dtPWideChar]) and
+      (ASrc.DataTypeID = dtStaticArray) and
+      (TIDStaticArray(ASrc).ElementDataType = SYSUnit._WideChar)
     ) or
-      (Src.DataTypeID = dtDynArray)
+      (ASrc.DataTypeID in [dtDynArray, dtClass, dtClassOf, dtInterface])
   );
 end;
 
@@ -1124,7 +1159,7 @@ end;
 
 function TSysExplicitClassToAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
-  Result := (Dst.DataTypeID in [dtInt32, dtUInt32, dtInt64, dtUInt64, dtPointer, dtClass]);
+  Result := (Dst.DataTypeID in [dtInt32, dtUInt32, dtInt64, dtUInt64, dtNativeInt, dtNativeUInt, dtPointer, dtClass]);
 end;
 
 { TSysExplicitClassFromAny }

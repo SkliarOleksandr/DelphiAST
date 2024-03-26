@@ -162,6 +162,7 @@
         <DCCReference Include="..\Source\AST.Pascal.Intf.pas"/>
         <DCCReference Include="..\Source\AST.Delphi.Operators.Signatures.pas"/>
         <DCCReference Include="..\Source\AST.Parser.Log.pas"/>
+        <DCCReference Include="..\Source\AST.Delphi.SysTypes.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

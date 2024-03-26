@@ -114,6 +114,13 @@ object frmTestAppMain: TfrmTestAppMain
         Height = 13
         Caption = 'Delphi Source Path'
       end
+      object Label2: TLabel
+        Left = 714
+        Top = 15
+        Width = 40
+        Height = 13
+        Caption = 'Platform'
+      end
       object edSrcRoot: TEdit
         Left = 8
         Top = 37
@@ -191,6 +198,19 @@ object frmTestAppMain: TfrmTestAppMain
         Checked = True
         State = cbChecked
         TabOrder = 7
+      end
+      object cbPlatform: TComboBox
+        Left = 760
+        Top = 10
+        Width = 81
+        Height = 22
+        Style = csOwnerDrawFixed
+        ItemIndex = 0
+        TabOrder = 8
+        Text = 'Win32'
+        Items.Strings = (
+          'Win32'
+          'Win64')
       end
     end
   end

@@ -16,6 +16,9 @@ uses System.SysUtils, System.Classes, System.StrUtils, System.Math, System.Gener
      AST.Pascal.Intf,
      AST.Classes,
      AST.Intf;
+     // system
+     // SysInit
+     // GETMEM.INC
 type
 
   TExpessionPosition = (ExprNested, ExprLValue, ExprRValue, ExprNestedGeneric, ExprType);
@@ -311,7 +314,6 @@ type
     fTypeKind: TTypeKind;
     // lists of implicit operators
     fImplicitsTo: TIDPairList;      // self -> dest
-    fImplicitsIDTo: TIDPairList;    // self -> dest
     fImplicitsFrom: TIDPairList;    // src -> self
     fSysImplicitToAny: TIDOperator;    // self -> any
     fSysImplicitFromAny: TIDOperator;  // any -> self
@@ -352,6 +354,7 @@ type
     procedure SetGenericDescriptor(const Value: PGenericDescriptor); virtual;
   public
     constructor CreateAsAnonymous(Scope: TScope); override;
+    constructor CreateAsBuiltin(AScope: TScope; const AName: string; ADataTypeID: TDataTypeID);
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
     constructor Create(Scope: TScope; const ID: TIdentifier); override;
     destructor Destroy; override;
@@ -380,7 +383,7 @@ type
     function GetExplicitOperatorFrom(const Source: TIDType): TIDDeclaration;
 
     function UnarOperator(Op: TOperatorID; Right: TIDType): TIDType; overload; inline;
-    function BinarOperator(Op: TOperatorID; Right: TIDType): TIDType; inline;
+    function BinarOperator(Op: TOperatorID; Right: TIDType): TIDType; virtual;
     function BinarOperatorFor(const Op: TOperatorID; const Left: TIDType): TIDType;
     property ActualDataType: TIDType read GetActualDataType;
     property TypeKind: TTypeKind read FTypeKind write FTypeKind;
@@ -393,8 +396,9 @@ type
 
     {переопределенным оператором может быть как функция так и тип, для простейших операций}
     procedure OverloadImplicitTo(const Destination: TIDDeclaration); overload;
-    procedure OverloadImplicitTo(const DestinationID: TDataTypeID; const IntOp: TIDOperator); overload;
     procedure OverloadImplicitTo(const Destination, Proc: TIDDeclaration); overload;
+    procedure OverloadSysImplicitsTo(const ADestTypes: array of TDataTypeID); overload;
+
     procedure OverloadImplicitFrom(const Source: TIDDeclaration); overload;
     procedure OverloadImplicitFrom(const Source, Proc: TIDDeclaration); overload;
 
@@ -414,6 +418,8 @@ type
     procedure OverloadBinarOperator2(Op: TOperatorID; Right: TIDType; Result: TIDDeclaration); overload;
     procedure OverloadBinarOperatorFor(Op: TOperatorID; const Left: TIDType; const Result: TIDDeclaration);
     procedure OverloadBinarOperator(Op: TOperatorID; Declaration: TIDOperator); overload; inline;
+    procedure OverloadCmpOperator(AOpID: TOperatorID; ARight: TIDType);
+    procedure OverloadAllCmpOperators;
 
     procedure AddBinarySysOperator(Op: TOperatorID; Decl: TIDOperator);
 
@@ -429,6 +435,7 @@ type
     property SysExplicitFromAny: TIDOperator read fSysExplicitFromAny;
     property SysImplicitToAny: TIDOperator read FSysImplicitToAny;
     property SysImplicitFromAny: TIDOperator read fSysImplicitFromAny;
+
     property SysBinayOperator: TSysBinaryOperators read fSysBinaryOperators;
     property Helper: TDlphHelper read fHelper write fHelper;
     function MakeCopy(AScope: TScope): TIDDeclaration; override;
@@ -763,6 +770,7 @@ type
   public
     constructor Create(Scope: TScope; const Name: TIdentifier); override;
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
+    procedure CreateStandardOperators; override;
     destructor Destroy; override;
     //========================================================
     function FindInterface(const Intf: TIDInterface): Boolean; overload;
@@ -775,11 +783,9 @@ type
     property Interfaces[Index: Integer]: TIDInterface read GetInterface;
     procedure IncRefCount(RCPath: UInt32); override;
     procedure DecRefCount(RCPath: UInt32); override;
-    procedure CreateStandardOperators; override;
     procedure AncestorsDecl2Str(ABuilder: TStringBuilder); override;
     procedure InstantiateGenericAncestors(ADstScope: TScope; ADstStruct: TIDStructure;
                                           const AContext: TGenericInstantiateContext); override;
-
   end;
 
   {helper type}
@@ -3136,6 +3142,13 @@ begin
   FDataType := SYSUnit._MetaType;
 end;
 
+constructor TIDType.CreateAsBuiltin(AScope: TScope; const AName: string; ADataTypeID: TDataTypeID);
+begin
+  Create(AScope, TIdentifier.Make(AName));
+  DataTypeID := ADataTypeID;
+  AScope.AddType(Self);
+end;
+
 constructor TIDType.CreateAsSystem(Scope: TScope; const Name: string);
 begin
   inherited CreateAsSystem(Scope, Name);
@@ -3174,7 +3187,6 @@ var
   i: TOperatorID;
 begin
   FImplicitsTo.Free;
-  FImplicitsIDTo.Free;
   FImplicitsFrom.Free;
 
   FExplicitsTo.Free;
@@ -3203,6 +3215,11 @@ begin
   end;
 
   Result := SysExplicitFromAny;
+
+//  // run system implicit proc
+//  if not Assigned(Result) then
+//    if MatchExplicitFrom(Source) then
+//      Result := Self;
 end;
 
 function TIDType.GetExplicitOperatorTo(const Destination: TIDType): TIDDeclaration;
@@ -3214,6 +3231,11 @@ begin
     Exit(TIDDeclaration(Node.Data));
 
   Result := SysExplicitToAny;
+
+//  // run system implicit proc
+//  if not Assigned(Result) then
+//    if MatchExplicitTo(Destination) then
+//      Result := Destination;
 end;
 
 function TIDType.FindImplicitOperatorFrom(const Source: TIDType): TIDDeclaration;
@@ -3312,14 +3334,12 @@ begin
   if Assigned(Node) then
     Exit(TIDDeclaration(Node.Data));
 
-  if Assigned(FImplicitsIDTo) then
-  begin
-    Node := FImplicitsIDTo.Find(TIDDeclaration(Destination.DataTypeID));
-    if Assigned(Node) then
-      Exit(TIDDeclaration(Node.Data));
-  end;
-
   Result := SysImplicitToAny;
+
+//  // run system implicit proc
+//  if not Assigned(Result) then
+//    if MatchImplicitTo(Destination) then
+//      Result := Destination;
 end;
 
 function TIDType.GetImplicitOperatorFrom(const Source: TIDType): TIDDeclaration;
@@ -3331,6 +3351,11 @@ begin
     Exit(TIDDeclaration(Node.Data));
 
   Result := SysImplicitFromAny;
+
+//  // run system implicit proc
+//  if not Assigned(Result) then
+//    if MatchImplicitFrom(Source) then
+//      Result := Self;
 end;
 
 function TIDType.GetActualDataType: TIDType;
@@ -3451,6 +3476,26 @@ begin
   Result := LNewCopy;
 end;
 
+//function TIDType.MatchExplicitFrom(ASrc: TIDType): Boolean;
+//begin
+//  Result := False;
+//end;
+//
+//function TIDType.MatchExplicitTo(ADst: TIDType): Boolean;
+//begin
+//  Result := False;
+//end;
+//
+//function TIDType.MatchImplicitFrom(ASrc: TIDType): Boolean;
+//begin
+//  Result := False;
+//end;
+//
+//function TIDType.MatchImplicitTo(ADst: TIDType): Boolean;
+//begin
+//  Result := False;
+//end;
+
 procedure ERROR_OPERATOR_ALREADY_OVERLOADED(Op: TOperatorID; Type1, Type2: TIDDeclaration; const Position: TTextPosition); overload;
 begin
   AbortWorkInternal(sOperatorForTypesAlreadyOverloadedFmt,
@@ -3512,6 +3557,22 @@ begin
   LNewOperator.Right := Self;
   LNewOperator.OpDecl := Result;
   FBinarOperators[Op] := LOperators + [LNewOperator];
+end;
+
+procedure TIDType.OverloadCmpOperator(AOpID: TOperatorID; ARight: TIDType);
+begin
+  OverloadBinarOperator2(AOpID, ARight, SYSUnit._Boolean);
+end;
+
+procedure TIDType.OverloadAllCmpOperators;
+begin
+  OverloadCmpOperator(opEqual, {ARight:} Self);
+  OverloadCmpOperator(opEqual, {ARight:} Self);
+  OverloadCmpOperator(opNotEqual, {ARight:} Self);
+  OverloadCmpOperator(opLess, {ARight:} Self);
+  OverloadCmpOperator(opLessOrEqual, {ARight:} Self);
+  OverloadCmpOperator(opGreater, {ARight:} Self);
+  OverloadCmpOperator(opGreaterOrEqual, {ARight:} Self);
 end;
 
 procedure TIDType.OverloadBinarOperator(Op: TOperatorID; Declaration: TIDOperator);
@@ -3582,6 +3643,16 @@ begin
     ERROR_OPERATOR_ALREADY_OVERLOADED(opImplicit, Destination, Proc, Proc.TextPosition);
 end;
 
+procedure TIDType.OverloadSysImplicitsTo(const ADestTypes: array of TDataTypeID);
+begin
+  for var LDataTypeID in ADestTypes do
+  begin
+    var LDestType := SYSUnit.DataTypes[LDataTypeID];
+    if Assigned(FImplicitsTo.InsertNode(LDestType, LDestType)) then
+      ERROR_OPERATOR_ALREADY_OVERLOADED(opImplicit, Self, LDestType, TextPosition);
+  end;
+end;
+
 procedure TIDType.OverloadImplicitFrom(const Source: TIDDeclaration);
 begin
   Assert(Assigned(Source));
@@ -3594,18 +3665,6 @@ begin
   Assert(Assigned(Source));
   if Assigned(FImplicitsFrom.InsertNode(Source, Proc)) then
     ERROR_OPERATOR_ALREADY_OVERLOADED(opImplicit, Source, Proc, Proc.TextPosition);
-end;
-
-procedure TIDType.OverloadImplicitTo(const DestinationID: TDataTypeID; const IntOp: TIDOperator);
-var
-  Node: TIDPairList.PAVLNode;
-begin
-  if not Assigned(FImplicitsIDTo) then
-    FImplicitsIDTo := TIDPairList.Create;
-
-  Node := FImplicitsIDTo.InsertNode(TIDDeclaration(DestinationID), IntOp);
-  if Assigned(Node) then
-    AbortWorkInternal(sOperatorForTypesAlreadyOverloadedFmt, [OperatorFullName(opImplicit), DisplayName, GetDataTypeName(DestinationID)]);
 end;
 
 procedure TIDType.OverloadImplicitToAny(const Op: TIDOperator);
@@ -5222,11 +5281,8 @@ begin
   OverloadBinarOperator2(opLess, Self, SYSUnit._Boolean);
   OverloadBinarOperator2(opLessOrEqual, Self, SYSUnit._Boolean);
 
-
-  OverloadExplicitTo(SYSUnit._NativeInt);
-  OverloadExplicitTo(SYSUnit._NativeUInt);
-  OverloadExplicitFrom(SYSUnit._NativeUInt);
-  OverloadExplicitFrom(SYSUnit._NativeInt);
+  OverloadExplicitToAny(SYSUnit.Operators.ExplicitRefTypeToAny);
+  OverloadExplicitFromAny(SYSUnit.Operators.ExplicitRefTypeFromAny);
 end;
 
 procedure TIDRefType.DecRefCount(RCPath: UInt32);
@@ -5238,6 +5294,30 @@ begin
   if Assigned(FReferenceType) then
     FReferenceType.DecRefCount(RCPath);
 end;
+
+//
+//function TIDRefType.MatchExplicitFrom(ASrc: TIDType): Boolean;
+//begin
+//  Result := ASrc.IsOrdinal or
+//            (ASrc.DataTypeID in [dtPointer, dtClass, dtClassOf, dtInterface,
+//                                 dtWideString, dtString, dtAnsiString, dtDynArray]) or
+//            ((ASrc.DataTypeID in [dtRecord, dtStaticArray]) and (ASrc.DataSize = Package.PointerSize));
+//end;
+//
+//function TIDRefType.MatchExplicitTo(ADst: TIDType): Boolean;
+//begin
+//  Result := ADst.IsOrdinal or (ADst.DataTypeID in [dtPointer,
+//                                                   dtPAnsiChar,
+//                                                   dtPWideChar,
+//                                                   dtProcType,
+//                                                   dtRecord,
+//                                                   dtClass,
+//                                                   dtInterface,
+//                                                   dtDynArray,
+//                                                   dtAnsiString,
+//                                                   dtString,
+//                                                   dtWideString]);
+//end;
 
 { TIDPointerType }
 
@@ -5297,10 +5377,7 @@ begin
   OverloadBinarOperator2(opSubtract, SYSUnit._NativeUInt, Self);
 
   OverloadImplicitToAny(SYSUnit.Operators.ImplicitPointerToAny);
-  OverloadExplicitToAny(SYSUnit.Operators.ExplicitPointerToAny);
-
   OverloadImplicitFromAny(SYSUnit.Operators.ImplicitPointerFromAny);
-  OverloadExplicitFromAny(SYSUnit.Operators.ExplicitPointerFromAny);
 end;
 
 procedure TIDPointer.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
@@ -5354,6 +5431,28 @@ begin
   end else
     Result := Self;
 end;
+
+//function TIDPointer.MatchImplicitFrom(ASrc: TIDType): Boolean;
+//begin
+//  Result := (
+//    (
+//      (Self.DataTypeID in [dtPAnsiChar]) and
+//      (ASrc.DataTypeID = dtStaticArray) and
+//      (TIDStaticArray(ASrc).ElementDataType = SYSUnit._AnsiChar)
+//    ) or
+//    (
+//      (Self.DataTypeID in [dtPWideChar]) and
+//      (ASrc.DataTypeID = dtStaticArray) and
+//      (TIDStaticArray(ASrc).ElementDataType = SYSUnit._WideChar)
+//    ) or
+//      (ASrc.DataTypeID in [dtDynArray, dtClass, dtClassOf, dtInterface])
+//  );
+//end;
+//
+//function TIDPointer.MatchImplicitTo(ADst: TIDType): Boolean;
+//begin
+//  Result :=  ADst.DataTypeID in [dtPointer, dtPAnsiChar, dtPWideChar, dtClassOf];
+//end;
 
 { TIDRecordType }
 
@@ -6331,8 +6430,8 @@ end;
 procedure TIDProcType.CreateStandardOperators;
 begin
   inherited;
-  fSysExplicitFromAny := SYSUnit.Operators.ExplicitTProcFromAny;
-  FSysImplicitFromAny := SYSUnit.Operators.ExplicitTProcFromAny;
+  FSysExplicitFromAny := SYSUnit.Operators.ExplicitTProcFromAny;
+  FSysImplicitFromAny := SYSUnit.Operators.ImplicitTProcFromAny;
 end;
 
 procedure TIDProcType.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
@@ -6630,19 +6729,15 @@ end;
 
 procedure TIDClass.CreateStandardOperators;
 begin
-  OverloadImplicitTo(Self);
-  if Assigned(SYSUnit) then begin
+  if Assigned(SYSUnit) then
+  begin
     OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
     OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
     OverloadBinarOperator2(opEqual, SYSUnit._NilPointer, SYSUnit._Boolean);
     OverloadBinarOperator2(opNotEqual, SYSUnit._NilPointer, SYSUnit._Boolean);
-    OverloadExplicitTo(SYSUnit._NativeInt);
-    OverloadExplicitTo(SYSUnit._NativeUInt);
-    OverloadExplicitFrom(SYSUnit._NativeUInt);
-    OverloadExplicitFrom(SYSUnit._NativeInt);
-    OverloadImplicitTo(dtClass, SYSUnit.Operators.ImplicitClassToClass);
-    OverloadExplicitToAny(SYSUnit.Operators.ExplicitClassToAny);
-    OverloadExplicitFromAny(SYSUnit.Operators.ExplicitClassFromAny);
+    OverloadImplicitToAny(SYSUnit.Operators.ImplicitClassToClass);
+    OverloadExplicitToAny(SYSUnit.Operators.ExplicitRefTypeToAny);
+    OverloadExplicitFromAny(SYSUnit.Operators.ExplicitRefTypeFromAny);
   end;
 end;
 
@@ -7139,8 +7234,6 @@ begin
   if not Assigned(SYSUnit) then
     Exit;
   inherited CreateStandardOperators;
-  OverloadExplicitToAny(SYSUnit.Operators.ExplicitClassOfToAny);
-  OverloadExplicitFromAny(SYSUnit.Operators.ExplicitClassOfFromAny);
 end;
 
 procedure TIDClassOf.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
@@ -7379,7 +7472,7 @@ begin
   FDeclProc := DeclProc;
   FCapturedVars := TCapturedVars.Create(IDVarCompare);
 //  Members.ProcSpace.Add(RunProc);
-  OverloadImplicitTo(dtProcType, SYSUnit.Operators.ImplicitClosureToTMethod);
+  OverloadImplicitTo(Self, SYSUnit.Operators.ImplicitClosureToTMethod);
 end;
 
 destructor TIDClosure.Destroy;

@@ -650,8 +650,10 @@ begin
     CheckExpression(Expr);
 
     if Expr.ItemType = itType then
-      Bound := TIDOrdinal(Expr.Declaration)
-    else
+    begin
+      CheckOrdinalType(Expr.AsType);
+      Bound := Expr.AsType.ActualDataType as TIDOrdinal;
+    end else
       Bound := Expr.AsRangeConst.DataType as TIDRangeType;
 
     Decl.AddBound(Bound);
@@ -2300,7 +2302,11 @@ begin
     begin
       MatchImplicit3(EContext.SContext, Source, LCurrentProc.ResultType);
     end else
+    begin
+      // for debug
+      MatchImplicit3(EContext.SContext, Source, Dest.DataType, {AAbortIfError:} False);
       ERRORS.INCOMPATIBLE_TYPES(Source, Dest);
+    end;
   end else
     CheckVarExpression(Dest, vmpAssignment);
 end;
@@ -3265,8 +3271,12 @@ begin
     if Assigned(Result) then
       Exit;
   end;
+
   if AAbortIfError then
+  begin
+    MatchImplicitOrNil(SContext, Source, Dest);
     ERRORS.INCOMPATIBLE_TYPES(Source, Dest);
+  end;
 end;
 
 class function TASTDelphiUnit.MatchImplicitClassOf(Source: TIDExpression; Destination: TIDClassOf): TIDDeclaration;
@@ -3536,7 +3546,8 @@ begin
       Result := TSysTypeCast(Decl).Match(SContext, Source, Dest);
       if Assigned(Result) then
         Exit;
-    end;
+    end else
+      Exit(Source);
   end;
 
   if Source.ClassType = TIDDrefExpression then
@@ -3615,6 +3626,8 @@ begin
           end;
           continue;
         end;
+
+        Implicit := CheckImplicit(SContext, Arg, Param.DataType, {AResolveCalls:} True);
 
         ERRORS.INCOMPATIBLE_TYPES(Arg, Param.DataType);
       end else
@@ -5608,7 +5621,11 @@ begin
         ERRORS.INVALID_EXPLICIT_TYPECAST(SrcExpr, TargetType);
     end;
   end else
+  begin
+    // for debug  
+    MatchExplicit(SContext, SrcExpr, TargetType, OperatorDecl);
     ERRORS.INVALID_EXPLICIT_TYPECAST(SrcExpr, TargetType);
+  end;
 end;
 
 function TASTDelphiUnit.ParseExpression(Scope: TScope; const SContext: TSContext; var EContext: TEContext;

@@ -59,6 +59,8 @@ type
     LogMemo: TSynEdit;
     chkWriteLog: TCheckBox;
     Splitter3: TSplitter;
+    cbPlatform: TComboBox;
+    Label2: TLabel;
     procedure Button2Click(Sender: TObject);
     procedure Button1Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
@@ -76,6 +78,7 @@ type
     procedure ShowAllItems(const Project: IASTDelphiProject);
     procedure ShowResult(const Project: IASTDelphiProject);
     procedure CompilerMessagesToStrings(const Project: IASTDelphiProject);
+    procedure SetDefines(const APrj: IASTDelphiProject);
   public
     { Public declarations }
     procedure IndexSources(const RootPath: string; Dict: TSourcesDict);
@@ -211,13 +214,8 @@ begin
   Prj.AddUnitSearchPath(ExtractFilePath(Application.ExeName));
   if chkCompileSsystemForASTParse.Checked then
     Prj.AddUnitSearchPath(edSrcRoot.Text);
-  Prj.Target := TWINX86_Target.TargetName;
-  Prj.Defines.Add('CPUX86');
-  Prj.Defines.Add('CPU386');
-  Prj.Defines.Add('WIN32');
-  Prj.Defines.Add('MSWINDOWS');
-  Prj.Defines.Add('ASSEMBLER');
-  Prj.Defines.Add('UNICODE');
+
+  SetDefines(Prj);
   Prj.OnProgress := OnProgress;
   Prj.StopCompileIfError := chkStopIfError.Checked;
   Prj.OnConsoleWrite := procedure (const Module: IASTModule; Line: Integer; const Msg: string)
@@ -237,6 +235,32 @@ procedure TfrmTestAppMain.OnProgress(const Module: IASTModule; Status: TASTProce
 begin
   //if Status = TASTStatusParseSuccess then
     ErrMemo.Lines.Add(Module.Name + ' : ' + Status.Name);
+end;
+
+procedure TfrmTestAppMain.SetDefines(const APrj: IASTDelphiProject);
+begin
+  APrj.Defines.Add('UNICODE');
+  case cbPlatform.ItemIndex of
+    // Win32
+    0: begin
+      APrj.Target := TWINX86_Target.TargetName;
+      APrj.Defines.Add('CPUX86');
+      APrj.Defines.Add('CPU386');
+      APrj.Defines.Add('CPU32BITS');
+      APrj.Defines.Add('WIN32');
+      APrj.Defines.Add('MSWINDOWS');
+      APrj.Defines.Add('ASSEMBLER');
+    end;
+    // Win64
+    1: begin
+      APrj.Target := TWINX64_Target.TargetName;
+      APrj.Defines.Add('CPUX64');
+      APrj.Defines.Add('CPU64BITS');
+      APrj.Defines.Add('WIN64');
+      APrj.Defines.Add('MSWINDOWS');
+      APrj.Defines.Add('ASSEMBLER');
+    end;
+  end;
 end;
 
 procedure TfrmTestAppMain.ShowAllItems(const Project: IASTDelphiProject);
@@ -327,12 +351,8 @@ begin
 
   Prj := TASTDelphiProject.Create('test');
   Prj.AddUnitSearchPath(edSrcRoot.Text);
-  Prj.Target := TWINX86_Target.TargetName;
-  Prj.Defines.Add('CPUX86');
-  Prj.Defines.Add('CPU386');
-  Prj.Defines.Add('WIN32');
-  Prj.Defines.Add('MSWINDOWS');
-  Prj.Defines.Add('ASSEMBLER');
+
+  SetDefines(Prj);
   Prj.OnProgress := OnProgress;
   Prj.StopCompileIfError := chkStopIfError.Checked;
   Prj.CompileAll := chkParseAll.Checked;
@@ -379,10 +399,7 @@ begin
   Prj := TASTDelphiProject.Create('test');
   Prj.AddUnitSearchPath(edSrcRoot.Text);
   Prj.Target := TWINX86_Target.TargetName;
-  Prj.Defines.Add('CPUX86');
-  Prj.Defines.Add('CPU386');
-  Prj.Defines.Add('MSWINDOWS');
-  Prj.Defines.Add('ASSEMBLER');
+  SetDefines(Prj);
   Prj.OnProgress := OnProgress;
 
   for var f in fFiles do
@@ -440,5 +457,131 @@ begin
       LogMemo.Lines.Add(DupeString(' ', ANestedLevel) + AMessage);
   end;
 end;
+
+procedure Test;
+type
+  TSProc = procedure(a: Integer);
+  TRProc = reference to procedure(a: Integer);
+  TMProc1 = procedure(a: Integer) of object;
+  TMProc2 = procedure(a, b: Integer) of object;
+var
+  Ptr: Pointer;
+  Inf: IInterface;
+  RPrc: TRProc;
+  SPrc: TSProc;
+  MPrc: TMProc1;
+  Obj: TObject;
+  WStr: WideString;
+  AStr: AnsiString;
+  UStr: string;
+  DArr: TStringDynArray;
+  SArr: array [0..3] of Byte;
+  Rec: record i: integer end;
+
+  Rec16: record c, d: pointer end;
+  SArr16: array [1..SizeOf(Pointer)*2] of Byte;
+begin
+  var CC0 := TClass(Ptr);
+  var CC1 := TClass(WStr);
+  var CC2 := TClass(AStr);
+  var CC3 := TClass(UStr);
+  var CC4 := TClass(DArr);
+  var CC5 := TClass(SArr);
+  var CC6 := TClass(Inf);
+  var CC7 := TClass(Rec);
+  var CC8 := TClass(Obj);
+  //var CC9 := TClass(RPrc); !!!
+  //var CC9 := TClass(SPrc); !!!
+
+  var TC0 := TObject(Ptr);
+  var TC1 := TObject(WStr);
+  var TC2 := TObject(AStr);
+  var TC3 := TObject(UStr);
+  var TC4 := TObject(DArr);
+  var TC5 := TObject(SArr);
+  var TC6 := TObject(Inf);
+  var TC7 := TObject(Rec);
+  //var TC8 := TObject(RPrc); !!!
+  //var TC8 := TObject(SPrc); !!!
+
+  var XC0 := IInterface(Ptr);
+  var XC1 := IInterface(WStr);
+  var XC2 := IInterface(AStr);
+  var XC3 := IInterface(UStr);
+  var XC4 := IInterface(DArr);
+  var XC5 := IInterface(SArr);
+  var XC7 := IInterface(Rec);
+  //var XC8 := IInterface(Obj); !!!
+  //var XC9 := IInterface(RPrc); !!!
+  //var XC9 := IInterface(SPrc); !!!
+
+  var DA0 := TStringDynArray(Ptr);
+  var DA1 := TStringDynArray(WStr);
+  var DA2 := TStringDynArray(AStr);
+  var DA3 := TStringDynArray(UStr);
+  var DA4 := TStringDynArray(DArr);
+  var DA5 := TStringDynArray(SArr);
+  var DA6 := TStringDynArray(Inf);
+  var DA7 := TStringDynArray(Rec);
+  var DA8 := TStringDynArray(Obj);
+  //var DA9 := TStringDynArray(RPrc); !!!
+  //var DA9 := TStringDynArray(SPrc); !!!
+
+  var SS0 := string(Ptr);
+  var SS1 := string(WStr);
+  var SS2 := string(AStr);
+  var SS3 := string(UStr);
+  var SS4 := string(DArr);
+  var SS5 := string(SArr);
+  var SS6 := string(Inf);
+  var SS7 := string(Rec);
+  var SS8 := string(Obj);
+  //var SS9 := string(DPrc); !!!
+  //var SS9 := string(SPrc); !!!
+
+  var RP0 := TProc(Ptr);
+  var RP1 := TProc(WStr);
+  var RP2 := TProc(AStr);
+  var RP3 := TProc(UStr);
+  var RP4 := TProc(DArr);
+  var RP5 := TProc(SArr);
+  var RP6 := TProc(Inf);
+  var RP7 := TProc(Rec);
+  var RP8 := TProc(RPrc);
+  var RP9 := TProc(SPrc);
+  //var RP10 := TProc(Obj); !!!
+
+  var SP0 := TSProc(Ptr);
+  var SP1 := TSProc(WStr);
+  var SP2 := TSProc(AStr);
+  var SP3 := TSProc(UStr);
+  var SP4 := TSProc(DArr);
+  var SP5 := TSProc(SArr);
+  var SP6 := TSProc(Inf);
+  var SP7 := TSProc(Rec);
+  var SP8 := TSProc(RPrc);
+  var SP9 := TSProc(Obj);
+
+
+  var PP0 := pointer(Ptr);
+  var PP1 := pointer(WStr);
+  var PP2 := pointer(AStr);
+  var PP3 := pointer(UStr);
+  var PP4 := pointer(DArr);
+  var PP5 := pointer(SArr);
+  var PP6 := pointer(Inf);
+  var PP7 := pointer(Rec);
+  var PP8 := pointer(Obj);
+  //var PP8 := pointer(RPrc); !!!
+  //var PP9 := pointer(SPrc); !!!
+
+
+  var MP0 := TMProc2(MPrc);
+  var MP1 := TMProc2(SArr16);
+  var MP2 := TMProc2(Rec16);
+end;
+
+initialization
+  Test;
 
 end.

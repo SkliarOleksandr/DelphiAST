@@ -2,7 +2,13 @@ unit AST.Classes;
 
 interface
 
-uses AST.Lexer, AST.Intf, AST.Parser.Utils, AST.Parser.ProcessStatuses, System.SysUtils;
+uses
+  System.SysUtils,
+  AVL,
+  AST.Lexer,
+  AST.Intf,
+  AST.Parser.Utils,
+  AST.Parser.ProcessStatuses;
 
 type
   TASTItemTypeID = Integer;
@@ -100,9 +106,9 @@ type
 
   TASTModule = class(TInterfacedObject, IASTModule)
   private
-    fProject: IASTProject;
     fFileName: string;
   protected
+    fProject: IASTProject;
     fTotalLinesParsed: Integer;
     function GetModuleName: string; virtual;
     function GetSource: string; virtual; abstract;
@@ -137,6 +143,13 @@ type
     procedure Decl2Str(ABuilder: TStringBuilder;
                        ANestedLevel: Integer = 0;
                        AAppendName: Boolean = True); overload; virtual;
+  end;
+
+  TASTIDList = class(TAVLTree<string, TASTDeclaration>)
+  public
+    function InsertID(ADecl: TASTDeclaration): Boolean; inline; // true - ok, false - already exist
+    function InsertIDAndReturnIfExist(ADecl: TASTDeclaration): TASTDeclaration; inline;
+    function FindID(const AName: string): TASTDeclaration; virtual; //inline;
   end;
 
   TASTDeclarations = array of TASTDeclaration;
@@ -1246,6 +1259,35 @@ end;
 procedure TASTProject.SetOnProgress(const Value: TASTProgressEvent);
 begin
   fOnProgress := Value;
+end;
+
+{ TASTIDList }
+
+function TASTIDList.FindID(const AName: string): TASTDeclaration;
+var
+  LNode: PAVLNode;
+begin
+  LNode := Find(AName);
+  if Assigned(LNode) then
+    Result := LNode.Data
+  else
+    Result := nil;
+end;
+
+function TASTIDList.InsertID(ADecl: TASTDeclaration): Boolean;
+begin
+  Result := InsertNode(ADecl.Name, ADecl) = nil;
+end;
+
+function TASTIDList.InsertIDAndReturnIfExist(ADecl: TASTDeclaration): TASTDeclaration;
+var
+  LNode: PAVLNode;
+begin
+  LNode := InsertNode(ADecl.Name, ADecl);
+  if Assigned(LNode) then
+    Result := LNode.Data
+  else
+    Result := nil;
 end;
 
 end.

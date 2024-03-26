@@ -96,7 +96,8 @@ type
     ImplicitNullPtrToAny,
     ImplicitTVarRecToAny,
     ImplicitTVarRecFromAny,
-    ImplicitSysVarFromAny
+    ImplicitSysVarFromAny,
+    ImplicitTProcFromAny
     : TIDOperator;
     // explicits
     ExplicitStringFromAny,
@@ -107,8 +108,8 @@ type
     ExplicitClassOfToAny,
     ExplicitClassOfFromAny,
     ExplicitInterfaceFromAny,
-    ExplicitPointerToAny,
-    ExplicitPointerFromAny,
+    ExplicitRefTypeToAny,
+    ExplicitRefTypeFromAny,
     ExplicitRecordFromAny,
     ExplicitEnumToAny,
     ExplicitEnumFromAny,
@@ -156,7 +157,6 @@ type
     fTimeType: TIDType;
     fTypeIDType: TIDType;
     fAsserProc: TIDProcedure;
-    fOpenString: TIDType;
     fOperators: TSystemOperatos;
     procedure AddImplicists;
     procedure AddExplicists;
@@ -177,7 +177,6 @@ type
     procedure SystemFixup;
     procedure InsertToScope(Declaration: TIDDeclaration); overload;
     function RegisterType(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
-    function RegisterTypeCustom(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
     function RegisterOrdinal(const TypeName: string; DataType: TDataTypeID; LowBound: Int64; HighBound: UInt64): TIDType;
     function RegisterTypeAlias(const TypeName: string; OriginalType: TIDType): TIDAliasType;
     function RegisterPointer(const TypeName: string; TargetType: TIDType): TIDPointer;
@@ -185,11 +184,11 @@ type
     function RegisterConstStr(Scope: TScope; const Name: string; const Value: string ): TIDStringConstant;
     function RegisterVariable(Scope: TScope; const Name: string; DataType: TIDType): TIDVariable;
     function RegisterBuiltin(const BuiltinClass: TIDBuiltInFunctionClass): TIDBuiltInFunction; overload;
-    function GetSystemDeclarations: PDelphiSystemDeclarations; override;
-  private
     function GetTypeByID(ID: TDataTypeID): TIDType;
     procedure SearchSystemTypes;
     procedure AddStandardExplicitsTo(const Sources: array of TDataTypeID; Dest: TIDType); overload;
+  protected
+    function GetSystemDeclarations: PDelphiSystemDeclarations; override;
   public
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     constructor Create(const Project: IASTProject; const FileName: string; const Source: string); override;
@@ -220,6 +219,7 @@ type
     property _UnicodeString: TIDType read fDecls._UnicodeString write fDecls._UnicodeString;
     property _ShortString: TIDType read fDecls._ShortString write fDecls._ShortString;
     property _WideString: TIDType read fDecls._WideString write fDecls._WideString;
+    property _OpenString: TIDString read fDecls._OpenString write fDecls._OpenString;
     property _Variant: TIDType read fDecls._Variant write fDecls._Variant;
     property _NilPointer: TIDType read fDecls._NullPtrType;
     property _TGuid: TIDStructure read fDecls._GuidType;
@@ -273,7 +273,8 @@ uses AST.Parser.Errors,
      AST.Delphi.SysFunctions,
      AST.Delphi.SysOperators,
      AST.Targets,
-     AST.Lexer;
+     AST.Lexer,
+     AST.Delphi.SysTypes;
 
 { TDlphDeclarationHelper }
 
@@ -414,6 +415,7 @@ begin
     OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   end;
 
+  // Comp
   with _Comp do begin
     OverloadImplicitTo(_Float32);
     OverloadImplicitTo(_Float64);
@@ -913,17 +915,6 @@ begin
   AddType(Result);
 end;
 
-function TSYSTEMUnit.RegisterTypeCustom(const TypeName: string; TypeClass: TIDTypeClass;
-  DataType: TDataTypeID): TIDType;
-begin
-  Result := TypeClass.CreateAsSystem(IntfScope, TypeName);
-  Result.Elementary := True;
-  Result.DataTypeID := DataType;
-  Result.ItemType := itType;
-  InsertToScope(Result);
-  AddType(Result);
-end;
-
 procedure TSYSTEMUnit.RegisterTypes;
 begin
   //===============================================================
@@ -939,10 +930,9 @@ begin
   _NativeUInt := RegisterOrdinal('NativeUInt', dtNativeUInt, 0, MaxUInt64);
   _Float32 := RegisterType('Single', TIDFloat, dtFloat32);
   _Float64 := RegisterType('Double', TIDFloat, dtFloat64);
-  _Float80 := RegisterType('Extended', TIDFloat, dtFloat80);
-  _Currency := RegisterType('Currency', TIDFloat, dtCurrency);
-
-  fDecls._Comp := RegisterType('Comp', TIDFloat, dtComp);
+  _Float80 := RegisterType('Extended', TBuiltin_Extended, dtFloat80);
+  _Currency := RegisterType('Currency', TBuiltin_Currency, dtCurrency);
+  _Comp := RegisterType('Comp', TBuiltin_Comp, dtComp);
   //===============================================================
   _Boolean := RegisterOrdinal('Boolean', dtBoolean, 0, 1);
   _Boolean.OverloadExplicitFromAny(Operators.IsOrdinal);
@@ -953,7 +943,7 @@ begin
   _ShortString := RegisterType('ShortString', TIDString, dtShortString);
   TIDString(_ShortString).ElementDataType := _AnsiChar;
   //===============================================================
-  _AnsiString := RegisterType('AnsiString', TIDString, dtAnsiString);
+  _AnsiString := RegisterType('AnsiString', TBuiltin_AnsiString, dtAnsiString);
   TIDString(_AnsiString).ElementDataType := _AnsiChar;
   //===============================================================
   _UnicodeString := RegisterType('String', TIDString, dtString);
@@ -964,8 +954,8 @@ begin
   _WideString := RegisterType('WideString', TIDString, dtWideString);
   TIDString(_WideString).ElementDataType := _WideChar;
   //===============================================================
-  fOpenString := RegisterTypeCustom('OpenString', TIDString, dtString);
-  TIDString(fOpenString).ElementDataType := _WideChar;
+  _OpenString := RegisterType('OpenString', TBuiltin_OpenString, dtAnsiString) as TIDString;
+  _OpenString.ElementDataType := _AnsiChar;
   //===============================================================
   // TObject ========================================================
   {FTObject := TIDClass.CreateAsSystem(UnitInterface, 'TObject');
@@ -1081,6 +1071,13 @@ begin
   // constant for deprecated
   fDecls._DeprecatedDefaultStr := TIDStringConstant.CreateAsSystem(IntfScope, 'The declaration is deprecated', _AnsiString);
 
+
+  // setup buit-in type operators
+  TBuiltin_FltType(_Currency).SetupOperators(SystemDeclarations);
+  TBuiltin_FltType(_Comp).SetupOperators(SystemDeclarations);
+  TBuiltin_StrType(_OpenString).SetupOperators(SystemDeclarations);
+
+
   AddImplicists;
   AddExplicists;
   AddArithmeticOperators;
@@ -1194,6 +1191,16 @@ begin
   RegisterBuiltin(TSF_ReturnAddress);
   RegisterBuiltin(TSF_VarCast);
   RegisterBuiltin(TSF_VarClear);
+
+
+  if Project.Target = TWINX64_Target.TargetName then
+  begin
+    RegisterBuiltin(TSF_MulDivInt64);
+    RegisterBuiltin(TSF_VarArgStart);
+    RegisterBuiltin(TSF_VarArgGetValue);
+    RegisterBuiltin(TSF_VarArgCopy);
+    RegisterBuiltin(TSF_VarArgEnd);
+  end;
 
   RegisterVariable(ImplScope, 'ReturnAddress', _Pointer);
   RegisterConstStr(ImplScope, 'libmmodulename', '');
@@ -1344,6 +1351,7 @@ begin
   ImplicitTVarRecToAny := TSysImplicitTVarRecToAny.CreateAsSystem(Scope);
   ImplicitTVarRecFromAny := TSysImplicitTVarRecFromAny.CreateAsSystem(Scope);
   ImplicitSysVarFromAny := TSysImplicitSysVarFromAny.CreateAsSystem(Scope);
+  ImplicitTProcFromAny := TSysImplicitTProcFromAny.CreateAsSystem(Scope);
   // explicit
   ExplicitStringFromAny := TSysExplicitStringFromAny.CreateAsSystem(Scope);
   ExplicitAnsiStringFromAny := TSysExplicitAnsiStringFromAny.CreateAsSystem(Scope);
@@ -1353,8 +1361,8 @@ begin
   ExplicitClassOfToAny := TSysExplicitClassOfToAny.CreateAsSystem(Scope);
   ExplicitClassOfFromAny := TSysExplicitClassOfFromAny.CreateAsSystem(Scope);
   ExplicitInterfaceFromAny := TSysExplicitInterfaceFromAny.CreateAsSystem(Scope);
-  ExplicitPointerToAny := TSysExplictPointerToAny.CreateAsSystem(Scope);
-  ExplicitPointerFromAny := TSysExplictPointerFromAny.CreateAsSystem(Scope);
+  ExplicitRefTypeToAny := TSysExplicitRefTypeToAny.CreateAsSystem(Scope);
+  ExplicitRefTypeFromAny := TSysExplicitRefTypeFromAny.CreateAsSystem(Scope);
   ExplicitRecordFromAny := TSysExplicitRecordFromAny.CreateAsSystem(Scope);
   ExplicitEnumToAny := TSysExplicitEnumToAny.CreateAsSystem(Scope);
   ExplicitEnumFromAny := TSysExplicitEnumFromAny.CreateAsSystem(Scope);

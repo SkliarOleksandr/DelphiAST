@@ -102,6 +102,7 @@ type
     fTypeSpace: TTypeSpace;
     fConsts: TConstSpace;              // список нетривиальных констант (массивы, структуры)
     function GetMessagesText: string;
+    function GetProject: IASTPascalProject;
   protected
     fCompiled: TCompilerResult;
     fUnitState: TUnitState;
@@ -148,6 +149,8 @@ type
 
     property Compiled: TCompilerResult read FCompiled;
     property UnitState: TUnitState read fUnitState;
+
+    property Project: IASTPascalProject read GetProject;
   end;
 
 implementation
@@ -292,6 +295,11 @@ begin
   Result := fUnitName.Name;
   if Result = '' then
     Result := ChangeFileExt(inherited GetModuleName(), '');
+end;
+
+function TPascalUnit.GetProject: IASTPascalProject;
+begin
+  Result := FProject as IASTPascalProject;
 end;
 
 function TPascalUnit.GetPublicClass(const Name: string): TIDClass;
