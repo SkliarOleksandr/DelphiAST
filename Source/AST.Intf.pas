@@ -2,7 +2,9 @@ unit AST.Intf;
 
 interface
 
-uses AST.Parser.ProcessStatuses;
+uses
+  AST.Lexer,
+  AST.Parser.ProcessStatuses;
 
 type
 
@@ -44,6 +46,29 @@ type
   IASTProjectSettings = interface
     ['{F0A54AD9-2588-4CC9-9B8E-0010BD9E06DC}']
   end;
+
+  IASTDeclaration = interface
+    ['{9405C64A-EF83-4EA4-AA27-1DCBCBA7DF11}']
+    function GetID: TIdentifier;
+    function GetName: string;
+    function GetSrcPos: TTextPosition;
+    function GetModule: IASTModule;
+    function GetDisplayName: string;
+    function Get_Obj: TObject;
+
+    procedure SetID(const AValue: TIdentifier);
+    procedure SetName(const AValue: string);
+    procedure SetSrcPos(const AValue: TTextPosition);
+
+    property ID: TIdentifier read GetID write SetID;
+    property Name: string read GetName write SetName;
+    property SrcPos: TTextPosition read GetSrcPos write SetSrcPos;
+    property Module: IASTModule read GetModule;
+    property DisplayName: string read GetDisplayName;
+    property _Obj: TObject read Get_Obj;
+  end;
+
+
 
 implementation
 

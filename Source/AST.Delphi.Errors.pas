@@ -6,6 +6,7 @@ uses SysUtils,
      AST.Lexer,
      AST.Lexer.Delphi,
      AST.Delphi.Operators,
+     AST.Delphi.Declarations,
      AST.Delphi.Classes;
 
 resourcestring

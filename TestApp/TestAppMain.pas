@@ -96,10 +96,13 @@ uses
   System.StrUtils,
   AST.Delphi.System,
   AST.Delphi.Parser,
+  AST.Delphi.Declarations,
   AST.Classes,
   AST.Writer,
   AST.Targets,
-  AST.Delphi.DataTypes, AST.Parser.Utils, AST.Parser.Log;
+  AST.Delphi.DataTypes,
+  AST.Parser.Utils,
+  AST.Parser.Log;
 
 {$R *.dfm}
 

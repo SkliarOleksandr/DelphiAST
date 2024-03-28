@@ -8,6 +8,7 @@ uses System.Classes,
      System.SysUtils,
      AST.Pascal.Parser,
      AST.Delphi.Classes,
+     AST.Delphi.Declarations,
      AST.Delphi.DataTypes,
      AST.Delphi.Operators,
      AST.Parser.Utils,
@@ -187,6 +188,46 @@ type
     function GetTypeByID(ID: TDataTypeID): TIDType;
     procedure SearchSystemTypes;
     procedure AddStandardExplicitsTo(const Sources: array of TDataTypeID; Dest: TIDType); overload;
+    function Get_AnsiChar: TIDType;
+    function Get_AnsiString: TIDType;
+    function Get_Boolean: TIDType;
+    function Get_Comp: TIDType;
+    function Get_Currency: TIDType;
+    function Get_EAssertClass: TIDClass;
+    function Get_EmptySetType: TIDSet;
+    function Get_Exception: TIDClass;
+    function Get_Float32: TIDType;
+    function Get_Float64: TIDType;
+    function Get_Float80: TIDType;
+    function Get_GuidType: TIDStructure;
+    function Get_Int16: TIDType;
+    function Get_Int32: TIDType;
+    function Get_Int64: TIDType;
+    function Get_Int8: TIDType;
+    function Get_MetaType: TIDType;
+    function Get_NativeInt: TIDType;
+    function Get_NativeUInt: TIDType;
+    function Get_NullPtrType: TIDType;
+    function Get_OpenString: TIDString;
+    function Get_OrdinalType: TIDType;
+    function Get_PAnsiChar: TIDType;
+    function Get_PointerType: TIDPointer;
+    function Get_PWideChar: TIDType;
+    function Get_ResStringRecord: TIDType;
+    function Get_ShortString: TIDType;
+    function Get_TObject: TIDClass;
+    function Get_TTypeKind: TIDEnum;
+    function Get_UInt16: TIDType;
+    function Get_UInt32: TIDType;
+    function Get_UInt64: TIDType;
+    function Get_UInt8: TIDType;
+    function Get_UnicodeString: TIDType;
+    function Get_Untyped: TIDType;
+    function Get_UntypedReference: TIDUntypedRef;
+    function Get_Variant: TIDType;
+    function Get_Void: TIDType;
+    function Get_WideChar: TIDType;
+    function Get_WideString: TIDType;
   protected
     function GetSystemDeclarations: PDelphiSystemDeclarations; override;
   public
@@ -197,32 +238,32 @@ type
     ////////////////////////////////////////////////////////////////////////////////////////////////////
     property DataTypes[ID: TDataTypeID]: TIDType read GetTypeByID;
     property SystemDeclarations: PDelphiSystemDeclarations read GetSystemDeclarations;
-    property _Int8: TIDType read fDecls._Int8 write fDecls._Int8;
-    property _Int16: TIDType read fDecls._Int16 write fDecls._Int16;
-    property _Int32: TIDType read fDecls._Int32 write fDecls._Int32;
-    property _Int64: TIDType read fDecls._Int64 write fDecls._Int64;
-    property _UInt8: TIDType read fDecls._UInt8 write fDecls._UInt8;
-    property _UInt16: TIDType read fDecls._UInt16 write fDecls._UInt16;
-    property _UInt32: TIDType read fDecls._UInt32 write fDecls._UInt32;
-    property _UInt64: TIDType read fDecls._UInt64 write fDecls._UInt64;
-    property _NativeInt: TIDType read fDecls._NativeInt write fDecls._NativeInt;
-    property _NativeUInt: TIDType read fDecls._NativeUInt write fDecls._NativeUInt;
-    property _Float32: TIDType read fDecls._Float32 write fDecls._Float32;
-    property _Float64: TIDType read fDecls._Float64 write fDecls._Float64;
-    property _Float80: TIDType read fDecls._Float80 write fDecls._Float80;
-    property _Currency: TIDType read fDecls._Currency write fDecls._Currency;
-    property _Comp: TIDType read fDecls._Comp write fDecls._Comp;
-    property _Boolean: TIDType read fDecls._Boolean write fDecls._Boolean;
-    property _AnsiChar: TIDType read fDecls._AnsiChar write fDecls._AnsiChar;
-    property _WideChar: TIDType read fDecls._WideChar write fDecls._WideChar;
-    property _AnsiString: TIDType read fDecls._AnsiString write fDecls._AnsiString;
-    property _UnicodeString: TIDType read fDecls._UnicodeString write fDecls._UnicodeString;
-    property _ShortString: TIDType read fDecls._ShortString write fDecls._ShortString;
-    property _WideString: TIDType read fDecls._WideString write fDecls._WideString;
-    property _OpenString: TIDString read fDecls._OpenString write fDecls._OpenString;
-    property _Variant: TIDType read fDecls._Variant write fDecls._Variant;
-    property _NilPointer: TIDType read fDecls._NullPtrType;
-    property _TGuid: TIDStructure read fDecls._GuidType;
+    property _Int8: TIDType read Get_Int8;
+    property _Int16: TIDType read Get_Int16;
+    property _Int32: TIDType read Get_Int32;
+    property _Int64: TIDType read Get_Int64;
+    property _UInt8: TIDType read Get_UInt8;
+    property _UInt16: TIDType read Get_UInt16;
+    property _UInt32: TIDType read Get_UInt32;
+    property _UInt64: TIDType read Get_UInt64;
+    property _NativeInt: TIDType read Get_NativeInt;
+    property _NativeUInt: TIDType read Get_NativeUInt;
+    property _Float32: TIDType read Get_Float32;
+    property _Float64: TIDType read Get_Float64;
+    property _Float80: TIDType read Get_Float80;
+    property _Currency: TIDType read Get_Currency;
+    property _Comp: TIDType read Get_Comp;
+    property _Boolean: TIDType read Get_Boolean;
+    property _AnsiChar: TIDType read Get_AnsiChar;
+    property _WideChar: TIDType read Get_WideChar;
+    property _AnsiString: TIDType read Get_AnsiString;
+    property _UnicodeString: TIDType read Get_UnicodeString;
+    property _ShortString: TIDType read Get_ShortString;
+    property _WideString: TIDType read Get_WideString;
+    property _OpenString: TIDString read Get_OpenString;
+    property _Variant: TIDType read Get_Variant;
+    property _NilPointer: TIDType read Get_NullPtrType;
+    property _TGuid: TIDStructure read Get_GuidType;
     property _True: TIDBooleanConstant read fDecls._True;
     property _False: TIDBooleanConstant read fDecls._False;
     property _TrueExpression: TIDExpression read fDecls._TrueExpression;
@@ -235,27 +276,27 @@ type
     property _NullPtrConstant: TIDIntConstant read fDecls._NullPtrConstant;
     property _NullPtrExpression: TIDExpression read fDecls._NullPtrExpression;
     property _EmptyStrExpression: TIDExpression read fDecls._EmptyStrExpression;
-    property _Pointer: TIDPointer read fDecls._PointerType;
-    property _UntypedReference: TIDUntypedRef read fDecls._UntypedReference;
-    property _Untyped: TIDType read fDecls._Untyped;
-    property _TObject: TIDClass read fDecls._TObject;
-    property _Exception: TIDClass read fDecls._Exception;
-    property _EAssert: TIDClass read fDecls._EAssertClass;
-    property _TTypeKind: TIDEnum read fDecls._TTypeKind;
+    property _Pointer: TIDPointer read Get_PointerType;
+    property _UntypedReference: TIDUntypedRef read Get_UntypedReference;
+    property _Untyped: TIDType read Get_Untyped;
+    property _TObject: TIDClass read Get_TObject;
+    property _Exception: TIDClass read Get_Exception;
+    property _EAssert: TIDClass read Get_EAssertClass;
+    property _TTypeKind: TIDEnum read Get_TTypeKind;
     property _DateTime: TIDType read fDateTimeType;
     property _Date: TIDType read fDateType;
     property _Time: TIDType read fTimeType;
     property _AssertProc: TIDProcedure read fAsserProc;
     property _TypeID: TIDType read fTypeIDType;
     property _DeprecatedDefaultStr: TIDStringConstant read fDecls._DeprecatedDefaultStr;
-    property _OrdinalType: TIDType read fDecls._OrdinalType;
-    property _PAnsiChar: TIDType read fDecls._PAnsiChar;
-    property _PWideChar: TIDType read fDecls._PWideChar;
+    property _OrdinalType: TIDType read Get_OrdinalType;
+    property _PAnsiChar: TIDType read Get_PAnsiChar;
+    property _PWideChar: TIDType read Get_PWideChar;
     property _AnyArrayType: TIDArray read fArrayType;
-    property _MetaType: TIDType read fDecls._MetaType;
-    property _Void: TIDType read fDecls._Void;
-    property _ResStringRecord: TIDType read fDecls._ResStringRecord;
-    property _EmptySetType: TIDSet read fDecls._EmptySetType;
+    property _MetaType: TIDType read Get_MetaType;
+    property _Void: TIDType read Get_Void;
+    property _ResStringRecord: TIDType read Get_ResStringRecord;
+    property _EmptySetType: TIDSet read Get_EmptySetType;
     property Operators: TSystemOperatos read fOperators;
   end;
 
@@ -918,43 +959,43 @@ end;
 procedure TSYSTEMUnit.RegisterTypes;
 begin
   //===============================================================
-  _Int8 := RegisterOrdinal('ShortInt', dtInt8, MinInt8, MaxInt8);
-  _Int16 := RegisterOrdinal('SmallInt', dtInt16, MinInt16, MaxInt16);
-  _Int32 := RegisterOrdinal('Integer', dtInt32, MinInt32, MaxInt32);
-  _Int64 := RegisterOrdinal('Int64', dtInt64, MinInt64, MaxInt64);
-  _UInt8 := RegisterOrdinal('Byte', dtUInt8, 0, MaxUInt8);
-  _UInt16 := RegisterOrdinal('Word', dtUInt16, 0, MaxUInt16);
-  _UInt32 := RegisterOrdinal('Cardinal', dtUInt32, 0, MaxUInt32);
-  _UInt64 := RegisterOrdinal('UInt64', dtUInt64, 0, MaxUInt64);
-  _NativeInt := RegisterOrdinal('NativeInt', dtNativeInt, MinInt64, MaxInt64);
-  _NativeUInt := RegisterOrdinal('NativeUInt', dtNativeUInt, 0, MaxUInt64);
-  _Float32 := RegisterType('Single', TIDFloat, dtFloat32);
-  _Float64 := RegisterType('Double', TIDFloat, dtFloat64);
-  _Float80 := RegisterType('Extended', TBuiltin_Extended, dtFloat80);
-  _Currency := RegisterType('Currency', TBuiltin_Currency, dtCurrency);
-  _Comp := RegisterType('Comp', TBuiltin_Comp, dtComp);
+  fDecls._Int8 := RegisterOrdinal('ShortInt', dtInt8, MinInt8, MaxInt8);
+  fDecls._Int16 := RegisterOrdinal('SmallInt', dtInt16, MinInt16, MaxInt16);
+  fDecls._Int32 := RegisterOrdinal('Integer', dtInt32, MinInt32, MaxInt32);
+  fDecls._Int64 := RegisterOrdinal('Int64', dtInt64, MinInt64, MaxInt64);
+  fDecls._UInt8 := RegisterOrdinal('Byte', dtUInt8, 0, MaxUInt8);
+  fDecls._UInt16 := RegisterOrdinal('Word', dtUInt16, 0, MaxUInt16);
+  fDecls._UInt32 := RegisterOrdinal('Cardinal', dtUInt32, 0, MaxUInt32);
+  fDecls._UInt64 := RegisterOrdinal('UInt64', dtUInt64, 0, MaxUInt64);
+  fDecls._NativeInt := RegisterOrdinal('NativeInt', dtNativeInt, MinInt64, MaxInt64);
+  fDecls._NativeUInt := RegisterOrdinal('NativeUInt', dtNativeUInt, 0, MaxUInt64);
+  fDecls._Float32 := RegisterType('Single', TIDFloat, dtFloat32);
+  fDecls._Float64 := RegisterType('Double', TIDFloat, dtFloat64);
+  fDecls._Float80 := RegisterType('Extended', TBuiltin_Extended, dtFloat80);
+  fDecls._Currency := RegisterType('Currency', TBuiltin_Currency, dtCurrency);
+  fDecls._Comp := RegisterType('Comp', TBuiltin_Comp, dtComp);
   //===============================================================
-  _Boolean := RegisterOrdinal('Boolean', dtBoolean, 0, 1);
+  fDecls._Boolean := RegisterOrdinal('Boolean', dtBoolean, 0, 1);
   _Boolean.OverloadExplicitFromAny(Operators.IsOrdinal);
 
-  _AnsiChar := RegisterOrdinal('AnsiChar', dtAnsiChar, 0, MaxUInt8);
-  _WideChar := RegisterOrdinal('Char', dtChar, 0, MaxUInt16);
+  fDecls._AnsiChar := RegisterOrdinal('AnsiChar', dtAnsiChar, 0, MaxUInt8);
+  fDecls._WideChar := RegisterOrdinal('Char', dtChar, 0, MaxUInt16);
   //===============================================================
-  _ShortString := RegisterType('ShortString', TIDString, dtShortString);
+  fDecls._ShortString := RegisterType('ShortString', TIDString, dtShortString);
   TIDString(_ShortString).ElementDataType := _AnsiChar;
   //===============================================================
-  _AnsiString := RegisterType('AnsiString', TBuiltin_AnsiString, dtAnsiString);
+  fDecls._AnsiString := RegisterType('AnsiString', TBuiltin_AnsiString, dtAnsiString);
   TIDString(_AnsiString).ElementDataType := _AnsiChar;
   //===============================================================
-  _UnicodeString := RegisterType('String', TIDString, dtString);
+  fDecls._UnicodeString := RegisterType('String', TIDString, dtString);
   TIDString(_UnicodeString).ElementDataType := _WideChar;
   //===============================================================
-  _Variant := RegisterType('Variant', TIDVariant, dtVariant);
+  fDecls._Variant := RegisterType('Variant', TIDVariant, dtVariant);
   //===============================================================
-  _WideString := RegisterType('WideString', TIDString, dtWideString);
+  fDecls._WideString := RegisterType('WideString', TIDString, dtWideString);
   TIDString(_WideString).ElementDataType := _WideChar;
   //===============================================================
-  _OpenString := RegisterType('OpenString', TBuiltin_OpenString, dtAnsiString) as TIDString;
+  fDecls._OpenString := RegisterType('OpenString', TBuiltin_OpenString, dtAnsiString) as TIDString;
   _OpenString.ElementDataType := _AnsiChar;
   //===============================================================
   // TObject ========================================================
@@ -1269,6 +1310,206 @@ end;
 function TSYSTEMUnit.GetTypeByID(ID: TDataTypeID): TIDType;
 begin
   Result := fDecls.DataTypes[ID];
+end;
+
+function TSYSTEMUnit.Get_AnsiChar: TIDType;
+begin
+  Result := fDecls._AnsiChar;
+end;
+
+function TSYSTEMUnit.Get_AnsiString: TIDType;
+begin
+  Result := fDecls._AnsiString;
+end;
+
+function TSYSTEMUnit.Get_Boolean: TIDType;
+begin
+  Result := fDecls._Boolean;
+end;
+
+function TSYSTEMUnit.Get_Comp: TIDType;
+begin
+  Result := fDecls._Comp;
+end;
+
+function TSYSTEMUnit.Get_Currency: TIDType;
+begin
+  Result := fDecls._Currency;
+end;
+
+function TSYSTEMUnit.Get_EAssertClass: TIDClass;
+begin
+  Result := fDecls._EAssertClass;
+end;
+
+function TSYSTEMUnit.Get_EmptySetType: TIDSet;
+begin
+  Result := fDecls._EmptySetType;
+end;
+
+function TSYSTEMUnit.Get_Exception: TIDClass;
+begin
+  Result := fDecls._Exception;
+end;
+
+function TSYSTEMUnit.Get_Float32: TIDType;
+begin
+  Result := fDecls._Float32;
+end;
+
+function TSYSTEMUnit.Get_Float64: TIDType;
+begin
+  Result := fDecls._Float64;
+end;
+
+function TSYSTEMUnit.Get_Float80: TIDType;
+begin
+  Result := fDecls._Float80;
+end;
+
+function TSYSTEMUnit.Get_GuidType: TIDStructure;
+begin
+  Result := fDecls._GuidType;
+end;
+
+function TSYSTEMUnit.Get_Int16: TIDType;
+begin
+  Result := fDecls._Int16;
+end;
+
+function TSYSTEMUnit.Get_Int32: TIDType;
+begin
+  Result := fDecls._Int32;
+end;
+
+function TSYSTEMUnit.Get_Int64: TIDType;
+begin
+  Result := fDecls._Int64;
+end;
+
+function TSYSTEMUnit.Get_Int8: TIDType;
+begin
+  Result := fDecls._Int8;
+end;
+
+function TSYSTEMUnit.Get_MetaType: TIDType;
+begin
+  Result := fDecls._MetaType;
+end;
+
+function TSYSTEMUnit.Get_NativeInt: TIDType;
+begin
+  Result := fDecls._NativeInt;
+end;
+
+function TSYSTEMUnit.Get_NativeUInt: TIDType;
+begin
+  Result := fDecls._NativeUInt;
+end;
+
+function TSYSTEMUnit.Get_NullPtrType: TIDType;
+begin
+  Result := fDecls._NullPtrType;
+end;
+
+function TSYSTEMUnit.Get_OpenString: TIDString;
+begin
+  Result := fDecls._OpenString;
+end;
+
+function TSYSTEMUnit.Get_OrdinalType: TIDType;
+begin
+  Result := fDecls._OrdinalType;
+end;
+
+function TSYSTEMUnit.Get_PAnsiChar: TIDType;
+begin
+  Result := fDecls._PAnsiChar;
+end;
+
+function TSYSTEMUnit.Get_PointerType: TIDPointer;
+begin
+  Result := fDecls._PointerType;
+end;
+
+function TSYSTEMUnit.Get_PWideChar: TIDType;
+begin
+  Result := fDecls._PWideChar;
+end;
+
+function TSYSTEMUnit.Get_ResStringRecord: TIDType;
+begin
+  Result := fDecls._ResStringRecord;
+end;
+
+function TSYSTEMUnit.Get_ShortString: TIDType;
+begin
+  Result := fDecls._ShortString;
+end;
+
+function TSYSTEMUnit.Get_TObject: TIDClass;
+begin
+  Result := fDecls._TObject;
+end;
+
+function TSYSTEMUnit.Get_TTypeKind: TIDEnum;
+begin
+  Result := fDecls._TTypeKind;
+end;
+
+function TSYSTEMUnit.Get_UInt16: TIDType;
+begin
+  Result := fDecls._UInt16;
+end;
+
+function TSYSTEMUnit.Get_UInt32: TIDType;
+begin
+  Result := fDecls._UInt32;
+end;
+
+function TSYSTEMUnit.Get_UInt64: TIDType;
+begin
+  Result := fDecls._UInt64;
+end;
+
+function TSYSTEMUnit.Get_UInt8: TIDType;
+begin
+  Result := fDecls._UInt8;
+end;
+
+function TSYSTEMUnit.Get_UnicodeString: TIDType;
+begin
+  Result := fDecls._UnicodeString;
+end;
+
+function TSYSTEMUnit.Get_Untyped: TIDType;
+begin
+  Result := fDecls._Untyped;
+end;
+
+function TSYSTEMUnit.Get_UntypedReference: TIDUntypedRef;
+begin
+  Result := fDecls._UntypedReference;
+end;
+
+function TSYSTEMUnit.Get_Variant: TIDType;
+begin
+  Result := fDecls._Variant;
+end;
+
+function TSYSTEMUnit.Get_Void: TIDType;
+begin
+  Result := fDecls._Void;
+end;
+
+function TSYSTEMUnit.Get_WideChar: TIDType;
+begin
+  Result := fDecls._WideChar;
+end;
+
+function TSYSTEMUnit.Get_WideString: TIDType;
+begin
+  Result := fDecls._WideString;
 end;
 
 function TSYSTEMUnit.GetSystemDeclarations: PDelphiSystemDeclarations;

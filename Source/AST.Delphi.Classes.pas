@@ -9,6 +9,7 @@ uses System.SysUtils, System.Classes, System.StrUtils, System.Math, System.Gener
      AST.Delphi.DataTypes,
      AST.Lexer,
      AST.Delphi.Operators,
+     AST.Delphi.Declarations,
      AVL,
      AST.Parser.Utils,
      AST.Parser.Messages,
@@ -93,20 +94,6 @@ type
     property Count: Integer read FCount write FCount;
   end;
 
-  TIDItemType = (
-    itUnknown,         // неизвестный тип
-    itVar,             // переменная
-    itConst,           // константа
-    itProcedure,       // процедуры/функция
-    itSysOperator,     // system operator
-    itMacroFunction,   // функция времени компиляции
-    itProperty,        // свойство
-    itAlias,           // алиас
-    itType,            // тип
-    itUnit,            // модуль
-    itLabel            // label
-  );
-
   TScopeType = (
     stLocal,
     stGlobal,
@@ -172,7 +159,7 @@ type
   TIDDeclarationClass = class of TIDDeclaration;
 
   {base declaration class}
-  TIDDeclaration = class(TASTDeclaration)
+  TIDDeclaration = class(TASTDeclaration, IASTDelphiDeclaration)
   private
     FItemType: TIDItemType;
     FScope: TScope;                  // Обл. видимости где объявлена декларация
@@ -200,6 +187,7 @@ type
     function GetOriginalDecl: TIDDeclaration; virtual;
     function GetIndex: Integer; virtual;
     function GetCValue: TIDConstant; virtual;
+    function Get_Unit: IASTModule;
     procedure SetCValue(const Value: TIDConstant); virtual;
     procedure SetDataType(const Value: TIDType); virtual;
   public
@@ -299,7 +287,7 @@ type
   TBinaryOperatorsArray = array of TBinaryOperator;
 
   {base type class}
-  TIDType = class(TIDDeclaration)
+  TIDType = class(TIDDeclaration, IASTDelphiType)
   type
     TUnarOperators = array [opAssignment..opRound] of TIDDeclaration;
     TBinarOperators = array [opIn..High(TOperatorID)] of TBinaryOperatorsArray;
@@ -442,6 +430,9 @@ type
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
     function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                 const AContext: TGenericInstantiateContext): TIDDeclaration; override;
+
+    function MatchImplicitTo(ADst: TIDType): Boolean; virtual;
+    function MatchImplicitFrom(ASrc: TIDType): Boolean; virtual;
   end;
 
   {special system internal type to describe several possible types in one}
@@ -1706,8 +1697,6 @@ type
   TScopes = array of TScope;
 
   TScope = class(TIDList)
-  type
-    TScopeDeclarations = TList<TIDDeclaration>;
   private
     fUnit: TASTModule;          // модуль (индекс модуля в пакете)
     fParent: TScope;            // Parent scope
@@ -1934,7 +1923,6 @@ uses AST.Delphi.System,
      AST.Parser.Errors,
      AST.Delphi.Errors,
      AST.Delphi.Parser,
-     AST.Delphi.SysOperators,
      AST.Delphi.SysFunctions,
      AST.Parser.Log;
 
@@ -2545,6 +2533,11 @@ begin
     AbortWorkInternal('Scope not assigned');
     Result := -1;
   end;
+end;
+
+function TIDDeclaration.Get_Unit: IASTModule;
+begin
+  Result := fModule;
 end;
 
 procedure TIDDeclaration.IncRefCount(RCPath: UInt32);
@@ -3336,10 +3329,10 @@ begin
 
   Result := SysImplicitToAny;
 
-//  // run system implicit proc
-//  if not Assigned(Result) then
-//    if MatchImplicitTo(Destination) then
-//      Result := Destination;
+  // run system implicit proc
+  if not Assigned(Result) then
+    if MatchImplicitTo(Destination) then
+      Result := Destination;
 end;
 
 function TIDType.GetImplicitOperatorFrom(const Source: TIDType): TIDDeclaration;
@@ -3352,10 +3345,10 @@ begin
 
   Result := SysImplicitFromAny;
 
-//  // run system implicit proc
-//  if not Assigned(Result) then
-//    if MatchImplicitFrom(Source) then
-//      Result := Self;
+  // run system implicit proc
+  if not Assigned(Result) then
+    if MatchImplicitFrom(Source) then
+      Result := Self;
 end;
 
 function TIDType.GetActualDataType: TIDType;
@@ -3683,6 +3676,16 @@ end;
 procedure TIDType.SetGenericDescriptor(const Value: PGenericDescriptor);
 begin
   FGenericDescriptor := Value;
+end;
+
+function TIDType.MatchImplicitFrom(ASrc: TIDType): Boolean;
+begin
+  Result := False;
+end;
+
+function TIDType.MatchImplicitTo(ADst: TIDType): Boolean;
+begin
+  Result := False;
 end;
 
 function TIDType.UnarOperator(Op: TOperatorID; Right: TIDType): TIDType;

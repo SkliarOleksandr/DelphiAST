@@ -125,11 +125,21 @@ type
     property TotalLinesParsed: Integer read GetTotalLinesParsed;
   end;
 
-  TASTDeclaration = class(TASTItem)
+  TASTDeclaration = class(TASTItem, IASTDeclaration)
   protected
     fID: TIdentifier;
     fModule: TASTModule;
+
+    function GetID: TIdentifier;
+    function GetName: string;
+    function GetSrcPos: TTextPosition;
+    function GetModule: IASTModule;
     function GetDisplayName: string; override;
+    function Get_Obj: TObject;
+
+    procedure SetID(const AValue: TIdentifier);
+    procedure SetName(const AValue: string);
+    procedure SetSrcPos(const AValue: TTextPosition);
   public
     property ID: TIdentifier read fID write fID;
     property Name: string read fID.Name write FID.Name;
@@ -812,6 +822,46 @@ end;
 function TASTDeclaration.GetDisplayName: string;
 begin
   Result := fID.Name;
+end;
+
+function TASTDeclaration.GetID: TIdentifier;
+begin
+  Result := fID;
+end;
+
+function TASTDeclaration.GetModule: IASTModule;
+begin
+  Result := fModule;
+end;
+
+function TASTDeclaration.GetName: string;
+begin
+  Result := fID.Name;
+end;
+
+function TASTDeclaration.GetSrcPos: TTextPosition;
+begin
+  Result := fID.TextPosition;
+end;
+
+function TASTDeclaration.Get_Obj: TObject;
+begin
+  Result := Self;
+end;
+
+procedure TASTDeclaration.SetID(const AValue: TIdentifier);
+begin
+   fID := AValue;
+end;
+
+procedure TASTDeclaration.SetName(const AValue: string);
+begin
+  fID.Name := AValue;
+end;
+
+procedure TASTDeclaration.SetSrcPos(const AValue: TTextPosition);
+begin
+  fID.TextPosition := AValue;
 end;
 
 { TASTKWAssign }

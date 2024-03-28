@@ -38,7 +38,8 @@ uses
   AST.Pascal.Intf in '..\Source\AST.Pascal.Intf.pas',
   AST.Delphi.Operators.Signatures in '..\Source\AST.Delphi.Operators.Signatures.pas',
   AST.Parser.Log in '..\Source\AST.Parser.Log.pas',
-  AST.Delphi.SysTypes in '..\Source\AST.Delphi.SysTypes.pas';
+  AST.Delphi.SysTypes in '..\Source\AST.Delphi.SysTypes.pas',
+  AST.Delphi.Declarations in '..\Source\AST.Delphi.Declarations.pas';
 
 {$R *.res}
 

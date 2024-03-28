@@ -12,6 +12,7 @@ uses
   AST.Lexer.Delphi,
   AST.Delphi.DataTypes,
   AST.Delphi.Classes,
+  AST.Delphi.Declarations,
   AST.Parser.Utils,
   AST.Parser.Contexts,
   AST.Delphi.Contexts,
@@ -3290,7 +3291,7 @@ begin
   if SrcDecl.ItemType = itType then begin
     if SrcDecl is TIDStructure then
     begin
-      if (SrcDecl = DstDecl) or  TIDStructure(SrcDecl).IsInheritsForm(DstDecl) then
+      if (SrcDecl = DstDecl) or TIDStructure(SrcDecl).IsInheritsForm(DstDecl) then
         Exit(Destination);
     end else
       AbortWork(sCLASSTypeRequired, Source.TextPosition);
@@ -3509,31 +3510,32 @@ begin
           if DstDTID = dtClassOf then
             Decl := MatchImplicitClassOf(Source, TIDClassOf(Dest));
 
-          {дин. массив как набор}
-          if (DstDTID = dtSet) and (SDataType is TIDDynArray) then
-          begin
-            Result := MatchSetImplicit(SContext, Source, TIDSet(Dest));
-            Exit;
-          end else
-          if (SrcDTID = dtProcType) and (DstDTID = dtProcType) then
-            Decl := MatchProcedureTypes(TIDProcType(SDataType), TIDProcType(Dest))
-          else
-          if SDataType is TIDArray then
-          begin
-            if Dest is TIDArray then
-              Result := MatchArrayImplicit(SContext, Source, TIDArray(Dest))
-            else
-//            if DstDTID = dtRecord then
-//              Result := MatchArrayImplicitToRecord(SContext, Source, TIDStructure(Dest))
+// todo: not needed?
+//          {дин. массив как набор}
+//          if (DstDTID = dtSet) and (SDataType is TIDDynArray) then
+//          begin
+//            Result := MatchSetImplicit(SContext, Source, TIDSet(Dest));
+//            Exit;
+//          end else
+//          if (SrcDTID = dtProcType) and (DstDTID = dtProcType) then
+//            Decl := MatchProcedureTypes(TIDProcType(SDataType), TIDProcType(Dest))
+//          else
+//          if SDataType is TIDArray then
+//          begin
+//            if Dest is TIDArray then
+//              Result := MatchArrayImplicit(SContext, Source, TIDArray(Dest))
 //            else
-              Result := nil;
-            Exit;
-          end;
-          if (SrcDTID = dtRecord) and (DstDTID = dtRecord) then
-          begin
-            Result := MatchRecordImplicit(SContext, Source, TIDRecord(Dest));
-            Exit;
-          end;
+////            if DstDTID = dtRecord then
+////              Result := MatchArrayImplicitToRecord(SContext, Source, TIDStructure(Dest))
+////            else
+//              Result := nil;
+//            Exit;
+//          end;
+//          if (SrcDTID = dtRecord) and (DstDTID = dtRecord) then
+//          begin
+//            Result := MatchRecordImplicit(SContext, Source, TIDRecord(Dest));
+//            Exit;
+//          end;
 
           {если generic}
           if (SrcDTID = dtGeneric) or (DstDTID = dtGeneric) then

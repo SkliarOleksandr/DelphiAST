@@ -2,18 +2,20 @@
 
 interface
 
-uses AST.Delphi.Classes, AST.Delphi.Contexts;
+uses AST.Delphi.Classes,
+     AST.Delphi.Declarations,
+     AST.Delphi.Contexts;
 
 type
 
   TSysOperator = class(TIDOperator)
   protected
-    constructor CreateAsIntOp; reintroduce;
+  //  constructor CreateAsIntOp; reintroduce;
   end;
 
   TSysTypeCast = class(TSysOperator)
   public
-    constructor CreateInternal(ResultType: TIDType); reintroduce;
+    //constructor CreateInternal(ResultType: TIDType); reintroduce;
     function Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean; overload; virtual;
     function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; overload; virtual;
     function Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; virtual;
@@ -455,11 +457,11 @@ uses AST.Delphi.DataTypes,
 
 { TSysOperator }
 
-constructor TSysOperator.CreateAsIntOp;
-begin
-  CreateFromPool;
-  ItemType := itSysOperator;
-end;
+//constructor TSysOperator.CreateAsIntOp;
+//begin
+//  CreateFromPool;
+//  ItemType := itSysOperator;
+//end;
 
 { TSysTypeCast }
 
@@ -476,12 +478,12 @@ begin
   Result := False;
 end;
 
-constructor TSysTypeCast.CreateInternal(ResultType: TIDType);
-begin
-  CreateFromPool;
-  ItemType := itSysOperator;
-  Self.DataType := ResultType;
-end;
+//constructor TSysTypeCast.CreateInternal(ResultType: TIDType);
+//begin
+//  CreateFromPool;
+//  ItemType := itSysOperator;
+//  Self.DataType := ResultType;
+//end;
 
 function TSysTypeCast.Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
 begin
@@ -1139,7 +1141,6 @@ begin
   end;
 end;
 
-
 { TSysImplicitSysVarFromAny }
 
 function TSysImplicitSysVarFromAny.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
@@ -1147,13 +1148,12 @@ begin
   var ASysVar := Dst as TIDSysVariativeType;
   for var AType in ASysVar.Types do
   begin
-    Result := TASTDelphiUnit(SContext.Module).CheckImplicit(SContext, Src, Dst);
+    Result := SYSUnit.CheckImplicit(SContext, Src, Dst);
     if Assigned(Result) then
       Exit;
   end;
   Result := nil;
 end;
-
 
 { TSysExplicitClassToAny }
 

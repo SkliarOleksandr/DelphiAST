@@ -97,7 +97,7 @@ type
     property OnPopError: TProc read fOnPopError write fOnPopError;
   end;
 
-  TPooledObject = class
+  TPooledObject = class(TNoRefCountObject)
   private
     FPrevObect: TPooledObject;
     class var FLastObject: TPooledObject;
