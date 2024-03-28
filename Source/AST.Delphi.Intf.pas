@@ -7,11 +7,12 @@ uses
   AST.Delphi.DataTypes,
   AST.Delphi.Classes,
   AST.Delphi.Declarations,
+  AST.Delphi.SysTypes,
   AST.Delphi.Errors;
 
 type
 
-  PDelphiSystemDeclarations = ^TDelphiSystemDeclarations;
+//  PDelphiSystemDeclarations = ^TDelphiSystemDeclarations;
 
   IASTDelphiUnit = interface(IASTModule)
     ['{1A57EA5B-8EA8-4AC7-A885-85E8C959F89E}']
@@ -21,75 +22,75 @@ type
     property Errors: TASTDelphiErrors read GetErrors;
   end;
 
-  TDelphiSystemDeclarations = record
-    // integer types
-    _Int8: TIDType;
-    _Int16: TIDType;
-    _Int32: TIDType;
-    _Int64: TIDType;
-    _UInt8: TIDType;
-    _UInt16: TIDType;
-    _UInt32: TIDType;
-    _UInt64: TIDType;
-    _NativeInt: TIDType;
-    _NativeUInt: TIDType;
-    // floating point types
-    _Float32: TIDType;
-    _Float64: TIDType;
-    _Float80: TIDType;
-    _Currency: TIDType;
-    _Comp: TIDType;
-    _Real: TIDType;
-    // other
-    _Boolean: TIDType;
-    _AnsiChar: TIDType;
-    _WideChar: TIDType;
-    _AnsiString: TIDType;
-    _OpenString: TIDString;
-    _UnicodeString: TIDType;
-    _ShortString: TIDType;
-    _WideString: TIDType;
-    _Variant: TIDType;
-    _NullPtrType: TIDType;
-    _PointerType: TIDPointer;
-    _UntypedReference: TIDUntypedRef;
-    _Untyped: TIDType;
-    _MetaType: TIDType;
-    _Void: TIDType;
-    _GuidType: TIDStructure;
-    _PAnsiChar: TIDType;
-    _PWideChar: TIDType;
-    _OrdinalType: TIDType;
-    _TObject: TIDClass;
-    _Exception: TIDClass;
-    _EAssertClass: TIDClass;
-    _TTypeKind: TIDEnum;
-    _DateTimeType: TIDType;
-    _DateType: TIDType;
-    _TimeType: TIDType;
-    _True: TIDBooleanConstant;
-    _False: TIDBooleanConstant;
-    _TrueExpression: TIDExpression;
-    _FalseExpression: TIDExpression;
-    _ZeroConstant: TIDIntConstant;
-    _ZeroIntExpression: TIDExpression;
-    _ZeroFloatExpression: TIDExpression;
-    _OneConstant: TIDIntConstant;
-    _OneExpression: TIDExpression;
-    _MaxIntConstant: TIDIntConstant;
-    _MaxIntExpression: TIDExpression;
-    _NullPtrConstant: TIDIntConstant;
-    _NullPtrExpression: TIDExpression;
-    _EmptyStrConstant: TIDStringConstant;
-    _EmptyStrExpression: TIDExpression;
-    _DeprecatedDefaultStr: TIDStringConstant;
-    _EmptySetType: TIDSet;
-    _EmptyArrayConstant: TIDDynArrayConstant;
-    _ResStringRecord: TIDType;
-    _TVarRec: TIDType;
-    function GetTypeByID(DataTypeID: TDataTypeID): TIDType;
-    property DataTypes[DataTypeID: TDataTypeID]: TIDType read GetTypeByID;
-  end;
+//  TDelphiSystemDeclarations = record
+//    // integer types
+//    _Int8: TIDType;
+//    _Int16: TIDType;
+//    _Int32: TIDType;
+//    _Int64: TIDType;
+//    _UInt8: TIDType;
+//    _UInt16: TIDType;
+//    _UInt32: TIDType;
+//    _UInt64: TIDType;
+//    _NativeInt: TIDType;
+//    _NativeUInt: TIDType;
+//    // floating point types
+//    _Float32: TIDType;
+//    _Float64: TIDType;
+//    _Float80: TIDType;
+//    _Currency: TIDType;
+//    _Comp: TIDType;
+//    _Real: TIDType;
+//    // other
+//    _Boolean: TIDType;
+//    _AnsiChar: TIDType;
+//    _WideChar: TIDType;
+//    _AnsiString: TIDType;
+//    _OpenString: TIDString;
+//    _UnicodeString: TIDType;
+//    _ShortString: TIDType;
+//    _WideString: TIDType;
+//    _Variant: TIDType;
+//    _NullPtrType: TIDType;
+//    _PointerType: TIDPointer;
+//    _UntypedReference: TIDUntypedRef;
+//    _Untyped: TIDType;
+//    _MetaType: TIDType;
+//    _Void: TIDType;
+//    _GuidType: TIDStructure;
+//    _PAnsiChar: TIDType;
+//    _PWideChar: TIDType;
+//    _OrdinalType: TIDType;
+//    _TObject: TIDClass;
+//    _Exception: TIDClass;
+//    _EAssertClass: TIDClass;
+//    _TTypeKind: TIDEnum;
+//    _DateTimeType: TIDType;
+//    _DateType: TIDType;
+//    _TimeType: TIDType;
+//    _True: TIDBooleanConstant;
+//    _False: TIDBooleanConstant;
+//    _TrueExpression: TIDExpression;
+//    _FalseExpression: TIDExpression;
+//    _ZeroConstant: TIDIntConstant;
+//    _ZeroIntExpression: TIDExpression;
+//    _ZeroFloatExpression: TIDExpression;
+//    _OneConstant: TIDIntConstant;
+//    _OneExpression: TIDExpression;
+//    _MaxIntConstant: TIDIntConstant;
+//    _MaxIntExpression: TIDExpression;
+//    _NullPtrConstant: TIDIntConstant;
+//    _NullPtrExpression: TIDExpression;
+//    _EmptyStrConstant: TIDStringConstant;
+//    _EmptyStrExpression: TIDExpression;
+//    _DeprecatedDefaultStr: TIDStringConstant;
+//    _EmptySetType: TIDSet;
+//    _EmptyArrayConstant: TIDDynArrayConstant;
+//    _ResStringRecord: TIDType;
+//    _TVarRec: TIDType;
+//    function GetTypeByID(DataTypeID: TDataTypeID): TIDType;
+//    property DataTypes[DataTypeID: TDataTypeID]: TIDType read GetTypeByID;
+//  end;
 
 
   IASTDelphiSystemUnit = interface(IASTDelphiUnit)
@@ -100,7 +101,7 @@ implementation
 
 { TDelphiSystemTypes }
 
-function TDelphiSystemDeclarations.GetTypeByID(DataTypeID: TDataTypeID): TIDType;
+{function TDelphiSystemDeclarations.GetTypeByID(DataTypeID: TDataTypeID): TIDType;
 begin
   case DataTypeID of
     dtInt8: Result := _Int8;
@@ -134,6 +135,6 @@ begin
     Assert(False, 'Data Type is unknown');
     Result := nil;
   end;
-end;
+end;}
 
 end.

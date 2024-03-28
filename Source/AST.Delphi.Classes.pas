@@ -19,6 +19,7 @@ uses System.SysUtils, System.Classes, System.StrUtils, System.Math, System.Gener
      AST.Intf;
      // system
      // SysInit
+     // System.Types
      // GETMEM.INC
 type
 

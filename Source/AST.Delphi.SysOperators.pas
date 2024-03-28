@@ -612,9 +612,9 @@ end;
 
 function TSysImplicitVariantToAny.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
-  if Dst.DataTypeID in [dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean,
-                        dtFloat32, dtFloat64, dtNativeInt, dtNativeUInt, dtChar, dtAnsiChar,
-                        dtString, dtAnsiString, dtVariant] then
+  if (Dst.DataTypeID in [dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean,
+                         dtFloat32, dtFloat64, dtNativeInt, dtNativeUInt, dtChar, dtAnsiChar,
+                         dtString, dtAnsiString, dtVariant]) or (Dst = SYSUnit._TVarData) then
     Result := Self
   else
     Result := nil;
@@ -1180,9 +1180,9 @@ end;
 
 function TSysExplicitVariantToAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
-  Result := Dst.DataTypeID in [dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean,
-                        dtFloat32, dtFloat64, dtNativeInt, dtNativeUInt, dtChar, dtAnsiChar,
-                        dtString, dtAnsiString, dtWideString, dtVariant];
+  Result := (Dst.DataTypeID in [dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean,
+                                dtFloat32, dtFloat64, dtNativeInt, dtNativeUInt, dtChar, dtAnsiChar,
+                                dtString, dtAnsiString, dtWideString, dtVariant]) or (Dst = SYSUnit._TVarData);
 end;
 
 { TSysExplicitVariantFromAny }

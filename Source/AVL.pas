@@ -23,7 +23,7 @@ type
     TKeys = array of TKey;
     TValues = array of TData;
     TIterateFunc = function(Node: PAVLNode; OtherData: Pointer): Boolean of object;
-    TCompareFunc = function(const NodeKey1, NodeKey2: TKey): Integer;
+    TCompareFunc = function(const NodeKey1, NodeKey2: TKey): NativeInt;
   strict private
   const
     StackSize = 40;

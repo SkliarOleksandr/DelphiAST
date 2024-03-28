@@ -4,7 +4,6 @@ interface
 
 uses
   AST.Classes,
-  AST.Delphi.Intf,
   AST.Delphi.DataTypes,
   AST.Delphi.Operators,
   AST.Delphi.Declarations,
@@ -78,6 +77,7 @@ type
     _EmptyArrayConstant: TIDDynArrayConstant;
     _ResStringRecord: TIDType;
     _TVarRec: TIDType;
+    _TVarData: TIDType;
   private
     function Get_Int8: IASTDelphiType;
     function Get_Int16: IASTDelphiType;
@@ -128,7 +128,10 @@ type
     function Get_TVarRec: IASTDelphiType;
   public
     function GetTypeByID(DataTypeID: TDataTypeID): TIDType;
+    property DataTypes[DataTypeID: TDataTypeID]: TIDType read GetTypeByID;
   end;
+
+  PDelphiSystemDeclarations = TDelphiBuiltinTypes;
 
 
   TBuiltin_IntType = class(TIDOrdinal)
@@ -183,8 +186,6 @@ type
   public
     function MatchImplicitTo(ADst: TIDType): Boolean; override;
   end;
-
-
 
 
 implementation

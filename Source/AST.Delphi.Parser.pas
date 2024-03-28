@@ -12,6 +12,7 @@ uses
   AST.Lexer.Delphi,
   AST.Delphi.DataTypes,
   AST.Delphi.Classes,
+  AST.Delphi.SysTypes,
   AST.Delphi.Declarations,
   AST.Parser.Utils,
   AST.Parser.Contexts,
@@ -138,6 +139,8 @@ type
     class function GetTMPRefExpr(const SContext: TSContext; DataType: TIDType): TIDExpression; overload; inline; static;
     class function GetTMPRefExpr(const SContext: TSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline; static;
     class function GetStaticTMPVar(DataType: TIDType; VarFlags: TVariableFlags = []): TIDVariable; static;
+    function GetBuiltins: IDelphiBuiltInTypes;
+    property Builtins: IDelphiBuiltInTypes read GetBuiltins;
   protected
     function GetSource: string; override;
     function GetErrors: TASTDelphiErrors;
@@ -1942,12 +1945,34 @@ end;
 function TASTDelphiUnit.process_CALL_constructor(const SContext: TSContext; CallExpression: TIDCallExpression;
                                                  const CallArguments: TIDExpressions): TIDExpression;
 var
-  Proc: TIDProcedure;
-  ResVar: TIDVariable;
+  LInstanceType: TIDType;
 begin
-  Proc := CallExpression.AsProcedure;
-  ResVar := GetTMPVar(SContext, Proc.Struct);
-  Result := TIDExpression.Create(ResVar, CallExpression.TextPosition);
+  var LInstanceEpr := CallExpression.Instance;
+  if Assigned(LInstanceEpr) and  Assigned(LInstanceEpr.Declaration) then
+  begin
+    case LInstanceEpr.ItemType of
+      // #1 case: TMyClass.Create()
+      itType: LInstanceType := LInstanceEpr.AsType;
+      itVar: begin
+        // #2 case: <class_of variable>.Create()
+        if LInstanceEpr.DataType is TIDClassOf then
+          LInstanceType := TIDClassOf(LInstanceEpr.DataType).ReferenceType
+        else
+          // #3 case: Self.Create()
+          LInstanceType := CallExpression.Instance.DataType;
+      end;
+    else
+      ERRORS.FEATURE_NOT_SUPPORTED;
+      LInstanceType := nil;
+    end;
+
+    var LResultVar := GetTMPVar(SContext, LInstanceType);
+    Result := TIDExpression.Create(LResultVar, CallExpression.TextPosition);
+  end else
+  begin
+    AbortWorkInternal('expression is nil');
+    Result := nil;
+  end;
 end;
 
 function GetOperatorInstance(Op: TOperatorID; Left, Right: TIDExpression): TIDExpression;
@@ -2790,6 +2815,11 @@ begin
   Result := TIDExpression.Create(TIDIntConstant.CreateAsAnonymous(Scope, SContext.SysUnit._Int32, SetValue), Source.TextPosition);
 end;
 
+function TASTDelphiUnit.GetBuiltins: IDelphiBuiltInTypes;
+begin
+  Result := fSysDecls;
+end;
+
 function TASTDelphiUnit.GetCurrentParsedFileName(OnlyFileName: Boolean): string;
 begin
   if fIncludeFilesStack.Count > 0 then
@@ -3558,26 +3588,26 @@ begin
     Exit;
   end;
 
-  if Assigned(SDataType.SysImplicitToAny) then
-  begin
-    Decl := TSysOpImplicit(SDataType.SysImplicitToAny).Check(SContext, Source, Dest);
-    if Assigned(Decl) then
-      Exit(Source);
-    Decl := nil;
-  end;
+//  if Assigned(SDataType.SysImplicitToAny) then
+//  begin
+//    Decl := TSysOpImplicit(SDataType.SysImplicitToAny).Check(SContext, Source, Dest);
+//    if Assigned(Decl) then
+//      Exit(Source);
+//    Decl := nil;
+//  end;
 
-  if not Assigned(Decl) then
-  begin
-    if Assigned(Dest.SysExplicitFromAny) then
-    begin
-      Decl := TSysOpImplicit(Dest.SysExplicitFromAny).Check(SContext, Source, Dest);
-      if Assigned(Decl) then
-        Exit(Source);
-    end;
-    Exit(nil);
-  end;
+//  if not Assigned(Decl) then
+//  begin
+//    if Assigned(Dest.SysImplicitFromAny) then
+//    begin
+//      Decl := TSysOpImplicit(Dest.SysImplicitFromAny).Check(SContext, Source, Dest);
+//      if Assigned(Decl) then
+//        Exit(Source);
+//    end;
+//    Exit(nil);
+//  end;
 
-  if Decl.ItemType = itType then
+  if Assigned(Decl) and (Decl.ItemType = itType) then
     Exit(Source);
 
   Result := nil;
@@ -5972,7 +6002,8 @@ begin
       end;
     end;
     itFloat: begin
-      FltValue := StrToFloat(Value);
+      if not TryStrToFloat(Value, {out} FltValue) then
+        FltValue := 0; // https://quality.embarcadero.com/browse/RSP-20333
       DataType := Sys.DataTypes[GetValueDataType(FltValue)];
       CItem := TIDFloatConstant.CreateAsAnonymous(Scope, DataType, FltValue);
     end;
@@ -8667,10 +8698,13 @@ begin
           end;
           LCallExpr.Instance := Expr;
         end else
-        if (Decl.ItemType = itProcedure) and Assigned(TIDProcedure(Decl).Struct) and
+        if (Decl.ItemType = itProcedure) and
+            Assigned(TIDProcedure(Decl).Struct) and
+            not Assigned(LCallExpr.Instance) and
            (TIDProcedure(Decl).Struct = EContext.SContext.Proc.Struct) then
         begin
           // если это собственный метод, добавляем self из списка параметров
+          // todo: SelfParam has no declaration asssigned
           LCallExpr.Instance := TIDExpression.Create(EContext.SContext.Proc.SelfParam);
         end;
 

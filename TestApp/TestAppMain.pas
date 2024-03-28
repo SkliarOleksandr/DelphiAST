@@ -118,10 +118,8 @@ begin
     if (Msg.MessageType >= cmtError) or chkShowWarnings.Checked then
     begin
       ErrMemo.Lines.AddStrings(Msg.AsString.Split([sLineBreak]));
-      if Msg.MessageType = cmtError then
+      if Msg.MessageType >= cmtError then
       begin
-        ErrMemo.CaretY := ErrMemo.Lines.Count;
-        ErrMemo.CaretX := Length(Msg.AsString) + 1;
         if Msg.UnitName = 'TestUnit.XXX' then
         begin
           edUnit.CaretX := Msg.Col;
@@ -324,6 +322,8 @@ begin
     CompilerMessagesToStrings(Project);
 
     ErrMemo.Lines.AddStrings(Msg);
+    ErrMemo.CaretY := ErrMemo.Lines.Count;
+    ErrMemo.CaretX := 1;
   finally
     Msg.Free;
   end;
@@ -478,8 +478,8 @@ var
   AStr: AnsiString;
   UStr: string;
   DArr: TStringDynArray;
-  SArr: array [0..3] of Byte;
-  Rec: record i: integer end;
+  SArr: array [1..SizeOf(Pointer)] of Byte;
+  Rec: record i: NativeInt end;
 
   Rec16: record c, d: pointer end;
   SArr16: array [1..SizeOf(Pointer)*2] of Byte;
@@ -584,7 +584,12 @@ begin
   var MP2 := TMProc2(Rec16);
 end;
 
+procedure Test0;
+begin
+//  var LValue := StrToFloat('1e320');
+end;
+
 initialization
-  Test;
+  Test0;
 
 end.

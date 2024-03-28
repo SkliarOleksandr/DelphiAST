@@ -160,6 +160,13 @@ type
     class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {AtomicCmpExchange128}
+  TSF_AtomicCmpExchange128 = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
   {AtomicDecrement}
   TSF_AtomicDecrement = class(TIDSysRuntimeFunction)
   public
@@ -574,13 +581,33 @@ begin
   end;
 end;
 
-
 class function TSF_AtomicCmpExchange.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'AtomicCmpExchange', SYSUnit._NativeInt);
   Result.AddParam('Target', SYSUnit._Void, [VarInOut]);
   Result.AddParam('Comparand', SYSUnit._Void, [VarIn]);
   Result.AddParam('Succeeded', SYSUnit._Void, [VarOut]);
+end;
+
+
+{ TSF_AtomicCmpExchange128 }
+
+class function TSF_AtomicCmpExchange128.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'AtomicCmpExchange128', SYSUnit._Boolean);
+  Result.AddParam('Target', SYSUnit._Untyped, [VarInOut]);
+  Result.AddParam('NewValueHigh', SYSUnit._Int64, [VarIn]);
+  Result.AddParam('NewValueLow', SYSUnit._Int64, [VarIn]);
+  Result.AddParam('Comparand', SYSUnit._Untyped, [VarInOut]);
+end;
+
+function TSF_AtomicCmpExchange128.Process(var EContext: TEContext): TIDExpression;
+begin
+  EContext.RPNPopExpression();
+  EContext.RPNPopExpression();
+  EContext.RPNPopExpression();
+  EContext.RPNPopExpression();
+  Result := SYSUnit._TrueExpression;
 end;
 
 { TSCTF_Declared }

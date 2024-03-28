@@ -11,6 +11,7 @@ uses System.Classes,
      AST.Delphi.Declarations,
      AST.Delphi.DataTypes,
      AST.Delphi.Operators,
+     AST.Delphi.SysTypes,
      AST.Parser.Utils,
      AST.Parser.Messages,
      AST.Classes,
@@ -151,7 +152,7 @@ type
     SystemTypesCount = Ord(dtPointer) + 1;
   private
   var
-    fDecls: TDelphiSystemDeclarations;
+    fDecls: TDelphiBuiltinTypes;
     fArrayType: TIDArray; // служебный тип для функций Length/SetLength
     fDateTimeType: TIDType;
     fDateType: TIDType;
@@ -228,6 +229,20 @@ type
     function Get_Void: TIDType;
     function Get_WideChar: TIDType;
     function Get_WideString: TIDType;
+    function Get_DeprecatedDefaultStr: TIDStringConstant;
+    function Get_EmptyStrExpression: TIDExpression;
+    function Get_False: TIDBooleanConstant;
+    function Get_FalseExpression: TIDExpression;
+    function Get_NullPtrConstant: TIDIntConstant;
+    function Get_NullPtrExpression: TIDExpression;
+    function Get_OneConstant: TIDIntConstant;
+    function Get_OneExpression: TIDExpression;
+    function Get_True: TIDBooleanConstant;
+    function Get_TrueExpression: TIDExpression;
+    function Get_ZeroConstant: TIDIntConstant;
+    function Get_ZeroFloatExpression: TIDExpression;
+    function Get_ZeroIntExpression: TIDExpression;
+    function Get_TVarData: TIDType;
   protected
     function GetSystemDeclarations: PDelphiSystemDeclarations; override;
   public
@@ -264,18 +279,18 @@ type
     property _Variant: TIDType read Get_Variant;
     property _NilPointer: TIDType read Get_NullPtrType;
     property _TGuid: TIDStructure read Get_GuidType;
-    property _True: TIDBooleanConstant read fDecls._True;
-    property _False: TIDBooleanConstant read fDecls._False;
-    property _TrueExpression: TIDExpression read fDecls._TrueExpression;
-    property _FalseExpression: TIDExpression read fDecls._FalseExpression;
-    property _ZeroConstant: TIDIntConstant read fDecls._ZeroConstant;
-    property _ZeroIntExpression: TIDExpression read fDecls._ZeroIntExpression;
-    property _ZeroFloatExpression: TIDExpression read fDecls._ZeroFloatExpression;
-    property _OneConstant: TIDIntConstant read fDecls._OneConstant;
-    property _OneExpression: TIDExpression read fDecls._OneExpression;
-    property _NullPtrConstant: TIDIntConstant read fDecls._NullPtrConstant;
-    property _NullPtrExpression: TIDExpression read fDecls._NullPtrExpression;
-    property _EmptyStrExpression: TIDExpression read fDecls._EmptyStrExpression;
+    property _True: TIDBooleanConstant read Get_True;
+    property _False: TIDBooleanConstant read Get_False;
+    property _TrueExpression: TIDExpression read Get_TrueExpression;
+    property _FalseExpression: TIDExpression read Get_FalseExpression;
+    property _ZeroConstant: TIDIntConstant read Get_ZeroConstant;
+    property _ZeroIntExpression: TIDExpression read Get_ZeroIntExpression;
+    property _ZeroFloatExpression: TIDExpression read Get_ZeroFloatExpression;
+    property _OneConstant: TIDIntConstant read Get_OneConstant;
+    property _OneExpression: TIDExpression read Get_OneExpression;
+    property _NullPtrConstant: TIDIntConstant read Get_NullPtrConstant;
+    property _NullPtrExpression: TIDExpression read Get_NullPtrExpression;
+    property _EmptyStrExpression: TIDExpression read Get_EmptyStrExpression;
     property _Pointer: TIDPointer read Get_PointerType;
     property _UntypedReference: TIDUntypedRef read Get_UntypedReference;
     property _Untyped: TIDType read Get_Untyped;
@@ -283,12 +298,13 @@ type
     property _Exception: TIDClass read Get_Exception;
     property _EAssert: TIDClass read Get_EAssertClass;
     property _TTypeKind: TIDEnum read Get_TTypeKind;
+    property _TVarData: TIDType read Get_TVarData;
     property _DateTime: TIDType read fDateTimeType;
     property _Date: TIDType read fDateType;
     property _Time: TIDType read fTimeType;
     property _AssertProc: TIDProcedure read fAsserProc;
     property _TypeID: TIDType read fTypeIDType;
-    property _DeprecatedDefaultStr: TIDStringConstant read fDecls._DeprecatedDefaultStr;
+    property _DeprecatedDefaultStr: TIDStringConstant read Get_DeprecatedDefaultStr;
     property _OrdinalType: TIDType read Get_OrdinalType;
     property _PAnsiChar: TIDType read Get_PAnsiChar;
     property _PWideChar: TIDType read Get_PWideChar;
@@ -314,8 +330,7 @@ uses AST.Parser.Errors,
      AST.Delphi.SysFunctions,
      AST.Delphi.SysOperators,
      AST.Targets,
-     AST.Lexer,
-     AST.Delphi.SysTypes;
+     AST.Lexer;
 
 { TDlphDeclarationHelper }
 
@@ -414,6 +429,9 @@ begin
   // Variant
   for i := dtInt8 to dtVariant do
     _Variant.OverloadImplicitTo(DataTypes[i], Operators.ImplicitVariantToAny);
+
+  _Variant.OverloadImplicitToAny(Operators.ImplicitVariantToAny);
+  _Variant.OverloadImplicitFromAny(Operators.ImplicitVariantFromAny);
   _Variant.OverloadExplicitToAny(Operators.ExplicitVariantToAny);
   _Variant.OverloadExplicitFromAny(Operators.ExplicitVariantFromAny);
 
@@ -1140,6 +1158,7 @@ begin
   fDecls._TObject := GetPublicClass('TObject');
   fDecls._ResStringRecord := GetPublicType('PResStringRec');
   fDecls._TVarRec := GetPublicType('TVarRec');
+  fDecls._TVarData := GetPublicType('TVarData');
   fDecls._TTypeKind := GetPublicType('TTypeKind') as TIDEnum;
   if Assigned(fDecls._TVarRec) then
     AddTVarRecImplicitOperators;
@@ -1236,6 +1255,7 @@ begin
 
   if Project.Target = TWINX64_Target.TargetName then
   begin
+    RegisterBuiltin(TSF_AtomicCmpExchange128);
     RegisterBuiltin(TSF_MulDivInt64);
     RegisterBuiltin(TSF_VarArgStart);
     RegisterBuiltin(TSF_VarArgGetValue);
@@ -1283,7 +1303,10 @@ end;
 constructor TSYSTEMUnit.Create(const Project: IASTProject; const FileName: string; const Source: string);
 begin
   inherited Create(Project, FileName, Source);
-  fSysDecls := @fDecls;
+
+  fDecls := TDelphiBuiltinTypes.Create;
+
+  fSysDecls := fDecls;
 
   {$IFDEF DEBUG}
   SetUnitName('system');
@@ -1309,7 +1332,7 @@ end;
 
 function TSYSTEMUnit.GetTypeByID(ID: TDataTypeID): TIDType;
 begin
-  Result := fDecls.DataTypes[ID];
+  Result := fDecls.GetTypeByID(ID);
 end;
 
 function TSYSTEMUnit.Get_AnsiChar: TIDType;
@@ -1337,6 +1360,11 @@ begin
   Result := fDecls._Currency;
 end;
 
+function TSYSTEMUnit.Get_DeprecatedDefaultStr: TIDStringConstant;
+begin
+  Result := fDecls._DeprecatedDefaultStr;
+end;
+
 function TSYSTEMUnit.Get_EAssertClass: TIDClass;
 begin
   Result := fDecls._EAssertClass;
@@ -1347,9 +1375,24 @@ begin
   Result := fDecls._EmptySetType;
 end;
 
+function TSYSTEMUnit.Get_EmptyStrExpression: TIDExpression;
+begin
+  Result := fDecls._EmptyStrExpression;
+end;
+
 function TSYSTEMUnit.Get_Exception: TIDClass;
 begin
   Result := fDecls._Exception;
+end;
+
+function TSYSTEMUnit.Get_False: TIDBooleanConstant;
+begin
+  Result := fDecls._False;
+end;
+
+function TSYSTEMUnit.Get_FalseExpression: TIDExpression;
+begin
+  Result := fDecls._FalseExpression;
 end;
 
 function TSYSTEMUnit.Get_Float32: TIDType;
@@ -1407,9 +1450,29 @@ begin
   Result := fDecls._NativeUInt;
 end;
 
+function TSYSTEMUnit.Get_NullPtrConstant: TIDIntConstant;
+begin
+  Result := fDecls._NullPtrConstant;
+end;
+
+function TSYSTEMUnit.Get_NullPtrExpression: TIDExpression;
+begin
+  Result := fDecls._NullPtrExpression;
+end;
+
 function TSYSTEMUnit.Get_NullPtrType: TIDType;
 begin
   Result := fDecls._NullPtrType;
+end;
+
+function TSYSTEMUnit.Get_OneConstant: TIDIntConstant;
+begin
+  Result := fDecls._OneConstant;
+end;
+
+function TSYSTEMUnit.Get_OneExpression: TIDExpression;
+begin
+  Result := fDecls._OneExpression;
 end;
 
 function TSYSTEMUnit.Get_OpenString: TIDString;
@@ -1452,9 +1515,24 @@ begin
   Result := fDecls._TObject;
 end;
 
+function TSYSTEMUnit.Get_True: TIDBooleanConstant;
+begin
+  Result := fDecls._True;
+end;
+
+function TSYSTEMUnit.Get_TrueExpression: TIDExpression;
+begin
+  Result := fDecls._TrueExpression;
+end;
+
 function TSYSTEMUnit.Get_TTypeKind: TIDEnum;
 begin
   Result := fDecls._TTypeKind;
+end;
+
+function TSYSTEMUnit.Get_TVarData: TIDType;
+begin
+  Result := fDecls._TVarData;
 end;
 
 function TSYSTEMUnit.Get_UInt16: TIDType;
@@ -1512,9 +1590,24 @@ begin
   Result := fDecls._WideString;
 end;
 
+function TSYSTEMUnit.Get_ZeroConstant: TIDIntConstant;
+begin
+  Result := fDecls._ZeroConstant;
+end;
+
+function TSYSTEMUnit.Get_ZeroFloatExpression: TIDExpression;
+begin
+  Result := fDecls._ZeroFloatExpression;
+end;
+
+function TSYSTEMUnit.Get_ZeroIntExpression: TIDExpression;
+begin
+  Result := fDecls._ZeroIntExpression;
+end;
+
 function TSYSTEMUnit.GetSystemDeclarations: PDelphiSystemDeclarations;
 begin
-  Result := addr(fDecls);
+  Result := fDecls;
 end;
 
 procedure TSYSTEMUnit.InsertToScope(Declaration: TIDDeclaration);
