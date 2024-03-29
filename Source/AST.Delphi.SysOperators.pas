@@ -613,7 +613,7 @@ end;
 function TSysImplicitVariantToAny.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
   if (Dst.DataTypeID in [dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean,
-                         dtFloat32, dtFloat64, dtNativeInt, dtNativeUInt, dtChar, dtAnsiChar,
+                         dtFloat32, dtFloat64, dtFloat80, dtNativeInt, dtNativeUInt, dtChar, dtAnsiChar,
                          dtString, dtAnsiString, dtVariant]) or (Dst = SYSUnit._TVarData) then
     Result := Self
   else

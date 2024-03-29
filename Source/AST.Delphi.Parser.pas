@@ -3530,10 +3530,13 @@ begin
           { если классы и интерфейс }
           if (SrcDTID = dtClass) and (DstDTID = dtInterface) then
           begin
-            if TIDClass(Source.DataType).FindInterface(TIDInterface(Dest)) then
+            if TIDClass(Source.DataType).FindInterface(TIDInterface(Dest), {AFindInAncestors:} True) then
               Exit(Source)
-            else
+            else begin
+              // for debug
+              TIDClass(Source.DataType).FindInterface(TIDInterface(Dest));
               ERRORS.CLASS_NOT_IMPLEMENT_INTF(Source, Dest);
+            end;
           end;
 
           { есди приемник - class of }
@@ -6002,8 +6005,10 @@ begin
       end;
     end;
     itFloat: begin
+      // possible issue under WIN64 target
+      // https://quality.embarcadero.com/browse/RSP-20333
       if not TryStrToFloat(Value, {out} FltValue) then
-        FltValue := 0; // https://quality.embarcadero.com/browse/RSP-20333
+        FltValue := 0;
       DataType := Sys.DataTypes[GetValueDataType(FltValue)];
       CItem := TIDFloatConstant.CreateAsAnonymous(Scope, DataType, FltValue);
     end;

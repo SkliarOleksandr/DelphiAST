@@ -765,7 +765,7 @@ type
     procedure CreateStandardOperators; override;
     destructor Destroy; override;
     //========================================================
-    function FindInterface(const Intf: TIDInterface): Boolean; overload;
+    function FindInterface(const AIntf: TIDInterface; AFindInAncestors: Boolean = False): Boolean; overload;
     function FindInterface(const AIntfName: string;
                            const AGenericParams: TIDTypeArray = []): TIDInterface; overload;
     procedure AddInterface(const Intf: TIDInterface);
@@ -6776,9 +6776,11 @@ begin
   Result := nil;
 end;
 
-function TIDClass.FindInterface(const Intf: TIDInterface): Boolean;
+function TIDClass.FindInterface(const AIntf: TIDInterface; AFindInAncestors: Boolean): Boolean;
 begin
-  Result := Assigned(FInterfaces) and (FInterfaces.IndexOf(Intf) >= 0);
+  Result := Assigned(FInterfaces) and (FInterfaces.IndexOf(AIntf) >= 0);
+  if not Result and AFindInAncestors and Assigned(Ancestor) then
+    Result := (Ancestor as TIDClass).FindInterface(AIntf, AFindInAncestors);
 end;
 
 { TIDInterfaceType }
