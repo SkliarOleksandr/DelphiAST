@@ -586,11 +586,13 @@ type
     FLBound: Int64;
     FHBound: Int64;
     function GetElementsCount: UInt64; inline;
+    function GetHighBoundUInt64: UInt64;
   protected
     function GetOrdinal: Boolean; override;
   public
     property LowBound: Int64 read FLBound write FLBound;
     property HighBound: Int64 read FHBound write FHBound;
+    property HighBoundUInt64: UInt64 read GetHighBoundUInt64;
     // показывает знаковый ли диаппазон (Int64) или беззнаковый (UInt64)
     property SignedBound: Boolean read FSignedBound write FSignedBound;
     property ElementsCount: UInt64 read GetElementsCount;
@@ -838,6 +840,8 @@ type
     FDimensionsCount: Integer;  // кол-во измерений
     FDimensions: TDimensions;   // измерения
     function GetDimension(Index: Integer): TIDOrdinal; virtual;
+    function GetAllDimensionsCount: Integer;
+    function GetElementTypeByIndex(Index: Integer): TIDType;
   protected
     function GetDisplayName: string; override;
     function GetDataSize: Integer; override;
@@ -849,8 +853,13 @@ type
     procedure CreateStandardOperators; override;
     ////////////////////////////////////////////////////////////////////////////
     property ElementDataType: TIDType read FElementDataType write FElementDataType;
+    // this array dimensions only
     property DimensionsCount: Integer read FDimensionsCount;
+    // this array and all nested arrays dimensions (since they can be addresed in the same way)
+    property AllDimensionsCount: Integer read GetAllDimensionsCount;
     property Dimensions[Index: Integer]: TIDOrdinal read GetDimension;
+    property ElementTypeByIndex[Index: Integer]: TIDType read GetElementTypeByIndex;
+
     procedure AddBound(Bound: TIDOrdinal);
     procedure IncRefCount(RCPath: UInt32); override;
     procedure DecRefCount(RCPath: UInt32); override;
@@ -894,7 +903,6 @@ type
   TIDDynArray = class(TIDArray)
   private
     FMembersScope: TScope;
-    function GetDimension(Index: Integer): TIDOrdinal; override;
   protected
   public
     constructor Create(Scope: TScope; const Name: TIdentifier); override;
@@ -5082,7 +5090,15 @@ end;
 
 function TIDArray.GetDimension(Index: Integer): TIDOrdinal;
 begin
-  Result := FDimensions[Index];
+  if Index < FDimensionsCount then
+    Result := FDimensions[Index]
+  else
+  if FElementDataType is TIDArray then
+    Result := TIDArray(FElementDataType).Dimensions[Index - FDimensionsCount]
+  else begin
+    AbortWorkInternal(sInvalidIndex);
+    Result := nil;
+  end;
 end;
 
 function TIDArray.GetDisplayName: string;
@@ -5111,9 +5127,27 @@ begin
     Result := Result + '<null>';
 end;
 
+function TIDArray.GetElementTypeByIndex(Index: Integer): TIDType;
+begin
+  if Index < FDimensionsCount then
+    Result := FElementDataType
+  else
+  if FElementDataType is TIDArray then
+    Result := TIDArray(FElementDataType).ElementTypeByIndex[Index - FDimensionsCount]
+  else
+    AbortWorkInternal(sInvalidIndex)
+end;
+
 function TIDArray.GetIsGeneric: Boolean;
 begin
   Result := Assigned(FElementDataType) and FElementDataType.IsGeneric;
+end;
+
+function TIDArray.GetAllDimensionsCount: Integer;
+begin
+  Result := FDimensionsCount;
+  if FElementDataType is TIDArray then
+    Result := Result + TIDArray(FElementDataType).AllDimensionsCount;
 end;
 
 procedure TIDArray.IncRefCount(RCPath: UInt32);
@@ -5219,7 +5253,15 @@ end;
 
 function TIDOrdinal.GetElementsCount: UInt64;
 begin
-  Result := Abs(FHBound - FLBound) + 1;
+  if FHBound > FLBound then
+    Result := Abs(FHBound - FLBound) + 1
+  else
+    Result := Abs(FLBound - FHBound) + 1
+end;
+
+function TIDOrdinal.GetHighBoundUInt64: UInt64;
+begin
+  Result := UInt64(FHBound);
 end;
 
 function TIDOrdinal.GetOrdinal: Boolean;
@@ -5624,11 +5666,6 @@ begin
   ABuilder.Append(DisplayName);
   ABuilder.Append(' = array of ');
   TypeNameToString(ElementDataType, ABuilder);
-end;
-
-function TIDDynArray.GetDimension(Index: Integer): TIDOrdinal;
-begin
-  Result := TIDOrdinal(SYSUnit._UInt32);
 end;
 
 function TIDDynArray.GetHelperScope: TScope;

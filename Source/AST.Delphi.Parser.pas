@@ -204,7 +204,7 @@ type
     procedure CheckArrayExpression(Expression: TIDExpression); inline;
     procedure CheckIncompletedProcs; virtual;
     procedure CheckIncompletedIntfProcs(AClassType: TIDClass);
-    procedure StaticCheckBounds(ConstValue: TIDConstant; Decl: TIDDeclaration; DimNumber: Integer);
+    procedure StaticCheckBounds(ABound: TIDOrdinal; AValue: TIDConstant); overload;
     procedure CheckIncompleteFwdTypes;
     procedure CheckEndOfFile(Token: TTokenID);
     procedure CheckProcedureType(DeclType: TIDType); inline;
@@ -4496,7 +4496,7 @@ begin
     // auto-dereference for static array pointer (doesn't depend on POINTERMATH state)
     if ARefType.DataTypeID = dtStaticArray then
     begin
-      DimensionsCount := TIDArray(ARefType).DimensionsCount;
+      DimensionsCount := TIDArray(ARefType).AllDimensionsCount;
       DataType := TIDArray(ARefType).ElementDataType;
     end else
     // Delphi always treats System.PByte as POINTERMATH enabled type
@@ -4515,7 +4515,7 @@ begin
   end else
   if (ArrDecl.ItemType <> itProperty) and (DeclType is TIDArray) then
   begin
-    DimensionsCount := TIDArray(DeclType).DimensionsCount;
+    DimensionsCount := TIDArray(DeclType).AllDimensionsCount;
     DataType := TIDArray(DeclType).ElementDataType;
   end else
   if (ArrDecl.ItemType = itProperty) and (TIDProperty(ArrDecl).Params.Count > 0) then
@@ -4564,10 +4564,18 @@ begin
     {if Assigned(InnerEContext.LastBoolNode) then
       Bool_CompleteImmediateExpression(InnerEContext, Expr);}
 
-    if Expr.Declaration.ItemType = itConst then
-      // статическая проверка на границы массива
-      StaticCheckBounds(Expr.AsConst, ArrDecl, IdxCount)
-    else begin
+    // possible multi-dimentions array declarations
+    // TA = array [0..N, 0..N] of <type>
+    // TA = array [0..N] of array [0..N] of <type>
+    // TA = array [0..N] of array of <type>
+
+    if DeclType is TIDArray then
+    begin
+      if Expr.IsConstant then
+        StaticCheckBounds(TIDArray(DeclType).Dimensions[IdxCount], Expr.AsConst);
+
+      DataType := TIDArray(DeclType).ElementTypeByIndex[IdxCount];
+    end else begin
        // динамическая проверка на границы массива
        {if UseCheckBound then
          EmitDynCheckBound(EContext.SContext, Decl, Expr);}
@@ -4584,7 +4592,7 @@ begin
     Result := Lexer_NextToken(Scope);
     Break;
   end;
-  if IdxCount <> DimensionsCount then
+  if IdxCount > DimensionsCount then
     ERRORS.NEED_SPECIFY_NINDEXES(ArrDecl);
 
 
@@ -8250,28 +8258,10 @@ begin
   end;
 end;
 
-procedure TASTDelphiUnit.StaticCheckBounds(ConstValue: TIDConstant; Decl: TIDDeclaration; DimNumber: Integer);
-var
-  DeclType: TIDType;
-  Dim: TIDOrdinal;
+procedure TASTDelphiUnit.StaticCheckBounds(ABound: TIDOrdinal; AValue: TIDConstant);
 begin
-  if Decl.ItemType <> itProperty then
-  begin
-    DeclType := Decl.DataType;
-    if DeclType.DataTypeID = dtPointer then
-      DeclType := TIDPointer(DeclType).ReferenceType;
-
-    if DeclType is TIDArray then
-    with TIDArray(DeclType) do
-    begin
-      if DimNumber >= DimensionsCount then
-        AbortWork(sNeedSpecifyNIndexesFmt, [Decl.DisplayName, DisplayName, DimensionsCount], Lexer.PrevPosition);
-
-      Dim := Dimensions[DimNumber];
-      if (ConstValue.AsInt64 < Dim.LowBound) or (ConstValue.AsInt64 > Dim.HighBound) then
-        AbortWork(sConstExprOutOfRangeFmt, [ConstValue.AsInt64, Dim.LowBound, Dim.HighBound], Lexer.PrevPosition);
-    end;
-  end;
+  if (AValue.AsInt64 < ABound.LowBound) or (AValue.AsUInt64 > ABound.HighBoundUInt64) then
+   AbortWork(sConstExprOutOfRangeFmt, [AValue.AsInt64, ABound.LowBound, ABound.HighBoundUInt64], Lexer.PrevPosition);
 end;
 
 class function TASTDelphiUnit.StrictMatchProc(const Src, Dst: TIDProcedure): Boolean;

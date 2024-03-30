@@ -6,6 +6,7 @@ uses
   System.SysUtils, System.Classes, System.Types, Generics.Collections,
   AST.Intf,
   AST.Classes,
+  AST.Targets,
   AST.Parser.Utils,
   AST.Parser.Messages,
   AST.Parser.Options;
@@ -27,7 +28,7 @@ type
     function GetUnit(Index: Integer): TASTModule; overload;
     function GetSearchPathes: TStrings;
     function GetOptions: TPackageOptions;
-    function GetTarget: string;
+    function GetTarget: TASTTargetClass;
     function GetDefines: TDefines;
     function FindUnitFile(const UnitName: string): string;
     function GetUnit(const UnitName: string): TObject; overload;
@@ -39,7 +40,7 @@ type
     procedure SetCompileAll(const Value: Boolean);
     procedure SetIncludeDebugInfo(const Value: Boolean);
     procedure SetRTTICharset(const Value: TRTTICharset);
-    procedure SetTarget(const Value: string);
+    procedure SetTarget(const Value: TASTTargetClass);
     procedure SaveToStream(Stream: TStream);
     procedure AddUnit(aUnit, AfterUnit: TASTModule); overload;
     procedure AddUnit(const FileName: string); overload;
@@ -66,7 +67,7 @@ type
     property Units[Index: Integer]: TASTModule read GetUnit;
     property SearchPathes: TStrings read GetSearchPathes;
     property Options: TPackageOptions read GetOptions;
-    property Target: string read GetTarget write SetTarget;
+    property Target: TASTTargetClass read GetTarget write SetTarget;
     property Defines: TDefines read GetDefines;
     property PointerSize: Integer read GetPointerSize;
     property NativeIntSize: Integer read GetNativeIntSize;

@@ -39,8 +39,7 @@ type
   private
     fName: string;
     fUnits: TUnits;
-    fTargetName: string;
-    fTarget: TNPLTarget;
+    fTarget: TASTTargetClass;
     fDefines: TDefines;
     fStrLiterals: TStrLiterals;
     fIncludeDebugInfo: Boolean;
@@ -62,7 +61,7 @@ type
     function GetUnit(const UnitName: string): TObject; overload;
     function GetSearchPathes: TStrings;
     function GetOptions: TPackageOptions;
-    function GetTarget: string;
+    function GetTarget: TASTTargetClass;
     function GetDefines: TDefines;
     function GetSysUnit: TASTModule;
     function GetStopCompileIfError: Boolean;
@@ -70,7 +69,7 @@ type
     procedure SetStopCompileIfError(const Value: Boolean);
     procedure SetIncludeDebugInfo(const Value: Boolean);
     procedure SetRTTICharset(const Value: TRTTICharset);
-    procedure SetTarget(const Value: string);
+    procedure SetTarget(const Value: TASTTargetClass);
     procedure SetCompileAll(const Value: Boolean);
     class function StrListCompare(const Left, Right: TStrConstKey): NativeInt; static;
   protected
@@ -217,9 +216,9 @@ begin
   Result := fSysUnit;
 end;
 
-function TPascalProject.GetTarget: string;
+function TPascalProject.GetTarget: TASTTargetClass;
 begin
-  Result := FTargetName;
+  Result := fTarget;
 end;
 
 function TPascalProject.GetTotalLinesParsed: Integer;
@@ -366,7 +365,6 @@ begin
   FMessages := TCompilerMessages.Create;
   FRTTICharset := RTTICharset;
   FStrLiterals := TStrLiterals.Create(StrListCompare);
-  SetTarget('ANY');
 end;
 
 procedure TPascalProject.AddUnitSource(const Source: string);
@@ -610,12 +608,9 @@ begin
   fStopCompileIfError := Value;
 end;
 
-procedure TPascalProject.SetTarget(const Value: string);
+procedure TPascalProject.SetTarget(const Value: TASTTargetClass);
 begin
-  FTargetName := Value;
-  FTarget := FindTarget(Value);
-  if not Assigned(FTarget) then
-    AbortWorkInternal('Unknwon target: ' + Value);
+  FTarget := Value;
 end;
 
 function TPascalProject.CompileInterfacesOnly: TCompilerResult;

@@ -244,7 +244,7 @@ begin
   case cbPlatform.ItemIndex of
     // Win32
     0: begin
-      APrj.Target := TWINX86_Target.TargetName;
+      APrj.Target := TWINX86_Target;
       APrj.Defines.Add('CPUX86');
       APrj.Defines.Add('CPU386');
       APrj.Defines.Add('CPU32BITS');
@@ -254,7 +254,7 @@ begin
     end;
     // Win64
     1: begin
-      APrj.Target := TWINX64_Target.TargetName;
+      APrj.Target := TWINX64_Target;
       APrj.Defines.Add('CPUX64');
       APrj.Defines.Add('CPU64BITS');
       APrj.Defines.Add('WIN64');
@@ -401,7 +401,7 @@ begin
 
   Prj := TASTDelphiProject.Create('test');
   Prj.AddUnitSearchPath(edSrcRoot.Text);
-  Prj.Target := TWINX86_Target.TargetName;
+  Prj.Target := TWINX86_Target;
   SetDefines(Prj);
   Prj.OnProgress := OnProgress;
 
@@ -585,8 +585,14 @@ begin
 end;
 
 procedure Test0;
+var
+  L: Int64;
+  H: Int64;
+  R: UInt64;
 begin
-//  var LValue := StrToFloat('1e320');
+  L := 0;
+  H := Int64(MaxUInt64);
+  R := UInt64(H) - UInt64(L);
 end;
 
 initialization

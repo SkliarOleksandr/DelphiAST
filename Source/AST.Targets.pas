@@ -5,45 +5,65 @@ interface
 uses SysUtils;
 
 type
-  TNPLAbstractTarget = class abstract
+  TASTTarget = class abstract
   public
     class function TargetName: string; virtual; abstract;
     class function PointerSize: Integer; virtual; abstract;
     class function NativeIntSize: Integer; virtual; abstract;
+    class function MinNativeInt: Int64; virtual; abstract;
+    class function MaxNativeInt: Int64; virtual; abstract;
+    class function MinNativeUInt: UInt64; virtual; abstract;
+    class function MaxNativeUInt: UInt64; virtual; abstract;
   end;
 
-  TNPLTarget = class of TNPLAbstractTarget;
+  TASTTargetClass = class of TASTTarget;
 
-  TANY_Target = class(TNPLAbstractTarget)
+  TANY_Target = class(TASTTarget)
   public
     class function TargetName: string; override;
     class function PointerSize: Integer; override;
     class function NativeIntSize: Integer; override;
+    class function MinNativeInt: Int64; override;
+    class function MaxNativeInt: Int64; override;
+    class function MinNativeUInt: UInt64; override;
+    class function MaxNativeUInt: UInt64; override;
   end;
 
-  TWINX86_Target = class(TNPLAbstractTarget)
+  TWINX86_Target = class(TASTTarget)
   public
     class function TargetName: string; override;
     class function PointerSize: Integer; override;
     class function NativeIntSize: Integer; override;
+    class function MinNativeInt: Int64; override;
+    class function MaxNativeInt: Int64; override;
+    class function MinNativeUInt: UInt64; override;
+    class function MaxNativeUInt: UInt64; override;
   end;
 
-  TWINX64_Target = class(TNPLAbstractTarget)
+  TWINX64_Target = class(TASTTarget)
   public
     class function TargetName: string; override;
     class function PointerSize: Integer; override;
     class function NativeIntSize: Integer; override;
+    class function MinNativeInt: Int64; override;
+    class function MaxNativeInt: Int64; override;
+    class function MinNativeUInt: UInt64; override;
+    class function MaxNativeUInt: UInt64; override;
+
   end;
 
-  function FindTarget(const Name: string): TNPLTarget;
+  function FindTarget(const Name: string): TASTTargetClass;
 
 implementation
 
-var RegisteredTargets: array of TNPLTarget;
+uses
+  AST.Parser.Utils;
 
-function FindTarget(const Name: string): TNPLTarget;
+var RegisteredTargets: array of TASTTargetClass;
+
+function FindTarget(const Name: string): TASTTargetClass;
 var
-  Target: TNPLTarget;
+  Target: TASTTargetClass;
   UpperName: string;
 begin
   UpperName := UpperCase(Name);
@@ -53,7 +73,7 @@ begin
   Result := nil;
 end;
 
-procedure RegisterTarget(const TargetClass: TNPLTarget);
+procedure RegisterTarget(const TargetClass: TASTTargetClass);
 begin
   RegisteredTargets := RegisteredTargets + [TargetClass];
 end;
@@ -69,6 +89,26 @@ end;
 class function TANY_Target.PointerSize: Integer;
 begin
   Result := -1;
+end;
+
+class function TANY_Target.MaxNativeInt: Int64;
+begin
+  Result := 0;
+end;
+
+class function TANY_Target.MaxNativeUInt: UInt64;
+begin
+  Result := 0;
+end;
+
+class function TANY_Target.MinNativeInt: Int64;
+begin
+  Result := 0;
+end;
+
+class function TANY_Target.MinNativeUInt: UInt64;
+begin
+  Result := 0;
 end;
 
 class function TANY_Target.NativeIntSize: Integer;
@@ -88,6 +128,26 @@ begin
   Result := 4;
 end;
 
+class function TWINX86_Target.MaxNativeInt: Int64;
+begin
+  Result := MaxInt32;
+end;
+
+class function TWINX86_Target.MaxNativeUInt: UInt64;
+begin
+  Result := MaxUInt32;
+end;
+
+class function TWINX86_Target.MinNativeInt: Int64;
+begin
+  Result := MinInt32;
+end;
+
+class function TWINX86_Target.MinNativeUInt: UInt64;
+begin
+  Result := 0;
+end;
+
 class function TWINX86_Target.NativeIntSize: Integer;
 begin
   Result := 4;
@@ -103,6 +163,26 @@ end;
 class function TWINX64_Target.PointerSize: Integer;
 begin
   Result := 8;
+end;
+
+class function TWINX64_Target.MaxNativeInt: Int64;
+begin
+  Result := MaxInt64;
+end;
+
+class function TWINX64_Target.MaxNativeUInt: UInt64;
+begin
+  Result := MaxUInt64
+end;
+
+class function TWINX64_Target.MinNativeInt: Int64;
+begin
+  Result := MinInt64;
+end;
+
+class function TWINX64_Target.MinNativeUInt: UInt64;
+begin
+  Result := 0;
 end;
 
 class function TWINX64_Target.NativeIntSize: Integer;

@@ -985,8 +985,12 @@ begin
   fDecls._UInt16 := RegisterOrdinal('Word', dtUInt16, 0, MaxUInt16);
   fDecls._UInt32 := RegisterOrdinal('Cardinal', dtUInt32, 0, MaxUInt32);
   fDecls._UInt64 := RegisterOrdinal('UInt64', dtUInt64, 0, MaxUInt64);
-  fDecls._NativeInt := RegisterOrdinal('NativeInt', dtNativeInt, MinInt64, MaxInt64);
-  fDecls._NativeUInt := RegisterOrdinal('NativeUInt', dtNativeUInt, 0, MaxUInt64);
+  fDecls._NativeInt := RegisterOrdinal('NativeInt', dtNativeInt,
+                                       Package.Target.MinNativeInt,
+                                       Package.Target.MaxNativeInt);
+  fDecls._NativeUInt := RegisterOrdinal('NativeUInt', dtNativeUInt,
+                                        Package.Target.MinNativeUInt,
+                                        Package.Target.MaxNativeUInt);
   fDecls._Float32 := RegisterType('Single', TIDFloat, dtFloat32);
   fDecls._Float64 := RegisterType('Double', TIDFloat, dtFloat64);
   fDecls._Float80 := RegisterType('Extended', TBuiltin_Extended, dtFloat80);
@@ -1166,7 +1170,7 @@ end;
 
 procedure TSYSTEMUnit.SystemFixup;
 begin
-  if Package.Target = TWINX86_Target.TargetName then
+  if Package.Target = TWINX86_Target then
   begin
     var coeffTypeType: TIDEnum := RegisterType('coeffType', TIDEnum, dtEnum) as TIDEnum;
     coeffTypeType.Items := TScope.Create(stLocal, ImplScope);
@@ -1253,7 +1257,7 @@ begin
   RegisterBuiltin(TSF_VarClear);
 
 
-  if Project.Target = TWINX64_Target.TargetName then
+  if Project.Target = TWINX64_Target then
   begin
     RegisterBuiltin(TSF_AtomicCmpExchange128);
     RegisterBuiltin(TSF_MulDivInt64);
