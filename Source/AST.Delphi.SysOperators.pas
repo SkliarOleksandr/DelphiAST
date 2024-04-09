@@ -373,7 +373,7 @@ type
   {explicit Variant <- Any}
   TSysExplicitVariantFromAny = class(TSysOpExplisit)
   public
-    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
+    function Check(const SContext: TSContext; const ASrc: TIDType; const ADst: TIDType): Boolean; override;
   end;
 
   ///////////////////////////////////////////////////////////////////////////////////////////
@@ -502,7 +502,7 @@ begin
     if IsAnsiString(Src.AsStrConst.Value) then
       Exit(Dst);
   end;
-  Result := nil;
+  Result := Dst;
 end;
 
 { TSysImplicitAnsiStringToString }
@@ -790,8 +790,7 @@ end;
 
 function TSysExplicitAnsiStringFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
-  Result := (SYSUnit._PAnsiChar = Src) or
-            (Src.DataTypeID in [dtPointer, dtUntypedRef]);
+  Result := (SYSUnit._PAnsiChar = Src) or Src.IsReferenced;
 end;
 
 function TSysExplicitAnsiStringFromAny.Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
@@ -806,7 +805,7 @@ end;
 
 function TSysExplicitStringFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
-  Result := (Src.DataTypeID in [dtAnsiString, dtPointer, dtUntypedRef, dtPAnsiChar, dtPWideChar]) or
+  Result := (Src.DataTypeID in [dtAnsiString, dtWideString, dtPointer, dtUntypedRef, dtPAnsiChar, dtPWideChar]) or
             (
               (Src.DataTypeID = dtStaticArray) and
                 (
@@ -992,11 +991,12 @@ begin
   else
   if Src.DataTypeId = dtSet then
   begin
-    var DstSetType := TIDSet(Dst);
-    var SrcSetType := TIDSet(Src.DataType);
-    if (Src.Declaration = SYSUnit.SystemDeclarations._EmptyArrayConstant) or
-       (DstSetType.BaseType.ActualDataType = SrcSetType.BaseType.ActualDataType) then
-      Exit(DstSetType);
+// todo: the rule is to comple for now)
+//    var DstSetType := TIDSet(Dst);
+//    var SrcSetType := TIDSet(Src.DataType);
+//    if (Src.Declaration = SYSUnit.SystemDeclarations._EmptyArrayConstant) or
+//       (DstSetType.BaseType.ActualDataType = SrcSetType.BaseType.ActualDataType) then
+      Exit(Dst);
   end;
 end;
 
@@ -1187,9 +1187,15 @@ end;
 
 { TSysExplicitVariantFromAny }
 
-function TSysExplicitVariantFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
+function TSysExplicitVariantFromAny.Check(const SContext: TSContext; const ASrc, ADst: TIDType): Boolean;
 begin
-  Result := Src.DataTypeID in [dtPointer, dtUntypedRef];
+  var LRecordWithTheSameSize := (ASrc.DataTypeID in [dtRecord, dtStaticArray]) and
+                                (ASrc.DataSize = Package.VariantSize);
+
+  Result := LRecordWithTheSameSize or
+            ASrc.IsOrdinal or
+            ASrc.IsFloat or
+            (ASrc.DataTypeID in [dtString, dtAnsiString, dtWideString, dtDynArray]);
 end;
 
 { TSys_Equal_NullPtr }

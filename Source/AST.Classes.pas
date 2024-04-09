@@ -72,6 +72,7 @@ type
     function GetUnitClass: TASTUnitClass; virtual; abstract;
     function GetPointerSize: Integer; virtual; abstract;
     function GetNativeIntSize: Integer; virtual; abstract;
+    function GetVariantSize: Integer; virtual; abstract;
     function GetTotalLinesParsed: Integer; virtual;
     function GetTotalUnitsParsed: Integer; virtual;
     function GetTotalUnitsIntfOnlyParsed: Integer; virtual;

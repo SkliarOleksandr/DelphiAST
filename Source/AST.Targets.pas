@@ -10,6 +10,7 @@ type
     class function TargetName: string; virtual; abstract;
     class function PointerSize: Integer; virtual; abstract;
     class function NativeIntSize: Integer; virtual; abstract;
+    class function VariantSize: Integer; virtual; abstract;
     class function MinNativeInt: Int64; virtual; abstract;
     class function MaxNativeInt: Int64; virtual; abstract;
     class function MinNativeUInt: UInt64; virtual; abstract;
@@ -23,6 +24,7 @@ type
     class function TargetName: string; override;
     class function PointerSize: Integer; override;
     class function NativeIntSize: Integer; override;
+    class function VariantSize: Integer; override;
     class function MinNativeInt: Int64; override;
     class function MaxNativeInt: Int64; override;
     class function MinNativeUInt: UInt64; override;
@@ -34,6 +36,7 @@ type
     class function TargetName: string; override;
     class function PointerSize: Integer; override;
     class function NativeIntSize: Integer; override;
+    class function VariantSize: Integer; override;
     class function MinNativeInt: Int64; override;
     class function MaxNativeInt: Int64; override;
     class function MinNativeUInt: UInt64; override;
@@ -45,11 +48,11 @@ type
     class function TargetName: string; override;
     class function PointerSize: Integer; override;
     class function NativeIntSize: Integer; override;
+    class function VariantSize: Integer; override;
     class function MinNativeInt: Int64; override;
     class function MaxNativeInt: Int64; override;
     class function MinNativeUInt: UInt64; override;
     class function MaxNativeUInt: UInt64; override;
-
   end;
 
   function FindTarget(const Name: string): TASTTargetClass;
@@ -84,6 +87,11 @@ end;
 class function TANY_Target.TargetName: string;
 begin
   Result := 'ANY';
+end;
+
+class function TANY_Target.VariantSize: Integer;
+begin
+  Result := -1;
 end;
 
 class function TANY_Target.PointerSize: Integer;
@@ -123,6 +131,11 @@ begin
   Result := 'WIN-X86';
 end;
 
+class function TWINX86_Target.VariantSize: Integer;
+begin
+  Result := 16;
+end;
+
 class function TWINX86_Target.PointerSize: Integer;
 begin
   Result := 4;
@@ -158,6 +171,11 @@ end;
 class function TWINX64_Target.TargetName: string;
 begin
   Result := 'WIN-X64';
+end;
+
+class function TWINX64_Target.VariantSize: Integer;
+begin
+  Result := 24;
 end;
 
 class function TWINX64_Target.PointerSize: Integer;

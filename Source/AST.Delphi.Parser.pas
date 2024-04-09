@@ -40,6 +40,7 @@ uses
 // System.SyncObjs
 // System.SysUtils
 // System.Math
+// System.Variants
 // Windows
 // AnsiStrings
 // Character
@@ -696,6 +697,12 @@ begin
       end else begin
         while Result = token_on do
           Result := ParseExceptOnSection(Scope, KW, SContext);
+        // else section  
+        if Result = token_else then
+        begin
+          Lexer_NextToken(Scope);
+          Result := ParseStatements(Scope, NewContext, True); 
+        end;
       end;
 
       Lexer_MatchToken(Result, token_end);
@@ -1509,9 +1516,9 @@ var
 begin
   // try to parse...
   Result := ReadNewOrExistingID(Scope, {out} ID, {out} Decl);
+  NewScope := TScope.Create(stLocal, Scope);  
   if Result = token_colon then
   begin
-    NewScope := TScope.Create(stLocal, Scope);
     VarDecl := TIDVariable.Create(NewScope, ID);
     VarExpr := TASTExpression.Create(nil);
     VarExpr.AddDeclItem(VarDecl, Lexer_Position);
@@ -1521,8 +1528,10 @@ begin
     VarDecl.DataType := TypeDecl as TIDType;
   end else
   begin
-    VarExpr := nil; // todo:
-    NewScope := nil;
+    VarExpr := nil;
+    if not Assigned(Decl) then
+      ERRORS.UNDECLARED_ID(ID);
+    
     CheckExceptionType(Decl);
   end;
 
@@ -1534,8 +1543,13 @@ begin
 
   Lexer_NextToken(Scope);
   Result := ParseStatements(NewScope, NewSContext, False);
-  Lexer_MatchSemicolon(Result);
-  Result := Lexer_NextToken(Scope);
+
+  if Result = token_semicolon then
+    //Lexer_MatchSemicolon(Result);
+    Result := Lexer_NextToken(Scope)
+  else
+  if Result <> token_else then  
+    ERRORS.SEMICOLON_EXPECTED;
 end;
 
 function TASTDelphiUnit.ParseWhileStatement(Scope: TScope; const SContext: TSContext): TTokenID;
@@ -5661,7 +5675,11 @@ begin
     begin
       ResExpr := TSysTypeCast(OperatorDecl).Match(SContext, SrcExpr, TargetType);
       if not Assigned(ResExpr) then
+      begin
+        // for debug
+        TSysTypeCast(OperatorDecl).Match(SContext, SrcExpr, TargetType);
         ERRORS.INVALID_EXPLICIT_TYPECAST(SrcExpr, TargetType);
+      end;
     end;
   end else
   begin

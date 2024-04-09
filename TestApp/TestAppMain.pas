@@ -461,13 +461,47 @@ begin
   end;
 end;
 
+procedure TestSetImplicit;
+type
+  TEnum1 = (en11, en12, en13);
+  TEnum2 = (en21, en22, en23);
+  TXSmallSet = set of 0..2;
+  TSmallSet = set of 0..31;
+  TLargeSet = set of Byte;
+  TEnumSet1 = set of TEnum1;
+  TEnumSet2 = set of TEnum2;
+var
+  SS: TSmallSet;
+  XS: TXSmallSet;
+  LS: TLargeSet;
+  ES1: TEnumSet1;
+  ES2: TEnumSet1;
+  I8: Byte;
+  I32: Integer;
+begin
+  SS := LS;
+  LS := SS;
+
+  ES1 := ES2;
+  ES1 := TEnumSet1(I8);
+
+  //LS := ES;
+end;
+
 procedure Test;
 type
   TSProc = procedure(a: Integer);
   TRProc = reference to procedure(a: Integer);
   TMProc1 = procedure(a: Integer) of object;
   TMProc2 = procedure(a, b: Integer) of object;
+  TEnum = (en1, en2, en3);
 var
+  Enm: TEnum;
+  Cmp: Comp;
+  Cur: Currency;
+  Sng: Single;
+  Dbl: Double;
+  Vrn: Variant;
   Ptr: Pointer;
   Inf: IInterface;
   RPrc: TRProc;
@@ -479,7 +513,9 @@ var
   UStr: string;
   DArr: TStringDynArray;
   SArr: array [1..SizeOf(Pointer)] of Byte;
+  SArrVar: array [1..SizeOf(Variant)] of Byte;
   Rec: record i: NativeInt end;
+  RecVar: record arr: array [1..SizeOf(Variant)] of Byte end;
 
   Rec16: record c, d: pointer end;
   SArr16: array [1..SizeOf(Pointer)*2] of Byte;
@@ -578,10 +614,24 @@ begin
   //var PP8 := pointer(RPrc); !!!
   //var PP9 := pointer(SPrc); !!!
 
-
   var MP0 := TMProc2(MPrc);
   var MP1 := TMProc2(SArr16);
   var MP2 := TMProc2(Rec16);
+
+  //var V0 := Variant(Ptr);
+  var V1 := Variant(WStr);
+  var V2 := Variant(AStr);
+  var V3 := Variant(UStr);
+  var V4 := Variant(DArr);
+  var V5 := Variant(SArrVar);
+  var V6 := Variant(Inf);
+  //var V7 := Variant(Obj);
+  var V8 := Variant(RecVar);
+  var V9 := Variant(Sng);
+  var V10 := Variant(Dbl);
+  var V11 := Variant(Cur);
+  var V12 := Variant(Cmp);
+  var V13 := Variant(Enm);
 end;
 
 procedure Test0;

@@ -58,6 +58,7 @@ type
     function CompileInterfacesOnly: TCompilerResult;
     function GetPointerSize: Integer;
     function GetNativeIntSize: Integer;
+    function GetVariantSize: Integer;
     property Messages: ICompilerMessages read GetMessages;
     property RTTICharset: TRTTICharset read GetRTTICharset write SetRTTICharset;
     property IncludeDebugInfo: Boolean read GetIncludeDebugInfo write SetIncludeDebugInfo;
@@ -71,6 +72,7 @@ type
     property Defines: TDefines read GetDefines;
     property PointerSize: Integer read GetPointerSize;
     property NativeIntSize: Integer read GetNativeIntSize;
+    property VariantSize: Integer read GetVariantSize;
     property SysUnit: TASTModule read GetSysUnit;
   end;
 

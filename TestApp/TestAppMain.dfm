@@ -48,7 +48,6 @@ object frmTestAppMain: TfrmTestAppMain
     Align = alTop
     BevelOuter = bvNone
     TabOrder = 0
-    ExplicitWidth = 1264
     object ErrMemo: TSynEdit
       AlignWithMargins = True
       Left = 3
@@ -93,7 +92,6 @@ object frmTestAppMain: TfrmTestAppMain
       ReadOnly = True
       SelectedColor.Alpha = 0.400000005960464500
       WordWrap = True
-      ExplicitWidth = 1258
     end
     object Panel6: TPanel
       Left = 0
@@ -103,7 +101,6 @@ object frmTestAppMain: TfrmTestAppMain
       Align = alTop
       BevelOuter = bvNone
       TabOrder = 1
-      ExplicitWidth = 1264
       DesignSize = (
         1266
         61)
@@ -124,12 +121,11 @@ object frmTestAppMain: TfrmTestAppMain
       object edSrcRoot: TEdit
         Left = 8
         Top = 37
-        Width = 1012
+        Width = 1000
         Height = 21
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 0
         Text = 'C:\Program Files (x86)\Embarcadero\Studio\23.0\source\'
-        ExplicitWidth = 1010
       end
       object chkStopIfError: TCheckBox
         Left = 112
@@ -160,7 +156,7 @@ object frmTestAppMain: TfrmTestAppMain
         TabOrder = 3
       end
       object Button1: TButton
-        Left = 1026
+        Left = 1014
         Top = 33
         Width = 106
         Height = 25
@@ -168,10 +164,9 @@ object frmTestAppMain: TfrmTestAppMain
         Caption = 'AST Parse'
         TabOrder = 4
         OnClick = Button1Click
-        ExplicitLeft = 1024
       end
       object Button2: TButton
-        Left = 1138
+        Left = 1126
         Top = 34
         Width = 108
         Height = 25
@@ -179,7 +174,6 @@ object frmTestAppMain: TfrmTestAppMain
         Caption = 'AST Parse RTL'
         TabOrder = 5
         OnClick = Button2Click
-        ExplicitLeft = 1136
       end
       object chkShowWarnings: TCheckBox
         Left = 527
@@ -222,8 +216,6 @@ object frmTestAppMain: TfrmTestAppMain
     Align = alClient
     Caption = 'Panel4'
     TabOrder = 1
-    ExplicitWidth = 780
-    ExplicitHeight = 563
     object PageControl1: TPageControl
       AlignWithMargins = True
       Left = 4
@@ -233,8 +225,6 @@ object frmTestAppMain: TfrmTestAppMain
       ActivePage = tsSource
       Align = alClient
       TabOrder = 0
-      ExplicitWidth = 772
-      ExplicitHeight = 555
       object tsSource: TTabSheet
         Caption = 'Source'
         object edUnit: TSynEdit
@@ -439,7 +429,6 @@ object frmTestAppMain: TfrmTestAppMain
     ActivePage = tsLogs
     Align = alLeft
     TabOrder = 2
-    ExplicitHeight = 563
     object tsLogs: TTabSheet
       Caption = 'Logs'
       object LogMemo: TSynEdit
@@ -486,7 +475,6 @@ object frmTestAppMain: TfrmTestAppMain
         ReadOnly = True
         SelectedColor.Alpha = 0.400000005960464500
         WordWrap = True
-        ExplicitHeight = 529
       end
     end
     object tsFiles: TTabSheet

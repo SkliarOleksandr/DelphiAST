@@ -79,6 +79,7 @@ type
     function GetSystemUnitFileName: string; virtual;
     function GetPointerSize: Integer; override;
     function GetNativeIntSize: Integer; override;
+    function GetVariantSize: Integer;  override;
     procedure InitSystemUnit; virtual;
     procedure DoBeforeCompileUnit(AUnit: TASTModule); virtual;
     procedure DoFinishCompileUnit(AUnit: TASTModule; AIntfOnly: Boolean); virtual;
@@ -635,6 +636,11 @@ end;
 function TPascalProject.GetNativeIntSize: Integer;
 begin
   Result := FTarget.NativeIntSize;
+end;
+
+function TPascalProject.GetVariantSize: Integer;
+begin
+  Result := FTarget.VariantSize;
 end;
 
 end.

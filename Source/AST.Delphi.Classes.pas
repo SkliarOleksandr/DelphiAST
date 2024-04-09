@@ -20,6 +20,7 @@ uses System.SysUtils, System.Classes, System.StrUtils, System.Math, System.Gener
      // system
      // SysInit
      // System.Types
+     // System.TypInfo
      // GETMEM.INC
 type
 
@@ -332,6 +333,7 @@ type
     function GetOperatorsFor(const Op: TOperatorID): TBinaryOperatorsArray;
     function GetIsReferenced: Boolean; inline;
     function GetIsInteger: Boolean; inline;
+    function GetIsFloat: Boolean; inline;
   protected
     function GetDataSize: Integer; virtual;
     function GetOrdinal: Boolean; virtual;
@@ -357,6 +359,7 @@ type
     property BinarOperatorsFor[const Op: TOperatorID]: TBinaryOperatorsArray read GetOperatorsFor;
     property IsOrdinal: Boolean read GetOrdinal;
     property IsInteger: Boolean read GetIsInteger;
+    property IsFloat: Boolean read GetIsFloat;
     property IsPacked: Boolean read FPacked write FPacked;
     property IsReferenced: Boolean read GetIsReferenced;
     property IsGeneric: Boolean read GetIsGeneric;
@@ -434,6 +437,9 @@ type
 
     function MatchImplicitTo(ADst: TIDType): Boolean; virtual;
     function MatchImplicitFrom(ASrc: TIDType): Boolean; virtual;
+
+    function MatchExplicitTo(ADst: TIDType): Boolean; virtual;
+    function MatchExplicitFrom(ASrc: TIDType): Boolean; virtual;
   end;
 
   {special system internal type to describe several possible types in one}
@@ -598,6 +604,8 @@ type
     property ElementsCount: UInt64 read GetElementsCount;
 
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
+
+    function MatchExplicitFrom(ASrc: TIDType): Boolean; override;
   end;
 
   {alias (for generics parameters)}
@@ -828,6 +836,7 @@ type
   public
     constructor Create(Scope: TScope; const Name: TIdentifier); override;
     property GUID: TGUID read FGUID write FGUID;
+    function MatchImplicitTo(ADst: TIDType): Boolean; override;
   end;
 
   {base array type}
@@ -888,6 +897,9 @@ type
     property BaseType: TIDOrdinal read fBaseType write FBaseType;
     procedure IncRefCount(RCPath: UInt32); override;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
+
+    function MatchImplicitFrom(ASrc: TIDType): Boolean; override;
+    function MatchExplicitFrom(ASrc: TIDType): Boolean; override;
   end;
 
   {static array}
@@ -3218,10 +3230,10 @@ begin
 
   Result := SysExplicitFromAny;
 
-//  // run system implicit proc
-//  if not Assigned(Result) then
-//    if MatchExplicitFrom(Source) then
-//      Result := Self;
+  // run system implicit proc
+  if not Assigned(Result) then
+    if MatchExplicitFrom(Source) then
+      Result := Self;
 end;
 
 function TIDType.GetExplicitOperatorTo(const Destination: TIDType): TIDDeclaration;
@@ -3234,10 +3246,10 @@ begin
 
   Result := SysExplicitToAny;
 
-//  // run system implicit proc
-//  if not Assigned(Result) then
-//    if MatchExplicitTo(Destination) then
-//      Result := Destination;
+  // run system implicit proc
+  if not Assigned(Result) then
+    if MatchExplicitTo(Destination) then
+      Result := Destination;
 end;
 
 function TIDType.FindImplicitOperatorFrom(const Source: TIDType): TIDDeclaration;
@@ -3424,6 +3436,11 @@ function TIDType.GetIsInteger: Boolean;
 begin
   Result := FDataTypeID in [dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64,
                             dtNativeInt, dtNativeUInt];
+end;
+
+function TIDType.GetIsFloat: Boolean;
+begin
+  Result := FDataTypeID in [dtFloat32, dtFloat64, dtFloat80, dtCurrency, dtComp];
 end;
 
 function TIDType.GetIsManaged: Boolean;
@@ -3685,6 +3702,16 @@ end;
 procedure TIDType.SetGenericDescriptor(const Value: PGenericDescriptor);
 begin
   FGenericDescriptor := Value;
+end;
+
+function TIDType.MatchExplicitFrom(ASrc: TIDType): Boolean;
+begin
+  Result := False;
+end;
+
+function TIDType.MatchExplicitTo(ADst: TIDType): Boolean;
+begin
+  Result := False;
 end;
 
 function TIDType.MatchImplicitFrom(ASrc: TIDType): Boolean;
@@ -5269,6 +5296,11 @@ begin
   Result := True;
 end;
 
+function TIDOrdinal.MatchExplicitFrom(ASrc: TIDType): Boolean;
+begin
+  Result := ASrc.IsOrdinal or (ASrc.DataSize <= DataSize);
+end;
+
 { TIDRefType }
 
 function TIDRefType.GetDisplayName: string;
@@ -5767,6 +5799,22 @@ begin
   FRCPath := RCPath;
   Inc(FRefCount);
   FBaseType.IncRefCount(RCPath);
+end;
+
+function TIDSet.MatchExplicitFrom(ASrc: TIDType): Boolean;
+begin
+  Result := (ASrc.DataSize <= DataSize) or
+            (
+              (ASrc.DataTypeID = dtSet) and
+              (BaseType.DataTypeID <> dtEnum) and
+              (TIDSet(ASrc).fBaseType.DataTypeID <> dtEnum)
+            );
+end;
+
+function TIDSet.MatchImplicitFrom(ASrc: TIDType): Boolean;
+begin
+  Result := (ASrc.DataTypeID = dtSet) and
+            (BaseType.DataTypeID = TIDSet(ASrc).BaseType.DataTypeID);
 end;
 
 { TIDArrayConstant }
@@ -7444,6 +7492,11 @@ end;
 function TIDInterface.GetStructKeyword: string;
 begin
   Result := 'interface';
+end;
+
+function TIDInterface.MatchImplicitTo(ADst: TIDType): Boolean;
+begin
+  Result := (ADst.DataTypeID = dtInterface) and IsInheritsForm(ADst as TIDStructure);
 end;
 
 { TIDGuidConstant }
