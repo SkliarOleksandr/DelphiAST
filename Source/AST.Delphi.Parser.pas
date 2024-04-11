@@ -520,13 +520,20 @@ var
 begin
   //     ASTE.AddDeclItem(Expr.Declaration, Expr.TextPosition);
   Result := Lexer_CurTokenID;
-  while True do begin
+  var LSemicolonRequired := False;
+  while True do
+  begin
+    // in Delphi, a semicolon is not required at the end of the last (or single) statement in a block
+    if LSemicolonRequired and not (Result in [token_end, token_finally, token_except]) then
+      Result := Lexer_MatchSemicolonAndNext(Scope, Result);
+
+    LSemicolonRequired := True;
     case Result of
       {BEGIN}
       token_begin: begin
         Lexer_NextToken(Scope);
         NewScope := TScope.Create(stLocal, Scope);
-        Result := ParseStatements(NewScope, SContext, True);
+        Result := ParseStatements(NewScope, SContext, {IsBlock:} True);
         Lexer_MatchToken(Result, token_end);
         Result := Lexer_NextToken(Scope);
         if not IsBlock then
@@ -535,7 +542,7 @@ begin
       end;
       {END}
       token_end: begin
-        exit;
+        Exit;
       end;
       {UNTIL}
       token_until: Break;
@@ -579,6 +586,7 @@ begin
       {@}
       token_address: begin
         Result := Lexer_NextToken(Scope);
+        LSemicolonRequired := False;
         Continue;
       end;
       {IDENTIFIER, OPEN ROUND}
@@ -610,6 +618,7 @@ begin
             var KW := SContext.Add(TASTKWLabel) as TASTKWLabel;
             KW.LabelDecl := LExpr.Declaration;
             Result := Lexer_NextToken(Scope);
+            LSemicolonRequired := False;
             Continue;
           end else
             SContext.AddItem(ASTEDst);
@@ -625,9 +634,7 @@ begin
         ERRORS.EXPECTED_KEYWORD_OR_ID;
     end;
 
-    if IsBlock then
-      Result := Lexer_MatchSemicolonAndNext(Scope, Result)
-    else
+    if not IsBlock then
       Exit;
   end;
 end;
@@ -684,7 +691,10 @@ begin
   NewContext := SContext.MakeChild(Scope, KW.Body);
   // запоминаем предыдущий TryBlock
   Lexer_NextToken(Scope);
-  Result := ParseStatements(Scope, NewContext, True);
+  Result := ParseStatements(Scope, NewContext, {IsBlock:} True);
+  // todo: move this into ParseStatements()
+  if Result = token_semicolon then
+    Result := Lexer_NextToken(Scope);
   case Result of
     {parse EXCEPT section}
     token_except: begin
@@ -693,7 +703,7 @@ begin
       begin
         ExceptItem := KW.AddExceptBlock(nil);
         NewContext := SContext.MakeChild(Scope, ExceptItem.Body);
-        Result := ParseStatements(Scope, NewContext, True);
+        Result := ParseStatements(Scope, NewContext, {IsBlock:} True);
       end else begin
         while Result = token_on do
           Result := ParseExceptOnSection(Scope, KW, SContext);
@@ -701,7 +711,7 @@ begin
         if Result = token_else then
         begin
           Lexer_NextToken(Scope);
-          Result := ParseStatements(Scope, NewContext, True); 
+          Result := ParseStatements(Scope, NewContext, {IsBlock:} True);
         end;
       end;
 
@@ -713,7 +723,7 @@ begin
       Lexer_NextToken(Scope);
       KW.FinallyBody := TASTBlock.Create(KW);
       NewContext := SContext.MakeChild(Scope, KW.FinallyBody);
-      Result := ParseStatements(Scope, NewContext, True);
+      Result := ParseStatements(Scope, NewContext, {IsBlock:} True);
       Lexer_MatchToken(Result, token_end);
       Result := Lexer_NextToken(Scope);
     end;
@@ -1049,23 +1059,24 @@ begin
       if Result = token_less then
       begin
         Result := ParseGenericTypeSpec(Scope, ID, {out} DataType);
-        Exit;
-      end;
-
-      if SearchScope = nil then
-        Decl := FindIDNoAbort(Scope, ID)
-      else
-        Decl := SearchScope.FindMembers(ID.Name);
-
-      if not Assigned(Decl) then
-        ERRORS.UNDECLARED_ID(ID);
-
-      // workaround for a case when param or field can be named as type
-      if Decl.ItemType = itVar then
+        Decl := DataType;
+      end else
       begin
-        var OuterDecl := FindIDNoAbort(Scope.Parent, ID);
-        if Assigned(OuterDecl) then
-          Decl := OuterDecl;
+        if SearchScope = nil then
+          Decl := FindIDNoAbort(Scope, ID)
+        else
+          Decl := SearchScope.FindMembers(ID.Name);
+
+        if not Assigned(Decl) then
+          ERRORS.UNDECLARED_ID(ID);
+
+        // workaround for a case when param or field can be named as type
+        if Decl.ItemType = itVar then
+        begin
+          var OuterDecl := FindIDNoAbort(Scope.Parent, ID);
+          if Assigned(OuterDecl) then
+            Decl := OuterDecl;
+        end;
       end;
 
       case Decl.ItemType of
@@ -1507,7 +1518,7 @@ end;
 
 function TASTDelphiUnit.ParseExceptOnSection(Scope: TScope; KW: TASTKWTryBlock; const SContext: TSContext): TTokenID;
 var
-  ID, VarID, TypeID: TIdentifier;
+  ID, TypeID: TIdentifier;
   Decl, VarDecl, TypeDecl: TIDDeclaration;
   VarExpr: TASTExpression;
   NewScope: TScope;
@@ -1542,7 +1553,7 @@ begin
   NewSContext := SContext.MakeChild(Scope, Item.Body);
 
   Lexer_NextToken(Scope);
-  Result := ParseStatements(NewScope, NewSContext, False);
+  Result := ParseStatements(NewScope, NewSContext, {IsBlock:} False);
 
   if Result = token_semicolon then
     //Lexer_MatchSemicolon(Result);
@@ -1579,7 +1590,7 @@ begin
   Lexer_MatchToken(Result, token_do);
   Result := Lexer_NextToken(Scope);
   if Result <> token_semicolon then
-    Result := ParseStatements(Scope, BodySContext, False);
+    Result := ParseStatements(Scope, BodySContext, {IsBlock:} False);
 end;
 
 function TASTDelphiUnit.ParseWithStatement(Scope: TScope; const SContext: TSContext): TTokenID;
@@ -1630,7 +1641,7 @@ begin
       end;
       token_do: begin
         Lexer_NextToken(Scope);
-        Result := ParseStatements(WNextScope, BodySContext, False);
+        Result := ParseStatements(WNextScope, BodySContext, {IsBlock:} False);
         Break;
       end;
       else begin
@@ -5410,7 +5421,7 @@ begin
       // корректируем переходы
       //Bool_CompleteExpression(EContext.LastBoolNode, JMPToEnd);
       // парсим код секции
-      Result := ParseStatements(Scope, MISContext, False);
+      Result := ParseStatements(Scope, MISContext, {IsBlock:} False);
 
       Lexer_MatchToken(Result, token_semicolon);
       Result := Lexer_NextToken(Scope);
@@ -5420,7 +5431,7 @@ begin
       // ELSE секция
       MISContext := SContext.MakeChild(Scope, KW.ElseBody);
       Lexer_NextToken(Scope);
-      Result := ParseStatements(Scope, MISContext, True);
+      Result := ParseStatements(Scope, MISContext, {IsBlock:} True);
       Lexer_MatchToken(Result, token_end);
       Result := Lexer_NextToken(Scope);
       ElsePresent := True;
@@ -6149,7 +6160,7 @@ begin
   Lexer_NextToken(Scope);
 
   BodySContext := SContext.MakeChild(Scope, KW.Body);
-  Result := ParseStatements(Scope, BodySContext, False);
+  Result := ParseStatements(Scope, BodySContext, {IsBlock:} False);
 end;
 
 type
@@ -6257,7 +6268,7 @@ begin
   Lexer_MatchToken(Result, token_do);
   Result := Lexer_NextToken(Scope);
   if Result <> token_semicolon then
-    Result := ParseStatements(Scope, BodySContext, False);
+    Result := ParseStatements(Scope, BodySContext, {IsBlock:} False);
 
   // сбрасываем флаг цикловой переменной
   with TIDVariable(LoopVar) do Flags := Flags - [VarLoopIndex];
@@ -6520,7 +6531,7 @@ begin
 
     ThenSContext := SContext.MakeChild(Scope, KW.ThenBody);
 
-    Result := ParseStatements(NewScope, ThenSContext, False);
+    Result := ParseStatements(NewScope, ThenSContext, {IsBlock:} False);
   end;
   { else section}
   if Result = token_else then
@@ -6534,7 +6545,7 @@ begin
 
     KW.ElseBody := TASTKWIF.TASTKWIfElseBlock.Create(KW);
     ElseSContext := SContext.MakeChild(Scope, KW.ElseBody);
-    Result := ParseStatements(NewScope, ElseSContext, False);
+    Result := ParseStatements(NewScope, ElseSContext, {IsBlock:} False);
   end;
 end;
 
@@ -6916,7 +6927,7 @@ begin
         SContext := TSContext.Create(Self, Scope, Proc, Proc.Body);
         //CheckInitVariables(@SContext, nil, @Proc.VarSpace);
         Lexer_NextToken(Scope);
-        Result := ParseStatements(Scope, SContext, True);
+        Result := ParseStatements(Scope, SContext, {IsBlock:} True);
         Lexer_MatchToken(Result, token_end);
         Result := Lexer_NextToken(Scope);
         Proc.LastBodyLine := Lexer_Line;
@@ -8335,7 +8346,7 @@ begin
 
   Lexer_NextToken(Scope);
   // тело цикла
-  Result := ParseStatements(Scope, BodySContext, True);
+  Result := ParseStatements(Scope, BodySContext, {IsBlock:} True);
   Lexer_MatchToken(Result, token_until);
 
   // выражение цикла
@@ -9091,7 +9102,7 @@ begin
   SContext := TSContext.Create(Self, ImplScope, InitProc as TASTDelphiProc, TASTDelphiProc(InitProc).Body);
   Lexer_NextToken(InitProc.Scope);
   InitProc.FirstBodyLine := Lexer_Line;
-  Result := ParseStatements(InitProc.Scope, SContext, True);
+  Result := ParseStatements(InitProc.Scope, SContext, {IsBlock:} True);
   InitProc.LastBodyLine := Lexer_Line;
 end;
 
@@ -9205,7 +9216,7 @@ begin
   SContext := TSContext.Create(Self, ImplScope, FinalProc as TASTDelphiProc, TASTDelphiProc(FinalProc).Body);
   Lexer_NextToken(FinalProc.Scope);
   FinalProc.FirstBodyLine := Lexer_Line;
-  Result := ParseStatements(FinalProc.Scope, SContext, True);
+  Result := ParseStatements(FinalProc.Scope, SContext, {IsBlock:} True);
   FinalProc.LastBodyLine := Lexer_Line;
 end;
 
