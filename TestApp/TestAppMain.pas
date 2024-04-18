@@ -488,7 +488,7 @@ begin
   //LS := ES;
 end;
 
-procedure Test;
+procedure TestExplicits;
 type
   TSProc = procedure(a: Integer);
   TRProc = reference to procedure(a: Integer);
@@ -633,6 +633,57 @@ begin
   var V12 := Variant(Cmp);
   var V13 := Variant(Enm);
 end;
+
+procedure TestImplicits_Variant;
+var
+
+  Cmp: Comp;
+  Cur: Currency;
+  Sng: Single;
+  Dbl: Double;
+  Vrn: Variant;
+  Ptr: Pointer;
+  Inf: IInterface;
+  Obj: TObject;
+  WStr: WideString;
+  AStr: AnsiString;
+  UStr: string;
+  UChr: WideChar;
+  AChr: AnsiChar;
+  DArrStr: TStringDynArray;
+  DArrInt: TIntegerDynArray;
+begin
+  Cmp := Vrn;
+  Cur := Vrn;
+  Sng := Vrn;
+  Dbl := Vrn;
+  //Ptr := Vrn;
+  Inf := Vrn;
+  //Obj := Vrn;
+  WStr := Vrn;
+  AStr := Vrn;
+  UStr := Vrn;
+  //UChr := Vrn;
+  //AChr := Vrn;
+  DArrStr := Vrn;
+  DArrInt := Vrn;
+
+  Vrn := Cmp;
+  Vrn:= Cur ;
+  Vrn := Sng;
+  Vrn := Dbl;
+  //Vrn := Ptr;
+  Vrn := Inf;
+  //Vrn := Obj;
+  Vrn := WStr;
+  Vrn := AStr;
+  Vrn := UStr;
+//  Vrn := UChr; implicit cast to string?
+//  Vrn := AChr; implicit cast to string?
+  Vrn := DArrStr;
+  Vrn := DArrInt;
+end;
+
 
 procedure Test0;
 var

@@ -4538,6 +4538,11 @@ begin
     DimensionsCount := 1;
     DataType := ARefType;
   end else
+  if DeclType.DataTypeID = dtVariant then
+  begin
+    DimensionsCount := 1;
+    DataType := Sys._Variant;
+  end else
   if (ArrDecl.ItemType <> itProperty) and (DeclType is TIDArray) then
   begin
     DimensionsCount := TIDArray(DeclType).AllDimensionsCount;

@@ -727,6 +727,7 @@ begin
   AddUnarOperator(opNegative, _Float80, _Float80);
   AddUnarOperator(opNegative, _Currency, _Currency);
   AddUnarOperator(opNegative, _Comp, _Comp);
+  AddUnarOperator(opNegative, _Variant, _Variant);
 end;
 
 procedure TSYSTEMUnit.AddSubOperators;
@@ -850,6 +851,7 @@ procedure TSYSTEMUnit.AddBitwiseOperators;
   begin
     for i := dtInt8 to dtNativeUInt do
       AddUnarOperator(Op, DataTypes[i], DataTypes[i]);
+    AddUnarOperator(Op, _Variant, _Variant);
   end;
   procedure BitwiseOp(Op: TOperatorID);
   var
@@ -858,6 +860,8 @@ procedure TSYSTEMUnit.AddBitwiseOperators;
     for i := dtInt8 to dtNativeUInt do
        for j := dtInt8 to dtNativeUInt do
          AddBinarOperator(Op, DataTypes[i], DataTypes[j], GetMaxBitwiceOpType(DataTypes[i], DataTypes[j]));
+
+    AddBinarOperator(Op, _Variant, _Variant, _Variant);
   end;
 begin
   UnarOp(opNot);
