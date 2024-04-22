@@ -560,7 +560,7 @@ procedure TSYSTEMUnit.AddExplicists;
   var
     i: TDataTypeID;
   begin
-    for i := dtInt8 to dtFloat64 do
+    for i := dtInt8 to dtComp do
       DataType.OverloadExplicitTo(DataTypes[i]);
   end;
   procedure AddExplicits(DataType: TIDType; LB, HB: TDataTypeID);
@@ -586,8 +586,8 @@ begin
   AddBaseExplicits(_WideChar);
   AddBaseExplicits(_AnsiChar);
 
-  AddExplicits(_Float32, dtFloat32, dtFloat64);
-  AddExplicits(_Float64, dtFloat32, dtFloat64);
+  AddExplicits(_Float32, dtFloat32, dtComp);
+  AddExplicits(_Float64, dtFloat32, dtComp);
   AddExplicits(_Float32, dtInt8, dtNativeUInt);
   AddExplicits(_Float64, dtInt8, dtNativeUInt);
 

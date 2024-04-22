@@ -1202,8 +1202,8 @@ end;
 class function TSF_Copy.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'Copy', SYSUnit._Void);
-  Result.AddParam('Source', SYSUnit._Pointer, [VarConst]);
-  Result.AddParam('StartChar', SYSUnit._Int32, [VarConst]);
+  Result.AddParam('S', SYSUnit._Pointer, [VarConst]);
+  Result.AddParam('Index', SYSUnit._Int32, [VarConst], SysUnit._ZeroIntExpression);
   Result.AddParam('Count ', SYSUnit._Int32, [VarConst], SysUnit.SystemDeclarations._MaxIntExpression);
 end;
 

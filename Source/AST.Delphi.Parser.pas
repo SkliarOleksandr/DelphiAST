@@ -258,6 +258,7 @@ type
     function Lexer_AmbiguousId: TTokenID; inline;
     function Lexer_ReadSemicolonAndToken(Scope: TScope): TTokenID; inline;
     function Lexer_NextToken(Scope: TScope): TTokenID; overload; inline;
+    function Lexer_TreatTokenAsIdentifier(AToken: TTokenID): TTokenID; inline;
     function Lexer_Position: TTextPosition; inline;
     function Lexer_PrevPosition: TTextPosition; inline;
     function Lexer_IdentifireType: TIdentifierType; inline;
@@ -3115,6 +3116,15 @@ begin
     Result := ParseCondStatements(Scope, Result);
 end;
 
+function TASTDelphiUnit.Lexer_TreatTokenAsIdentifier(AToken: TTokenID): TTokenID;
+begin
+  // todo: add some attribute to the lexer
+  if AToken in [token_operator] then
+    Result := token_identifier
+  else
+    Result := AToken;
+end;
+
 function TASTDelphiUnit.Lexer_AmbiguousId: TTokenID;
 begin
   Result := TTokenID(Lexer.AmbiguousTokenID);
@@ -5428,8 +5438,13 @@ begin
       // парсим код секции
       Result := ParseStatements(Scope, MISContext, {IsBlock:} False);
 
-      Lexer_MatchToken(Result, token_semicolon);
-      Result := Lexer_NextToken(Scope);
+      // the last statement/block in the CASE statement doesn't require semicolon
+      if not (Result in [token_end, token_else]) then
+      begin
+        Lexer_MatchToken(Result, token_semicolon);
+        Result := Lexer_NextToken(Scope);
+      end;
+
       Inc(TotalMICount);
 
     end else begin
@@ -5718,7 +5733,8 @@ begin
   Status := rprOk;
   RoundCount := 0;
   RecordInitResultExpr := nil;
-  Result := Lexer_CurTokenID;
+  // treat any ambiguous token as identifier here
+  Result := Lexer_TreatTokenAsIdentifier(Lexer_CurTokenID);
   ASTE := TASTExpression.Create(nil);
   while True do begin
     case Result of
