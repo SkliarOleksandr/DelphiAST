@@ -1594,6 +1594,8 @@ type
     function GetSelfParamExpression: TIDExpression;
     function GetResultParamExpression: TIDExpression;
     function GetIsClassMethod: Boolean; inline;
+    function GetIsConstructor: Boolean; inline;
+    function GetIsDestructor: Boolean;
   protected
     function GetDisplayName: string; override;
     function GetIndex: Integer; override;
@@ -1660,6 +1662,8 @@ type
     property GenericPrototype: TIDProcedure read FGenericPrototype write FGenericPrototype;
     property CallConvention: TCallConvention read FCallConv write FCallConv;
     property IsGeneric: Boolean read GetIsGeneric;
+    property IsConstructor: Boolean read GetIsConstructor;
+    property IsDestructor: Boolean read GetIsDestructor;
 
     property FirstBodyLine: Integer read FFirstBodyLine write FFirstBodyLine;
     property LastBodyLine: Integer read FLastBodyLine write FLastBodyLine;
@@ -2849,9 +2853,19 @@ begin
   Result := pfCompleted in FProcFlags;
 end;
 
+function TIDProcedure.GetIsConstructor: Boolean;
+begin
+  Result := (pfConstructor in Flags);
+end;
+
 function TIDProcedure.GetIsGeneric: Boolean;
 begin
   Result := Assigned(FGenericDescriptor);
+end;
+
+function TIDProcedure.GetIsDestructor: Boolean;
+begin
+  Result := (pfDestructor in Flags);
 end;
 
 function TIDProcedure.GetIsStatic: Boolean;

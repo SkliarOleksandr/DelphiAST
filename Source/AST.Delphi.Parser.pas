@@ -3651,7 +3651,9 @@ begin
   Result := nil;
 end;
 
-procedure TASTDelphiUnit.MatchProc(const SContext: TSContext; CallExpr: TIDExpression; const ProcParams: TIDParamArray; var CallArgs: TIDExpressions);
+procedure TASTDelphiUnit.MatchProc(const SContext: TSContext; CallExpr: TIDExpression;
+                                   const ProcParams: TIDParamArray;
+                                   var CallArgs: TIDExpressions);
 var
   i, ArgIdx, pc: Integer;
   Param: TIDVariable;
@@ -8648,8 +8650,11 @@ begin
   Result := False;
 end;
 
-function TASTDelphiUnit.ParseIdentifier(Scope, SearchScope: TScope; out Expression: TIDExpression; var EContext: TEContext;
-                                        const PrevExpr: TIDExpression; const ASTE: TASTExpression): TTokenID;
+function TASTDelphiUnit.ParseIdentifier(Scope, SearchScope: TScope;
+                                        out Expression: TIDExpression;
+                                        var EContext: TEContext;
+                                        const PrevExpr: TIDExpression;
+                                        const ASTE: TASTExpression): TTokenID;
 var
   Decl: TIDDeclaration;
   Indexes: TIDExpressions;
@@ -8760,7 +8765,17 @@ begin
         // process call operator
         Expression := EContext.RPNPopOperator();
       end else
-      begin // иначе создаем процедурный тип, если он отсутствовал
+      // workaround for calling paramless constuctor
+      if TIDProcedure(Decl).IsConstructor then
+      begin
+        // case when we call overload/inherited constructor as a method within a method
+        if not Assigned(LCallExpr.Instance) then
+          LCallExpr.Instance := EContext.SContext.Proc.SelfParamExpression;
+
+        Expression := process_CALL_constructor(EContext.SContext, LCallExpr, []);
+      end else
+      begin
+        // иначе создаем процедурный тип, если он отсутствовал
         TIDProcedure(Decl).CreateProcedureTypeIfNeed(Scope);
         PMContext.DataType := TIDProcedure(Decl).DataType;
         AddType(TIDProcedure(Decl).DataType);
