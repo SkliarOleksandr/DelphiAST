@@ -4669,6 +4669,10 @@ begin
         end;
       end;
 
+      // set default propery (if exists)
+      if Assigned(DefaultProperty) then
+        LNewStruct.DefaultProperty := LNewStruct.FindProperty(DefaultProperty.Name);
+
       // add the new type to the destination scope (just for testing purpose)
       ADstScope.AddType(LNewStruct);
 
