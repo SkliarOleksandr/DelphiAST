@@ -346,8 +346,9 @@ type
     function ParseIdentifier(Scope, SearchScope: TScope; out Expression: TIDExpression;
                              var EContext: TEContext; const PrevExpr: TIDExpression; const ASTE: TASTExpression): TTokenID;
     function ParseArrayMember(Scope: TScope; var EContext: TEContext; ASTE: TASTExpression): TTokenID;
-    function ParsePropertyMember(var PMContext: TPMContext; Scope: TScope; Prop: TIDProperty; out Expression: TIDExpression;
-                                 var EContext: TEContext; const PrevExpr: TIDExpression): TTokenID;
+    //todo: call property accessors when needed
+    //function ParsePropertyMember(var PMContext: TPMContext; Scope: TScope; Prop: TIDProperty; out Expression: TIDExpression;
+    //                             var EContext: TEContext; const PrevExpr: TIDExpression): TTokenID;
     function ParseIndexedPropertyArgs(Scope: TScope; out ArgumentsCount: Integer; var EContext: TEContext): TTokenID;
     function InferTypeByVector(Scope: TScope; Vector: TIDExpressions): TIDType;
     procedure ParseVector(Scope: TScope; var EContext: TEContext);
@@ -4527,6 +4528,12 @@ begin
   DeclType := ArrExpr.DataType;
   DataType := nil;
   DimensionsCount := 0;
+  // indexed property case
+  if (ArrDecl.ItemType = itProperty) and (TIDProperty(ArrDecl).ParamsCount > 0) then
+  begin
+    DimensionsCount := TIDProperty(ArrDecl).ParamsCount;
+    DataType := TIDProperty(ArrDecl).DataType;
+  end else
   if DeclType.DataTypeID = dtPointer then
   begin
     var ARefType := GetPtrReferenceType(TIDPointer(DeclType));
@@ -4555,16 +4562,10 @@ begin
     DimensionsCount := 1;
     DataType := Sys._Variant;
   end else
-  if (ArrDecl.ItemType <> itProperty) and (DeclType is TIDArray) then
+  if DeclType is TIDArray then
   begin
     DimensionsCount := TIDArray(DeclType).AllDimensionsCount;
     DataType := TIDArray(DeclType).ElementDataType;
-  end else
-  if (ArrDecl.ItemType = itProperty) and (TIDProperty(ArrDecl).Params.Count > 0) then
-  begin
-    // indexed property case
-    DimensionsCount := TIDProperty(ArrDecl).ParamsCount;
-    DataType := TIDProperty(ArrDecl).DataType;
   end else
   if (DeclType is TIDStructure) and Assigned(TIDStructure(DeclType).DefaultProperty) then
   begin
@@ -6637,7 +6638,6 @@ begin
       EContext.RPNFinish;
     end;
 
-    Lexer_MatchSemicolon(Result);
     Break;
   end;
 end;
@@ -8661,9 +8661,8 @@ var
   i: Integer;
   Expr, NExpr: TIDExpression;
   PMContext: TPMContext;
-  WasProperty, StrictSearch: Boolean;
+  StrictSearch: Boolean;
 begin
-  WasProperty := False;
   PMContext.Init;
   PMContext.ItemScope := Scope;
 
@@ -8807,16 +8806,7 @@ begin
     end;
     {property}
     itProperty: begin
-      WasProperty := True;
-      Result := ParsePropertyMember(PMContext, Scope, TIDProperty(Decl), Expression, EContext, PrevExpr);
-      // заменяем декларацию
-      if Assigned(Expression) then
-      begin
-        Decl := Expression.Declaration;
-        // если геттер/сеттер - поле, то снимаем флаг "свойства"
-        if Decl.ItemType = itVar then
-          WasProperty := False;
-      end;
+      Expression := TIDExpression.Create(Decl, PMContext.ID.TextPosition);
       PMContext.DataType := Decl.DataType;
     end;
     {type}
@@ -8886,7 +8876,7 @@ begin
       end;
     end;
 
-    itProcedure, itVar, itConst: begin
+    itProcedure, itVar, itConst, itProperty: begin
 
       if Decl.ItemType = itProcedure then
         DataType := TIDProcedure(Decl).ResultType.ActualDataType
@@ -9779,7 +9769,7 @@ begin
    end;
 end;
 
-function TASTDelphiUnit.ParsePropertyMember(var PMContext: TPMContext;
+(*function TASTDelphiUnit.ParsePropertyMember(var PMContext: TPMContext;
                                             Scope: TScope;
                                             Prop: TIDProperty;
                                             out Expression: TIDExpression;
@@ -9809,10 +9799,6 @@ begin
   end;
   Expression.Declaration := Accessor;
   case Accessor.ItemType of
-    itConst: begin
-      PMContext.Clear;
-      Exit;
-    end;
     itVar: Expression.Declaration := Accessor;
     itProperty: {продолжаем выполнение};
     itProcedure: begin
@@ -9840,7 +9826,7 @@ begin
   else
     ERRORS.FEATURE_NOT_SUPPORTED;
   end;
-end;
+end;*)
 
 function TASTDelphiUnit.CreateAnonymousConstTuple(Scope: TScope; ElementDataType: TIDType): TIDExpression;
 var
