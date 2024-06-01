@@ -3609,7 +3609,8 @@ begin
           {если generic}
           if (SrcDTID = dtGeneric) or (DstDTID = dtGeneric) then
             Exit(Source); // нужна еще проверка на констрейты
-        end;
+        end else
+          Exit(Source);
       end;
     end else
     if Decl is TSysTypeCast then
@@ -4525,6 +4526,12 @@ var
 begin
   ArrExpr := EContext.RPNPopExpression();
   ArrDecl := ArrExpr.Declaration;
+  // auto resolve function call when missed parentheses
+  if (ArrDecl.ItemType = itProcedure) and Assigned(TIDProcedure(ArrDecl).ResultType) then
+  begin
+    ArrDecl := EContext.Proc.GetTMPVar(TIDProcedure(ArrDecl).ResultType);
+    ArrExpr := TIDExpression.Create(ArrDecl, ArrExpr.TextPosition);
+  end;
   DeclType := ArrExpr.DataType;
   DataType := nil;
   DimensionsCount := 0;
@@ -6482,6 +6489,15 @@ begin
 end;
 
 function TASTDelphiUnit.ParseGenericTypeSpec(Scope: TScope; const ID: TIdentifier; out DataType: TIDType): TTokenID;
+
+  function MakeGenericName(const AGenericArgs: TIDExpressions): string;
+  begin
+    var LParamsStr := '';
+    for var LArg in AGenericArgs do
+      LParamsStr := AddStringSegment(LParamsStr, LArg.DisplayName, ', ');
+    Result := ID.Name + '<' + LParamsStr + '>';
+  end;
+
 var
   LGenericArgs: TIDExpressions;
   SearchName: string;
@@ -6505,7 +6521,7 @@ begin
         DataType := LGenericType;
     end;
   end else
-    ERRORS.UNDECLARED_ID(ID {todo: generic params});
+    ERRORS.UNDECLARED_ID(MakeGenericName(LGenericArgs), ID.TextPosition);
 end;
 
 function TASTDelphiUnit.ParseGoToStatement(Scope: TScope; const SContext: TSContext): TTokenID;
@@ -8813,7 +8829,7 @@ begin
     itType: begin
       {generic param}
       if Result = token_less then
-        Result := ParseGenericTypeSpec(Scope, Decl.ID, TIdType(Decl));
+        Result := ParseGenericTypeSpec(Scope, PMContext.ID, TIdType(Decl));
 
       Expression := TIDExpression.Create(Decl, PMContext.ID.TextPosition);
 

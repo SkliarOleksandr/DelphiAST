@@ -837,6 +837,7 @@ type
     constructor Create(Scope: TScope; const Name: TIdentifier); override;
     property GUID: TGUID read FGUID write FGUID;
     function MatchImplicitTo(ADst: TIDType): Boolean; override;
+    function MatchImplicitFrom(ASrc: TIDType): Boolean; override;
   end;
 
   {base array type}
@@ -7476,12 +7477,23 @@ procedure TIDClass.InstantiateGenericAncestors(ADstScope: TScope; ADstStruct: TI
   const AContext: TGenericInstantiateContext);
 begin
   inherited;
+  // add none-generic interfaces
+  if Assigned(FInterfaces) then
+  begin
+    for var LIntfIndex := 0 to FInterfaces.Count - 1 do
+    begin
+      var LIntf := FInterfaces[LIntfIndex];
+      if not LIntf.IsGeneric then
+        TIDClass(ADstStruct).AddInterface(LIntf);
+    end;
+  end;
+
+  // instantiate implemented interfaces
   for var LIntfIndex := 0 to Length(FIntfGenericInstantiations) - 1 do
   begin
-    var LNewIntf := FIntfGenericInstantiations[LIntfIndex].InstantiateGeneric(ADstScope,
-                                                                              nil,
-                                                                              AContext) as TIDInterface;
-    FInterfaces[LIntfIndex] := LNewIntf;
+    var LOldIntf := FIntfGenericInstantiations[LIntfIndex];
+    var LNewIntf := LOldIntf.InstantiateGeneric(ADstScope, {ADestStruct:} nil, AContext) as TIDInterface;
+    TIDClass(ADstStruct).AddInterface(LNewIntf);
   end;
 end;
 
@@ -7510,6 +7522,11 @@ end;
 function TIDInterface.GetStructKeyword: string;
 begin
   Result := 'interface';
+end;
+
+function TIDInterface.MatchImplicitFrom(ASrc: TIDType): Boolean;
+begin
+  Result := (ASrc.DataTypeID = dtClass) and TIDClass(ASrc).FindInterface(Self, {AFindInAncestors:} True);
 end;
 
 function TIDInterface.MatchImplicitTo(ADst: TIDType): Boolean;
