@@ -483,8 +483,9 @@ type
   {alias type}
   TIDAliasType = class(TIDType)
   private
-    fOriginalType: TIDType; // оригинальный тип (не алиас)
-    fLinkedType: TIDType;   // тип на который ссылается алиас
+    fOriginalType: TIDType; // actual type (can not be an alias)
+    fLinkedType: TIDType;   // referenced type (may be an alias)
+    FNewType: Boolean;   // determine a new type
   protected
     function GetActualDataType: TIDType; override;
     function GetOrdinal: Boolean; override;
@@ -492,12 +493,16 @@ type
     function GetOriginalDecl: TIDDeclaration; override;
     function GetDisplayName: string; override;
   public
-    constructor CreateAlias(Scope: TScope; const ID: TIdentifier; OriginalType: TIDType);
+    constructor CreateAlias(Scope: TScope;
+                            const ID: TIdentifier;
+                            OriginalType: TIDType;
+                            ANewType: Boolean = False);
     constructor CreateAliasAsSystem(Scope: TScope; const ID: string; SrcType: TIDType);
     procedure IncRefCount(RCPath: UInt32); override;
     procedure DecRefCount(RCPath: UInt32); override;
     property LinkedType: TIDType read FLinkedType;
     property Original: TIDType read fOriginalType;
+    property NewType: Boolean read FNewType;
     function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                 const AContext: TGenericInstantiateContext): TIDDeclaration; override;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
@@ -1919,7 +1924,7 @@ type
   function GetBoolResultExpr(ExistExpr: TIDExpression): TIDBoolResultExpression;
   function GetItemTypeName(ItemType: TIDItemType): string;
 
-  function SameTypes(ASrcType, ADstType: TIDType): Boolean;
+  function SameTypes(ASrcType, ADstType: TIDType; AStrictCheck: Boolean = False): Boolean;
   function IsGenericTypeThisStruct(Scope: TScope; Struct: TIDType): Boolean;
   function GenericNeedsInstantiate(AGenericArgs: TIDExpressions): Boolean;
 
@@ -2726,9 +2731,7 @@ begin
   begin
     var LParam1 := ExplicitParams[LIndex];
     var LParam2 := AParams[LIndex];
-    var LParamType1 := LParam1.DataType.ActualDataType;
-    var LParamType2 := LParam2.DataType.ActualDataType;
-    if not SameTypes(LParamType1, LParamType2) or
+    if not SameTypes(LParam1.DataType, LParam2.DataType, {AStrictCheck:} True) or
        (ACheckNames and not SameText(LParam1.Name, LParam2.Name))
     then
       Exit(False);
@@ -6093,7 +6096,10 @@ end;
 
 { TIDAliasType }
 
-constructor TIDAliasType.CreateAlias(Scope: TScope; const ID: TIdentifier; OriginalType: TIDType);
+constructor TIDAliasType.CreateAlias(Scope: TScope;
+                                     const ID: TIdentifier;
+                                     OriginalType: TIDType;
+                                     ANewType: Boolean);
 begin
   inherited Create(Scope, ID);
   FItemType := itType;
@@ -6101,6 +6107,7 @@ begin
   FLinkedType := OriginalType;
   FOriginalType := OriginalType;
   FDataTypeID := FOriginalType.DataTypeID;
+  FNewType := ANewType;
 end;
 
 constructor TIDAliasType.CreateAliasAsSystem(Scope: TScope; const ID: string; SrcType: TIDType);
@@ -6163,6 +6170,8 @@ begin
   ABuilder.Append('type ');
   ABuilder.Append(Name);
   ABuilder.Append(' = ');
+  if NewType then
+    ABuilder.Append('type ');
   TypeNameToString(Original, ABuilder);
 end;
 
@@ -7952,9 +7961,22 @@ begin
   Result := fStructType.Name + '$record_init';
 end;
 
-function SameTypes(ASrcType, ADstType: TIDType): Boolean;
+function SameTypes(ASrcType, ADstType: TIDType; AStrictCheck: Boolean): Boolean;
+
+  function GetActualType(AType: TIDType): TIDType;
+  begin
+    if (AType is TIDAliasType) and not TIDAliasType(AType).NewType then
+      Result := AType.ActualDataType
+    else
+      Result := AType;
+  end;
+
 begin
-  Result := (ASrcType.ActualDataType = ADstType.ActualDataType);
+  if AStrictCheck then
+    Result := GetActualType(ASrcType) = GetActualType(ADstType)
+  else
+    Result := ASrcType.ActualDataType = ADstType.ActualDataType;
+
   if not Result then
   begin
     if ASrcType.IsGeneric and ADstType.IsGeneric then

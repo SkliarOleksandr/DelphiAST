@@ -154,9 +154,6 @@ type
   var
     fDecls: TDelphiBuiltinTypes;
     fArrayType: TIDArray; // служебный тип для функций Length/SetLength
-    fDateTimeType: TIDType;
-    fDateType: TIDType;
-    fTimeType: TIDType;
     fTypeIDType: TIDType;
     fAsserProc: TIDProcedure;
     fOperators: TSystemOperatos;
@@ -243,6 +240,9 @@ type
     function Get_ZeroFloatExpression: TIDExpression;
     function Get_ZeroIntExpression: TIDExpression;
     function Get_TVarData: TIDType;
+    function Get_DateTimeType: TIDType;
+    function Get_DateType: TIDType;
+    function Get_TimeType: TIDType;
   protected
     function GetSystemDeclarations: PDelphiSystemDeclarations; override;
   public
@@ -299,9 +299,9 @@ type
     property _EAssert: TIDClass read Get_EAssertClass;
     property _TTypeKind: TIDEnum read Get_TTypeKind;
     property _TVarData: TIDType read Get_TVarData;
-    property _DateTime: TIDType read fDateTimeType;
-    property _Date: TIDType read fDateType;
-    property _Time: TIDType read fTimeType;
+    property _DateTime: TIDType read Get_DateTimeType;
+    property _Date: TIDType read Get_DateType;
+    property _Time: TIDType read Get_TimeType;
     property _AssertProc: TIDProcedure read fAsserProc;
     property _TypeID: TIDType read fTypeIDType;
     property _DeprecatedDefaultStr: TIDStringConstant read Get_DeprecatedDefaultStr;
@@ -1036,17 +1036,6 @@ begin
   InsertToScope(fDecls._GuidType);
   AddType(fDecls._GuidType);
   //===============================================================
-  FDateTimeType := TIDAliasType.CreateAliasAsSystem(IntfScope, 'DateTime', _Float64);
-  FDateType := TIDAliasType.CreateAliasAsSystem(IntfScope, 'Date', _Float64);
-  FTimeType := TIDAliasType.CreateAliasAsSystem(IntfScope, 'Time', _Float64);
-
-  InsertToScope(FDateTimeType);
-  InsertToScope(FDateType);
-  InsertToScope(FTimeType);
-  AddType(FDateTimeType);
-  AddType(FDateType);
-  AddType(FTimeType);
-  //===============================================================
   fDecls._PointerType := RegisterPointer('Pointer', nil);
   //===============================================================
 
@@ -1168,6 +1157,10 @@ begin
   fDecls._TVarRec := GetPublicType('TVarRec');
   fDecls._TVarData := GetPublicType('TVarData');
   fDecls._TTypeKind := GetPublicType('TTypeKind') as TIDEnum;
+  fDecls._DateTimeType := GetPublicType('TDateTime');
+  fDecls._DateType := GetPublicType('TDate');
+  fDecls._TimeType := GetPublicType('TTime');
+
   if Assigned(fDecls._TVarRec) then
     AddTVarRecImplicitOperators;
 end;
@@ -1366,6 +1359,21 @@ end;
 function TSYSTEMUnit.Get_Currency: TIDType;
 begin
   Result := fDecls._Currency;
+end;
+
+function TSYSTEMUnit.Get_DateTimeType: TIDType;
+begin
+  Result := fDecls._DateTimeType;
+end;
+
+function TSYSTEMUnit.Get_DateType: TIDType;
+begin
+  Result := fDecls._DateType;
+end;
+
+function TSYSTEMUnit.Get_TimeType: TIDType;
+begin
+  Result := fDecls._TimeType;
 end;
 
 function TSYSTEMUnit.Get_DeprecatedDefaultStr: TIDStringConstant;

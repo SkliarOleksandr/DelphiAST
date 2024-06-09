@@ -806,7 +806,7 @@ begin
       Result := ParseConstExpression(Scope, ResExpr, ExprRValue);
       if ResExpr.ItemType = itType then
       begin
-        Decl := TIDAliasType.CreateAlias(Scope, ID, ResExpr.AsType);
+        Decl := TIDAliasType.CreateAlias(Scope, ID, ResExpr.AsType, {ANewType:} True);
         Scope.AddType(Decl);
       end;
       Exit;
@@ -7482,11 +7482,8 @@ begin
         if Decl.SameDeclaration(ProcScope.ExplicitParams, ResultType) then begin
           FwdDeclState := dsSame;
 
-          if (Decl.Scope = Scope) then
-          begin
-            if Scope.ScopeClass = scInterface then
-              ERRORS.ID_REDECLARATED(ID);
-          end;
+          if (Decl.Scope = Scope) and not (pfForward in Decl.Flags) then
+            ERRORS.ID_REDECLARATED(ID);
 
           Proc := Decl;
           Break;
@@ -7969,8 +7966,9 @@ begin
         FwdDeclState := dsSame;
         if ForwardDecl.IsCompleted then
         begin
-          //if ForwardDecl.SameDeclaration(Parameters) then
-          ERRORS.ID_REDECLARATED(ID);
+          // for debug
+          if ForwardDecl.SameDeclaration(ProcScope.ExplicitParams, ResultType) then
+            ERRORS.ID_REDECLARATED(ID);
         end;
         Proc := ForwardDecl;
         Break;
