@@ -19,6 +19,7 @@ uses System.SysUtils, System.Classes, System.StrUtils, System.Math, System.Gener
      AST.Intf;
      // system
      // SysInit
+     // System.Rtti
      // System.Types
      // System.TypInfo
      // GETMEM.INC
@@ -4665,6 +4666,7 @@ begin
             itProcedure: LNewStruct.Members.AddProcedure(TIDProcedure(LNewMember));
             itProperty: LNewStruct.Members.AddProperty(TIDProperty(LNewMember));
             itConst: LNewStruct.Members.AddConstant(TIDConstant(LNewMember));
+            itType: LNewStruct.Members.AddType(TIDType(LNewMember));
             // todo: AddConst (need implement SizeOf(T)), AddOperators,
           end;
         end;
@@ -4673,9 +4675,6 @@ begin
       // set default propery (if exists)
       if Assigned(DefaultProperty) then
         LNewStruct.DefaultProperty := LNewStruct.FindProperty(DefaultProperty.Name);
-
-      // add the new type to the destination scope (just for testing purpose)
-      ADstScope.AddType(LNewStruct);
 
       Result := LNewStruct;
 

@@ -8271,10 +8271,11 @@ begin
   end;
   LContext.DstID.Name := AGenericProc.Name + '<' + AStrSufix + '>';
   LContext.DstID.TextPosition := Lexer_Position;
-
   try
     WriteLog('# (%s: %d): %s', [Name, Lexer_Line, LContext.DstID.Name]);
     Result := AGenericProc.InstantiateGeneric(AScope, {ADstStruct:} nil, LContext) as TIDProcedure;
+    {add new instance to the pool}
+    GDescriptor.AddGenericInstance(Result, LGArgs);
   except
     Error('Generic Instantiation Error: %s', [LContext.DstID.Name], LContext.DstID.TextPosition);
     raise;
@@ -8320,6 +8321,7 @@ begin
   try
     WriteLog('# (%s: %d): %s', [Name, Lexer_Line, LContext.DstID.Name]);
     Result := AGenericType.InstantiateGeneric(AScope, {ADstStruct:} nil, LContext) as TIDType;
+    AScope.AddType(Result);
   except
     Error('Generic Instantiation Error: %s', [LContext.DstID.Name], LContext.DstID.TextPosition);
     raise;
@@ -8896,8 +8898,12 @@ begin
 
       if Decl.ItemType = itProcedure then
         DataType := TIDProcedure(Decl).ResultType.ActualDataType
-      else
+      else begin
         DataType := Left.DataType.ActualDataType;
+        // auto-resolve of function call (when parentheses are missed)
+        if (DataType.DataTypeID = dtProcType) and Assigned(TIDProcType(DataType).ResultType) then
+          DataType := TIDProcType(DataType).ResultType;
+      end;
 
       if DataType.ClassType = TIDAliasType then
         DataType := TIDAliasType(DataType).Original;
