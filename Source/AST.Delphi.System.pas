@@ -618,6 +618,8 @@ begin
 
   // AnsiChar
   _AnsiChar.OverloadExplicitTo(_WideChar);
+  _AnsiChar.OverloadExplicitTo(_WideString);
+  _AnsiChar.OverloadExplicitTo(_UnicodeString);
 
   // ShortString
   _ShortString.OverloadExplicitTo(_AnsiString);
@@ -1007,7 +1009,7 @@ begin
   fDecls._AnsiChar := RegisterOrdinal('AnsiChar', dtAnsiChar, 0, MaxUInt8);
   fDecls._WideChar := RegisterOrdinal('Char', dtChar, 0, MaxUInt16);
   //===============================================================
-  fDecls._ShortString := RegisterType('ShortString', TIDString, dtShortString);
+  fDecls._ShortString := RegisterType('ShortString', TBuiltin_ShortString, dtShortString);
   TIDString(_ShortString).ElementDataType := _AnsiChar;
   //===============================================================
   fDecls._AnsiString := RegisterType('AnsiString', TBuiltin_AnsiString, dtAnsiString);

@@ -3605,10 +3605,6 @@ begin
 //            Result := MatchRecordImplicit(SContext, Source, TIDRecord(Dest));
 //            Exit;
 //          end;
-
-          {если generic}
-          if (SrcDTID = dtGeneric) or (DstDTID = dtGeneric) then
-            Exit(Source); // нужна еще проверка на констрейты
         end else
           Exit(Source);
       end;
@@ -3621,6 +3617,11 @@ begin
     end else
       Exit(Source);
   end;
+
+  {generic case}
+  // todo: constraint check is needed
+  if (SrcDTID = dtGeneric) or (DstDTID = dtGeneric) then
+    Exit(Source);
 
   if Source.ClassType = TIDDrefExpression then
   begin

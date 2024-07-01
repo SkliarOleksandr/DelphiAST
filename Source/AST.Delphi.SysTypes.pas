@@ -185,6 +185,11 @@ type
   TBuiltin_AnsiString = class(TBuiltin_StrType)
   public
     function MatchImplicitTo(ADst: TIDType): Boolean; override;
+    function MatchImplicitFrom(ASrc: TIDType): Boolean; override;
+  end;
+
+  TBuiltin_ShortString = class(TBuiltin_AnsiString)
+
   end;
 
 
@@ -271,6 +276,11 @@ begin
 end;
 
 { TBuiltin_AnsiString }
+
+function TBuiltin_AnsiString.MatchImplicitFrom(ASrc: TIDType): Boolean;
+begin
+  Result := (ASrc.DataTypeID in [dtAnsiChar]);
+end;
 
 function TBuiltin_AnsiString.MatchImplicitTo(ADst: TIDType): Boolean;
 begin
