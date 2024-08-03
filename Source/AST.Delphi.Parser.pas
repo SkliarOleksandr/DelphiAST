@@ -4486,8 +4486,6 @@ begin
   end else
     ResultType := nil;
 
-  Lexer_MatchToken(Result, token_begin);
-
   ProcDecl := TASTDelphiProc.CreateAsAnonymous(ImplScope);
   ProcDecl.ParamsScope := ProcScope;
   ProcDecl.EntryScope := ProcScope;
@@ -9083,6 +9081,12 @@ begin
           end;
           Break;
         end;
+        itProperty: begin
+          // todo: need to specify class-owner to access the property
+          var LExpr := TIDExpression.Create(Decl, Lexer_Position);
+          EContext.RPNPushExpression(LExpr);
+          Result := Lexer_NextToken(Scope);
+        end
       else
         ERRORS.PROC_OR_TYPE_REQUIRED(ID);
         Exit;
