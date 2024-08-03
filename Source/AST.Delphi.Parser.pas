@@ -192,7 +192,6 @@ type
     class function MatchProcedureTypes(Src: TIDProcType; Dst: TIDProcType): TIDType; static;
     procedure MatchPropSetter(Prop: TIDProperty; Setter: TIDExpression; const PropParams: TIDParamArray);
     procedure MatchPropGetter(Prop: TIDProperty; Getter: TIDProcedure; const PropParams: TIDParamArray);
-    procedure SetProcGenericArgs(ACallExpr: TIDCallExpression; AGenericArgs: TIDExpressions);
     class function MatchImplicit(Source, Destination: TIDType): TIDDeclaration; static; inline;
     procedure CheckVarParamConformity(Param: TIDVariable; Arg: TIDExpression);
     function IsConstValueInRange(Value: TIDExpression; RangeExpr: TIDRangeConstant): Boolean;
@@ -1728,12 +1727,12 @@ begin
   ProcDecl := nil;
   Decl := PExpr.Declaration;
 
-  {прямой вызов}
+  {procedure call by name}
   if Decl.ItemType = itProcedure then
   begin
     ProcDecl := TIDProcedure(Decl);
 
-    {поиск подходящей декларации}
+    {match proper generic/overload declaration}
     if Assigned(ProcDecl.PrevOverload) then begin
       ProcDecl := MatchOverloadProc(EContext.SContext, PExpr, UserArguments, ArgsCount);
       ProcParams := ProcDecl.ExplicitParams;
@@ -1761,7 +1760,7 @@ begin
     ProcResult := ProcDecl.ResultType;
 
   end else
-  {вызов через переменную процедурного типа}
+  {procedure call by proc type}
   if PExpr.DataTypeID = dtProcType then begin
 
     Decl := PExpr.DataType;
@@ -3702,6 +3701,7 @@ begin
           continue;
         end;
 
+        // for debug
         Implicit := CheckImplicit(SContext, Arg, Param.DataType, {AResolveCalls:} True);
 
         ERRORS.INCOMPATIBLE_TYPES(Arg, Param.DataType);
@@ -8214,27 +8214,6 @@ begin
   Result := CheckAndParseDeprecated(Scope, Result);
 end;
 
-procedure TASTDelphiUnit.SetProcGenericArgs(ACallExpr: TIDCallExpression; AGenericArgs: TIDExpressions);
-begin
-  var LProc := ACallExpr.AsProcedure;
-  while Assigned(LProc) do
-  begin
-    var LDescriptor := LProc.GenericDescriptor;
-    if Assigned(LDescriptor) then
-    begin
-      if LDescriptor.ParamsCount = Length(AGenericArgs) then
-      begin
-        ACallExpr.GenericArgs := AGenericArgs;
-        // set correct overloaded version
-        ACallExpr.Declaration := LProc;
-        Exit;
-      end;
-    end;
-    LProc := LProc.PrevOverload;
-  end;
-  AbortWork(sNoGenericMethodWithSuchParamsFmt, [ACallExpr.Declaration.Name], ACallExpr.TextPosition);
-end;
-
 function TASTDelphiUnit.InstantiateGenericProc(AScope: TScope; AGenericProc: TIDProcedure;
                                                const AGenericArgs: TIDExpressions): TIDProcedure;
 var
@@ -8244,6 +8223,9 @@ var
   LGArgsCount: Integer;
 begin
   GDescriptor := AGenericProc.GenericDescriptor;
+
+  if not Assigned(GDescriptor) then
+    AbortWorkInternal('generic descriptor is not assigned', Lexer_Position);
 
   LGArgsCount := Length(AGenericArgs);
   SetLength(LGArgs, LGArgsCount);
@@ -8320,7 +8302,6 @@ begin
   try
     WriteLog('# (%s: %d): %s', [Name, Lexer_Line, LContext.DstID.Name]);
     Result := AGenericType.InstantiateGeneric(AScope, {ADstStruct:} nil, LContext) as TIDType;
-    AScope.AddType(Result);
   except
     Error('Generic Instantiation Error: %s', [LContext.DstID.Name], LContext.DstID.TextPosition);
     raise;
@@ -8741,6 +8722,7 @@ begin
       begin
         var LAllArgsGeneric: Boolean;
         Result := ParseGenericsArgs(Scope, EContext.SContext, {out} LGenericArgs, {out} LAllArgsGeneric);
+        LCallExpr.GenericArgs := LGenericArgs;
       end;
       // если есть открытая скобка, - значит вызов
       if Result = token_openround then
@@ -8773,10 +8755,6 @@ begin
           // todo: SelfParam has no declaration asssigned
           LCallExpr.Instance := TIDExpression.Create(EContext.SContext.Proc.SelfParam);
         end;
-
-        // set explicit generic arguments for a generic method
-        if Assigned(LGenericArgs) then
-          SetProcGenericArgs(LCallExpr, LGenericArgs);
 
         // process call operator
         Expression := EContext.RPNPopOperator();
@@ -10199,6 +10177,7 @@ begin
     Exit;
 
   if (Param.DataType <> Sys._UntypedReference) and
+     (Param.DataTypeID <> dtGeneric) and
      not ((Param.DataType.DataTypeID = dtPointer) and
           (Arg.DataType.DataTypeID = dtPointer)) then
   ERRORS.REF_PARAM_MUST_BE_IDENTICAL(Arg);

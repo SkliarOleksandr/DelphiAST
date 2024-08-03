@@ -235,6 +235,20 @@ type
     function DoesGenericUseParams(const AParams: TIDTypeArray): Boolean; virtual;
   end;
 
+  {common ancestor for language entities that support generic parameterization}
+  TIDDeclarationGeneric = class(TIDDeclaration)
+  private
+    fGenericDescriptor: PGenericDescriptor;
+    fGenericOrigin: TIDDeclaration;
+    procedure SetGenericDescriptor(const Value: PGenericDescriptor); virtual;
+  protected
+    procedure GenericInstances2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
+  public
+    property GenericDescriptor: PGenericDescriptor read FGenericDescriptor write SetGenericDescriptor;
+    property GenericOrigin: TIDDeclaration read fGenericOrigin write fGenericOrigin;
+  end;
+
+
   TSpace<T: class{TIDDeclaration}> = record
   strict private
     FStartIndex: Integer;
@@ -290,7 +304,7 @@ type
   TBinaryOperatorsArray = array of TBinaryOperator;
 
   {base type class}
-  TIDType = class(TIDDeclaration, IASTDelphiType)
+  TIDType = class(TIDDeclarationGeneric, IASTDelphiType)
   type
     TUnarOperators = array [opAssignment..opRound] of TIDDeclaration;
     TBinarOperators = array [opIn..High(TOperatorID)] of TBinaryOperatorsArray;
@@ -320,7 +334,7 @@ type
     fBinarOperators: TBinarOperators;
     fBinarOperatorsFor: TBinarOperators;
     fSysBinaryOperators: TSysBinaryOperators;
-    fGenericDescriptor: PGenericDescriptor; // содерижт всю информацию по generic-типу/процедуре
+
     fGenericNextOverload: TIDType;
     /////////////////////////////////////////////////////////
     fPacked: Boolean;
@@ -343,7 +357,6 @@ type
     function GetActualDataType: TIDType; virtual;
     function GetParent: TIDType;
     function GetIsGeneric: Boolean; override;
-    procedure SetGenericDescriptor(const Value: PGenericDescriptor); virtual;
   public
     constructor CreateAsAnonymous(Scope: TScope); override;
     constructor CreateAsBuiltin(AScope: TScope; const AName: string; ADataTypeID: TDataTypeID);
@@ -418,7 +431,6 @@ type
 
     procedure CreateStandardOperators; virtual;
 
-    property GenericDescriptor: PGenericDescriptor read FGenericDescriptor write SetGenericDescriptor;
     property GenericNextOverload: TIDType read FGenericNextOverload write FGenericNextOverload;
     property InitProc: TIDProcedure read FInitProc write FInitProc;
     property CopyProc: TIDProcedure read FCopyProc write FCopyProc;
@@ -1570,7 +1582,7 @@ type
   TIDParamList = TList<TIDVariable>;
 
   {procedure/function}
-  TIDProcedure = class(TIDDeclaration)
+  TIDProcedure = class(TIDDeclarationGeneric)
   strict private
     FExplicitParams: TIDParamArray; // actual arguments (excluding 'self', 'Result', etc...);
     FParamsScope: TProcScope;       // only parameters scope
@@ -1583,7 +1595,6 @@ type
     FResultType: TIDType;
     FResultParam: TIDParam;
     FVirtualIndex: Integer;
-    FGenericDescriptor: PGenericDescriptor; // содерижт всю информацию по generic-типу/процедуре
     FGenericPrototype: TIDProcedure;        // исходная generic-процедруа (если дання является специализированным инстансом)
     FFirstBodyLine: Integer;                // позиция в исходном коде начала тела процедуры
     FLastBodyLine: Integer;                 // позиция в исходном коде конца тела процедуры
@@ -1665,7 +1676,6 @@ type
     property DefaultParamsCount: Integer read GetDefaultParamsCount;
     property VirtualIndex: Integer read FVirtualIndex write FVirtualIndex;
     property MethodIndex: Integer read GetMethodIndex;
-    property GenericDescriptor: PGenericDescriptor read FGenericDescriptor;
     property GenericPrototype: TIDProcedure read FGenericPrototype write FGenericPrototype;
     property CallConvention: TCallConvention read FCallConv write FCallConv;
     property IsGeneric: Boolean read GetIsGeneric;
@@ -2632,6 +2642,28 @@ begin
   FIndex := Value;
 end;
 
+{ TIDDeclarationGeneric }
+
+procedure TIDDeclarationGeneric.GenericInstances2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
+begin
+  if Assigned(fGenericDescriptor) then
+  begin
+    for var LInstance in fGenericDescriptor.FGenericInstances do
+    begin
+      ABuilder.Append(sLineBreak);
+      ABuilder.Append(' ', ANestedLevel*2);
+      ABuilder.Append('// generic instase from pool:');
+      ABuilder.Append(sLineBreak);
+      LInstance.Instance.Decl2Str(ABuilder, ANestedLevel);
+    end;
+  end;
+end;
+
+procedure TIDDeclarationGeneric.SetGenericDescriptor(const Value: PGenericDescriptor);
+begin
+  FGenericDescriptor := Value;
+end;
+
 { TIDProcDeclaration }
 
 procedure TIDProcedure.AddParam(const Param: TIDVariable);
@@ -3014,6 +3046,8 @@ begin
 
   if pfInline in FProcFlags then
     ABuilder.Append(' inline;');
+
+  GenericInstances2Str(ABuilder, ANestedLevel);
 end;
 
 procedure TIDProcedure.DecRefCount(RCPath: UInt32);
@@ -3104,11 +3138,7 @@ begin
   Result := LNewProc;
 
   if not Assigned(ADstStruct) then
-  begin
     LNewProc.ID := AContext.DstID;
-    if not Assigned(ANextOverload) then
-      ADstScope.AddProcedure(LNewProc);
-  end;
 
   // instantiate overloads
   if Assigned(PrevOverload) and (PrevOverload.Struct = Struct) then
@@ -3716,11 +3746,6 @@ end;
 procedure TIDType.OverloadImplicitFromAny(const Op: TIDOperator);
 begin
   FSysImplicitFromAny := Op;
-end;
-
-procedure TIDType.SetGenericDescriptor(const Value: PGenericDescriptor);
-begin
-  FGenericDescriptor := Value;
 end;
 
 function TIDType.MatchExplicitFrom(ASrc: TIDType): Boolean;
@@ -4651,6 +4676,7 @@ begin
         GenericDescriptor.AddGenericInstance(LNewStruct, AContext.Args);
       end;
 
+      LNewStruct.GenericOrigin := Self;
       LNewStruct.fStrucFlags := fStrucFlags;
 
       // instantiate ancestor(and implemented interfaces)
@@ -4707,6 +4733,8 @@ begin
   ABuilder.Append(sLineBreak);
   ABuilder.Append(' ', ANestedLevel*2);
   ABuilder.Append('end');
+
+  GenericInstances2Str(ABuilder, ANestedLevel);
 end;
 
 procedure TIDStructure.DecRefCount(RCPath: UInt32);
@@ -5719,6 +5747,8 @@ begin
   ABuilder.Append(DisplayName);
   ABuilder.Append(' = array of ');
   TypeNameToString(ElementDataType, ABuilder);
+
+  GenericInstances2Str(ABuilder, ANestedLevel);
 end;
 
 function TIDDynArray.GetHelperScope: TScope;
@@ -7539,7 +7569,8 @@ end;
 
 function TIDInterface.MatchImplicitTo(ADst: TIDType): Boolean;
 begin
-  Result := (ADst.DataTypeID = dtInterface) and IsInheritsForm(ADst as TIDStructure);
+  Result := (ADst.DataTypeID = dtInterface) and
+            (IsInheritsForm(ADst as TIDStructure) or (GenericOrigin = ADst));
 end;
 
 { TIDGuidConstant }
@@ -7972,6 +8003,7 @@ function SameTypes(ASrcType, ADstType: TIDType; AStrictCheck: Boolean): Boolean;
   end;
 
 begin
+  // AStrictCheck is needed for resolving aliases
   if AStrictCheck then
     Result := GetActualType(ASrcType) = GetActualType(ADstType)
   else
@@ -7993,13 +8025,19 @@ begin
                    (ADstType.ClassType = TIDGenericParam)) or
                    ((ASrcType.ClassType = TIDGenericParam) and
                     (ADstType.ClassType = TIDGenericInstantiation));
-    end;
+    end else
+      Result := ADstType.IsGeneric and not AStrictCheck;
 
-    if not Result and (ASrcType.DataTypeID = ADstType.DataTypeID) then
-      case ASrcType.DataTypeID of
-        dtDynArray, dtOpenArray: Result := SameTypes(TIDArray(ASrcType).ElementDataType,
-                                                     TIDArray(ADstType).ElementDataType);
+    if not Result then
+    begin
+      if (ASrcType is TIDArray) and (ADstType is TIDArray) then
+      begin
+        if (ADstType.DataTypeID = dtOpenArray) or
+           (ASrcType.DataTypeID = ADstType.DataTypeID) then
+          Result := SameTypes(TIDArray(ASrcType).ElementDataType,
+                              TIDArray(ADstType).ElementDataType);
       end;
+    end;
   end;
 end;
 

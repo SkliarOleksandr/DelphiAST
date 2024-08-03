@@ -229,9 +229,9 @@ object frmTestAppMain: TfrmTestAppMain
         Caption = 'Source'
         object edUnit: TSynEdit
           Left = 0
-          Top = 0
+          Top = 35
           Width = 766
-          Height = 535
+          Height = 500
           Align = alClient
           Font.Charset = DEFAULT_CHARSET
           Font.Color = clWindowText
@@ -296,6 +296,25 @@ object frmTestAppMain: TfrmTestAppMain
             ''
             '')
           SelectedColor.Alpha = 0.400000005960464500
+        end
+        object Panel7: TPanel
+          Left = 0
+          Top = 0
+          Width = 766
+          Height = 35
+          Align = alTop
+          BevelOuter = bvNone
+          ShowCaption = False
+          TabOrder = 1
+          object SaveButton: TButton
+            Left = 8
+            Top = 4
+            Width = 75
+            Height = 25
+            Caption = 'Save'
+            TabOrder = 0
+            OnClick = SaveButtonClick
+          end
         end
       end
       object tsAST: TTabSheet

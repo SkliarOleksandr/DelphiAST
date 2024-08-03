@@ -61,6 +61,8 @@ type
     Splitter3: TSplitter;
     cbPlatform: TComboBox;
     Label2: TLabel;
+    Panel7: TPanel;
+    SaveButton: TButton;
     procedure Button2Click(Sender: TObject);
     procedure Button1Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
@@ -68,6 +70,7 @@ type
     procedure FormCreate(Sender: TObject);
     procedure Button5Click(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure SaveButtonClick(Sender: TObject);
   private
     { Private declarations }
     //fPKG: INPPackage;
@@ -105,6 +108,9 @@ uses
   AST.Parser.Log;
 
 {$R *.dfm}
+
+const
+  SCurSrcFileName = 'current_source.pas';
 
 procedure TfrmTestAppMain.CompilerMessagesToStrings(const Project: IASTDelphiProject);
 var
@@ -236,6 +242,11 @@ procedure TfrmTestAppMain.OnProgress(const Module: IASTModule; Status: TASTProce
 begin
   //if Status = TASTStatusParseSuccess then
     ErrMemo.Lines.Add(Module.Name + ' : ' + Status.Name);
+end;
+
+procedure TfrmTestAppMain.SaveButtonClick(Sender: TObject);
+begin
+  edUnit.Lines.SaveToFile(SCurSrcFileName);
 end;
 
 procedure TfrmTestAppMain.SetDefines(const APrj: IASTDelphiProject);
@@ -459,6 +470,9 @@ begin
     if chkWriteLog.Checked then
       LogMemo.Lines.Add(DupeString(' ', ANestedLevel) + AMessage);
   end;
+
+  if FileExists(SCurSrcFileName) then
+    edUnit.Lines.LoadFromFile(SCurSrcFileName);
 end;
 
 procedure TestSetImplicit;
@@ -690,13 +704,117 @@ var
   L: Int64;
   H: Int64;
   R: UInt64;
+  A1, A2: TStringDynArray;
+  AS1, AS2: array [1..10] of byte;
 begin
   L := 0;
   H := Int64(MaxUInt64);
   R := UInt64(H) - UInt64(L);
+  A1 := Copy(A2);
+end;
+
+type
+  TInt = type Integer;
+
+  TTT = class
+    constructor Create;
+    class procedure T1;
+    procedure X1(a: TInt); virtual;
+  end;
+
+  TTT2 = class(TTT)
+    procedure X1(n: TInt); override;
+  end;
+
+  TM = procedure of object;
+  TF = function(C: TClass): TTT of object;
+
+procedure Test12;
+begin
+  var V := @TTT.Destroy;
+end;
+
+{ TTT }
+
+constructor TTT.Create;
+begin
+
+end;
+
+class procedure TTT.T1;
+begin
+
+end;
+
+procedure TTT.X1(a: TInt);
+begin
+
+end;
+
+{ TTT2 }
+
+procedure TTT2.X1(n: TInt);
+begin
+  inherited;
+
+end;
+
+procedure XX(A: Integer); overload;
+begin
+
+end;
+
+procedure XX(B: TInt); overload;
+begin
+
+end;
+
+procedure AliasTest;
+var
+  A: TInt;
+  I: Integer;
+begin
+  I := 0;
+  A := I;
+  //if A <> 0 then;
+end;
+
+type
+  IComparer<T> = interface
+    function Compare(const Left, Right: T): Integer;
+  end;
+
+  TArray = class
+    //class procedure Sort<T>(var Values: array of T); overload; static;
+    class procedure Sort<T>(var Values: array of T; const Comparer: IComparer<T>); static;
+  end;
+
+procedure Test2;
+var
+  Arr: array of string;
+begin
+  TArray.Sort<string>(Arr, nil);
+end;
+
+procedure X1(A: TArray<string>); overload;
+begin
+
+end;
+
+procedure X1(A: array of string); overload;
+begin
+
+end;
+
+{ TArray }
+
+class procedure TArray.Sort<T>(var Values: array of T; const Comparer: IComparer<T>);
+begin
+
 end;
 
 initialization
   Test0;
+  AliasTest;
 
 end.
