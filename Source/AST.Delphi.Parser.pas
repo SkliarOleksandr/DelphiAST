@@ -3352,16 +3352,22 @@ var
 begin
   SrcDecl := Source.Declaration;
   DstDecl := TIDClass(Destination.ReferenceType);
-  // если источник - тип
+  // Src is a type
   if SrcDecl.ItemType = itType then begin
     if SrcDecl is TIDStructure then
     begin
       if (SrcDecl = DstDecl) or TIDStructure(SrcDecl).IsInheritsForm(DstDecl) then
         Exit(Destination);
     end else
+    // Src is a generic parameter
+    if (SrcDecl is TIDGenericParam) and
+       Assigned(TIDGenericParam(SrcDecl).ConstraintType) and
+       TIDStructure(TIDGenericParam(SrcDecl).ConstraintType).IsInheritsForm(DstDecl) then
+      Exit(Destination)
+    else
       AbortWork(sCLASSTypeRequired, Source.TextPosition);
   end else
-  // если источник - переменная
+  // Src is a variable
   if SrcDecl.ItemType = itVar then begin
    if SrcDecl.DataType.DataTypeID = dtClassOf then
    begin

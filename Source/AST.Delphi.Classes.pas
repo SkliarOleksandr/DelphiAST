@@ -4831,13 +4831,17 @@ function TIDStructure.IsInheritsForm(Ancestor: TIDStructure): Boolean;
 var
   AC: TIDStructure;
 begin
-  AC := FAncestor;
-  while Assigned(AC) do begin
-    if AC = Ancestor then
-      Exit(True);
-    AC := AC.Ancestor;
+  Result := (Self = Ancestor);
+  if not Result then
+  begin
+    AC := FAncestor;
+    while Assigned(AC) do begin
+      if AC = Ancestor then
+        Exit(True);
+      AC := AC.Ancestor;
+    end;
+    Result := False;
   end;
-  Result := False;
 end;
 
 function TIDProcedure.GetSelfParam: TIDVariable;
@@ -6882,8 +6886,8 @@ begin
     OverloadBinarOperator2(opEqual, SYSUnit._NilPointer, SYSUnit._Boolean);
     OverloadBinarOperator2(opNotEqual, SYSUnit._NilPointer, SYSUnit._Boolean);
     OverloadImplicitToAny(SYSUnit.Operators.ImplicitClassToClass);
-    OverloadExplicitToAny(SYSUnit.Operators.ExplicitRefTypeToAny);
-    OverloadExplicitFromAny(SYSUnit.Operators.ExplicitRefTypeFromAny);
+    OverloadExplicitToAny(SYSUnit.Operators.ExplicitClassToAny);
+    OverloadExplicitFromAny(SYSUnit.Operators.ExplicitClassFromAny);
   end;
 end;
 

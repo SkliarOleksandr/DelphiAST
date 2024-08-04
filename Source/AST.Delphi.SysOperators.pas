@@ -261,18 +261,6 @@ type
     function Check(const SContext: TSContext; const ASrc: TIDType; const ADst: TIDType): Boolean; override;
   end;
 
-  {explicit Class -> Any}
-  TSysExplicitClassToAny = class(TSysOpExplisit)
-  public
-    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
-  end;
-
-  {explicit Class <- Any}
-  TSysExplicitClassFromAny = class(TSysOpExplisit)
-  public
-    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
-  end;
-
   {explicit Interface <- Any}
   TSysExplicitInterfaceFromAny = class(TSysOpImplicit)
   public
@@ -375,6 +363,19 @@ type
   public
     function Check(const SContext: TSContext; const ASrc: TIDType; const ADst: TIDType): Boolean; override;
   end;
+
+  {explicit Class -> Any}
+  TSysExplicitClassToAny = class(TSysExplicitRefTypeToAny)
+  public
+    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
+  {explicit Class <- Any}
+  TSysExplicitClassFromAny = class(TSysExplicitRefTypeFromAny)
+  public
+    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
+  end;
+
 
   ///////////////////////////////////////////////////////////////////////////////////////////
   /// BINARY
@@ -820,16 +821,16 @@ end;
 function TSysExplicitRefTypeToAny.Check(const SContext: TSContext; const ASrc, ADst: TIDType): Boolean;
 begin
   Result := ADst.IsOrdinal or (ADst.DataTypeID in [dtPointer,
-                                                 dtPAnsiChar,
-                                                 dtPWideChar,
-                                                 dtProcType,
-                                                 dtRecord,
-                                                 dtClass,
-                                                 dtInterface,
-                                                 dtDynArray,
-                                                 dtAnsiString,
-                                                 dtString,
-                                                 dtWideString]);
+                                                   dtPAnsiChar,
+                                                   dtPWideChar,
+                                                   dtProcType,
+                                                   dtRecord,
+                                                   dtClass,
+                                                   dtInterface,
+                                                   dtDynArray,
+                                                   dtAnsiString,
+                                                   dtString,
+                                                   dtWideString]);
   if not Result then
     Result := False;
 end;
@@ -1159,14 +1160,21 @@ end;
 
 function TSysExplicitClassToAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
-  Result := (Dst.DataTypeID in [dtInt32, dtUInt32, dtInt64, dtUInt64, dtNativeInt, dtNativeUInt, dtPointer, dtClass]);
+  if Dst.DataTypeID = dtGeneric then
+  begin
+    var LConstraint := TIDGenericParam(Dst).Constraint;
+    var LConstrType := TIDGenericParam(Dst).ConstraintType;
+    Result := (LConstraint in [gsClass, gsConstructor, gsClassAndConstructor]) or
+              (Assigned(LConstrType) and (LConstrType.DataTypeID = dtClass));
+  end else
+    Result := inherited Check(SContext, Src, Dst);
 end;
 
 { TSysExplicitClassFromAny }
 
 function TSysExplicitClassFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
-  Result := (Dst.DataTypeID in [dtInt32, dtPointer, dtClass]) or (Src = SysUnit._Untyped);
+  Result := inherited Check(SContext, Src, Dst);
 end;
 
 { TSysExplicitInterfaceFromAny }
