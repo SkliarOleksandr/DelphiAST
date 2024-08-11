@@ -533,7 +533,7 @@ begin
       {BEGIN}
       token_begin: begin
         Lexer_NextToken(Scope);
-        NewScope := TScope.Create(stLocal, Scope);
+        NewScope := TBlockScope.Create(stLocal, Scope);
         Result := ParseStatements(NewScope, SContext, {IsBlock:} True);
         Lexer_MatchToken(Result, token_end);
         Result := Lexer_NextToken(Scope);
@@ -1299,7 +1299,7 @@ begin
   LCValue := 0;
   LB := MaxInt64;
   HB := MinInt64;
-  Decl.Items := TScope.Create(stLocal, Scope);
+  Decl.Items := TEnumScope.Create(stLocal, Scope);
   Token := Lexer_NextToken(Scope);
   while True do begin
     Lexer_MatchIdentifier(Token);
@@ -1528,7 +1528,7 @@ var
 begin
   // try to parse...
   Result := ReadNewOrExistingID(Scope, {out} ID, {out} Decl);
-  NewScope := TScope.Create(stLocal, Scope);  
+  NewScope := TExceptScope.Create(stLocal, Scope);
   if Result = token_colon then
   begin
     VarDecl := TIDVariable.Create(NewScope, ID);
@@ -1742,18 +1742,26 @@ begin
       MatchProc(EContext.SContext, PExpr, ProcParams, UserArguments);
     end;
 
-    if Assigned(ProcDecl.GenericDescriptor) and
-       not IsStructsMethod(SContext.Proc.Struct, ProcDecl) and
-       not Assigned(SContext.Proc.GenericDescriptor) and
-       not IsGenericTypeThisStruct(SContext.Scope, ProcDecl.Struct) and
-       GenericNeedsInstantiate(PExpr.GenericArgs) then
+    if Assigned(ProcDecl.GenericDescriptor) then
     begin
-      if not Assigned(PExpr.GenericArgs)  then
-        InferImplicitGenericArgs(PExpr);
+      var LIsStructMethod := IsStructsMethod(SContext.Proc.Struct, ProcDecl);
+      var LCurrentProcIsGeneric := Assigned(SContext.Proc.GenericDescriptor);
+      var LIsGenericTypeStructMethod := IsGenericTypeThisStruct(SContext.Scope, ProcDecl.Struct);
+      var LNeedsToInstantiate := GenericNeedsInstantiate(PExpr.GenericArgs);
 
-      ProcDecl := InstantiateGenericProc(ProcDecl.Scope, ProcDecl, PExpr.GenericArgs);
-      ProcParams := ProcDecl.ExplicitParams;
-      PExpr.Declaration := ProcDecl;
+      // instantiate "external" or "independent" generic methods
+      if LNeedsToInstantiate and
+         (not LIsStructMethod and
+          not LCurrentProcIsGeneric and
+          not LIsGenericTypeStructMethod) or PExpr.CanInstantiate then
+      begin
+        if not Assigned(PExpr.GenericArgs)  then
+          InferImplicitGenericArgs(PExpr);
+
+        ProcDecl := InstantiateGenericProc(ProcDecl.Scope, ProcDecl, PExpr.GenericArgs);
+        ProcParams := ProcDecl.ExplicitParams;
+        PExpr.Declaration := ProcDecl;
+      end;
     end;
 
 
@@ -6219,7 +6227,7 @@ begin
   Result := Lexer_NextToken(Scope);
   if Result = token_var then begin
     Lexer_ReadNextIdentifier(Scope, ID);
-    NewScope := TScope.Create(stLocal, Scope);
+    NewScope := TForScope.Create(stLocal, Scope);
     LoopVar := TIDVariable.Create(NewScope, ID);
     NewScope.AddVariable(TIDVariable(LoopVar));
     Scope := NewScope;
@@ -6568,9 +6576,9 @@ begin
   Result := Lexer_NextToken(Scope);
   if Result <> token_semicolon then
   begin
-    {оптимизация, не создаем лишний scope, если внутри он создастся всеравно}
+    {OPT: do not create an empty scope in case begin..end exists}
     if Result <> token_begin then
-      NewScope := TScope.Create(stLocal, Scope)
+      NewScope := TIfThenScope.Create(stLocal, Scope)
     else
       NewScope := Scope;
 
@@ -6582,9 +6590,9 @@ begin
   if Result = token_else then
   begin
     Result := Lexer_NextToken(Scope);
-    {оптимизация, не создаем лишний scope, если внутри он создастся всеравно}
+    {OPT: do not create an empty scope in case begin..end exists}
     if Result <> token_begin then
-      NewScope := TScope.Create(stLocal, Scope)
+      NewScope := TElseScope.Create(stLocal, Scope)
     else
       NewScope := Scope;
 
@@ -8331,14 +8339,13 @@ var
   SParamType, DParamType: TIDType;
 begin
   // check matching for the result (if exists)
-  if SrcResultType <> DstResultType then
-    Exit(False);
-
-  if Assigned(DstResultType) and Assigned(DstResultType) then
+  if Assigned(SrcResultType) and Assigned(DstResultType) then
   begin
     if not SameTypes(SrcResultType.ActualDataType, DstResultType.ActualDataType) then
       Exit(False);
-  end;
+  end else
+  if Assigned(SrcResultType) or Assigned(DstResultType) then
+    Exit(False);
 
   SParamsCount := Length(SrcParams);
   DParamsCount := Length(DstParams);
@@ -8724,9 +8731,10 @@ begin
       // parse explicit generic arguments
       if (Result = token_less) and ProcCanBeGeneric(TIDProcedure(Decl)) then
       begin
-        var LAllArgsGeneric: Boolean;
-        Result := ParseGenericsArgs(Scope, EContext.SContext, {out} LGenericArgs, {out} LAllArgsGeneric);
+        var LCanInstantiate: Boolean;
+        Result := ParseGenericsArgs(Scope, EContext.SContext, {out} LGenericArgs, {out} LCanInstantiate);
         LCallExpr.GenericArgs := LGenericArgs;
+        LCallExpr.CanInstantiate := LCanInstantiate;
       end;
       // если есть открытая скобка, - значит вызов
       if Result = token_openround then

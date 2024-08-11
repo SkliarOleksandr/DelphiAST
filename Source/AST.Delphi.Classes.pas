@@ -1373,6 +1373,7 @@ type
     FArguments: TIDExpressions;
     FInstance: TIDExpression;
     FGenericArgs: TIDExpressions;
+    FCanInstantiate: Boolean;
     function GetProc: TIDProcedure; inline;
   public
     property Proc: TIDProcedure read GetProc;
@@ -1380,6 +1381,8 @@ type
     property ArgumentsCount: Integer read FArgumentsCount write FArgumentsCount;
     property Instance: TIDExpression read FInstance write FInstance;
     property GenericArgs: TIDExpressions read FGenericArgs write FGenericArgs;
+    // CanInstantiate means all generic arguments are real types (not outer generic params)
+    property CanInstantiate: Boolean read FCanInstantiate write FCanInstantiate;
   end;
 
   TIDCastExpression = class(TIDExpression)
@@ -1738,7 +1741,7 @@ type
 
   TScopes = array of TScope;
 
-  TScope = class(TIDList)
+  TScope = class abstract (TIDList)
   private
     fUnit: TASTModule;          // модуль (индекс модуля в пакете)
     fParent: TScope;            // Parent scope
@@ -1831,7 +1834,7 @@ type
   end;
 
   TStructScope = class(TScope)
-    fAncestorScope: TScope;
+    fAncestorScope: TStructScope;
     fStruct: TIDStructure;
   protected
     function GetName: string; override;
@@ -1841,6 +1844,7 @@ type
     function FindIDRecurcive(const ID: string): TIDDeclaration; override;
     function FindMembers(const ID: string): TIDDeclaration; override;
     property Struct: TIDStructure read fStruct;
+    property AncestroScope: TStructScope read fAncestorScope;
   end;
 
   TRecordInitScope = class(TScope)
@@ -1852,6 +1856,43 @@ type
     property Struct: TIDStructure read fStructType write fStructType;
   end;
 
+  // begin...end scope
+  TBlockScope = class(TScope)
+  end;
+
+  // if () then...; scope
+  TIfThenScope = class(TScope)
+  end;
+
+  // else...; scope
+  TElseScope = class(TScope)
+  end;
+
+  // for () do...; scope
+  TForScope = class(TScope)
+  end;
+
+  // while () do...; scope
+  TWhileScope = class(TScope)
+  end;
+
+  // repeat...until scope
+  TRepeatScope = class(TScope)
+  end;
+
+  // try...end scope
+  TTryScope = class(TScope)
+  end;
+
+  // finally..end scope
+  TFinallyScope = class(TScope)
+  end;
+
+  // except..end scope
+  TExceptScope = class(TScope)
+  end;
+
+  // with () do...; scope
   TWithScope = class(TProcScope)
   private
     fInnerScope: TScope;
@@ -1864,6 +1905,11 @@ type
     function FindIDRecurcive(const ID: string): TIDDeclaration; override;
     property InnerScope: TScope read FInnerScope write FInnerScope;
     property Expression: TIDExpression read FExpression;
+  end;
+
+  // enumeration scope
+  TEnumScope = class(TScope)
+
   end;
 
   TMethodScope = class(TProcScope)
@@ -2651,9 +2697,9 @@ begin
     for var LInstance in fGenericDescriptor.FGenericInstances do
     begin
       ABuilder.Append(sLineBreak);
-      ABuilder.Append(' ', ANestedLevel*2);
-      ABuilder.Append('// generic instase from pool:');
-      ABuilder.Append(sLineBreak);
+      // ABuilder.Append(' ', ANestedLevel*2);
+      // ABuilder.Append('// generic instase from pool:');
+      // ABuilder.Append(sLineBreak);
       LInstance.Instance.Decl2Str(ABuilder, ANestedLevel);
     end;
   end;
@@ -5263,10 +5309,6 @@ begin
         LNewArray.ID := AContext.DstID;
         // add this instance to the its pool
         GenericDescriptor.AddGenericInstance(LNewArray, AContext.Args);
-
-        // add the new type to the original scope only in case it's not a nested one
-        if not Assigned(ADstStruct) then
-          Scope.AddType(LNewArray);
       end;
       // instantiate array element type
       LNewArray.ElementDataType := ElementDataType.InstantiateGeneric(ADstScope, ADstStruct, AContext) as TIDType;
@@ -6606,6 +6648,8 @@ begin
 
   if fProcClass = procMethod then
     ABuilder.Append(' of object ');
+
+  GenericInstances2Str(ABuilder, ANestedLevel);
 end;
 
 function TIDProcType.GetDataSize: Integer;
@@ -6670,9 +6714,6 @@ begin
         LNewType.ID := AContext.DstID;
         // add this instance to the its pool
         GenericDescriptor.AddGenericInstance(LNewType, AContext.Args);
-        // add the new type to the original scope only in case it's not a nested one
-        if not Assigned(ADstStruct) then
-          Scope.AddType(LNewType);
       end;
 
       var LParamCnt := Length(Params);
@@ -7044,7 +7085,7 @@ begin
   var AOuterDecl := fOuterScope.FindID(ID);
 
   // serach in local parent scopes
-  var AStructScope := FParent;
+  var AStructScope := FParent as TStructScope;
   while Assigned(AStructScope) and (AStructScope.ScopeType = stStruct) do
   begin
     var AStructDecl := AStructScope.FindID(ID);
@@ -7056,7 +7097,7 @@ begin
         Result := AStructDecl;
       Exit;
     end;
-    AStructScope := AStructScope.Parent;
+    AStructScope := AStructScope.AncestorScope;
   end;
 
   // search in the all impl uses scopes
