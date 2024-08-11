@@ -41,7 +41,7 @@ uses
 // System.SysUtils
 // System.Math
 // System.Variants
-// Windows
+// Winapi.Windows
 // AnsiStrings
 // Character
 
@@ -4708,7 +4708,7 @@ var
   SContext: TSContext;
   ASTE: TASTExpression;
 begin
-  Lexer_ReadNextIdentifier(Scope, ID);
+  Lexer_ReadNextIdentifier(Scope, {var} ID);
   Prop := TIDProperty.Create(Scope, ID);
   Scope.AddProperty(Prop);
 

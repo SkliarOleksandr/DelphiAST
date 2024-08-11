@@ -118,7 +118,6 @@ type
     fLastEnterPos: Integer;            // Позиция последнего переноса строки (необходим для определения позиции формата (row,col))
     fPrevPostion: TTextPosition;       // Позиция предыдущего токена формата (row,col)
     fUpCase: array [#0..#127] of AnsiChar; // символы в UpCase
-    fIdentifireType: TIdentifierType;  // Тип идентификатора (литерал/строка/число/символ)
 
     fIdentifireId: Integer;            // Id for an identifier
     fEofId: Integer;                   // Id for the and of file
@@ -141,6 +140,7 @@ type
   protected
     fCurrentToken: string;
     fCurrentTokenId: Integer;          // The current token Id
+    fIdentifireType: TIdentifierType;  // Тип идентификатора (литерал/строка/число/символ)
     property AmbiguousId: Integer read fAmbiguousId write fAmbiguousId;
     procedure RegisterToken(const Token: string; aTokenID: Integer; aTokenType: TTokenType; const TokenCaption: string = ''); overload;
     procedure RegisterToken(const Token: string; aTokenID: Integer; aTokenType: TTokenType;
@@ -265,7 +265,7 @@ end;
 
 function TGenericLexer.MoveNextInternal: Integer;
 var
-  SPos, SPos2, ReadedChars, i, RemID: Integer;
+  SPos, SPos2, SIdStart, ReadedChars, i, RemID: Integer;
   Ch: Char;
   Token, ptmp, ptmp2: PCharToken;
 begin
@@ -275,6 +275,7 @@ begin
   SPos := fSrcPos;
   ReadedChars := 1;
   RemID := -1;
+  SIdStart := SPos;
   while SPos <= fLength do begin
     Ch := fSource[SPos];
     if Ch < MaxTokenChar then begin
@@ -341,11 +342,15 @@ begin
         fSrcPos := SPos + 1;
         Result := Token.TokenID;
         fCurrentTokenID := Result;
-        {$IFDEF DEBUG} fCurrentToken := TokenLexem(Result); {$ENDIF}
+        if Token.TokenClass = TTokenClass.AmbiguousPriorityIdentifier then
+          fCurrentToken := Copy(fSource, SIdStart, fSrcPos - SIdStart)
+        else
+          {$IFDEF DEBUG} fCurrentToken := TokenLexem(Result){$ENDIF};
         Exit;
       end;
       ttOmited: begin
         Inc(SPos);
+        SIdStart := SPos;
         Continue;
       end;
       ttUnicodeChars: begin

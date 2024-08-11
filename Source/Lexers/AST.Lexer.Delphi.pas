@@ -9,8 +9,8 @@ uses AST.Lexer, SysUtils, StrUtils, Types, Classes, AST.Parser.Errors;
 type
 
   TTokenID = (
-    token_unknown {= -1},           // unknown token
-    token_eof {= 0},                // end of file
+    token_unknown {=0},             // unknown token
+    token_eof,                      // end of file
     token_identifier,               // some id
     token_id_or_keyword,            // ambiguous token: id or keyword
 
@@ -21,7 +21,7 @@ type
     token_assign,                   // :=
     token_equal,                    // =
     token_above,                    // >
-    token_aboveorequal,             // >=
+    token_aboveorequal {=10},       // >=
     token_less,                     // <
     token_lessorequal,              // <=
     token_notequal,                 // <>
@@ -33,7 +33,7 @@ type
     token_plus,                     // +
     token_minus,                    // -
     token_asterisk,                 // *
-    token_slash,                    // /
+    token_slash  {=20},             // /
     token_caret,                    // ^
     token_address,                  // @
     token_ampersand,                // &
@@ -45,7 +45,7 @@ type
     token_closeround,               // )
     token_openblock,                // [
     token_closeblock,               // ]
-    token_openfigure,               // {
+    token_openfigure  {=30},        // {
     token_closefigure,              // }
     token_quote,                    // '
 
@@ -57,7 +57,7 @@ type
     token_abstract,                 // keyword: abstract
     token_aling,                    // keyword: align
     token_asm,                      // keyword: asm
-    token_stdcall,                  // keyword: stdcall
+    token_stdcall  {=40},           // keyword: stdcall
     token_fastcall,                 // keyword: fastcall
     token_cdecl,                    // keyword: cdecl
     token_unit,                     // keyword: unit
@@ -69,7 +69,7 @@ type
     token_export,                   // keyword: export
     token_exports,                  // keyword: exports
     token_external,                 // keyword: extern
-    token_name,                     // keyword: name
+    token_name  {=50},              // keyword: name
     token_interface,                // keyword: interface
     token_implementation,           // keyword: implementation
     token_implement,                // keyword: implementation
@@ -267,7 +267,9 @@ begin
       begin
         Result := TTokenID(GetNextTokenId());
         fOriginalToken := TokenLexem(Result);
+        fCurrentToken := fOriginalToken;
         fCurrentTokenID := ord(token_identifier);
+        fIdentifireType := itIdentifier;
         Result := token_identifier;
       end;
     end;
