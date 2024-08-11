@@ -1844,7 +1844,7 @@ type
     function FindIDRecurcive(const ID: string): TIDDeclaration; override;
     function FindMembers(const ID: string): TIDDeclaration; override;
     property Struct: TIDStructure read fStruct;
-    property AncestroScope: TStructScope read fAncestorScope;
+    property AncestorScope: TStructScope read fAncestorScope;
   end;
 
   TRecordInitScope = class(TScope)

@@ -437,8 +437,8 @@ type
   function GetUnit(const SContext: PSContext): TASTDelphiUnit; overload;
   function GetUnit(const EContext: TEContext): TASTDelphiUnit; overload;
   function GetBoolResultExpr(const SContext: TSContext): TIDBoolResultExpression;
-  function IntConstExpression(const SContext: TSContext; const Value: Int64): TIDExpression; inline;
-  function StrConstExpression(const SContext: TSContext; const Value: string): TIDExpression; inline;
+  function IntConstExpression(const SContext: TSContext; const Value: Int64): TIDExpression;
+  function StrConstExpression(const SContext: TSContext; const Value: string): TIDExpression;
 
 implementation
 
@@ -491,14 +491,13 @@ begin
   Result := TIDExpression.Create(TIDIntConstant.CreateWithoutScope(DataType, Value));
 end;
 
-function StrConstExpression(const SContext: TSContext; const Value: string): TIDExpression; inline;
+function StrConstExpression(const SContext: TSContext; const Value: string): TIDExpression;
 var
   Decl: TIDStringConstant;
 begin
   Decl := TIDStringConstant.CreateAsAnonymous(nil, SContext.SysUnit._UnicodeString, Value);
   Result := TIDExpression.Create(Decl);
 end;
-
 
 { TASTDelphiUnit }
 
