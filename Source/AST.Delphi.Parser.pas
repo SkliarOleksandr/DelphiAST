@@ -3536,11 +3536,9 @@ var
   Decl: TIDDeclaration;
   SrcDTID, DstDTID: TDataTypeID;
 begin
-  {$IFDEF DEBUG}
   Result := nil;
-  if not Assigned(Source.DataType) then
+  if not Assigned(Source) or not Assigned(Source.DataType) then
     AbortWorkInternal('Source data type is not assigned', Lexer_Position);
-  {$ENDIF}
 
   SDataType := Source.DataType.ActualDataType;
   Dest := Dest.ActualDataType;
@@ -4688,9 +4686,16 @@ end;
 function TASTDelphiUnit.ParseAttribute(Scope: TScope): TTokenID;
 begin
   Result := Lexer_CurTokenID;
-  while (Result <> token_closeblock) and (Result <> token_eof) do
+  var LNestedBlocks := 1;
+  while (LNestedBlocks > 0) and (Result <> token_eof) do
   begin
     Result := Lexer_NextToken(Scope);
+    // todo: implement parsing attrubute class and arguments
+    // tmp: skip all nested blocks for such cases [UserAttr([val1, val2])]
+    case Result of
+      token_openblock: Inc(LNestedBlocks);
+      token_closeblock: Dec(LNestedBlocks);
+    end;
   end;
   Result := Lexer_NextToken(Scope);
 end;
@@ -4856,9 +4861,7 @@ end;
 
 function TASTDelphiUnit.ParseCondInclude(Scope: TScope): TTokenID;
 var
-  FileName: string;
-  Pos: TParserPosition;
-  Stream: TStringStream;
+  LFileName: string;
 begin
   while True do begin
     Result := TTokenID(Lexer.NextToken);
@@ -4866,19 +4869,26 @@ begin
       break;
 
     if Result = token_identifier then
-      FileName := FileName + Lexer.OriginalToken
+      LFileName := LFileName + Lexer.OriginalToken
     else
-      FileName := FileName + '.'; // tmp
+      LFileName := LFileName + '.'; // tmp
   end;
-  Stream := TStringStream.Create;
-  try
-    Stream.LoadFromFile(ExtractFilePath(Self.FileName) + FileName);
-    var Messages := CompileSource(Scope, FileName, Stream.DataString);
-    if Messages.HasErrors then
-      AbortWork('The included file: ' + FileName + ' has errors', Lexer_Position);
-  finally
-    Stream.Free;
-  end;
+
+  var LFullFileName := Project.FindUnitFile(LFileName, {AFileExt:} '');
+  if LFullFileName <> '' then
+  begin
+    var LStrings := TStringList.Create;
+    try
+      // use TStringList since it proper handles any file encodings
+      LStrings.LoadFromFile(LFullFileName);
+      var LMessages := CompileSource(Scope, LFileName, LStrings.Text);
+      if LMessages.HasErrors then
+        AbortWork('The included file: %s has errors', [LFileName], Lexer_Position);
+    finally
+      LStrings.Free;
+    end;
+  end else
+    AbortWork('File not found: %s', [LFileName], Lexer_Position);
 end;
 
 function TASTDelphiUnit.ParseCondIfDef(Scope: TScope): Boolean;

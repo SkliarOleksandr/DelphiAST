@@ -20,68 +20,87 @@ type
 
   TfrmTestAppMain = class(TForm)
     SynPasSyn1: TSynPasSyn;
-    PageControl1: TPageControl;
+    SrcPageControl: TPageControl;
     tsSource: TTabSheet;
     edUnit: TSynEdit;
     tsAST: TTabSheet;
     tvAST: TTreeView;
-    Panel1: TPanel;
+    BottomPanel: TPanel;
     tsNameSpace: TTabSheet;
     edAllItems: TSynEdit;
     Panel2: TPanel;
     Panel3: TPanel;
-    Button3: TButton;
-    Splitter1: TSplitter;
+    LoadFilesButton: TButton;
     lbFiles: TCheckListBox;
-    Button4: TButton;
+    ParseFilesButton: TButton;
     chkbShowSysDecls: TCheckBox;
     chkbShowConstValues: TCheckBox;
     chkbShowAnonymous: TCheckBox;
     Splitter2: TSplitter;
-    Panel4: TPanel;
+    MainPanel: TPanel;
     SynEditSearch1: TSynEditSearch;
     Panel5: TPanel;
     Button5: TButton;
     NSSearchEdit: TEdit;
     ErrMemo: TSynEdit;
     Panel6: TPanel;
-    Label1: TLabel;
-    edSrcRoot: TEdit;
-    chkStopIfError: TCheckBox;
-    chkCompileSsystemForASTParse: TCheckBox;
-    chkParseAll: TCheckBox;
-    Button1: TButton;
-    Button2: TButton;
-    chkShowWarnings: TCheckBox;
-    PageControl2: TPageControl;
+    LeftPageControl: TPageControl;
     tsLogs: TTabSheet;
     tsFiles: TTabSheet;
     LogMemo: TSynEdit;
-    chkWriteLog: TCheckBox;
     Splitter3: TSplitter;
-    cbPlatform: TComboBox;
-    Label2: TLabel;
     Panel7: TPanel;
     SaveButton: TButton;
-    procedure Button2Click(Sender: TObject);
-    procedure Button1Click(Sender: TObject);
-    procedure Button3Click(Sender: TObject);
-    procedure Button4Click(Sender: TObject);
+    MainPageControl: TPageControl;
+    SrcTabSheet: TTabSheet;
+    SettingsTabSheet: TTabSheet;
+    Label1: TLabel;
+    DelphiSrcPathEdit: TEdit;
+    TopPanel: TPanel;
+    ASTParseButton: TButton;
+    ASTParseRTLButton: TButton;
+    ParseSystemCheck: TCheckBox;
+    Label2: TLabel;
+    cbPlatform: TComboBox;
+    ShowWarningsCheck: TCheckBox;
+    ParseImplsCheck: TCheckBox;
+    StopIfErrorCheck: TCheckBox;
+    Label3: TLabel;
+    UnitScopeNamesEdit: TEdit;
+    SaveSettingsButton: TButton;
+    Label4: TLabel;
+    UnitSearchPathEdit: TEdit;
+    Label5: TLabel;
+    CondDefinesEdit: TEdit;
+    Panel1: TPanel;
+    WriteLogCheck: TCheckBox;
+    DelphiPathIncludeSubDirCheck: TCheckBox;
+    UnitSearchPathIncludeSubDirCheck: TCheckBox;
+    procedure ASTParseRTLButtonClick(Sender: TObject);
+    procedure ASTParseButtonClick(Sender: TObject);
+    procedure LoadFilesButtonClick(Sender: TObject);
+    procedure ParseFilesButtonClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure Button5Click(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure SaveButtonClick(Sender: TObject);
+    procedure SaveSettingsButtonClick(Sender: TObject);
+    procedure StopIfErrorCheckClick(Sender: TObject);
   private
     { Private declarations }
     //fPKG: INPPackage;
     fFiles: TStringDynArray;
     fSettings: IASTProjectSettings;
     FStartedAt: TDateTime;
+    FLockSaveSettings: Boolean;
     procedure OnProgress(const Module: IASTModule; Status: TASTProcessStatusClass);
     procedure ShowAllItems(const Project: IASTDelphiProject);
-    procedure ShowResult(const Project: IASTDelphiProject);
+    procedure ParseProject(const Project: IASTDelphiProject);
     procedure CompilerMessagesToStrings(const Project: IASTDelphiProject);
     procedure SetDefines(const APrj: IASTDelphiProject);
+    procedure SaveSettings;
+    procedure LoadSettings;
+    function CreateProject(AIncludeRTLPath: Boolean): IASTDelphiProject;
   public
     { Public declarations }
     procedure IndexSources(const RootPath: string; Dict: TSourcesDict);
@@ -97,6 +116,7 @@ uses
   System.TypInfo,
   System.Rtti,
   System.StrUtils,
+  System.IniFiles,
   AST.Delphi.System,
   AST.Delphi.Parser,
   AST.Delphi.Declarations,
@@ -121,7 +141,7 @@ begin
   for i := 0 to Project.Messages.Count - 1 do
   begin
     Msg := Project.Messages[i];
-    if (Msg.MessageType >= cmtError) or chkShowWarnings.Checked then
+    if (Msg.MessageType >= cmtError) or ShowWarningsCheck.Checked then
     begin
       ErrMemo.Lines.AddStrings(Msg.AsString.Split([sLineBreak]));
       if Msg.MessageType >= cmtError then
@@ -206,7 +226,7 @@ begin
   end;
 end;
 
-procedure TfrmTestAppMain.Button1Click(Sender: TObject);
+procedure TfrmTestAppMain.ASTParseButtonClick(Sender: TObject);
 var
   UN: TASTDelphiUnit;
   Prj: IASTDelphiProject;
@@ -217,25 +237,56 @@ begin
 
   FStartedAt := Now;
 
-  Prj := TASTDelphiProject.Create('test');
-  Prj.AddUnitSearchPath(ExtractFilePath(Application.ExeName));
-  if chkCompileSsystemForASTParse.Checked then
-    Prj.AddUnitSearchPath(edSrcRoot.Text);
-
-  SetDefines(Prj);
-  Prj.OnProgress := OnProgress;
-  Prj.StopCompileIfError := chkStopIfError.Checked;
-  Prj.OnConsoleWrite := procedure (const Module: IASTModule; Line: Integer; const Msg: string)
-                        begin
-                          ErrMemo.Lines.Add(format('#console: [%s: %d]: %s', [Module.Name, Line, Msg]));
-                        end;
+  Prj := CreateProject({AIncludeRTLPath:} ParseSystemCheck.Checked);
 
   UN := TASTDelphiUnit.Create(Prj, 'test', edUnit.Text);
   Prj.AddUnit(UN, nil);
 
-  ShowResult(Prj);
+  ParseProject(Prj);
 
   Prj.Clear;
+end;
+
+procedure TfrmTestAppMain.ASTParseRTLButtonClick(Sender: TObject);
+
+  procedure AddDelphiUnits(var AUsesList: string; const APath: string);
+  begin
+    var LRtlSources := GetDirectoryFiles(DelphiSrcPathEdit.Text + APath, '*.pas');
+    for var LPath in LRtlSources do
+    begin
+      var LUnitName := StringReplace(ExtractFileName(LPath), '.pas', '', [rfReplaceAll]);
+      AUsesList := AddStringSegment(AUsesList, LUnitName, ',');
+    end;
+
+  end;
+
+var
+  UN: TASTDelphiUnit;
+  Prj: IASTDelphiProject;
+begin
+  ErrMemo.Clear;
+  LogMemo.Clear;
+  TASTParserLog.Instance.ResetNestedLevel;
+
+  FStartedAt := Now;
+
+  Prj := CreateProject({AIncludeRTLPath:} True);
+
+  var LUsesUntis := '';
+  AddDelphiUnits({var} LUsesUntis, 'rtl\sys');
+
+  var RTLUsesSourceText :=
+  'unit RTLParseTest; '#10#13 +
+  'interface'#10#13 +
+  'uses'#10#13 +
+   LUsesUntis + ';'#10#13 +
+  'implementation'#10#13 +
+  'end.';
+
+  UN := TASTDelphiUnit.Create(Prj, 'RTLParseTest', RTLUsesSourceText);
+  Prj.AddUnit(UN, nil);
+
+  ParseProject(Prj);
 end;
 
 procedure TfrmTestAppMain.OnProgress(const Module: IASTModule; Status: TASTProcessStatusClass);
@@ -247,6 +298,67 @@ end;
 procedure TfrmTestAppMain.SaveButtonClick(Sender: TObject);
 begin
   edUnit.Lines.SaveToFile(SCurSrcFileName);
+end;
+
+const
+  SGeneral = 'GENERAL';
+
+procedure TfrmTestAppMain.SaveSettings;
+begin
+  if not FLockSaveSettings then
+  begin
+    var LINI := TIniFile.Create(ChangeFileExt(Application.ExeName, '.ini'));
+    try
+      LINI.WriteBool(SGeneral, 'STOP_IF_ERROR', StopIfErrorCheck.Checked);
+      LINI.WriteBool(SGeneral, 'PARSE_SYSTEM', ParseSystemCheck.Checked);
+      LINI.WriteBool(SGeneral, 'PARSE_IMPLS', ParseImplsCheck.Checked);
+      LINI.WriteBool(SGeneral, 'WRITE_LOG', WriteLogCheck.Checked);
+      LINI.WriteBool(SGeneral, 'SHOW_WARNINGS', ShowWarningsCheck.Checked);
+
+      LINI.WriteString(SGeneral, 'PLATFORM', cbPlatform.Text);
+      LINI.WriteString(SGeneral, 'DELPHI_SRC_PATH', DelphiSrcPathEdit.Text);
+        LINI.WriteBool(SGeneral, 'DELPHI_SRC_PATH_INCLUDE_SUBDIRS', DelphiPathIncludeSubDirCheck.Checked);
+
+      LINI.WriteString(SGeneral, 'UNIT_SCOPE_NAMES', UnitScopeNamesEdit.Text);
+      LINI.WriteString(SGeneral, 'UNIT_SEARCH_PATH', UnitSearchPathEdit.Text);
+        LINI.WriteBool(SGeneral, 'UNIT_SEARCH_PATH_INCLUDE_SUBDIRS', UnitSearchPathIncludeSubDirCheck.Checked);
+      LINI.WriteString(SGeneral, 'COND_DEFINES', CondDefinesEdit.Text);
+    finally
+      LINI.Free;
+    end;
+  end;
+end;
+
+procedure TfrmTestAppMain.SaveSettingsButtonClick(Sender: TObject);
+begin
+  SaveSettings;
+end;
+
+procedure TfrmTestAppMain.LoadSettings;
+begin
+  var LINI := TIniFile.Create(ChangeFileExt(Application.ExeName, '.ini'));
+  try
+    // to avoid SaveSettings auto-triggering
+    FLockSaveSettings := True;
+
+    StopIfErrorCheck.Checked := LINI.ReadBool(SGeneral, 'STOP_IF_ERROR', True);
+    ParseSystemCheck.Checked := LINI.ReadBool(SGeneral, 'PARSE_SYSTEM', False);
+    ParseImplsCheck.Checked := LINI.ReadBool(SGeneral, 'PARSE_IMPLS', True);
+    WriteLogCheck.Checked := LINI.ReadBool(SGeneral, 'WRITE_LOG', True);
+    ShowWarningsCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_WARNINGS', False);
+
+    cbPlatform.Text := LINI.ReadString(SGeneral, 'PLATFORM', 'WIN32');
+    DelphiSrcPathEdit.Text := LINI.ReadString(SGeneral, 'DELPHI_SRC_PATH', DelphiSrcPathEdit.Text);
+    DelphiPathIncludeSubDirCheck.Checked := LINI.ReadBool(SGeneral, 'DELPHI_SRC_PATH_INCLUDE_SUBDIRS', True);
+    UnitScopeNamesEdit.Text := LINI.ReadString(SGeneral, 'UNIT_SCOPE_NAMES', UnitScopeNamesEdit.Text);
+    UnitSearchPathEdit.Text := LINI.ReadString(SGeneral, 'UNIT_SEARCH_PATH', UnitSearchPathEdit.Text);
+    UnitSearchPathIncludeSubDirCheck.Checked := LINI.ReadBool(SGeneral, 'UNIT_SEARCH_PATH_INCLUDE_SUBDIRS', True);
+    CondDefinesEdit.Text := LINI.ReadString(SGeneral, 'COND_DEFINES', CondDefinesEdit.Text);
+
+  finally
+    FLockSaveSettings := False;
+    LINI.Free;
+  end;
 end;
 
 procedure TfrmTestAppMain.SetDefines(const APrj: IASTDelphiProject);
@@ -273,6 +385,34 @@ begin
       APrj.Defines.Add('ASSEMBLER');
     end;
   end;
+  // add custom defines
+  for var LDefine in string(CondDefinesEdit.Text).Split([';']) do
+    APrj.Defines.Add(LDefine);
+end;
+
+function TfrmTestAppMain.CreateProject(AIncludeRTLPath: Boolean): IASTDelphiProject;
+begin
+  Result := TASTDelphiProject.Create('test');
+
+  if AIncludeRTLPath then
+    Result.AddUnitSearchPath(DelphiSrcPathEdit.Text, DelphiPathIncludeSubDirCheck.Checked);
+
+  for var LPath in string(UnitSearchPathEdit.Text).Split([';']) do
+    Result.AddUnitSearchPath(LPath, UnitSearchPathIncludeSubDirCheck.Checked);
+
+  Result.AddUnitSearchPath(ExtractFilePath(Application.ExeName), {AIncludeSubDirs:} True);
+  Result.UnitScopeNames := UnitScopeNamesEdit.Text;
+
+  SetDefines(Result);
+
+  Result.OnProgress := OnProgress;
+  Result.StopCompileIfError := StopIfErrorCheck.Checked;
+  Result.CompileAll := ParseImplsCheck.Checked;
+
+  Result.OnConsoleWrite := procedure (const Module: IASTModule; Line: Integer; const Msg: string)
+                        begin
+                          ErrMemo.Lines.Add(format('#console: [%s: %d]: %s', [Module.Name, Line, Msg]));
+                        end;
 end;
 
 procedure TfrmTestAppMain.ShowAllItems(const Project: IASTDelphiProject);
@@ -312,7 +452,12 @@ begin
   end;
 end;
 
-procedure TfrmTestAppMain.ShowResult(const Project: IASTDelphiProject);
+procedure TfrmTestAppMain.StopIfErrorCheckClick(Sender: TObject);
+begin
+  SaveSettings;
+end;
+
+procedure TfrmTestAppMain.ParseProject(const Project: IASTDelphiProject);
 begin
   var Msg := TStringList.Create;
   try
@@ -340,69 +485,21 @@ begin
   end;
 end;
 
-procedure TfrmTestAppMain.Button2Click(Sender: TObject);
-
-  procedure AddDelphiUnits(var AUsesList: string; const APath: string);
-  begin
-    var LRtlSources := GetDirectoryFiles(edSrcRoot.Text + APath, '*.pas');
-    for var LPath in LRtlSources do
-    begin
-      var LUnitName := StringReplace(ExtractFileName(LPath), '.pas', '', [rfReplaceAll]);
-      AUsesList := AddStringSegment(AUsesList, LUnitName, ',');
-    end;
-
-  end;
-
-var
-  UN: TASTDelphiUnit;
-  Prj: IASTDelphiProject;
+procedure TfrmTestAppMain.LoadFilesButtonClick(Sender: TObject);
 begin
-  ErrMemo.Clear;
-  LogMemo.Clear;
-  TASTParserLog.Instance.ResetNestedLevel;
-
-  FStartedAt := Now;
-
-  Prj := TASTDelphiProject.Create('test');
-  Prj.AddUnitSearchPath(edSrcRoot.Text);
-
-  SetDefines(Prj);
-  Prj.OnProgress := OnProgress;
-  Prj.StopCompileIfError := chkStopIfError.Checked;
-  Prj.CompileAll := chkParseAll.Checked;
-
-  var LUsesUntis := '';
-  AddDelphiUnits(LUsesUntis, 'rtl\sys');
-
-  var RTLUsesSourceText :=
-  'unit RTLParseTest; '#10#13 +
-  'interface'#10#13 +
-  'uses'#10#13 +
-   LUsesUntis + ';'#10#13 +
-  'implementation'#10#13 +
-  'end.';
-
-  UN := TASTDelphiUnit.Create(Prj, 'RTLParseTest', RTLUsesSourceText);
-  Prj.AddUnit(UN, nil);
-
-  ShowResult(Prj);
-end;
-
-procedure TfrmTestAppMain.Button3Click(Sender: TObject);
-begin
-  fFiles := TDirectory.GetFiles(edSrcRoot.Text, '*.pas', TSearchOption.soAllDirectories);
+  fFiles := TDirectory.GetFiles(DelphiSrcPathEdit.Text, '*.pas', TSearchOption.soAllDirectories);
   lbFiles.Clear;
   lbFiles.Items.BeginUpdate;
   try
     for var i := 0 to Length(fFiles) - 1 do
-      lbFiles.AddItem(ExtractRelativePath(edSrcRoot.Text, fFiles[i]), nil);
+      lbFiles.AddItem(ExtractRelativePath(DelphiSrcPathEdit.Text, fFiles[i]), nil);
     lbFiles.CheckAll(cbChecked);
   finally
     lbFiles.Items.EndUpdate;
   end;
 end;
 
-procedure TfrmTestAppMain.Button4Click(Sender: TObject);
+procedure TfrmTestAppMain.ParseFilesButtonClick(Sender: TObject);
 var
   Msg: TStrings;
   Prj: IASTDelphiProject;
@@ -410,11 +507,7 @@ var
 begin
   ErrMemo.Clear;
 
-  Prj := TASTDelphiProject.Create('test');
-  Prj.AddUnitSearchPath(edSrcRoot.Text);
-  Prj.Target := TWINX86_Target;
-  SetDefines(Prj);
-  Prj.OnProgress := OnProgress;
+  Prj := CreateProject({AIncludeRTLPath:} True);
 
   for var f in fFiles do
     Prj.AddUnit(f);
@@ -463,16 +556,20 @@ end;
 
 procedure TfrmTestAppMain.FormCreate(Sender: TObject);
 begin
-  fSettings := TPascalProjectSettings.Create;
+  MainPageControl.ActivePageIndex := 0;
+  SrcPageControl.ActivePageIndex := 0;
 
+  fSettings := TPascalProjectSettings.Create;
   TASTParserLog.Instance.OnWriteProc := procedure(const AMessage: string; ANestedLevel: Integer)
   begin
-    if chkWriteLog.Checked then
+    if WriteLogCheck.Checked then
       LogMemo.Lines.Add(DupeString(' ', ANestedLevel) + AMessage);
   end;
 
   if FileExists(SCurSrcFileName) then
     edUnit.Lines.LoadFromFile(SCurSrcFileName);
+
+  LoadSettings;
 end;
 
 procedure TestSetImplicit;

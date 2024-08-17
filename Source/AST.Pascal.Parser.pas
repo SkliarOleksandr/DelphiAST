@@ -123,7 +123,7 @@ type
     property SysUnit: TASTModule read fSysUnit;
     ////////////////////////////////////////////////////////////////////////////
     constructor Create(const Project: IASTProject; const FileName: string; const Source: string = ''); override;
-    constructor CreateFromFile(const Project: IASTProject; const FileName: string); override;
+    constructor CreateFromFile(const AProject: IASTProject; const AFileName: string); override;
     destructor Destroy; override;
     ////////////////////////////////////////////////////////////////////////////
     procedure SaveConstsToStream(Stream: TStream); // сохраняет сложные константы модуля
@@ -217,16 +217,14 @@ begin
 //  fCondStack.OnPopError := procedure begin ERROR_INVALID_COND_DIRECTIVE() end;
 end;
 
-constructor TPascalUnit.CreateFromFile(const Project: IASTProject; const FileName: string);
-var
-  Stream: TStringStream;
+constructor TPascalUnit.CreateFromFile(const AProject: IASTProject; const AFileName: string);
 begin
-  Stream := TStringStream.Create();
+  var LStrings := TStringList.Create();
   try
-    Stream.LoadFromFile(FileName);
-    Create(Project, FileName, Stream.DataString);
+    LStrings.LoadFromFile(AFileName);
+    Create(AProject, AFileName, LStrings.Text);
   finally
-    Stream.Free;
+    LStrings.Free;
   end;
 end;
 

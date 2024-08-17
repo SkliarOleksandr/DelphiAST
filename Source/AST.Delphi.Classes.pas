@@ -5260,8 +5260,10 @@ begin
   else
   if FElementDataType is TIDArray then
     Result := TIDArray(FElementDataType).ElementTypeByIndex[Index - FDimensionsCount]
-  else
-    AbortWorkInternal(sInvalidIndex)
+  else begin
+    AbortWorkInternal(sInvalidIndex);
+    Result := nil; // avoid warning
+  end;
 end;
 
 function TIDArray.GetIsGeneric: Boolean;
