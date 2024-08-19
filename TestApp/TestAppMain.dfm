@@ -52,8 +52,6 @@ object frmTestAppMain: TfrmTestAppMain
         ActivePage = tsFiles
         Align = alLeft
         TabOrder = 0
-        ExplicitTop = 32
-        ExplicitHeight = 511
         object tsLogs: TTabSheet
           Caption = 'Logs'
           object LogMemo: TSynEdit
@@ -100,9 +98,6 @@ object frmTestAppMain: TfrmTestAppMain
             ReadOnly = True
             SelectedColor.Alpha = 0.400000005960464500
             WordWrap = True
-            ExplicitTop = 4
-            ExplicitWidth = 464
-            ExplicitHeight = 468
           end
           object Panel1: TPanel
             Left = 0
@@ -138,7 +133,6 @@ object frmTestAppMain: TfrmTestAppMain
             BevelOuter = bvNone
             Caption = 'Panel2'
             TabOrder = 0
-            ExplicitHeight = 515
             object Panel3: TPanel
               Left = 0
               Top = 0
@@ -176,7 +170,6 @@ object frmTestAppMain: TfrmTestAppMain
               Align = alClient
               ItemHeight = 17
               TabOrder = 1
-              ExplicitHeight = 482
             end
           end
         end
@@ -190,8 +183,6 @@ object frmTestAppMain: TfrmTestAppMain
         BevelOuter = bvNone
         ShowCaption = False
         TabOrder = 1
-        ExplicitTop = 0
-        ExplicitWidth = 1266
         object ErrMemo: TSynEdit
           AlignWithMargins = True
           Left = 3
@@ -236,8 +227,6 @@ object frmTestAppMain: TfrmTestAppMain
           ReadOnly = True
           SelectedColor.Alpha = 0.400000005960464500
           WordWrap = True
-          ExplicitTop = 65
-          ExplicitHeight = 133
         end
         object Panel6: TPanel
           Left = 0
@@ -268,10 +257,6 @@ object frmTestAppMain: TfrmTestAppMain
         Caption = 'MainPanel'
         ShowCaption = False
         TabOrder = 2
-        ExplicitLeft = 6
-        ExplicitTop = 3
-        ExplicitWidth = 1260
-        ExplicitHeight = 771
         object SrcPageControl: TPageControl
           AlignWithMargins = True
           Left = 4
@@ -281,8 +266,6 @@ object frmTestAppMain: TfrmTestAppMain
           ActivePage = tsNameSpace
           Align = alClient
           TabOrder = 0
-          ExplicitWidth = 1252
-          ExplicitHeight = 763
           object tsSource: TTabSheet
             Caption = 'Source'
             object edUnit: TSynEdit
@@ -354,8 +337,6 @@ object frmTestAppMain: TfrmTestAppMain
                 ''
                 '')
               SelectedColor.Alpha = 0.400000005960464500
-              ExplicitLeft = -2
-              ExplicitHeight = 440
             end
             object Panel7: TPanel
               Left = 0
@@ -366,7 +347,6 @@ object frmTestAppMain: TfrmTestAppMain
               BevelOuter = bvNone
               ShowCaption = False
               TabOrder = 1
-              ExplicitWidth = 1244
               object SaveButton: TButton
                 Left = 8
                 Top = 4
@@ -389,8 +369,6 @@ object frmTestAppMain: TfrmTestAppMain
               Align = alClient
               Indent = 19
               TabOrder = 0
-              ExplicitWidth = 758
-              ExplicitHeight = 507
             end
           end
           object tsNameSpace: TTabSheet
@@ -441,8 +419,6 @@ object frmTestAppMain: TfrmTestAppMain
               Options = [eoAutoIndent, eoDragDropEditing, eoEnhanceEndKey, eoGroupUndo, eoRightMouseMovesCursor, eoScrollPastEol, eoShowScrollHint, eoSmartTabDelete, eoSmartTabs, eoTabsToSpaces]
               SearchEngine = SynEditSearch1
               SelectedColor.Alpha = 0.400000005960464500
-              ExplicitWidth = 758
-              ExplicitHeight = 476
             end
             object Panel5: TPanel
               Left = 0
@@ -452,7 +428,6 @@ object frmTestAppMain: TfrmTestAppMain
               Align = alTop
               BevelOuter = bvNone
               TabOrder = 1
-              ExplicitWidth = 758
               object Button5: TButton
                 AlignWithMargins = True
                 Left = 771
@@ -463,7 +438,6 @@ object frmTestAppMain: TfrmTestAppMain
                 Caption = 'Search'
                 TabOrder = 0
                 OnClick = Button5Click
-                ExplicitLeft = 680
               end
               object NSSearchEdit: TEdit
                 AlignWithMargins = True
@@ -475,7 +449,6 @@ object frmTestAppMain: TfrmTestAppMain
                 Margins.Bottom = 4
                 Align = alClient
                 TabOrder = 1
-                ExplicitWidth = 671
                 ExplicitHeight = 21
               end
             end
@@ -701,6 +674,15 @@ object frmTestAppMain: TfrmTestAppMain
         Checked = True
         State = cbChecked
         TabOrder = 6
+      end
+      object ShowMemLeaksCheck: TCheckBox
+        Left = 14
+        Top = 216
+        Width = 123
+        Height = 17
+        Caption = 'Show Memory Leaks'
+        TabOrder = 7
+        OnClick = ShowMemLeaksCheckClick
       end
     end
   end

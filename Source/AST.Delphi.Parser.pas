@@ -325,7 +325,7 @@ type
     function ParseNamedTypeDecl(Scope: TScope): TTokenID;
     // функция парсинга указания типа (имени существующего или анонимного типа)
     function ParseTypeSpec(Scope: TScope; out DataType: TIDType): TTokenID;
-    function ParseGenericTypeSpec(Scope: TScope; const ID: TIdentifier; out DataType: TIDType): TTokenID; virtual;
+    function ParseGenericTypeSpec(Scope, ASearchScope: TScope; const ID: TIdentifier; out DataType: TIDType): TTokenID; virtual;
     function ParseGenericsHeader(Scope: TScope; out Args: TIDTypeArray): TTokenID;
     function ParseGenericsConstraint(Scope: TScope; out AConstraint: TGenericConstraint;
                                                     out AConstraintType: TIDType): TTokenID;
@@ -1055,10 +1055,14 @@ begin
       Lexer_ReadCurrIdentifier(ID);
       Result := Lexer_NextToken(Scope);
 
-      {если это специализация обобщенного типа}
+      {if this is a generic type}
       if Result = token_less then
       begin
-        Result := ParseGenericTypeSpec(Scope, ID, {out} DataType);
+        // todo: rework ParseGenericTypeSpec (LSearchScope has been added as tmp solution)
+        var LSearchScope := Scope;
+        if Assigned(SearchScope) then
+          LSearchScope := SearchScope;
+        Result := ParseGenericTypeSpec(Scope, LSearchScope, ID, {out} DataType);
         Decl := DataType;
       end else
       begin
@@ -6510,7 +6514,7 @@ begin
   Result := False;
 end;
 
-function TASTDelphiUnit.ParseGenericTypeSpec(Scope: TScope; const ID: TIdentifier; out DataType: TIDType): TTokenID;
+function TASTDelphiUnit.ParseGenericTypeSpec(Scope, ASearchScope: TScope; const ID: TIdentifier; out DataType: TIDType): TTokenID;
 
   function MakeGenericName(const AGenericArgs: TIDExpressions): string;
   begin
@@ -6527,7 +6531,7 @@ var
 begin
   Result := ParseGenericsArgs(Scope, fUnitSContext, {out} LGenericArgs, {out} LCanInstantiate);
   SearchName := format('%s<%d>', [ID.Name, Length(LGenericArgs)]);
-  var LGenericType := TIDType(FindIDNoAbort(Scope, SearchName));
+  var LGenericType := TIDType(FindIDNoAbort(ASearchScope, SearchName));
   if Assigned(LGenericType) then
   begin
     if LCanInstantiate and
@@ -8829,7 +8833,7 @@ begin
     itType: begin
       {generic param}
       if Result = token_less then
-        Result := ParseGenericTypeSpec(Scope, PMContext.ID, TIdType(Decl));
+        Result := ParseGenericTypeSpec(Scope, Scope, PMContext.ID, TIdType(Decl));
 
       Expression := TIDExpression.Create(Decl, PMContext.ID.TextPosition);
 

@@ -76,6 +76,7 @@ type
     WriteLogCheck: TCheckBox;
     DelphiPathIncludeSubDirCheck: TCheckBox;
     UnitSearchPathIncludeSubDirCheck: TCheckBox;
+    ShowMemLeaksCheck: TCheckBox;
     procedure ASTParseRTLButtonClick(Sender: TObject);
     procedure ASTParseButtonClick(Sender: TObject);
     procedure LoadFilesButtonClick(Sender: TObject);
@@ -86,6 +87,7 @@ type
     procedure SaveButtonClick(Sender: TObject);
     procedure SaveSettingsButtonClick(Sender: TObject);
     procedure StopIfErrorCheckClick(Sender: TObject);
+    procedure ShowMemLeaksCheckClick(Sender: TObject);
   private
     { Private declarations }
     //fPKG: INPPackage;
@@ -314,6 +316,7 @@ begin
       LINI.WriteBool(SGeneral, 'PARSE_IMPLS', ParseImplsCheck.Checked);
       LINI.WriteBool(SGeneral, 'WRITE_LOG', WriteLogCheck.Checked);
       LINI.WriteBool(SGeneral, 'SHOW_WARNINGS', ShowWarningsCheck.Checked);
+      LINI.WriteBool(SGeneral, 'SHOW_MEMLEAKS', ShowMemLeaksCheck.Checked);
 
       LINI.WriteString(SGeneral, 'PLATFORM', cbPlatform.Text);
       LINI.WriteString(SGeneral, 'DELPHI_SRC_PATH', DelphiSrcPathEdit.Text);
@@ -346,6 +349,7 @@ begin
     ParseImplsCheck.Checked := LINI.ReadBool(SGeneral, 'PARSE_IMPLS', True);
     WriteLogCheck.Checked := LINI.ReadBool(SGeneral, 'WRITE_LOG', True);
     ShowWarningsCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_WARNINGS', False);
+    ShowMemLeaksCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_MEMLEAKS', False);
 
     cbPlatform.Text := LINI.ReadString(SGeneral, 'PLATFORM', 'WIN32');
     DelphiSrcPathEdit.Text := LINI.ReadString(SGeneral, 'DELPHI_SRC_PATH', DelphiSrcPathEdit.Text);
@@ -450,6 +454,11 @@ begin
   finally
     edAllItems.EndUpdate;
   end;
+end;
+
+procedure TfrmTestAppMain.ShowMemLeaksCheckClick(Sender: TObject);
+begin
+  ReportMemoryLeaksOnShutdown := ShowMemLeaksCheck.Checked;
 end;
 
 procedure TfrmTestAppMain.StopIfErrorCheckClick(Sender: TObject);
@@ -570,6 +579,8 @@ begin
     edUnit.Lines.LoadFromFile(SCurSrcFileName);
 
   LoadSettings;
+
+  ReportMemoryLeaksOnShutdown := ShowMemLeaksCheck.Checked;
 end;
 
 procedure TestSetImplicit;
