@@ -7,7 +7,7 @@ uses
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, System.Generics.Collections, AST.Pascal.Project,
   AST.Pascal.Parser, AST.Delphi.Classes, SynEdit, SynEditHighlighter, SynEditCodeFolding, SynHighlighterPas, AST.Delphi.Project,
   Vcl.ComCtrls, System.Types, Vcl.ExtCtrls, AST.Intf, AST.Parser.ProcessStatuses, Vcl.CheckLst, SynEditMiscClasses,
-  SynEditSearch, AST.Parser.Messages;   // system
+  SynEditSearch, AST.Parser.Messages, System.Actions, Vcl.ActnList;   // system
 
 type
   TSourceFileInfo = record
@@ -30,7 +30,7 @@ type
     edAllItems: TSynEdit;
     Panel2: TPanel;
     Panel3: TPanel;
-    LoadFilesButton: TButton;
+    AddFilesButton: TButton;
     lbFiles: TCheckListBox;
     ParseFilesButton: TButton;
     chkbShowSysDecls: TCheckBox;
@@ -77,10 +77,13 @@ type
     DelphiPathIncludeSubDirCheck: TCheckBox;
     UnitSearchPathIncludeSubDirCheck: TCheckBox;
     ShowMemLeaksCheck: TCheckBox;
+    Button1: TButton;
+    ActionList1: TActionList;
+    AddFilesAction: TAction;
+    RemoveFilesAction: TAction;
+    ParseFilesAction: TAction;
     procedure ASTParseRTLButtonClick(Sender: TObject);
     procedure ASTParseButtonClick(Sender: TObject);
-    procedure LoadFilesButtonClick(Sender: TObject);
-    procedure ParseFilesButtonClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure Button5Click(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
@@ -88,10 +91,14 @@ type
     procedure SaveSettingsButtonClick(Sender: TObject);
     procedure StopIfErrorCheckClick(Sender: TObject);
     procedure ShowMemLeaksCheckClick(Sender: TObject);
+    procedure AddFilesActionExecute(Sender: TObject);
+    procedure RemoveFilesActionExecute(Sender: TObject);
+    procedure ParseFilesActionExecute(Sender: TObject);
+    procedure ParseFilesActionUpdate(Sender: TObject);
+    procedure RemoveFilesActionUpdate(Sender: TObject);
   private
     { Private declarations }
     //fPKG: INPPackage;
-    fFiles: TStringDynArray;
     fSettings: IASTProjectSettings;
     FStartedAt: TDateTime;
     FLockSaveSettings: Boolean;
@@ -228,13 +235,35 @@ begin
   end;
 end;
 
+procedure TfrmTestAppMain.AddFilesActionExecute(Sender: TObject);
+begin
+  var LDlg := TFileOpenDialog.Create(Self);
+  try
+    LDlg.Options := LDlg.Options + [fdoAllowMultiSelect];
+    LDlg.DefaultExtension := '.pas';
+    LDlg.DefaultFolder := UnitSearchPathEdit.Text;
+    if LDlg.Execute then
+    begin
+      lbFiles.Items.BeginUpdate;
+      try
+        for var LFileName in LDlg.Files do
+          lbFiles.AddItem(ExtractRelativePath(UnitSearchPathEdit.Text, LFileName), nil);
+        lbFiles.CheckAll(cbChecked);
+      finally
+        lbFiles.Items.EndUpdate;
+      end;
+      SaveSettings;
+    end;
+  finally
+    LDlg.Free;
+  end;
+end;
+
 procedure TfrmTestAppMain.ASTParseButtonClick(Sender: TObject);
 var
   UN: TASTDelphiUnit;
   Prj: IASTDelphiProject;
 begin
-  ErrMemo.Clear;
-  LogMemo.Clear;
   TASTParserLog.Instance.ResetNestedLevel;
 
   FStartedAt := Now;
@@ -266,8 +295,6 @@ var
   UN: TASTDelphiUnit;
   Prj: IASTDelphiProject;
 begin
-  ErrMemo.Clear;
-  LogMemo.Clear;
   TASTParserLog.Instance.ResetNestedLevel;
 
   FStartedAt := Now;
@@ -326,6 +353,8 @@ begin
       LINI.WriteString(SGeneral, 'UNIT_SEARCH_PATH', UnitSearchPathEdit.Text);
         LINI.WriteBool(SGeneral, 'UNIT_SEARCH_PATH_INCLUDE_SUBDIRS', UnitSearchPathIncludeSubDirCheck.Checked);
       LINI.WriteString(SGeneral, 'COND_DEFINES', CondDefinesEdit.Text);
+
+      LINI.WriteString(SGeneral, 'CUSTOM_UNITS', lbFiles.Items.CommaText);
     finally
       LINI.Free;
     end;
@@ -359,6 +388,8 @@ begin
     UnitSearchPathIncludeSubDirCheck.Checked := LINI.ReadBool(SGeneral, 'UNIT_SEARCH_PATH_INCLUDE_SUBDIRS', True);
     CondDefinesEdit.Text := LINI.ReadString(SGeneral, 'COND_DEFINES', CondDefinesEdit.Text);
 
+    lbFiles.Items.CommaText := LINI.ReadString(SGeneral, 'CUSTOM_UNITS', '');
+    lbFiles.CheckAll(TCheckBoxState.cbChecked);
   finally
     FLockSaveSettings := False;
     LINI.Free;
@@ -404,7 +435,7 @@ begin
   for var LPath in string(UnitSearchPathEdit.Text).Split([';']) do
     Result.AddUnitSearchPath(LPath, UnitSearchPathIncludeSubDirCheck.Checked);
 
-  Result.AddUnitSearchPath(ExtractFilePath(Application.ExeName), {AIncludeSubDirs:} True);
+  //Result.AddUnitSearchPath(ExtractFilePath(Application.ExeName), {AIncludeSubDirs:} True);
   Result.UnitScopeNames := UnitScopeNamesEdit.Text;
 
   SetDefines(Result);
@@ -468,6 +499,9 @@ end;
 
 procedure TfrmTestAppMain.ParseProject(const Project: IASTDelphiProject);
 begin
+  ErrMemo.Clear;
+  LogMemo.Clear;
+
   var Msg := TStringList.Create;
   try
     var CResult := Project.Compile;
@@ -494,63 +528,36 @@ begin
   end;
 end;
 
-procedure TfrmTestAppMain.LoadFilesButtonClick(Sender: TObject);
-begin
-  fFiles := TDirectory.GetFiles(DelphiSrcPathEdit.Text, '*.pas', TSearchOption.soAllDirectories);
-  lbFiles.Clear;
-  lbFiles.Items.BeginUpdate;
-  try
-    for var i := 0 to Length(fFiles) - 1 do
-      lbFiles.AddItem(ExtractRelativePath(DelphiSrcPathEdit.Text, fFiles[i]), nil);
-    lbFiles.CheckAll(cbChecked);
-  finally
-    lbFiles.Items.EndUpdate;
-  end;
-end;
-
-procedure TfrmTestAppMain.ParseFilesButtonClick(Sender: TObject);
+procedure TfrmTestAppMain.ParseFilesActionExecute(Sender: TObject);
 var
-  Msg: TStrings;
   Prj: IASTDelphiProject;
-  CResult: TCompilerResult;
 begin
-  ErrMemo.Clear;
-
   Prj := CreateProject({AIncludeRTLPath:} True);
 
-  for var f in fFiles do
-    Prj.AddUnit(f);
+  // add selected files to the project
+  for var LIndex := 0 to lbFiles.Count - 1 do
+    if lbFiles.Checked[LIndex] then
+      Prj.AddUnit(ExtractFileName(lbFiles.Items[LIndex]));
 
-  Msg := TStringList.Create;
-  try
-    Msg.Add('===================================================================');
-    CResult := Prj.Compile;
-    if CResult = CompileSuccess then
-      Msg.Add('compile success')
-    else
-      Msg.Add('compile fail');
+  ParseProject(Prj);
 
-    //ASTToTreeView2(UN, tvAST);
+  Prj.Clear;
+end;
 
-    edAllItems.BeginUpdate;
-    try
-      edAllItems.Clear;
-      Prj.EnumDeclarations(
-        procedure(const Module: TASTModule; const Decl: TASTDeclaration)
-        begin
-          edAllItems.Lines.Add(format('%s - %s.%s', [GetItemTypeName(TIDDeclaration(Decl).ItemType), Module.Name, GetDeclName(Decl)]));
-          Application.ProcessMessages;
-        end, {AUnitScope} scopeInterface);
-    finally
-      edAllItems.EndUpdate;
-    end;
+procedure TfrmTestAppMain.ParseFilesActionUpdate(Sender: TObject);
+begin
+  TAction(Sender).Enabled := lbFiles.Count > 0;
+end;
 
-    CompilerMessagesToStrings(Prj);
+procedure TfrmTestAppMain.RemoveFilesActionExecute(Sender: TObject);
+begin
+  lbFiles.DeleteSelected;
+  SaveSettings;
+end;
 
-    ErrMemo.Lines.AddStrings(Msg);
-  finally
-    Msg.Free;
-  end;
+procedure TfrmTestAppMain.RemoveFilesActionUpdate(Sender: TObject);
+begin
+  TAction(Sender).Enabled := lbFiles.SelCount > 0;
 end;
 
 procedure TfrmTestAppMain.Button5Click(Sender: TObject);
@@ -579,6 +586,8 @@ begin
     edUnit.Lines.LoadFromFile(SCurSrcFileName);
 
   LoadSettings;
+
+  lbFiles.MultiSelect := True;
 
   ReportMemoryLeaksOnShutdown := ShowMemLeaksCheck.Checked;
 end;

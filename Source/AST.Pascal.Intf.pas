@@ -30,7 +30,7 @@ type
     function GetOptions: TPackageOptions;
     function GetTarget: TASTTargetClass;
     function GetDefines: TDefines;
-    function FindUnitFile(const AUnitName: string; const AFileExt: string = '.pas'): string;
+    function FindUnitFile(const AUnitName: string; const AFileExt: string = ''): string;
     function GetUnit(const UnitName: string): TObject; overload;
     function UsesUnit(const UnitName: string; AfterUnit: TASTModule): TASTModule;
     function GetSysUnit: TASTModule;

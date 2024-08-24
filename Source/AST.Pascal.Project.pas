@@ -94,7 +94,7 @@ type
     procedure PrepareStrLiterals;
     procedure SaveStrLiterals(Stream: TStream);
     procedure AddUnit(aUnit, BeforeUnit: TASTModule); overload;
-    procedure AddUnit(const FileName: string); overload;
+    procedure AddUnit(const AFileName: string); overload;
     procedure AddUnitSource(const Source: string);
     procedure AddUnitSearchPath(const APath: string; AIncludeSubDirs: Boolean);
     procedure Clear;
@@ -110,7 +110,7 @@ type
     property TotalUnitsParsed: Integer read fTotalUnitsParsed;
     function GetStringConstant(const Value: string): Integer; overload;
     function GetStringConstant(const StrConst: TIDStringConstant): Integer; overload;
-    function FindUnitFile(const AUnitName: string; const AFileExt: string = '.pas'): string;
+    function FindUnitFile(const AUnitName: string; const AFileExt: string = ''): string;
     function UsesUnit(const UnitName: string; AfterUnit: TASTModule): TASTModule;
     function GetMessages: ICompilerMessages;
     function Compile: TCompilerResult; virtual;
@@ -294,7 +294,7 @@ begin
   try
     if not Assigned(fSysUnit) then
     begin
-      SysFileName := FindUnitFile('system');
+      SysFileName := FindUnitFile('system.pas');
       if FileExists(SysFileName) then
       begin
         var AList := TStringList.Create;
@@ -356,7 +356,7 @@ begin
       Exit(FUnits[i]);
   end;
   // ищем на файловой системе
-  SUnitName := FindUnitFile(UnitName);
+  SUnitName := FindUnitFile(UnitName, '.pas');
   if SUnitName <> '' then
   begin
     Result := OpenUnit(SUnitName);
@@ -386,14 +386,19 @@ begin
   AddUnit(UN, nil);
 end;
 
-procedure TPascalProject.AddUnit(const FileName: string);
+procedure TPascalProject.AddUnit(const AFileName: string);
 begin
-  AddUnit(GetUnitClass().CreateFromFile(Self, FileName), nil);
+  var LFullFileName := FindUnitFile(AFileName);
+  if LFullFileName <> '' then
+    AddUnit(GetUnitClass().CreateFromFile(Self, LFullFileName), nil)
+  else
+    raise Exception.CreateFmt('% file cannot be found at the specified paths', [AFileName]);
 end;
 
 procedure TPascalProject.AddUnitSearchPath(const APath: string; AIncludeSubDirs: Boolean);
 begin
-  FUnitSearchPathes.AddObject(APath, TObject(AIncludeSubDirs));
+  if FUnitSearchPathes.IndexOf(APath) < 0 then
+    FUnitSearchPathes.AddObject(APath, TObject(AIncludeSubDirs));
 end;
 
 procedure TPascalProject.Clear;
@@ -576,9 +581,12 @@ function TPascalProject.FindUnitFile(const AUnitName: string; const AFileExt: st
   end;
 
 begin
-  var LFileName  := AUnitName + AFileExt;
-  // search using defined paths
-  for var LIndex := 0 to FUnitSearchPathes.Count - 1 do
+  var LFileName := AUnitName;
+  if AFileExt <> '' then
+    LFileName := LFileName + AFileExt;
+
+  // search using defined paths (in reverse order)
+  for var LIndex := FUnitSearchPathes.Count - 1 downto 0 do
   begin
     var LPath := IncludeTrailingPathDelimiter(FUnitSearchPathes[LIndex]);
     Result := DoFindFile(LPath, LFileName);

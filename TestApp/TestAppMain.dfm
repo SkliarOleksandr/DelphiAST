@@ -52,6 +52,65 @@ object frmTestAppMain: TfrmTestAppMain
         ActivePage = tsFiles
         Align = alLeft
         TabOrder = 0
+        object tsFiles: TTabSheet
+          Caption = 'Parse Files'
+          ImageIndex = 1
+          object Panel2: TPanel
+            Left = 0
+            Top = 0
+            Width = 436
+            Height = 482
+            Align = alLeft
+            BevelOuter = bvNone
+            Caption = 'Panel2'
+            TabOrder = 0
+            object Panel3: TPanel
+              Left = 0
+              Top = 0
+              Width = 436
+              Height = 33
+              Align = alTop
+              BevelOuter = bvNone
+              Caption = 'Panel3'
+              ShowCaption = False
+              TabOrder = 0
+              object AddFilesButton: TButton
+                Left = 0
+                Top = 2
+                Width = 106
+                Height = 25
+                Action = AddFilesAction
+                TabOrder = 0
+              end
+              object ParseFilesButton: TButton
+                Left = 274
+                Top = 2
+                Width = 106
+                Height = 25
+                Action = ParseFilesAction
+                TabOrder = 1
+              end
+              object Button1: TButton
+                Left = 112
+                Top = 2
+                Width = 75
+                Height = 25
+                Action = RemoveFilesAction
+                TabOrder = 2
+              end
+            end
+            object lbFiles: TCheckListBox
+              Left = 0
+              Top = 33
+              Width = 436
+              Height = 449
+              Align = alClient
+              ItemHeight = 17
+              TabOrder = 1
+              ExplicitTop = 34
+            end
+          end
+        end
         object tsLogs: TTabSheet
           Caption = 'Logs'
           object LogMemo: TSynEdit
@@ -118,58 +177,6 @@ object frmTestAppMain: TfrmTestAppMain
               State = cbChecked
               TabOrder = 0
               OnClick = StopIfErrorCheckClick
-            end
-          end
-        end
-        object tsFiles: TTabSheet
-          Caption = 'Parse Files'
-          ImageIndex = 1
-          object Panel2: TPanel
-            Left = 0
-            Top = 0
-            Width = 436
-            Height = 482
-            Align = alLeft
-            BevelOuter = bvNone
-            Caption = 'Panel2'
-            TabOrder = 0
-            object Panel3: TPanel
-              Left = 0
-              Top = 0
-              Width = 436
-              Height = 33
-              Align = alTop
-              BevelOuter = bvNone
-              Caption = 'Panel3'
-              ShowCaption = False
-              TabOrder = 0
-              object LoadFilesButton: TButton
-                Left = 0
-                Top = 2
-                Width = 106
-                Height = 25
-                Caption = 'Load all files'
-                TabOrder = 0
-                OnClick = LoadFilesButtonClick
-              end
-              object ParseFilesButton: TButton
-                Left = 112
-                Top = 2
-                Width = 106
-                Height = 25
-                Caption = 'Parse selected'
-                TabOrder = 1
-                OnClick = ParseFilesButtonClick
-              end
-            end
-            object lbFiles: TCheckListBox
-              Left = 0
-              Top = 33
-              Width = 436
-              Height = 449
-              Align = alClient
-              ItemHeight = 17
-              TabOrder = 1
             end
           end
         end
@@ -693,5 +700,23 @@ object frmTestAppMain: TfrmTestAppMain
   object SynEditSearch1: TSynEditSearch
     Left = 131
     Top = 269
+  end
+  object ActionList1: TActionList
+    Left = 240
+    Top = 185
+    object AddFilesAction: TAction
+      Caption = 'Add Files'
+      OnExecute = AddFilesActionExecute
+    end
+    object RemoveFilesAction: TAction
+      Caption = 'Remove Files'
+      OnExecute = RemoveFilesActionExecute
+      OnUpdate = RemoveFilesActionUpdate
+    end
+    object ParseFilesAction: TAction
+      Caption = 'Parse Files '
+      OnExecute = ParseFilesActionExecute
+      OnUpdate = ParseFilesActionUpdate
+    end
   end
 end
