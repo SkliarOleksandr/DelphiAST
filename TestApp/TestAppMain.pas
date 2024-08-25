@@ -115,7 +115,7 @@ type
     procedure SetDefines(const APrj: IASTDelphiProject);
     procedure SaveSettings;
     procedure LoadSettings;
-    function CreateProject(AIncludeRTLPath: Boolean): IASTDelphiProject;
+    function CreateProject(AParseSystemUnit: Boolean): IASTDelphiProject;
   public
     { Public declarations }
     procedure IndexSources(const RootPath: string; Dict: TSourcesDict);
@@ -275,7 +275,7 @@ begin
 
   FStartedAt := Now;
 
-  Prj := CreateProject({AIncludeRTLPath:} ParseSystemCheck.Checked);
+  Prj := CreateProject({AParseSystemUnit:} ParseSystemCheck.Checked);
 
   UN := TASTDelphiUnit.Create(Prj, 'test', edUnit.Text);
   Prj.AddUnit(UN, nil);
@@ -306,7 +306,7 @@ begin
 
   FStartedAt := Now;
 
-  Prj := CreateProject({AIncludeRTLPath:} True);
+  Prj := CreateProject({AParseSystemUnit:} True);
 
   var LUsesUntis := '';
   AddDelphiUnits({var} LUsesUntis, 'rtl\sys');
@@ -438,16 +438,13 @@ begin
     APrj.Defines.Add(LDefine);
 end;
 
-function TfrmTestAppMain.CreateProject(AIncludeRTLPath: Boolean): IASTDelphiProject;
+function TfrmTestAppMain.CreateProject(AParseSystemUnit: Boolean): IASTDelphiProject;
 begin
   Result := TASTDelphiProject.Create('test');
-
-  if AIncludeRTLPath then
-    Result.AddUnitSearchPath(DelphiSrcPathEdit.Text, DelphiPathIncludeSubDirCheck.Checked);
-
-   Result.AddUnitSearchPath(UnitSearchPathEdit.Text, UnitSearchPathIncludeSubDirCheck.Checked);
-
-  //Result.AddUnitSearchPath(ExtractFilePath(Application.ExeName), {AIncludeSubDirs:} True);
+  Result.ParseSystemUnit := AParseSystemUnit;
+  Result.AddUnitSearchPath(DelphiSrcPathEdit.Text, DelphiPathIncludeSubDirCheck.Checked);
+  Result.AddUnitSearchPath(UnitSearchPathEdit.Text, UnitSearchPathIncludeSubDirCheck.Checked);
+  Result.AddUnitSearchPath(ExtractFilePath(Application.ExeName), {AIncludeSubDirs:} True);
   Result.UnitScopeNames := UnitScopeNamesEdit.Text;
 
   SetDefines(Result);
@@ -553,7 +550,7 @@ procedure TfrmTestAppMain.ParseFilesActionExecute(Sender: TObject);
 var
   Prj: IASTDelphiProject;
 begin
-  Prj := CreateProject({AIncludeRTLPath:} True);
+  Prj := CreateProject({AParseSystemUnit:} True);
 
   // add selected files to the project
   for var LIndex := 0 to lbFiles.Count - 1 do
@@ -928,6 +925,21 @@ type
     class procedure Sort<T>(var Values: array of T; const Comparer: IComparer<T>); static;
   end;
 
+  TC1 = class
+  private
+    FP1: Integer;
+    function GetItem(Index: Integer): string;
+  protected
+    property P1: Integer read FP1 stored False default 0;
+    property Items[Index: Integer]: string read GetItem;
+  end;
+
+  TC2 = class(TC1)
+  public
+    property P1 stored True default 1;
+    property Items stored False; default;
+  end;
+
 procedure Test2;
 var
   Arr: array of string;
@@ -948,6 +960,13 @@ end;
 { TArray }
 
 class procedure TArray.Sort<T>(var Values: array of T; const Comparer: IComparer<T>);
+begin
+
+end;
+
+{ TC1 }
+
+function TC1.GetItem(Index: Integer): string;
 begin
 
 end;

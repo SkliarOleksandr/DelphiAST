@@ -53,6 +53,7 @@ type
     fStopCompileIfError: Boolean;
     fCompileAll: Boolean;
     fUnitScopeNames: TStrings;
+    fParseSystemUnit: Boolean;
     function GetIncludeDebugInfo: Boolean;
     function OpenUnit(const UnitName: string): TASTModule;
     function RefCount: Integer;
@@ -68,12 +69,14 @@ type
     function GetStopCompileIfError: Boolean;
     function GetCompileAll: Boolean;
     function GetUnitScopeNames: string;
+    function GetParseSystemUnit: Boolean;
     procedure SetStopCompileIfError(const Value: Boolean);
     procedure SetIncludeDebugInfo(const Value: Boolean);
     procedure SetRTTICharset(const Value: TRTTICharset);
     procedure SetTarget(const Value: TASTTargetClass);
     procedure SetCompileAll(const Value: Boolean);
     procedure SetUnitScopeNames(const Value: string);
+    procedure SetParseSystemUnit(AValue: Boolean);
     class function StrListCompare(const Left, Right: TStrConstKey): NativeInt; static;
   protected
     fSysUnit: TASTModule;
@@ -295,7 +298,7 @@ begin
     if not Assigned(fSysUnit) then
     begin
       SysFileName := FindUnitFile('system.pas');
-      if FileExists(SysFileName) then
+      if FileExists(SysFileName) and fParseSystemUnit then
       begin
         var AList := TStringList.Create;
         try
@@ -622,6 +625,11 @@ begin
   FIncludeDebugInfo := Value;
 end;
 
+procedure TPascalProject.SetParseSystemUnit(AValue: Boolean);
+begin
+  fParseSystemUnit := AValue;
+end;
+
 procedure TPascalProject.SetRTTICharset(const Value: TRTTICharset);
 begin
   FRTTICharset := Value;
@@ -654,6 +662,11 @@ begin
     if Result = CompileFail then
       Exit;
   end;
+end;
+
+function TPascalProject.GetParseSystemUnit: Boolean;
+begin
+  Result := fParseSystemUnit;
 end;
 
 function TPascalProject.GetPointerSize: Integer;

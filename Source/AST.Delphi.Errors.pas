@@ -249,6 +249,8 @@ type
 
     class procedure CANNOT_ACCESS_TO_WRITEONLY_PROPERTY(const Expr: TIDExpression); static;
     class procedure CANNOT_MODIFY_READONLY_PROPERTY(const Expr: TIDExpression); static;
+    class procedure PROPERTY_DOES_NOT_EXIST_IN_BASE_CLASS(const AID: TIdentifier); static;
+
     class procedure NO_OVERLOAD(CallExpr: TIDExpression; const CallArgs: TIDExpressions); static;
     class procedure AMBIGUOUS_OVERLOAD_CALL(CallExpr: TIDExpression); overload; static;
     class procedure INCOMPLETE_PROC(Decl: TIDDeclaration); static;
@@ -857,6 +859,11 @@ end;
 class procedure TASTDelphiErrors.PROC_REQUIRED(const Position: TTextPosition);
 begin
   AbortWork('PROCEDURE or FUNCTION required', Position);
+end;
+
+class procedure TASTDelphiErrors.PROPERTY_DOES_NOT_EXIST_IN_BASE_CLASS(const AID: TIdentifier);
+begin
+  AbortWork('Property ''%s'' does not exist in base class', [AID.Name], AID.TextPosition);
 end;
 
 class procedure TASTDelphiErrors.RECORD_STATIC_CONSTRUCTOR_ALREADY_EXIST(const Proc: TIDProcedure);
