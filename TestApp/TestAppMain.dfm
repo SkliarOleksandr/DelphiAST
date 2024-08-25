@@ -64,7 +64,7 @@ object frmTestAppMain: TfrmTestAppMain
             BevelOuter = bvNone
             Caption = 'Panel2'
             TabOrder = 0
-            ExplicitWidth = 436
+            ExplicitHeight = 474
             object Panel3: TPanel
               Left = 0
               Top = 0
@@ -75,7 +75,6 @@ object frmTestAppMain: TfrmTestAppMain
               Caption = 'Panel3'
               ShowCaption = False
               TabOrder = 0
-              ExplicitWidth = 436
               object AddFilesButton: TButton
                 Left = 0
                 Top = 2
@@ -85,7 +84,7 @@ object frmTestAppMain: TfrmTestAppMain
                 TabOrder = 0
               end
               object ParseFilesButton: TButton
-                Left = 305
+                Left = 162
                 Top = 2
                 Width = 75
                 Height = 25
@@ -107,9 +106,9 @@ object frmTestAppMain: TfrmTestAppMain
               Width = 382
               Height = 449
               Align = alClient
-              ItemHeight = 17
+              ItemHeight = 13
               TabOrder = 1
-              ExplicitWidth = 436
+              ExplicitHeight = 441
             end
           end
         end
@@ -357,9 +356,7 @@ object frmTestAppMain: TfrmTestAppMain
               BevelOuter = bvNone
               ShowCaption = False
               TabOrder = 1
-              DesignSize = (
-                849
-                35)
+              ExplicitWidth = 847
               object SaveButton: TButton
                 Left = 0
                 Top = 4
@@ -369,12 +366,11 @@ object frmTestAppMain: TfrmTestAppMain
                 TabOrder = 0
               end
               object ASTParseButton: TButton
-                Left = 81
+                Left = 79
                 Top = 4
                 Width = 75
                 Height = 25
                 Action = ASTParseAction
-                Anchors = [akTop, akRight]
                 TabOrder = 1
               end
             end

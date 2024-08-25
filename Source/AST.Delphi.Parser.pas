@@ -48,6 +48,7 @@ uses
 // Character
 // Vcl.ImgList
 // Vcl.ActnList
+// Vcl.Controls
 
 type
 
@@ -4761,6 +4762,21 @@ begin
 
     SContext := fUnitSContext;
 
+    // property index value (note: index is ambiguous keyword)
+    // note: can only be after the property type
+    if Lexer_IsCurrentToken(token_index) then
+    begin
+      var LIndexValue: TIDExpression;
+      Lexer_NextToken(Scope);
+      Result := ParseConstExpression(Scope, {out} LIndexValue, ExprRValue);
+      CheckEmptyExpression(LIndexValue);
+      Prop.IndexValue := LIndexValue.AsConst;
+      // create "index" param for the propery
+      var LIndexParam := TIDParam.CreateAsSystem(Prop.Scope, 'Index');
+      LIndexParam.DataType := fSysDecls._Int32;
+      IndexedPropParams := IndexedPropParams + [LIndexParam];
+    end;
+
     // getter
     if Result = token_read then
     begin
@@ -4810,6 +4826,16 @@ begin
       Prop := LExistingProp;
     end else
       ERRORS.PROPERTY_DOES_NOT_EXIST_IN_BASE_CLASS(ID);
+
+    // property index value (note: index is ambiguous keyword)
+    // note: can only be after the property name (and looks like a Delphi bug)
+    if Lexer_IsCurrentToken(token_index) then
+    begin
+      var LIndexValue: TIDExpression;
+      Lexer_NextToken(Scope);
+      Result := ParseConstExpression(Scope, {out} LIndexValue, ExprRValue);
+      CheckEmptyExpression(LIndexValue);
+    end;
   end;
 
   // stored propery (note: stored is ambiguous keyword)

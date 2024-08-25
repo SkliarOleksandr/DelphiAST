@@ -929,15 +929,16 @@ type
   private
     FP1: Integer;
     function GetItem(Index: Integer): string;
+    procedure SetP1(Index: Integer; Value: Integer);
   protected
-    property P1: Integer read FP1 stored False default 0;
+    property P1: Integer index 0 read FP1 write SetP1 stored False default 0;
     property Items[Index: Integer]: string read GetItem;
   end;
 
   TC2 = class(TC1)
   public
-    property P1 stored True default 1;
-    property Items stored False; default;
+    property P1 index 0 stored True default 1;
+    property Items index 1 stored False; default;
   end;
 
 procedure Test2;
@@ -967,6 +968,11 @@ end;
 { TC1 }
 
 function TC1.GetItem(Index: Integer): string;
+begin
+
+end;
+
+procedure TC1.SetP1(Index, Value: Integer);
 begin
 
 end;

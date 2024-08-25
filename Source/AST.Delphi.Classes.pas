@@ -1547,6 +1547,7 @@ type
     FGetter: TIDDeclaration;
     FSetter: TIDDeclaration;
     FParams: TParamsScope;
+    FIndexValue: TIDConstant;
     function GetParamsCount: Integer;
   public
     constructor Create(Scope: TScope; const Identifier: TIdentifier); override;
@@ -1554,6 +1555,7 @@ type
     property Setter: TIDDeclaration read FSetter write FSetter;
     property Params: TParamsScope read FParams write FParams;
     property ParamsCount: Integer read GetParamsCount;
+    property IndexValue: TIDConstant read FIndexValue write FIndexValue;
     function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                 const AContext: TGenericInstantiateContext): TIDDeclaration; override;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;

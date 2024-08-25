@@ -94,7 +94,7 @@ type
     token_array,                    // keyword: array
     token_if,                       // keyword: if
     token_in,                       // keyword: in
-    //token_index,                    // keyword: index
+    token_index,                    // keyword: index
     token_inline,                   // keyword: inline
     token_is,                       // keyword: is
     token_then,                     // keyword: if
@@ -428,7 +428,7 @@ begin
   RegisterToken('if', token_if);
   RegisterToken('is', token_is);
   RegisterToken('in', token_in, TTokenClass.AmbiguousPriorityKeyword);
-  //RegisterToken('index', token_index);
+  RegisterToken('index', token_index, TTokenClass.AmbiguousPriorityIdentifier);
   RegisterToken('interface', token_Interface);
   RegisterToken('inherited', token_inherited);
   RegisterToken('inline', token_inline);
