@@ -2,7 +2,7 @@
 
 interface
 
-{$i compilers.inc}
+{$I AST.Parser.Defines.inc}
 
 uses AST.Lexer, SysUtils, StrUtils, Types, Classes, AST.Parser.Errors;
 
@@ -261,7 +261,6 @@ function TDelphiLexer.NextToken: TTokenID;
 begin
   Result := TTokenID(GetNextTokenId());
   case Result of
-    token_identifier: fOriginalToken := CurrentToken;
     token_ampersand: begin
       if not GetNextCharIsSeparator then
       begin
@@ -273,6 +272,8 @@ begin
         Result := token_identifier;
       end;
     end;
+  else
+    fOriginalToken := CurrentToken;
   end;
   if CurToken.TokenID = ord(token_quote) then
     ParseChainedString()
@@ -502,7 +503,7 @@ begin
   RegisterToken('{$ELSE', token_cond_else);
   RegisterToken('{$ELSEIF', token_cond_else_if);
   RegisterToken('{$ENDIF', token_cond_end);
-  RegisterToken('{$IFEND}', token_cond_end);
+  RegisterToken('{$IFEND', token_cond_end);
   RegisterToken('{$IFOPT', token_cond_ifopt);
   RegisterToken('{$MESSAGE', token_cond_message);
   RegisterToken('{$INCLUDE', token_cond_include);

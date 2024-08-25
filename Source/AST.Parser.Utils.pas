@@ -1,6 +1,6 @@
 ﻿unit AST.Parser.Utils;
 
-{$I compilers.inc}
+{$I AST.Parser.Defines.inc}
 
 interface
 

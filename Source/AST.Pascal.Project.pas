@@ -392,7 +392,7 @@ begin
   if LFullFileName <> '' then
     AddUnit(GetUnitClass().CreateFromFile(Self, LFullFileName), nil)
   else
-    raise Exception.CreateFmt('% file cannot be found at the specified paths', [AFileName]);
+    raise Exception.CreateFmt('%s file cannot be found at the specified paths', [AFileName]);
 end;
 
 procedure TPascalProject.AddUnitSearchPath(const APath: string; AIncludeSubDirs: Boolean);
@@ -552,8 +552,8 @@ function TPascalProject.FindUnitFile(const AUnitName: string; const AFileExt: st
 
   function DoFindFile(const APath, AFileName: string): string;
   begin
-    Result := APath + AFileName;
-    // if not found, search using unit scope names
+    {TODO: improve search performance using in-memory dictionary of all accessible files}
+    Result := TPath.Combine(APath, AFileName);
     if not FileExists(Result) then
     begin
       for var LUnitScope in fUnitScopeNames do
@@ -568,6 +568,7 @@ function TPascalProject.FindUnitFile(const AUnitName: string; const AFileExt: st
 
   function FindInSubDirs(const ARootDir, AUnitName: string): string;
   begin
+    {TODO: improve search performance using in-memory dictionary of all accessible files}
     for var LDir in TDirectory.GetDirectories(ARootDir) do
     begin
       var LPath := IncludeTrailingPathDelimiter(LDir);
@@ -593,11 +594,10 @@ begin
     // if not found search in the subdirs (if specified)
     if Result = '' then
       if Boolean(FUnitSearchPathes.Objects[LIndex]) then
-      begin
         Result := FindInSubDirs(LPath, LFileName);
-        if Result <> '' then
-          Exit;
-      end;
+
+    if Result <> '' then
+      Exit;
   end;
   Result := '';
 end;

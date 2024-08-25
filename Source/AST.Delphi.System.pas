@@ -2,7 +2,7 @@
 
 interface
 
-{$i compilers.inc}
+{$I AST.Parser.Defines.inc}
 
 uses System.Classes,
      System.SysUtils,

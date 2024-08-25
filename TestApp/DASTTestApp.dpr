@@ -4,7 +4,9 @@ program DASTTestApp;
 {.$define FullDebugMode}
 
 uses
-  {$IFDEF FullDebugMode} FastMM4, {$ENDIF}
+  {$IFDEF FullDebugMode}
+  FastMM4,
+  {$ENDIF }
   Vcl.Forms,
   TestAppMain in 'TestAppMain.pas' {frmTestAppMain},
   AVL in '..\Source\AVL.pas',

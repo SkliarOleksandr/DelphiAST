@@ -5,7 +5,7 @@ unit AST.Pascal.Parser;
 
 interface
 
-{$I compilers.inc}
+{$I AST.Parser.Defines.inc}
 
 uses SysUtils, Math, Classes, StrUtils, Types, IOUtils, Generics.Collections,
      AST.Lexer.Delphi,

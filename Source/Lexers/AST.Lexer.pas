@@ -2,7 +2,7 @@
 
 interface
 
-{$i compilers.inc}
+{$I AST.Parser.Defines.inc}
 
 uses Classes, SysUtils;
 
@@ -342,10 +342,7 @@ begin
         fSrcPos := SPos + 1;
         Result := Token.TokenID;
         fCurrentTokenID := Result;
-        if Token.TokenClass = TTokenClass.AmbiguousPriorityIdentifier then
-          fCurrentToken := Copy(fSource, SIdStart, fSrcPos - SIdStart)
-        else
-          {$IFDEF DEBUG} fCurrentToken := TokenLexem(Result){$ENDIF};
+        fCurrentToken := Copy(fSource, SIdStart, fSrcPos - SIdStart);
         Exit;
       end;
       ttOmited: begin
@@ -372,6 +369,7 @@ begin
         // process NEWLINE:
         Inc(FRow);
         fLastEnterPos := SPos;
+        SIdStart := SPos + 1;
       end;
       ttHexPrefix: begin
         ParseHexPrefix(SPos);

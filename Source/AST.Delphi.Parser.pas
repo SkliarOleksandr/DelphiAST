@@ -4870,12 +4870,9 @@ begin
   while True do begin
     Result := TTokenID(Lexer.NextToken);
     if Result = token_closefigure then
-      break;
+      Break;
 
-    if Result = token_identifier then
-      LFileName := LFileName + Lexer.OriginalToken
-    else
-      LFileName := LFileName + '.'; // tmp
+    LFileName := LFileName + Lexer.OriginalToken
   end;
 
   var LFullFileName := Project.FindUnitFile(LFileName, {AFileExt:} '');
@@ -5063,6 +5060,7 @@ begin
       // {$endif ...}
       token_cond_end: begin
         fCondStack.Pop;
+        {skip optional condition}
         repeat
           Result := Lexer.NextToken;
         until (Result = token_eof) or (Result = token_closefigure);

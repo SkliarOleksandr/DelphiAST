@@ -58,40 +58,42 @@ object frmTestAppMain: TfrmTestAppMain
           object Panel2: TPanel
             Left = 0
             Top = 0
-            Width = 436
+            Width = 382
             Height = 482
-            Align = alLeft
+            Align = alClient
             BevelOuter = bvNone
             Caption = 'Panel2'
             TabOrder = 0
+            ExplicitWidth = 436
             object Panel3: TPanel
               Left = 0
               Top = 0
-              Width = 436
+              Width = 382
               Height = 33
               Align = alTop
               BevelOuter = bvNone
               Caption = 'Panel3'
               ShowCaption = False
               TabOrder = 0
+              ExplicitWidth = 436
               object AddFilesButton: TButton
                 Left = 0
                 Top = 2
-                Width = 106
+                Width = 75
                 Height = 25
                 Action = AddFilesAction
                 TabOrder = 0
               end
               object ParseFilesButton: TButton
-                Left = 274
+                Left = 305
                 Top = 2
-                Width = 106
+                Width = 75
                 Height = 25
                 Action = ParseFilesAction
                 TabOrder = 1
               end
               object Button1: TButton
-                Left = 112
+                Left = 81
                 Top = 2
                 Width = 75
                 Height = 25
@@ -102,12 +104,12 @@ object frmTestAppMain: TfrmTestAppMain
             object lbFiles: TCheckListBox
               Left = 0
               Top = 33
-              Width = 436
+              Width = 382
               Height = 449
               Align = alClient
               ItemHeight = 17
               TabOrder = 1
-              ExplicitTop = 34
+              ExplicitWidth = 436
             end
           end
         end
@@ -270,7 +272,7 @@ object frmTestAppMain: TfrmTestAppMain
           Top = 4
           Width = 857
           Height = 502
-          ActivePage = tsNameSpace
+          ActivePage = tsSource
           Align = alClient
           TabOrder = 0
           object tsSource: TTabSheet
@@ -344,6 +346,7 @@ object frmTestAppMain: TfrmTestAppMain
                 ''
                 '')
               SelectedColor.Alpha = 0.400000005960464500
+              OnSpecialLineColors = edUnitSpecialLineColors
             end
             object Panel7: TPanel
               Left = 0
@@ -354,14 +357,25 @@ object frmTestAppMain: TfrmTestAppMain
               BevelOuter = bvNone
               ShowCaption = False
               TabOrder = 1
+              DesignSize = (
+                849
+                35)
               object SaveButton: TButton
-                Left = 8
+                Left = 0
                 Top = 4
                 Width = 75
                 Height = 25
-                Caption = 'Save'
+                Action = SaveSourceAction
                 TabOrder = 0
-                OnClick = SaveButtonClick
+              end
+              object ASTParseButton: TButton
+                Left = 81
+                Top = 4
+                Width = 75
+                Height = 25
+                Action = ASTParseAction
+                Anchors = [akTop, akRight]
+                TabOrder = 1
               end
             end
           end
@@ -511,16 +525,6 @@ object frmTestAppMain: TfrmTestAppMain
           Height = 13
           Caption = 'Platform'
         end
-        object ASTParseButton: TButton
-          Left = 1032
-          Top = 1
-          Width = 106
-          Height = 25
-          Anchors = [akTop, akRight]
-          Caption = 'AST Parse'
-          TabOrder = 0
-          OnClick = ASTParseButtonClick
-        end
         object ASTParseRTLButton: TButton
           Left = 1144
           Top = 1
@@ -528,7 +532,7 @@ object frmTestAppMain: TfrmTestAppMain
           Height = 25
           Anchors = [akTop, akRight]
           Caption = 'AST Parse RTL'
-          TabOrder = 1
+          TabOrder = 0
           OnClick = ASTParseRTLButtonClick
         end
         object ParseSystemCheck: TCheckBox
@@ -537,7 +541,7 @@ object frmTestAppMain: TfrmTestAppMain
           Width = 196
           Height = 17
           Caption = 'Compile "system.pas" for AST Parse'
-          TabOrder = 2
+          TabOrder = 1
           OnClick = StopIfErrorCheckClick
         end
         object cbPlatform: TComboBox
@@ -546,7 +550,7 @@ object frmTestAppMain: TfrmTestAppMain
           Width = 81
           Height = 21
           ItemIndex = 0
-          TabOrder = 3
+          TabOrder = 2
           Text = 'Win32'
           OnChange = StopIfErrorCheckClick
           Items.Strings = (
@@ -561,7 +565,7 @@ object frmTestAppMain: TfrmTestAppMain
           Caption = 'Parse Impls'
           Checked = True
           State = cbChecked
-          TabOrder = 4
+          TabOrder = 3
           OnClick = StopIfErrorCheckClick
         end
         object StopIfErrorCheck: TCheckBox
@@ -572,7 +576,7 @@ object frmTestAppMain: TfrmTestAppMain
           Caption = 'Stop compile if errors'
           Checked = True
           State = cbChecked
-          TabOrder = 5
+          TabOrder = 4
           OnClick = StopIfErrorCheckClick
         end
       end
@@ -717,6 +721,17 @@ object frmTestAppMain: TfrmTestAppMain
       Caption = 'Parse Files '
       OnExecute = ParseFilesActionExecute
       OnUpdate = ParseFilesActionUpdate
+    end
+    object SaveSourceAction: TAction
+      Caption = 'Save (Ctrl+S)'
+      ShortCut = 16467
+      OnExecute = SaveSourceActionExecute
+      OnUpdate = SaveSourceActionUpdate
+    end
+    object ASTParseAction: TAction
+      Caption = 'Parse (F9)'
+      ShortCut = 120
+      OnExecute = ASTParseActionExecute
     end
   end
 end

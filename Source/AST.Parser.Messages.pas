@@ -2,7 +2,7 @@
 
 interface
 
-{$I compilers.inc}
+{$I AST.Parser.Defines.inc}
 
 uses SysUtils, Generics.Collections, AST.Lexer;
 
