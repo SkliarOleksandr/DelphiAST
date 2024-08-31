@@ -774,14 +774,24 @@ type
 
   TIDMethods = array of TIDProcedure;
 
+  TClassDeclFlag = (
+   cdfAbstract,
+   cdfSealed
+  );
+
+  TClassDeclFlags = set of TClassDeclFlag;
+
   {class}
   TIDClass = class(TIDStructure)
   private
     FInterfaces: TList<TIDInterface>;
     FIntfGenericInstantiations: TArray<TIDGenericInstantiation>;
     FInterfacesMethods: TList<TIDMethods>;
+    FClassDeclFlags: TClassDeclFlags;
     function GetInterfacesCount: Integer;
     function GetInterface(Index: Integer): TIDInterface;
+    function GetIsAbstract: Boolean; inline;
+    function GetIsSealed: Boolean; inline;
   protected
     function GetDataSize: Integer; override;
     function GetIsManaged: Boolean; override;
@@ -806,6 +816,9 @@ type
     procedure AncestorsDecl2Str(ABuilder: TStringBuilder); override;
     procedure InstantiateGenericAncestors(ADstScope: TScope; ADstStruct: TIDStructure;
                                           const AContext: TGenericInstantiateContext); override;
+    property ClassDeclFlags: TClassDeclFlags read FClassDeclFlags write FClassDeclFlags;
+    property IsAbstract: Boolean read GetIsAbstract;
+    property IsSealed: Boolean read GetIsSealed;
   end;
 
   {helper type}
@@ -4768,19 +4781,23 @@ begin
 
   AncestorsDecl2Str(ABuilder);
 
-  for var LIndex := 0  to fMembers.Count - 1 do
+  if not NeedForward then
   begin
-    var LDecl := fMembers.Items[LIndex];
-    if not (LDecl is TIDGenericParam) then
+    for var LIndex := 0  to fMembers.Count - 1 do
     begin
-      ABuilder.Append(sLineBreak);
-      LDecl.Decl2Str(ABuilder, ANestedLevel + 1);
+      var LDecl := fMembers.Items[LIndex];
+      if not (LDecl is TIDGenericParam) then
+      begin
+        ABuilder.Append(sLineBreak);
+        LDecl.Decl2Str(ABuilder, ANestedLevel + 1);
+      end;
     end;
-  end;
 
-  ABuilder.Append(sLineBreak);
-  ABuilder.Append(' ', ANestedLevel*2);
-  ABuilder.Append('end');
+    ABuilder.Append(sLineBreak);
+    ABuilder.Append(' ', ANestedLevel*2);
+    ABuilder.Append('end');
+  end else
+    ABuilder.Append(';');
 
   GenericInstances2Str(ABuilder, ANestedLevel);
 end;
@@ -6885,6 +6902,12 @@ end;
 
 procedure TIDClass.AncestorsDecl2Str(ABuilder: TStringBuilder);
 begin
+  if IsAbstract then
+    ABuilder.Append(' abstract')
+  else
+  if IsSealed then
+    ABuilder.Append(' sealed');
+
   if Assigned(fAncestorDecl) or Assigned(FInterfaces) then
   begin
     ABuilder.Append('(');
@@ -7544,9 +7567,19 @@ begin
     Result := 0;
 end;
 
+function TIDClass.GetIsAbstract: Boolean;
+begin
+  Result := cdfAbstract in FClassDeclFlags;
+end;
+
 function TIDClass.GetIsManaged: Boolean;
 begin
   Result := True;
+end;
+
+function TIDClass.GetIsSealed: Boolean;
+begin
+  Result := cdfSealed in FClassDeclFlags;
 end;
 
 function TIDClass.GetStructKeyword: string;

@@ -108,7 +108,6 @@ object frmTestAppMain: TfrmTestAppMain
               Align = alClient
               ItemHeight = 13
               TabOrder = 1
-              ExplicitHeight = 441
             end
           end
         end

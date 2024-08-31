@@ -106,7 +106,6 @@ type
     { Private declarations }
     //fPKG: INPPackage;
     fSettings: IASTProjectSettings;
-    FStartedAt: TDateTime;
     FLockSaveSettings: Boolean;
     procedure OnProgress(const Module: IASTModule; Status: TASTProcessStatusClass);
     procedure ShowAllItems(const Project: IASTDelphiProject);
@@ -273,8 +272,6 @@ var
 begin
   TASTParserLog.Instance.ResetNestedLevel;
 
-  FStartedAt := Now;
-
   Prj := CreateProject({AParseSystemUnit:} ParseSystemCheck.Checked);
 
   UN := TASTDelphiUnit.Create(Prj, 'test', edUnit.Text);
@@ -303,8 +300,6 @@ var
   Prj: IASTDelphiProject;
 begin
   TASTParserLog.Instance.ResetNestedLevel;
-
-  FStartedAt := Now;
 
   Prj := CreateProject({AParseSystemUnit:} True);
 
@@ -522,6 +517,7 @@ begin
 
   var Msg := TStringList.Create;
   try
+    var LStartedAt := Now;
     var CResult := Project.Compile;
     if CResult = CompileSuccess then
       Msg.Add('compile success')
@@ -531,7 +527,7 @@ begin
     Msg.Add(format('total units parsed: %d (interface only: %d)',
       [Project.TotalUnitsParsed, Project.TotalUnitsIntfOnlyParsed]));
     Msg.Add(format('total lines parsed: %d in %s', [Project.TotalLinesParsed,
-                                                    FormatDateTime('nn:ss.zzz', Now - FStartedAt)]));
+                                                    FormatDateTime('nn:ss.zzz', Now - LStartedAt)]));
 
       //ASTToTreeView2(UN, tvAST);
 
@@ -925,7 +921,7 @@ type
     class procedure Sort<T>(var Values: array of T; const Comparer: IComparer<T>); static;
   end;
 
-  TC1 = class
+  TC1 = class abstract
   private
     FP1: Integer;
     function GetItem(Index: Integer): string;
@@ -976,6 +972,32 @@ procedure TC1.SetP1(Index, Value: Integer);
 begin
 
 end;
+
+procedure Test; platform;
+  procedure sub; platform;
+  begin
+
+  end;
+begin
+
+end;
+
+type
+
+  TGeneric = class;
+  TGeneric<T> = class;
+  TGeneric<T, K> = class;
+
+  TGeneric = class
+  end;
+
+  TGeneric<T> = class
+  end;
+
+  TGeneric<T, K> = class
+  end;
+
+
 
 initialization
   Test0;

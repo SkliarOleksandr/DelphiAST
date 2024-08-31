@@ -12,7 +12,7 @@ type
     token_unknown {=0},             // unknown token
     token_eof,                      // end of file
     token_identifier,               // some id
-    token_id_or_keyword,            // ambiguous token: id or keyword
+//    token_id_or_keyword,            // ambiguous token: id or keyword
 
     token_numbersign,               // #
     token_semicolon,                // ;
@@ -84,6 +84,7 @@ type
     token_function,                 // keyword: function
     token_overload,                 // keyword: overload
     token_override,                 // keyword: override
+    token_message,                  // keyword: message
     token_type,                     // keyword: type
     token_class,                    // keyword: class
     token_record,                   // keyword: record
@@ -344,7 +345,7 @@ begin
   inherited Create(Source);
   IdentifireID := ord(token_identifier);
   EofID := ord(token_eof);
-  AmbiguousId := ord(token_id_or_keyword);
+//  AmbiguousId := ord(token_id_or_keyword);
   TokenCaptions.AddObject('end of file', TObject(token_eof));
   TokenCaptions.AddObject('identifier', TObject(token_identifier));
   SeparatorChars := '#$ '''#9#10#13'%^&*@()+-{}[]\/,.;:<>=~!?';
@@ -438,6 +439,7 @@ begin
   RegisterToken('library', token_library);
   RegisterToken('label', token_label);
   RegisterToken('mod', token_mod);
+  RegisterToken('message', token_message, TTokenClass.AmbiguousPriorityIdentifier);
   RegisterToken('not', token_not);
   RegisterToken('name', token_name, TTokenClass.AmbiguousPriorityIdentifier);
   RegisterToken('object', token_object);
@@ -458,11 +460,11 @@ begin
   RegisterToken('public', token_public);
   RegisterToken('published', token_published);
   RegisterToken('packed', token_packed);
-  RegisterToken('platform', token_platform, TTokenClass.Ambiguous);
+  RegisterToken('platform', token_platform, TTokenClass.AmbiguousPriorityIdentifier);
   RegisterToken('raise', token_raise);
   RegisterToken('read', token_read, TTokenClass.AmbiguousPriorityKeyword);
   RegisterToken('record', token_record);
-  RegisterToken('reference', token_reference, TTokenClass.Ambiguous);
+  RegisterToken('reference', token_reference, TTokenClass.AmbiguousPriorityIdentifier);
   RegisterToken('repeat', token_repeat);
   RegisterToken('resourcestring', token_resourcestring);
   RegisterToken('reintroduce', token_reintroduce);

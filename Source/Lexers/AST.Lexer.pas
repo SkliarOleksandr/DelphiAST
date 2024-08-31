@@ -51,8 +51,8 @@ type
   TTokenClass = (
     StrongKeyword,                  // Strong keyword
     AmbiguousPriorityKeyword,       // Can be keyword or id, returns as keyword
-    AmbiguousPriorityIdentifier,    // Can be keyword or id, returns as id
-    Ambiguous                       // Can be keyword or id, returns as ambiguous
+    AmbiguousPriorityIdentifier{,    // Can be keyword or id, returns as id
+    Ambiguous                       // Can be keyword or id, returns as ambiguous}
   );
 
 type
@@ -788,11 +788,11 @@ begin
     TTokenClass.AmbiguousPriorityKeyword: begin
       fIdentifireType := itIdentifier;
     end;
-    TTokenClass.Ambiguous: begin
-      fCurrentTokenId := fAmbiguousId;
-      fIdentifireType := itIdentifier;
-      Exit(fAmbiguousId);
-    end;
+//    TTokenClass.Ambiguous: begin
+//      fCurrentTokenId := fAmbiguousId;
+//      fIdentifireType := itIdentifier;
+//      Exit(fAmbiguousId);
+//    end;
   end;
 end;
 
