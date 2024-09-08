@@ -39,11 +39,16 @@ type
   procedure AbortWorkInternal(const Message: string; const Params: array of const); overload;
   procedure AbortWorkInternal(const Message: string; const Params: array of const; const SourcePosition: TTextPosition); overload;
 
+var
+  BreakpointOnError: Boolean;
+
 implementation
 
 { EComplilerAbort }
 
-uses AST.Parser.Log;
+uses
+  Winapi.Windows,
+  AST.Parser.Log;
 
 constructor ECompilerAbort.Create(const MessageText: string);
 begin
@@ -84,6 +89,8 @@ end;
 
 procedure AbortWork(const Message: string; const SourcePosition: TTextPosition);
 begin
+  if BreakpointOnError then
+    asm int3 end;
   WriteLog('ERROR: ' + Message);
   raise ECompilerAbort.Create(Message, SourcePosition);
 end;
@@ -95,6 +102,8 @@ end;
 
 procedure AbortWorkInternal(const Message: string; const Params: array of const; const SourcePosition: TTextPosition);
 begin
+  if BreakpointOnError then
+    asm int3 end;
   WriteLog('INTERNAL ERROR: ' + Message, Params);
   raise ECompilerInternalError.CreateAsInteranl(Format(Message, Params), SourcePosition);
 end;

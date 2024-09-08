@@ -57,6 +57,7 @@ type
     procedure RPNCheckInputSize;
     function GetExpression: TIDExpression;
     function GetProc: TProc;
+    function GetScope: TScope;
   public
     procedure Initialize(const SContext: TASTSContext<TProc>; const ProcessProc: TRPNPocessProc);
     procedure Reset;                    // clear RPN stack and reinit
@@ -78,6 +79,7 @@ type
     property EPosition: TExpessionPosition read fPosition write fPosition;
     property SContext: TASTSContext<TProc> read fSContext;
     property Proc: TProc read GetProc;
+    property Scope: TScope read GetScope;
   end;
 
 implementation
@@ -255,6 +257,11 @@ end;
 function TASTEContext<TProc>.GetProc: TProc;
 begin
   Result := fSContext.fProc;
+end;
+
+function TASTEContext<TProc>.GetScope: TScope;
+begin
+  Result := fSContext.Scope;
 end;
 
 procedure TASTEContext<TProc>.Initialize(const SContext: TASTSContext<TProc>; const ProcessProc: TRPNPocessProc);

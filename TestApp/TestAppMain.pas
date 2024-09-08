@@ -86,6 +86,7 @@ type
     SaveSourceAction: TAction;
     ASTParseButton: TButton;
     ASTParseAction: TAction;
+    BreakpointOnErrorCheck: TCheckBox;
     procedure ASTParseRTLButtonClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure Button5Click(Sender: TObject);
@@ -138,6 +139,7 @@ uses
   AST.Writer,
   AST.Targets,
   AST.Delphi.DataTypes,
+  AST.Parser.Errors,
   AST.Parser.Utils,
   AST.Parser.Log;
 
@@ -341,6 +343,7 @@ begin
       LINI.WriteBool(SGeneral, 'WRITE_LOG', WriteLogCheck.Checked);
       LINI.WriteBool(SGeneral, 'SHOW_WARNINGS', ShowWarningsCheck.Checked);
       LINI.WriteBool(SGeneral, 'SHOW_MEMLEAKS', ShowMemLeaksCheck.Checked);
+      LINI.WriteBool(SGeneral, 'BREAKPOINT_ON_ERROR', BreakpointOnErrorCheck.Checked);
 
       LINI.WriteString(SGeneral, 'PLATFORM', cbPlatform.Text);
       LINI.WriteString(SGeneral, 'DELPHI_SRC_PATH', DelphiSrcPathEdit.Text);
@@ -387,6 +390,7 @@ begin
     WriteLogCheck.Checked := LINI.ReadBool(SGeneral, 'WRITE_LOG', True);
     ShowWarningsCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_WARNINGS', False);
     ShowMemLeaksCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_MEMLEAKS', False);
+    BreakpointOnErrorCheck.Checked :=  LINI.ReadBool(SGeneral, 'BREAKPOINT_ON_ERROR', False);
 
     cbPlatform.Text := LINI.ReadString(SGeneral, 'PLATFORM', 'WIN32');
     DelphiSrcPathEdit.Text := LINI.ReadString(SGeneral, 'DELPHI_SRC_PATH', DelphiSrcPathEdit.Text);
@@ -514,6 +518,8 @@ procedure TfrmTestAppMain.ParseProject(const Project: IASTDelphiProject);
 begin
   ErrMemo.Clear;
   LogMemo.Clear;
+
+  BreakpointOnError := BreakpointOnErrorCheck.Checked;
 
   var Msg := TStringList.Create;
   try
@@ -997,7 +1003,33 @@ type
   TGeneric<T, K> = class
   end;
 
+  TC = class (TGeneric);
 
+  TX<T> = class(TC)
+
+  end;
+
+procedure TestPointers;
+type
+{$POINTERMATH ON}
+  PInteger = ^Integer;
+  PPointer = ^Pointer;
+{$POINTERMATH OFF}
+var
+  Ptr1: PByte;
+  Ptr2: PInteger;
+  Ptr3: PPointer;
+begin
+  Ptr1[0] := 5;
+  Ptr2[0] := 5;
+  Ptr3[0] := nil;
+end;
+
+
+var
+  G1: TGeneric;
+  G2: TGeneric<string>;
+  G3: TGeneric<string, string>;
 
 initialization
   Test0;

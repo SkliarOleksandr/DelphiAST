@@ -805,6 +805,7 @@ begin
   AddBinarOperator(opAdd, _AnsiString, _AnsiString, _AnsiString);
   AddBinarOperator(opAdd, _AnsiString, _AnsiChar, _AnsiString);
   AddBinarOperator(opAdd, _AnsiString, _PAnsiChar, _AnsiString);
+  AddBinarOperator(opAdd, _ShortString, _ShortString, _ShortString);
 
   AddBinarOperator(opAdd, _AnsiChar, _AnsiChar, _AnsiString);
   AddBinarOperator(opAdd, _AnsiChar, _PAnsiChar, _AnsiString);
@@ -1098,6 +1099,7 @@ begin
   RegisterTypeAlias('PChar', _PWideChar);
   RegisterTypeAlias('Text', _Pointer);
 
+  RegisterConstInt('MaxLongint', _Int32, MaxInt32);
   fDecls._MaxIntConstant := RegisterConstInt('MaxInt', _Int32, MaxInt32);
   fDecls._MaxIntExpression := TIDExpression.Create(fDecls._MaxIntConstant, 0);
 

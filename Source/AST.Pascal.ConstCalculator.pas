@@ -17,19 +17,19 @@ type
   private
     fErrors: TASTDelphiErrors;
     fSysDecls: PDelphiSystemDeclarations;
-    function CalcSets(const Left, Right: TIDConstant; Operation: TOperatorID): TIDConstant;
-    function CalcPointer(LeftConst, RightConst: TIDConstant; Operation: TOperatorID): TIDConstant;
-    function CalcInteger(LValue, RValue: Int64; Operation: TOperatorID): TIDConstant;
-    function CalcFloat(LValue, RValue: Extended; Right: TIDExpression; Operation: TOperatorID): TIDConstant;
-    function CalcBoolean(LValue, RValue: Boolean; Operation: TOperatorID): TIDConstant;
-    function CalcString(const LValue, RValue: string; Operation: TOperatorID): TIDConstant;
-    function CalcChar(const LValue, RValue: Char; Operation: TOperatorID): TIDConstant;
-    function CalcIn(const Left, Right: TIDConstant): TIDConstant;
-    function CalcDynArrays(const Left, Right: TIDConstant; Operation: TOperatorID): TIDConstant;
+    function CalcSets(AScope: TScope; const Left, Right: TIDConstant; Operation: TOperatorID): TIDConstant;
+    function CalcPointer(AScope: TScope; LeftConst, RightConst: TIDConstant; Operation: TOperatorID): TIDConstant;
+    function CalcInteger(AScope: TScope; LValue, RValue: Int64; Operation: TOperatorID): TIDConstant;
+    function CalcFloat(AScope: TScope; LValue, RValue: Extended; Right: TIDExpression; Operation: TOperatorID): TIDConstant;
+    function CalcBoolean(AScope: TScope; LValue, RValue: Boolean; Operation: TOperatorID): TIDConstant;
+    function CalcString(AScope: TScope; const LValue, RValue: string; Operation: TOperatorID): TIDConstant;
+    function CalcChar(AScope: TScope; const LValue, RValue: Char; Operation: TOperatorID): TIDConstant;
+    function CalcIn(AScope: TScope; const Left, Right: TIDConstant): TIDConstant;
+    function CalcDynArrays(AScope: TScope; const Left, Right: TIDConstant; Operation: TOperatorID): TIDConstant;
     property Sys: PDelphiSystemDeclarations read fSysDecls;
   public
     constructor Create(const Module: IASTDelphiUnit);
-    function ProcessConstOperation(Left, Right: TIDExpression; Operation: TOperatorID): TIDExpression; overload;
+    function ProcessConstOperation(AScope: TScope; Left, Right: TIDExpression; Operation: TOperatorID): TIDExpression; overload;
     function ProcessConstOperation(const Left, Right: TIDConstant; Operation: TOperatorID): TIDConstant; overload;
   end;
 
@@ -65,7 +65,7 @@ begin
   Result.TextPosition := Left.TextPosition;
 end;
 
-function TExpressionCalculator.CalcSets(const Left, Right: TIDConstant; Operation: TOperatorID): TIDConstant;
+function TExpressionCalculator.CalcSets(AScope: TScope; const Left, Right: TIDConstant; Operation: TOperatorID): TIDConstant;
 
   function DynArrayToSetIfNeeded(const AConst: TIDConstant): TIDSetConstant;
   begin
@@ -288,7 +288,7 @@ begin
   Result := Constant;
 end;
 
-function TExpressionCalculator.CalcPointer(LeftConst, RightConst: TIDConstant; Operation: TOperatorID): TIDConstant;
+function TExpressionCalculator.CalcPointer(AScope: TScope; LeftConst, RightConst: TIDConstant; Operation: TOperatorID): TIDConstant;
 begin
   // todo:
   if LeftConst is TIDPointerConstant then
@@ -297,7 +297,7 @@ begin
     Exit(RightConst);
 end;
 
-function TExpressionCalculator.CalcInteger(LValue, RValue: Int64; Operation: TOperatorID): TIDConstant;
+function TExpressionCalculator.CalcInteger(AScope: TScope; LValue, RValue: Int64; Operation: TOperatorID): TIDConstant;
 var
   iValue: Int64;
   fValue: Double;
@@ -316,7 +316,7 @@ begin
         iValue := LValue div RValue
       else begin
        fValue := LValue / RValue;
-       Exit(TIDFloatConstant.CreateWithoutScope(Sys._Float64, fValue));
+       Exit(TIDFloatConstant.CreateAsAnonymous(AScope, Sys._Float64, fValue));
       end;
     end;
     opEqual,
@@ -334,7 +334,7 @@ begin
         opLessOrEqual: bValue := (LValue <= RValue);
         else bValue := False;
       end;
-      Exit(TIDBooleanConstant.CreateWithoutScope(Sys._Boolean, bValue));
+      Exit(TIDBooleanConstant.CreateAsAnonymous(AScope, Sys._Boolean, bValue));
     end;
     opAnd: iValue := LValue and RValue;
     opOr: iValue := LValue or RValue;
@@ -345,10 +345,10 @@ begin
     else Exit(nil);
   end;
   DT := Sys.DataTypes[GetValueDataType(iValue)];
-  Result := TIDIntConstant.CreateWithoutScope(DT, iValue);
+  Result := TIDIntConstant.CreateAsAnonymous(AScope, DT, iValue);
 end;
 
-function TExpressionCalculator.CalcFloat(LValue, RValue: Extended; Right: TIDExpression; Operation: TOperatorID): TIDConstant;
+function TExpressionCalculator.CalcFloat(AScope: TScope; LValue, RValue: Extended; Right: TIDExpression; Operation: TOperatorID): TIDConstant;
 var
   fValue: Extended;
   bValue: Boolean;
@@ -392,15 +392,15 @@ begin
       else
         bValue := False;
       end;
-      Exit(TIDBooleanConstant.CreateWithoutScope(Sys._Boolean, bValue));
+      Exit(TIDBooleanConstant.CreateAsAnonymous(AScope, Sys._Boolean, bValue));
     end;
   else
     Exit(nil);
   end;
-  Result := TIDFloatConstant.CreateWithoutScope(ValueDT, fValue);
+  Result := TIDFloatConstant.CreateAsAnonymous(AScope, ValueDT, fValue);
 end;
 
-function TExpressionCalculator.CalcBoolean(LValue, RValue: Boolean; Operation: TOperatorID): TIDConstant;
+function TExpressionCalculator.CalcBoolean(AScope: TScope; LValue, RValue: Boolean; Operation: TOperatorID): TIDConstant;
 var
   Value: Boolean;
 begin
@@ -411,10 +411,10 @@ begin
     opNot: Value := not RValue;
     else Exit(nil);
   end;
-  Result := TIDBooleanConstant.CreateWithoutScope(Sys._Boolean, Value);
+  Result := TIDBooleanConstant.CreateAsAnonymous(AScope, Sys._Boolean, Value);
 end;
 
-function TExpressionCalculator.CalcString(const LValue, RValue: string; Operation: TOperatorID): TIDConstant;
+function TExpressionCalculator.CalcString(AScope: TScope; const LValue, RValue: string; Operation: TOperatorID): TIDConstant;
 var
   sValue: string;
   bValue: Boolean;
@@ -422,7 +422,7 @@ begin
   case Operation of
     opAdd: begin
       sValue := LValue + RValue;
-      Result := TIDStringConstant.CreateWithoutScope(Sys._UnicodeString, sValue);
+      Result := TIDStringConstant.CreateAsAnonymous(AScope, Sys._UnicodeString, sValue);
     end;
     opEqual,
     opNotEqual: begin
@@ -431,13 +431,13 @@ begin
         opNotEqual: bValue := LValue <> RValue;
         else bValue := False;
       end;
-      Exit(TIDBooleanConstant.CreateWithoutScope(Sys._Boolean, bValue));
+      Exit(TIDBooleanConstant.CreateAsAnonymous(AScope, Sys._Boolean, bValue));
     end;
     else Exit(nil);
   end;
 end;
 
-function TExpressionCalculator.CalcChar(const LValue, RValue: Char; Operation: TOperatorID): TIDConstant;
+function TExpressionCalculator.CalcChar(AScope: TScope; const LValue, RValue: Char; Operation: TOperatorID): TIDConstant;
 var
   sValue: string;
   bValue: Boolean;
@@ -445,7 +445,7 @@ begin
   case Operation of
     opAdd: begin
       sValue := LValue + RValue;
-      Result := TIDStringConstant.CreateWithoutScope(Sys._UnicodeString, sValue);
+      Result := TIDStringConstant.CreateAsAnonymous(AScope, Sys._UnicodeString, sValue);
     end;
     opEqual,
     opNotEqual,
@@ -462,14 +462,14 @@ begin
         opLessOrEqual: bValue := (LValue <= RValue);
         else bValue := False;
       end;
-      Exit(TIDBooleanConstant.CreateWithoutScope(Sys._Boolean, bValue));
+      Exit(TIDBooleanConstant.CreateAsAnonymous(AScope, Sys._Boolean, bValue));
     end;
   else
     Exit(nil);
   end;
 end;
 
-function TExpressionCalculator.CalcIn(const Left, Right: TIDConstant): TIDConstant;
+function TExpressionCalculator.CalcIn(AScope: TScope; const Left, Right: TIDConstant): TIDConstant;
 begin
   if Right is TIDRangeConstant then
   begin
@@ -497,18 +497,18 @@ begin
     Result := nil;
 end;
 
-function TExpressionCalculator.CalcDynArrays(const Left, Right: TIDConstant; Operation: TOperatorID): TIDConstant;
+function TExpressionCalculator.CalcDynArrays(AScope: TScope; const Left, Right: TIDConstant; Operation: TOperatorID): TIDConstant;
 begin
   // todo:
   case Operation of
-    opEqual: Result := TIDBooleanConstant.CreateAsAnonymous(Left.Scope, Sys._Boolean, False);
+    opEqual: Result := TIDBooleanConstant.CreateAsAnonymous(AScope, Sys._Boolean, False);
     opMultiply: Result := Left; // todo:
   else
     Result := nil;
   end;
 end;
 
-function TExpressionCalculator.ProcessConstOperation(Left, Right: TIDExpression; Operation: TOperatorID): TIDExpression;
+function TExpressionCalculator.ProcessConstOperation(AScope: TScope; Left, Right: TIDExpression; Operation: TOperatorID): TIDExpression;
 var
   L, R: TIDConstant;
   LeftType, RightType: TClass;
@@ -524,50 +524,50 @@ begin
   // todo: full refactor
 
   if Operation = opIn then
-    Constant := CalcIn(L, R)
+    Constant := CalcIn(AScope, L, R)
   else
   if LeftType = TIDIntConstant then
   begin
     if RightType = TIDIntConstant then
-      Constant := CalcInteger(TIDIntConstant(L).Value, TIDIntConstant(R).Value, Operation)
+      Constant := CalcInteger(AScope, TIDIntConstant(L).Value, TIDIntConstant(R).Value, Operation)
     else
-      Constant := CalcFloat(TIDIntConstant(L).Value, TIDFloatConstant(R).Value, Right, Operation)
+      Constant := CalcFloat(AScope, TIDIntConstant(L).Value, TIDFloatConstant(R).Value, Right, Operation)
   end else
   if LeftType = TIDFloatConstant then
   begin
     if RightType = TIDIntConstant then
-      Constant := CalcFloat(TIDFloatConstant(L).Value, TIDIntConstant(R).Value, Right, Operation)
+      Constant := CalcFloat(AScope, TIDFloatConstant(L).Value, TIDIntConstant(R).Value, Right, Operation)
     else
-      Constant := CalcFloat(TIDFloatConstant(L).Value, TIDFloatConstant(R).Value, Right, Operation)
+      Constant := CalcFloat(AScope, TIDFloatConstant(L).Value, TIDFloatConstant(R).Value, Right, Operation)
   end else
   if LeftType = TIDStringConstant then begin
     if RightType = TIDStringConstant then
-      Constant := CalcString(TIDStringConstant(L).Value, TIDStringConstant(R).Value, Operation)
+      Constant := CalcString(AScope, TIDStringConstant(L).Value, TIDStringConstant(R).Value, Operation)
     else
-      Constant := CalcString(TIDStringConstant(L).Value, TIDCharConstant(R).Value, Operation)
+      Constant := CalcString(AScope, TIDStringConstant(L).Value, TIDCharConstant(R).Value, Operation)
   end else
   if LeftType = TIDCharConstant then begin
     if RightType = TIDCharConstant then
-      Constant := CalcChar(TIDCharConstant(L).Value, TIDCharConstant(R).Value, Operation)
+      Constant := CalcChar(AScope, TIDCharConstant(L).Value, TIDCharConstant(R).Value, Operation)
     else
-      Constant := CalcString(TIDCharConstant(L).Value, TIDStringConstant(R).Value, Operation)
+      Constant := CalcString(AScope, TIDCharConstant(L).Value, TIDStringConstant(R).Value, Operation)
   end else
   if LeftType = TIDBooleanConstant then
-    Constant := CalcBoolean(TIDBooleanConstant(L).Value, TIDBooleanConstant(R).Value, Operation)
+    Constant := CalcBoolean(AScope, TIDBooleanConstant(L).Value, TIDBooleanConstant(R).Value, Operation)
   else
   if ((LeftType = TIDSetConstant) and (RightType = TIDSetConstant)) or
      ((LeftType = TIDSetConstant) and (RightType = TIDDynArrayConstant)) or
      ((LeftType = TIDDynArrayConstant) and (RightType = TIDSetConstant)) then
   begin
-    Constant := CalcSets(L, R, Operation);
+    Constant := CalcSets(AScope, L, R, Operation);
   end else
   if (LeftType = TIDDynArrayConstant) and (RightType = TIDDynArrayConstant) then
   begin
-    Constant := CalcDynArrays(L, R, Operation);
+    Constant := CalcDynArrays(AScope, L, R, Operation);
   end else
   if (LeftType = TIDPointerConstant) or (RightType = TIDPointerConstant) then
   begin
-    Constant := CalcPointer(L, R, Operation)
+    Constant := CalcPointer(AScope, L, R, Operation)
   end else
     AbortWorkInternal('Const Calc: invalid arguments', L.SourcePosition);
 

@@ -514,8 +514,8 @@ object frmTestAppMain: TfrmTestAppMain
           1252
           27)
         object Label2: TLabel
-          Left = 488
-          Top = 3
+          Left = 552
+          Top = 6
           Width = 40
           Height = 13
           Caption = 'Platform'
@@ -540,8 +540,8 @@ object frmTestAppMain: TfrmTestAppMain
           OnClick = StopIfErrorCheckClick
         end
         object cbPlatform: TComboBox
-          Left = 534
-          Top = 0
+          Left = 598
+          Top = 3
           Width = 81
           Height = 21
           ItemIndex = 0
@@ -572,6 +572,15 @@ object frmTestAppMain: TfrmTestAppMain
           Checked = True
           State = cbChecked
           TabOrder = 4
+          OnClick = StopIfErrorCheckClick
+        end
+        object BreakpointOnErrorCheck: TCheckBox
+          Left = 416
+          Top = -3
+          Width = 114
+          Height = 27
+          Caption = 'Breakpoint on Error'
+          TabOrder = 5
           OnClick = StopIfErrorCheckClick
         end
       end

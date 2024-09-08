@@ -178,7 +178,11 @@ begin
 
   // add system unit implicitly
   if Assigned(fSysUnit) and (Self <> fSysUnit) then
+  begin
     fIntfImportedUnits.AddObject('system', fSysUnit);
+    // add system unit scope as joint
+    fIntfScope.AddScope(TPascalUnit(fSysUnit).IntfScope);
+  end;
 end;
 
 function TPascalUnit.CompileIntfOnly: TCompilerResult;

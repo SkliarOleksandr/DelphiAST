@@ -254,6 +254,7 @@ type
     class procedure NO_OVERLOAD(CallExpr: TIDExpression; const CallArgs: TIDExpressions); static;
     class procedure AMBIGUOUS_OVERLOAD_CALL(CallExpr: TIDExpression); overload; static;
     class procedure INCOMPLETE_PROC(Decl: TIDDeclaration); static;
+    class procedure TYPE_NOT_COMPLETELY_DEFINED(Decl: TIDDeclaration); static;
     class procedure NO_OVERLOAD_OPERATOR_FOR_TYPES(Op: TOperatorID; Left, Right: TIDExpression); overload; static;
     class procedure NO_OVERLOAD_OPERATOR_FOR_TYPES(Op: TOperatorID; Right: TIDExpression); overload;
     class procedure UNIT_NOT_FOUND(const ID: TIdentifier); static;
@@ -769,6 +770,11 @@ end;
 procedure TASTDelphiErrors.TYPE_IS_NOT_AN_ANCESTOR_FOR_THIS_TYPE(TypeDecl, ChildType: TIDType);
 begin
   AbortWork('The type "%s" is not an ancestor of type "%s"', [TypeDecl.DisplayName, ChildType.DisplayName], Lexer.Position);
+end;
+
+class procedure TASTDelphiErrors.TYPE_NOT_COMPLETELY_DEFINED(Decl: TIDDeclaration);
+begin
+  AbortWork('Type ''%s'' is not yet completely defined', [Decl.DisplayName], Decl.TextPosition);
 end;
 
 class procedure TASTDelphiErrors.TYPE_REQUIRED(const TextPosition: TTextPosition);
