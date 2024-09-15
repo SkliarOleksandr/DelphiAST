@@ -1025,11 +1025,18 @@ begin
   Ptr3[0] := nil;
 end;
 
-
 var
   G1: TGeneric;
   G2: TGeneric<string>;
   G3: TGeneric<string, string>;
+
+type
+  IMyDisp = dispinterface
+    ['{2933BF80-7B36-11D2-B20E-00C04F983E60}']
+    property nodeName: string readonly dispid 1;
+    property nodeValue: OleVariant writeonly dispid 3;
+    property item[index: Integer]: IMyDisp readonly dispid 0; default;
+  end;
 
 initialization
   Test0;

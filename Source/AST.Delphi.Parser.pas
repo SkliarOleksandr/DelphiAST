@@ -48,6 +48,8 @@ uses
 // Winapi.CommCtrl
 // Winapi.UrlMon
 // Winapi.PropSys
+// Winapi.MSXMLIntf
+// Winapi.ShlObj
 // AnsiStrings
 // Character
 // Vcl.ImgList
@@ -125,6 +127,8 @@ type
     function ProcSpec_Static(Scope: TScope; var Flags: TProcFlags; var ProcType: TProcType): TTokenID;
     function ProcSpec_FastCall(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
     function ProcSpec_StdCall(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
+    function ProcSpec_SafeCall(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
+    function ProcSpec_DispId(AScope: TScope; AStruct: TIDStructure; const AMethodID: TIdentifier): TTokenID;
     function ProcSpec_CDecl(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
     function ProcSpec_Message(Scope: TScope; var Flags: TProcFlags): TTokenID;
 
@@ -807,7 +811,8 @@ begin
     Result := Lexer_NextToken(Scope);
   end;
 
-  case Lexer_TreatTokenAsToken(Result) of
+  var LTokenID := Lexer_TreatTokenAsToken(Result);
+  case LTokenID of
     /////////////////////////////////////////////////////////////////////////
     // type of
     /////////////////////////////////////////////////////////////////////////
@@ -877,7 +882,11 @@ begin
     /////////////////////////////////////////////////////////////////////////
     // interface
     /////////////////////////////////////////////////////////////////////////
-    token_interface: Result := ParseInterfaceType(Scope, nil, GDescriptor, ID, TIDInterface(Decl));
+    token_interface,
+    token_dispinterface: begin
+      Result := ParseInterfaceType(Scope, nil, GDescriptor, ID, TIDInterface(Decl));
+      TIDInterface(Decl).IsDisp := (LTokenID = token_dispinterface);
+    end;
     /////////////////////////////////////////////////////////////////////////
     // other
     /////////////////////////////////////////////////////////////////////////
@@ -4792,6 +4801,40 @@ begin
 
     SContext := fUnitSContext;
 
+    if (Struct.DataTypeID = dtInterface) and (TIDInterface(Struct).IsDisp) then
+    begin
+      // readonly propery
+      if Lexer_IsCurrentToken(token_readonly) then
+      begin
+        Result := Lexer_NextToken(Scope);
+      end else
+      // writeonly propery
+      if Lexer_IsCurrentToken(token_writeonly) then
+      begin
+        Result := Lexer_NextToken(Scope);
+      end;
+      // dispid
+      if Lexer_IsCurrentToken(token_dispid) then
+      begin
+        Result := ProcSpec_DispId(Scope, Struct, ID);
+      end;
+      // indexed default propery (note: default is ambiguous keyword)
+      if Lexer_IsCurrentToken(token_default) then
+      begin
+        if Prop.ParamsCount = 0 then
+          ERRORS.DEFAULT_PROP_MUST_BE_ARRAY_PROP;
+        if not Assigned(Struct.DefaultProperty) then
+        begin
+          Struct.DefaultProperty := Prop;
+          Prop.DefaultIndexedProperty := True;
+        end else
+          ERRORS.DEFAULT_PROP_ALREADY_EXIST(Prop);
+        Lexer_ReadSemicolon(Scope);
+        Result := Lexer_NextToken(Scope);
+      end;
+      Exit;
+    end;
+
     // property index value (note: index is ambiguous keyword)
     // note: can only be after the property type
     if Lexer_IsCurrentToken(token_index) then
@@ -7361,8 +7404,10 @@ begin
       token_reintroduce: Result := ProcSpec_Reintroduce(Scope, ProcFlags);
       token_static: Result := ProcSpec_Static(Scope, ProcFlags, ProcType);
       token_stdcall: Result := ProcSpec_StdCall(Scope, CallConv);
+      token_safecall: Result := ProcSpec_SafeCall(Scope, CallConv);
       token_fastcall: Result := ProcSpec_FastCall(Scope, CallConv);
       token_cdecl: Result := ProcSpec_CDecl(Scope, CallConv);
+      token_dispid: Result := ProcSpec_DispId(Scope, Struct, ID);
       token_message: Result := ProcSpec_Message(Scope, ProcFlags);
       token_varargs: begin
         Lexer_ReadSemicolon(Scope);
@@ -7618,6 +7663,7 @@ begin
       token_external: Result := ProcSpec_External(Scope, ImportLib, ImportName, ProcFlags);
       token_overload: Result := ProcSpec_Overload(Scope, ProcFlags);
       token_stdcall: Result := ProcSpec_StdCall(Scope, CallConv);
+      token_safecall: Result := ProcSpec_SafeCall(Scope, CallConv);
       token_fastcall: Result := ProcSpec_FastCall(Scope, CallConv);
       token_cdecl: Result := ProcSpec_CDecl(Scope, CallConv);
       token_varargs: begin
@@ -7826,6 +7872,7 @@ begin
       token_inline: Result := ProcSpec_Inline(Scope, ProcFlags);
       token_overload: Result := ProcSpec_Overload(Scope, ProcFlags);
       token_stdcall: Result := ProcSpec_StdCall(Scope, CallConv);
+      token_safecall:  Result := ProcSpec_SafeCall(Scope, CallConv);
       token_fastcall: Result := ProcSpec_FastCall(Scope, CallConv);
       token_cdecl: Result := ProcSpec_CDecl(Scope, CallConv);
       token_varargs: begin
@@ -8703,6 +8750,23 @@ begin
   Result := Lexer_NextToken(Scope);
 end;
 
+function TASTDelphiUnit.ProcSpec_DispId(AScope: TScope; AStruct: TIDStructure; const AMethodID: TIdentifier): TTokenID;
+var
+  LDispIdExpr: TIDExpression;
+begin
+  Lexer_NextToken(AScope);
+
+  if not Assigned(AStruct) or (AStruct.DataTypeID <> dtInterface) then
+    ERRORS.E2185_CANNOT_SPECIFY_DISPID(AMethodID);
+
+  Result := ParseConstExpression(AScope, {out} LDispIdExpr, ExprRValue);
+
+  if Result = token_semicolon then
+    Result := Lexer_NextToken(AScope);
+
+  CheckIntExpression(LDispIdExpr);
+end;
+
 function TASTDelphiUnit.ProcSpec_Dynamic(Scope: TScope; Struct: TIDStructure; var Flags: TProcFlags): TTokenID;
 begin
   if pfVirtual in Flags then
@@ -8762,6 +8826,17 @@ begin
   Include(Flags, pfFinal);
   Lexer_ReadSemicolon(Scope);
   Result := Lexer_NextToken(Scope);
+end;
+
+function TASTDelphiUnit.ProcSpec_SafeCall(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
+begin
+  if CallConvention = ConvSafeCall then
+    ERRORS.DUPLICATE_SPECIFICATION(PS_SAFECALL);
+  CallConvention := ConvSafeCall;
+
+  Result := Lexer_NextToken(Scope);
+  if Result = token_semicolon then
+    Result := Lexer_NextToken(Scope);
 end;
 
 function TASTDelphiUnit.ProcSpec_Static(Scope: TScope; var Flags: TProcFlags; var ProcType: TProcType): TTokenID;
@@ -9475,7 +9550,7 @@ var
 begin
   case DataType.DataTypeID of
     dtStaticArray: Result := ParseVarStaticArrayDefaultValue(Scope, DataType as TIDArray, DefaultValue);
-    dtRecord: begin
+    dtGuid, dtRecord: begin
       Result := Lexer_NextToken(Scope);
       if (DataType.Module = SYSUnit) and (DataType.Name = 'TGUID') and (Result <> token_openround) then
       begin
@@ -10132,7 +10207,7 @@ end;
 
 procedure TASTDelphiUnit.CheckIntExpression(Expression: TIDExpression);
 begin
-  if Expression.DataTypeID >= dtNativeUInt then
+  if not Assigned(Expression) or (Expression.DataTypeID >= dtNativeUInt) then
     ERRORS.INTEGER_TYPE_REQUIRED(Expression.TextPosition);
 end;
 

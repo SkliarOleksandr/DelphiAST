@@ -49,8 +49,8 @@ type
     token_closefigure,              // }
     token_quote,                    // '
 
-    token_openround_asteriks,
-    token_closeround_asteriks,
+    token_openround_asteriks,       // (*
+    token_closeround_asteriks,      // *)
 
     token_at,                       // keyword: at
     token_absolute,                 // keyword: absolute
@@ -60,6 +60,7 @@ type
     token_stdcall  {=40},           // keyword: stdcall
     token_fastcall,                 // keyword: fastcall
     token_cdecl,                    // keyword: cdecl
+    token_safecall,                 // keyword: safecall
     token_unit,                     // keyword: unit
     token_uses,                     // keyword: uses
 
@@ -71,6 +72,8 @@ type
     token_external,                 // keyword: extern
     token_name  {=50},              // keyword: name
     token_interface,                // keyword: interface
+    token_dispinterface,            // keyword: dispinterface
+    token_dispid,                   // keyword: dispid
     token_implementation,           // keyword: implementation
     token_implement,                // keyword: implementation
     token_initialization,           // keyword: initialization
@@ -149,7 +152,9 @@ type
     token_published,                // keyword: published
     token_platform,                 // keyword: platform
     token_read,                     // keyword: read
+    token_readonly,                 // keyword: readonly
     token_write,                    // keyword: write
+    token_writeonly,                // keyword: writeonly
     token_inherited,                // keyword: inherited
     token_virtual,                  // keyword: virtual
     token_dynamic,                  // keyword: dynamic
@@ -380,7 +385,6 @@ begin
   RegisterToken('}', token_closefigure);
   RegisterToken('+', token_plus, 'plus');
   RegisterToken('-', token_minus, 'minus');
-  RegisterToken('!', token_exclamation, 'exclamation');
   RegisterToken('?', token_question, 'question');
   RegisterToken('*', token_asterisk, 'asterisk');
   RegisterToken('/', token_slash);
@@ -421,7 +425,7 @@ begin
   RegisterToken('function', token_Function);
   RegisterToken('for', token_for);
   RegisterToken('forward', token_forward);
-  RegisterToken('final', token_final);
+  RegisterToken('final', token_final, TTokenClass.AmbiguousPriorityIdentifier);
   RegisterToken('finally', token_finally);
   RegisterToken('finalization', token_finalization);
   RegisterToken('fastcall', token_fastcall);
@@ -431,6 +435,8 @@ begin
   RegisterToken('in', token_in, TTokenClass.AmbiguousPriorityKeyword);
   RegisterToken('index', token_index, TTokenClass.AmbiguousPriorityIdentifier);
   RegisterToken('interface', token_Interface);
+  RegisterToken('dispinterface', token_dispinterface);
+  RegisterToken('dispid', token_dispid, TTokenClass.AmbiguousPriorityIdentifier);
   RegisterToken('inherited', token_inherited);
   RegisterToken('inline', token_inline);
   RegisterToken('initialization', token_initialization);
@@ -463,6 +469,7 @@ begin
   RegisterToken('platform', token_platform, TTokenClass.AmbiguousPriorityIdentifier);
   RegisterToken('raise', token_raise);
   RegisterToken('read', token_read, TTokenClass.AmbiguousPriorityKeyword);
+  RegisterToken('readonly', token_readonly, TTokenClass.AmbiguousPriorityKeyword);
   RegisterToken('record', token_record);
   RegisterToken('reference', token_reference, TTokenClass.AmbiguousPriorityIdentifier);
   RegisterToken('repeat', token_repeat);
@@ -475,6 +482,7 @@ begin
   RegisterToken('static', token_static);
   RegisterToken('strict', token_strict);
   RegisterToken('stdcall', token_stdcall);
+  RegisterToken('safecall', token_safecall);
   RegisterToken('stored', token_stored, TTokenClass.AmbiguousPriorityKeyword);
 
   RegisterToken('then', token_then);
@@ -493,6 +501,7 @@ begin
   RegisterToken('with', token_with);
   RegisterToken('while', token_while);
   RegisterToken('write', token_write, TTokenClass.AmbiguousPriorityKeyword);
+  RegisterToken('writeonly', token_writeonly, TTokenClass.AmbiguousPriorityKeyword);
   RegisterToken('xor', token_xor);
   RegisterRemToken('{', '}', ord(token_openfigure), Ord(token_closefigure));
   RegisterRemToken('(*', '*)', ord(token_openround_asteriks), Ord(token_closeround_asteriks));

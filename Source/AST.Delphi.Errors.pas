@@ -291,6 +291,8 @@ type
 
     procedure GENERIC_INVALID_CONSTRAINT(ActualToken: TTokenID);
 
+    class procedure E2185_CANNOT_SPECIFY_DISPID(const AMethodID: TIdentifier);
+
     procedure PROCEDURE_CANNOT_HAVE_RESULT;
     procedure BREAK_OR_CONTINUE_ALLOWED_ONLY_IN_LOOPS;
     procedure NO_METHOD_IN_BASE_CLASS(Proc: TIDProcedure);
@@ -567,6 +569,12 @@ end;
 procedure TASTDelphiErrors.IDENTIFIER_EXPECTED;
 begin
   AbortWork(sIdentifierExpected, Lexer.PrevPosition);
+end;
+
+class procedure TASTDelphiErrors.E2185_CANNOT_SPECIFY_DISPID(const AMethodID: TIdentifier);
+begin
+  AbortWork('E2185 Overriding automated virtual method ''%s'' cannot specify a dispid',
+    [AMethodID.Name], AMethodID.TextPosition);
 end;
 
 procedure TASTDelphiErrors.EMPTY_EXPRESSION;

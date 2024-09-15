@@ -44,6 +44,7 @@ type
     PS_STDCALL,
     PS_FASTCALL,
     PS_CDECL,
+    PS_SAFECALL,
     PS_REINTRODUCE
   );
 
@@ -869,12 +870,14 @@ type
   TIDInterface = class(TIDStructure)
   private
     FGUID: TGUID;
+    FIsDisp: Boolean;
   protected
     function GetIsManaged: Boolean; override;
     function GetStructKeyword: string; override;
   public
     constructor Create(Scope: TScope; const Name: TIdentifier); override;
     property GUID: TGUID read FGUID write FGUID;
+    property IsDisp: Boolean read FIsDisp write FIsDisp;
     function MatchImplicitTo(ADst: TIDType): Boolean; override;
     function MatchImplicitFrom(ASrc: TIDType): Boolean; override;
   end;
@@ -1024,7 +1027,14 @@ type
   );
 
 
-  TCallConvention = (ConvNative, ConvRegister, ConvStdCall, ConvCDecl, ConvFastCall);
+  TCallConvention = (
+    ConvNative,
+    ConvRegister,
+    ConvStdCall,
+    ConvCDecl,
+    ConvFastCall,
+    ConvSafeCall
+  );
 
   {procedural type}
   TIDProcType = class(TIDType)
@@ -2510,19 +2520,11 @@ begin
 end;
 
 function TScope.GetDeclArray(Recursively: Boolean): TIDDeclArray;
-var
-  i: Integer;
-  Node: PAVLNode;
 begin
   SetLength(Result, Count);
-  i := 0;
-  Node := First;
-  while Assigned(Node) do
-  begin
-    Result[i] := TIDDeclaration(Node.Data);
-    Inc(i);
-    Node := Next(Node);
-  end;
+  for var LIndex := 0 to Count -1 do
+    Result[LIndex] := Items[LIndex];
+
   if Recursively and Assigned(Parent) then
     Result := Parent.GetDeclArray(Recursively) + Result;
 end;
