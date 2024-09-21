@@ -292,6 +292,7 @@ type
     procedure GENERIC_INVALID_CONSTRAINT(ActualToken: TTokenID);
 
     class procedure E2185_CANNOT_SPECIFY_DISPID(const AMethodID: TIdentifier);
+    class procedure E2232_INTERFACE_HAS_NO_INTERFACE_IDENTIFICATION(ADecl: TIDDeclaration);
 
     procedure PROCEDURE_CANNOT_HAVE_RESULT;
     procedure BREAK_OR_CONTINUE_ALLOWED_ONLY_IN_LOOPS;
@@ -575,6 +576,11 @@ class procedure TASTDelphiErrors.E2185_CANNOT_SPECIFY_DISPID(const AMethodID: TI
 begin
   AbortWork('E2185 Overriding automated virtual method ''%s'' cannot specify a dispid',
     [AMethodID.Name], AMethodID.TextPosition);
+end;
+
+class procedure TASTDelphiErrors.E2232_INTERFACE_HAS_NO_INTERFACE_IDENTIFICATION(ADecl: TIDDeclaration);
+begin
+  AbortWork('E2232 Interface ''%s'' has no interface identification', [ADecl.Name], ADecl.TextPosition);
 end;
 
 procedure TASTDelphiErrors.EMPTY_EXPRESSION;

@@ -1038,6 +1038,9 @@ type
     property item[index: Integer]: IMyDisp readonly dispid 0; default;
   end;
 
+const
+  CX = IMyDisp;
+
 initialization
   Test0;
   AliasTest;

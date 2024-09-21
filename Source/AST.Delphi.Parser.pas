@@ -50,6 +50,7 @@ uses
 // Winapi.PropSys
 // Winapi.MSXMLIntf
 // Winapi.ShlObj
+// Winapi.ImageHlp
 // AnsiStrings
 // Character
 // Vcl.ImgList
@@ -328,7 +329,8 @@ type
     function ParseClassType(Scope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier; out Decl: TIDClass): TTokenID;
     function ParseTypeMember(Scope: TScope; Struct: TIDStructure): TTokenID;
     function ParseClassOfType(Scope: TScope; const ID: TIdentifier; out Decl: TIDClassOf): TTokenID;
-    function ParseInterfaceType(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier; out Decl: TIDInterface): TTokenID;
+    function ParseInterfaceType(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor;
+                                ADispInterface: Boolean; const ID: TIdentifier; out Decl: TIDInterface): TTokenID;
     function ParseIntfGUID(Scope: TScope; Decl: TIDInterface): TTokenID;
     //=======================================================================================================================
     function ParseTypeRecord(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
@@ -883,10 +885,8 @@ begin
     // interface
     /////////////////////////////////////////////////////////////////////////
     token_interface,
-    token_dispinterface: begin
-      Result := ParseInterfaceType(Scope, nil, GDescriptor, ID, TIDInterface(Decl));
-      TIDInterface(Decl).IsDisp := (LTokenID = token_dispinterface);
-    end;
+    token_dispinterface:
+      Result := ParseInterfaceType(Scope, nil, GDescriptor, (LTokenID = token_dispinterface), ID, TIDInterface(Decl));
     /////////////////////////////////////////////////////////////////////////
     // other
     /////////////////////////////////////////////////////////////////////////
@@ -5359,7 +5359,20 @@ begin
     end;
     CheckConstExpression(LExpr);
 
-    LConst := LExpr.AsConst;
+    // the const is an interface guid
+    if LExpr.ItemType = itType then
+    begin
+      if LExpr.AsType.DataTypeID = dtInterface then
+      begin
+        var LIntfDecl := LExpr.AsType.Original as TIDInterface;
+        LConst := LIntfDecl.GuidDecl;
+        if not Assigned(LConst) then
+          ERRORS.E2232_INTERFACE_HAS_NO_INTERFACE_IDENTIFICATION(LIntfDecl);
+      end else
+        ERRORS.CONST_EXPRESSION_REQUIRED(LExpr);
+    end else
+      LConst := LExpr.AsConst;
+
     if LConst.IsAnonymous then
       LConst.ID := LConstID
     else begin
@@ -9449,13 +9462,14 @@ begin
   InitProc.LastBodyLine := Lexer_Line;
 end;
 
-function TASTDelphiUnit.ParseInterfaceType(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier;
-  out Decl: TIDInterface): TTokenID;
+function TASTDelphiUnit.ParseInterfaceType(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor;
+  ADispInterface: Boolean; const ID: TIdentifier; out Decl: TIDInterface): TTokenID;
 var
   Expr: TIDExpression;
   SearchName: string;
 begin
   Decl := TIDInterface(ParseGenericTypeDecl(Scope, GDescriptor, ID, TIDInterface));
+  Decl.IsDisp := ADispInterface;
 
   Result := Lexer_NextToken(Scope);
 
@@ -9504,25 +9518,29 @@ end;
 
 function TASTDelphiUnit.ParseIntfGUID(Scope: TScope; Decl: TIDInterface): TTokenID;
 var
-  UID: TIDExpression;
-  GUID: TGUID;
+  LUIDStrExpr: TIDExpression;
+  LGUIDConst: TIDGuidConstant;
+  LGUID: TGUID;
 begin
   Lexer_NextToken(Scope);
   if Lexer_IdentifireType = itString then
   begin
-    Result := ParseConstExpression(Scope, UID, ExprNested);
-    CheckEmptyExpression(UID);
-    CheckStringExpression(UID);
+    Result := ParseConstExpression(Scope, {out} LUIDStrExpr, ExprNested);
+    CheckEmptyExpression(LUIDStrExpr);
+    CheckStringExpression(LUIDStrExpr);
 
     try
-      GUID := StringToGUID(UID.AsStrConst.Value);
+      LGUID := StringToGUID(LUIDStrExpr.AsStrConst.Value);
     except
       AbortWork('Invalid GUID', Lexer_Position);
     end;
 
-    Decl.GUID := GUID;
-
     Lexer_MatchToken(Result, token_closeblock);
+    
+    LGUIDConst := TIDGuidConstant.CreateAsAnonymous(Scope, Sys._GuidType, LGUID);
+    LGUIDConst.TextPosition := Lexer_Position;
+    Decl.GUIDDecl := LGUIDConst;
+
     Result := Lexer_NextToken(Scope);
   end else
     Result := ParseAttribute(Scope);
@@ -10150,7 +10168,7 @@ end;
 
 procedure TASTDelphiUnit.CheckConstExpression(Expression: TIDExpression);
 begin
-  if not (Expression.Declaration.ItemType in [itConst, itProcedure]) then
+  if not (Expression.Declaration.ItemType in [itConst, itType, itProcedure]) then
     ERRORS.CONST_EXPRESSION_REQUIRED(Expression);
 end;
 

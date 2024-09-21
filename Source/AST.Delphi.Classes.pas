@@ -58,6 +58,7 @@ type
   TIDField = class;
   TIDArray = class;
   TIDConstant = class;
+  TIDGuidConstant = class;
   TIDStructure = class;
   TIDClass = class;
   TIDClassOf = class;
@@ -869,14 +870,14 @@ type
   {interface}
   TIDInterface = class(TIDStructure)
   private
-    FGUID: TGUID;
     FIsDisp: Boolean;
+    FGUIDDecl: TIDGuidConstant;
   protected
     function GetIsManaged: Boolean; override;
     function GetStructKeyword: string; override;
   public
     constructor Create(Scope: TScope; const Name: TIdentifier); override;
-    property GUID: TGUID read FGUID write FGUID;
+    property GUIDDecl: TIDGuidConstant read FGUIDDecl write FGUIDDecl;
     property IsDisp: Boolean read FIsDisp write FIsDisp;
     function MatchImplicitTo(ADst: TIDType): Boolean; override;
     function MatchImplicitFrom(ASrc: TIDType): Boolean; override;
@@ -7757,7 +7758,7 @@ end;
 
 function TIDGuidConstant.AsString: string;
 begin
-  Result := GUIDToString(FValue);
+  Result := '[' + GUIDToString(FValue) + ']';
 end;
 
 function TIDGuidConstant.AsVariant: Variant;

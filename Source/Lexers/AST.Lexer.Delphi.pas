@@ -469,7 +469,7 @@ begin
   RegisterToken('platform', token_platform, TTokenClass.AmbiguousPriorityIdentifier);
   RegisterToken('raise', token_raise);
   RegisterToken('read', token_read, TTokenClass.AmbiguousPriorityKeyword);
-  RegisterToken('readonly', token_readonly, TTokenClass.AmbiguousPriorityKeyword);
+  RegisterToken('readonly', token_readonly, TTokenClass.AmbiguousPriorityIdentifier);
   RegisterToken('record', token_record);
   RegisterToken('reference', token_reference, TTokenClass.AmbiguousPriorityIdentifier);
   RegisterToken('repeat', token_repeat);
