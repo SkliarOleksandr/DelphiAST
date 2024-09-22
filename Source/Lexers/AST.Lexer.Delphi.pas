@@ -462,7 +462,8 @@ begin
   RegisterToken('procedure', token_procedure);
   RegisterToken('program', token_program);
   RegisterToken('property', token_property);
-  RegisterToken('protected', token_protected, TTokenClass.AmbiguousPriorityKeyword);
+  // TODO: rework Ambiguous
+  RegisterToken('protected', token_protected{, TTokenClass.AmbiguousPriorityKeyword});
   RegisterToken('program', token_program);
   RegisterToken('private', token_private);
   RegisterToken('public', token_public);
