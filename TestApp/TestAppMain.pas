@@ -521,6 +521,7 @@ begin
 
   BreakpointOnError := BreakpointOnErrorCheck.Checked;
 
+  Screen.Cursor := crHourGlass;
   var Msg := TStringList.Create;
   try
     var LStartedAt := Now;
@@ -544,6 +545,7 @@ begin
     ErrMemo.CaretY := ErrMemo.Lines.Count;
     ErrMemo.CaretX := 1;
   finally
+    Screen.Cursor := crDefault;
     Msg.Free;
   end;
 end;

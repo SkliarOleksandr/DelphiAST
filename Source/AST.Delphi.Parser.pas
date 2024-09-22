@@ -53,9 +53,12 @@ uses
 // Winapi.ImageHlp
 // AnsiStrings
 // Character
+// Vcl.Forms
 // Vcl.ImgList
 // Vcl.ActnList
 // Vcl.Controls
+// Vcl.StdCtrls
+// Vcl.ComCtrls
 
 type
 
@@ -408,6 +411,9 @@ type
     function ParseGoToStatement(Scope: TScope; const SContext: TSContext): TTokenID;
     function ParseASMStatement(Scope: TScope; const SContext: TSContext): TTokenID;
     function ParseProperty(Scope: TScope; Struct: TIDStructure): TTokenID;
+    function ParsePropertyGetter(Scope: TScope; AProp: TIDProperty): TTokenID;
+    function ParsePropertySetter(Scope: TScope; AProp: TIDProperty): TTokenID;
+    function ParsePropertyStored(Scope: TScope; AProp: TIDProperty): TTokenID;
     function ParseVarDefaultValue(Scope: TScope; DataType: TIDType; out DefaultValue: TIDExpression): TTokenID;
     function ParseVarStaticArrayDefaultValue(Scope: TScope; ArrType: TIDArray; out DefaultValue: TIDExpression): TTokenID;
     function ParseVarRecordDefaultValue(Scope: TScope; Struct: TIDStructure; out DefaultValue: TIDExpression): TTokenID;
@@ -1041,7 +1047,7 @@ begin
   Result := Lexer_NextToken(Scope);
   if Result = token_helper then
   begin
-    Result := ParseTypeHelper(Scope, GenericScope, GDescriptor, ID, TDlphHelper(Decl));
+    Result := ParseTypeHelper(Scope, GenericScope, GDescriptor, ID, {out} TDlphHelper(Decl));
     Exit;
   end;
 
@@ -1066,7 +1072,7 @@ function TASTDelphiUnit.ParseTypeSpec(Scope: TScope; out DataType: TIDType): TTo
 var
   Decl: TIDDeclaration;
   SearchScope: TScope;
-  LPossibleUnitName: string;
+  LCompoundIDName: string;
 begin
   Result := Lexer_NextToken(Scope);
   if (Result = token_identifier) and (Lexer_IdentifireType = itIdentifier) then
@@ -1088,23 +1094,31 @@ begin
         Decl := DataType;
       end else
       begin
-        LPossibleUnitName := AddStringSegment(LPossibleUnitName, ID.Name, '.');
+        LCompoundIDName := AddStringSegment(LCompoundIDName, ID.Name, '.');
 
         if SearchScope = nil then
-          Decl := FindIDNoAbort(Scope, ID)
+          Decl := FindIDNoAbort(Scope, LCompoundIDName)
         else begin
           Decl := SearchScope.FindMembers(ID.Name);
           // in case we have no found an id, let's assume that it can be a unit name
           if not Assigned(Decl) then
           begin
-            Decl := FindIDNoAbort(Scope, LPossibleUnitName);
+            Decl := FindIDNoAbort(Scope, LCompoundIDName);
             if Assigned(Decl) then
               SearchScope := nil;
           end;
         end;
 
         if not Assigned(Decl) then
-          ERRORS.UNDECLARED_ID(ID);
+        begin
+          if Result = token_dot then
+          begin
+            // probably it's compound unit name
+            Lexer_NextToken(Scope);
+            Continue;
+          end else
+            ERRORS.UNDECLARED_ID(ID);
+        end;
 
         // workaround for a case when param or field can be named as type
         if Decl.ItemType = itVar then
@@ -4845,47 +4859,20 @@ begin
       CheckEmptyExpression(LIndexValue);
       Prop.IndexValue := LIndexValue.AsConst;
       // create "index" param for the propery
+      if not Assigned(Prop.Params) then
+        Prop.Params := TParamsScope.Create(stLocal, Scope);
       var LIndexParam := TIDParam.CreateAsSystem(Prop.Scope, 'Index');
       LIndexParam.DataType := fSysDecls._Int32;
-      IndexedPropParams := IndexedPropParams + [LIndexParam];
+      Prop.Params.AddExplicitParam(LIndexParam);
     end;
 
     // getter
     if Result = token_read then
-    begin
-      InitEContext(EContext, SContext, ExprRValue);
-      Lexer_NextToken(Scope);
-      Result := ParseExpression(Scope, SContext, EContext, ASTE);
-      Expr := EContext.Result;
-      if Expr.ItemType = itProcedure then
-      begin
-        Proc := Expr.AsProcedure;
-        DataType := Proc.ResultType;
-        if not Assigned(DataType) then
-          AbortWork(sFieldConstOrFuncRequiredForGetter, Expr.TextPosition);
-
-        if Assigned(IndexedPropParams) then
-          MatchPropGetter(Prop, Proc, IndexedPropParams);
-      end else
-        DataType := Expr.DataType;
-
-      CheckImplicitTypes(DataType, PropDataType, Expr.TextPosition);
-      Prop.Getter := Expr.Declaration;
-    end;
+      Result := ParsePropertyGetter(Scope, Prop);
 
     // setter
     if Result = token_write then
-    begin
-      InitEContext(EContext, SContext, ExprRValue);
-      Lexer_NextToken(Scope);
-      Result := ParseExpression(Scope, SContext, EContext, ASTE);
-      Expr := EContext.Result;
-      case Expr.ItemType of
-        itConst: AbortWork(sFieldOrProcRequiredForSetter, Expr.TextPosition);
-        itProcedure: MatchPropSetter(Prop, Expr, IndexedPropParams);
-      end;
-      Prop.Setter := Expr.Declaration;
-    end;
+      Result := ParsePropertySetter(Scope, Prop);
   end;
 
   if LPropRedeclaration then
@@ -4896,9 +4883,20 @@ begin
       var LExistingProp := Struct.Ancestor.FindProperty(ID.Name);
       if not Assigned(LExistingProp) or (LExistingProp.ItemType <> itProperty) then
         ERRORS.PROPERTY_DOES_NOT_EXIST_IN_BASE_CLASS(ID);
-      Prop := LExistingProp;
+
+      Prop.Getter := LExistingProp.Getter;
+      Prop.Setter := LExistingProp.Setter;
+      Prop.DataType := LExistingProp.DataType;
     end else
       ERRORS.PROPERTY_DOES_NOT_EXIST_IN_BASE_CLASS(ID);
+
+    // getter
+    if Result = token_read then
+      Result := ParsePropertyGetter(Scope, Prop);
+
+    // setter
+    if Result = token_write then
+      Result := ParsePropertySetter(Scope, Prop);
 
     // property index value (note: index is ambiguous keyword)
     // note: can only be after the property name (and looks like a Delphi bug)
@@ -4913,20 +4911,7 @@ begin
 
   // stored propery (note: stored is ambiguous keyword)
   if Lexer_IsCurrentToken(token_stored) then
-  begin
-    var LStoredExpr: TIDExpression;
-    Lexer_NextToken(Scope);
-    Result := ParseConstExpression(Scope, {out} LStoredExpr, ExprRValue);
-    CheckEmptyExpression(LStoredExpr);
-    if LStoredExpr.IsProcedure then
-    begin
-      // check "stored" function signature
-      if not Assigned(LStoredExpr.AsProcedure.ResultType) or
-         (LStoredExpr.AsProcedure.ResultType.DataTypeID <> dtBoolean) then
-        ERRORS.BOOLEAN_EXPRESSION_REQUIRED(LStoredExpr);
-    end else
-      CheckBooleanExpression(LStoredExpr);
-  end;
+    Result := ParsePropertyStored(Scope, Prop);
 
   // regular property default value (note: default is ambiguous keyword)
   if Lexer_IsCurrentToken(token_default) then
@@ -4935,7 +4920,9 @@ begin
     Lexer_NextToken(Scope);
     Result := ParseConstExpression(Scope, {out} LDefaultExpr, ExprRValue);
     CheckEmptyExpression(LDefaultExpr);
-  end;
+  end else
+  if Lexer_IsCurrentToken(token_nodefault) then
+    Result := Lexer_NextToken(Scope);
 
   Lexer_MatchToken(Result, token_semicolon);
   Result := Lexer_NextToken(Scope);
@@ -4954,6 +4941,85 @@ begin
     Lexer_ReadSemicolon(Scope);
     Result := Lexer_NextToken(Scope);
   end;
+end;
+
+function TASTDelphiUnit.ParsePropertyGetter(Scope: TScope; AProp: TIDProperty): TTokenID;
+var
+  SContext: TSContext;
+  EContext: TEContext;
+  LExpr: TIDExpression;
+  LDataType: TIDType;
+  ASTE: TASTExpression;
+begin
+  SContext := fUnitSContext;
+  InitEContext(EContext, SContext, ExprRValue);
+  Lexer_NextToken(Scope);
+  Result := ParseExpression(Scope, SContext, EContext, ASTE);
+  LExpr := EContext.Result;
+  if LExpr.ItemType = itProcedure then
+  begin
+    var LIndexedParams: TIDParamArray;
+    if Assigned(AProp.Params) then
+      LIndexedParams := AProp.Params.ExplicitParams;
+
+    var LProc := LExpr.AsProcedure;
+    LDataType := LProc.ResultType;
+    if not Assigned(LDataType) then
+      AbortWork(sFieldConstOrFuncRequiredForGetter, LExpr.TextPosition);
+
+    MatchPropGetter(AProp, LProc, LIndexedParams);
+  end else
+    LDataType := LExpr.DataType;
+
+  CheckImplicitTypes(LDataType, AProp.DataType, LExpr.TextPosition);
+  AProp.Getter := LExpr.Declaration;
+end;
+
+function TASTDelphiUnit.ParsePropertySetter(Scope: TScope; AProp: TIDProperty): TTokenID;
+var
+  SContext: TSContext;
+  EContext: TEContext;
+  LExpr: TIDExpression;
+  ASTE: TASTExpression;
+begin
+  SContext := fUnitSContext;
+  InitEContext(EContext, SContext, ExprRValue);
+  Lexer_NextToken(Scope);
+  Result := ParseExpression(Scope, SContext, EContext, {out} ASTE);
+  LExpr := EContext.Result;
+  var LIndexedParams: TIDParamArray;
+  if Assigned(AProp.Params) then
+    LIndexedParams := AProp.Params.ExplicitParams;
+  case LExpr.ItemType of
+    itVar: {do nothing};  // todo: check scope of the field
+    itProcedure: MatchPropSetter(AProp, LExpr, LIndexedParams);
+  else
+    AbortWork(sFieldOrProcRequiredForSetter, LExpr.TextPosition);
+  end;
+  AProp.Setter := LExpr.Declaration;
+end;
+
+function TASTDelphiUnit.ParsePropertyStored(Scope: TScope; AProp: TIDProperty): TTokenID;
+var
+  SContext: TSContext;
+  EContext: TEContext;
+  LExpr: TIDExpression;
+  ASTE: TASTExpression;
+begin
+  SContext := fUnitSContext;
+  InitEContext(EContext, SContext, ExprRValue);
+  Lexer_NextToken(Scope);
+  Result := ParseExpression(Scope, SContext, {var} EContext, {out} ASTE);
+  LExpr := EContext.Result;
+  CheckEmptyExpression(LExpr);
+  if LExpr.IsProcedure then
+  begin
+    // check "stored" function signature
+    if not Assigned(LExpr.AsProcedure.ResultType) or
+       (LExpr.AsProcedure.ResultType.DataTypeID <> dtBoolean) then
+      ERRORS.BOOLEAN_EXPRESSION_REQUIRED(LExpr);
+  end else
+    CheckBooleanExpression(LExpr);
 end;
 
 procedure TASTDelphiUnit.ParseCondDefine(Scope: TScope; add_define: Boolean);
@@ -5820,12 +5886,20 @@ var
 begin
   Visibility := vPublic;
 
+  Result := Lexer_CurTokenID;
+
+  if Result = token_helper then
+  begin
+    Result := ParseTypeHelper(Scope, nil, GDescriptor, ID, {out} TDlphHelper(Decl));
+    Exit;
+  end;
+
+
   Decl := TIDClass(ParseGenericTypeDecl(Scope, GDescriptor, ID, TIDClass));
 
   if (Self = SYSUnit) and (ID.Name = 'TObject') then
     Sys._TObject := Decl;
 
-  Result := Lexer_CurTokenID;
 
   // semicolon means this is forward declaration
   if Result = token_semicolon then

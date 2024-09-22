@@ -163,6 +163,7 @@ type
     token_constructor,              // keyword: constructor
     token_destructor,               // keyword: destructor
     token_default,                  // keyword: default
+    token_nodefault,                // keyword: nodefault
     token_varargs,                  // keyword: varargs
     token_threadvar,                // keyword: threadvar
     token_label,                    // keyword: label
@@ -414,6 +415,7 @@ begin
   RegisterToken('destructor', token_destructor);
   RegisterToken('deprecated', token_deprecated);
   RegisterToken('default', token_default, TTokenClass.AmbiguousPriorityIdentifier);
+  RegisterToken('nodefault', token_nodefault, TTokenClass.AmbiguousPriorityIdentifier);
   RegisterToken('dynamic', token_dynamic);
   RegisterToken('delayed', token_delayed);
   RegisterToken('end', token_end);
@@ -460,7 +462,7 @@ begin
   RegisterToken('procedure', token_procedure);
   RegisterToken('program', token_program);
   RegisterToken('property', token_property);
-  RegisterToken('protected', token_protected);
+  RegisterToken('protected', token_protected, TTokenClass.AmbiguousPriorityKeyword);
   RegisterToken('program', token_program);
   RegisterToken('private', token_private);
   RegisterToken('public', token_public);
