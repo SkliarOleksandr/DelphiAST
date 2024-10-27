@@ -2022,7 +2022,8 @@ type
   function GetBoolResultExpr(ExistExpr: TIDExpression): TIDBoolResultExpression;
   function GetItemTypeName(ItemType: TIDItemType): string;
 
-  function SameTypes(ASrcType, ADstType: TIDType; AStrictCheck: Boolean = False): Boolean;
+  function SameTypes(ASrcType, ADstType: TIDType): Boolean;
+  function SameProcSignTypes(ASrcType, ADstType: TIDType): Boolean;
   function IsGenericTypeThisStruct(Scope: TScope; Struct: TIDType): Boolean;
   function GenericNeedsInstantiate(AGenericArgs: TIDExpressions): Boolean;
 
@@ -2045,6 +2046,7 @@ const
   function IsClassProc(AProcType: TProcType): Boolean; inline;
 
   function IsGenericArgMatch(ATypeArg: TIDType; const AGenericParam: TIDGenericParam): Boolean;
+  function CallConventionToStr(AConvention: TCallConvention): string;
 
 implementation
 
@@ -2893,7 +2895,7 @@ begin
   begin
     var LParam1 := ExplicitParams[LIndex];
     var LParam2 := AParams[LIndex];
-    if not SameTypes(LParam1.DataType, LParam2.DataType, {AStrictCheck:} True) or
+    if not SameProcSignTypes(LParam1.DataType, LParam2.DataType) or
        (ACheckNames and not SameText(LParam1.Name, LParam2.Name))
     then
       Exit(False);
@@ -2971,11 +2973,19 @@ begin
   Result := Result + '<' + ps + '>';
 end;
 
-function GenericArgsAsText(const AArguments: TIDExpressions): string;
+function GenericArgsAsText(const AArguments: TIDExpressions): string; overload;
 begin
   var LStr := '';
   for var LIndex := 0 to Length(AArguments) - 1 do
     LStr := AddStringSegment(LStr, AArguments[LIndex].DisplayName, ', ');
+  Result := '<' + LStr + '>';
+end;
+
+function GenericArgsAsText(const AArguments: TIDTypeArray): string; overload;
+begin
+  var LStr := '';
+  for var LIndex := 0 to Length(AArguments) - 1 do
+    LStr := AddStringSegment(LStr, AArguments[LIndex].Name, ', ');
   Result := '<' + LStr + '>';
 end;
 
@@ -3176,6 +3186,12 @@ begin
 
   if pfInline in FProcFlags then
     ABuilder.Append(' inline;');
+
+  if CallConvention > ConvNative then
+  begin
+    ABuilder.Append(' ');
+    ABuilder.Append(CallConventionToStr(CallConvention));
+  end;
 
   GenericInstances2Str(ABuilder, ANestedLevel);
 
@@ -5888,15 +5904,21 @@ end;
 
 procedure TIDDynArray.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
-  ABuilder.Append(' ', ANestedLevel*2);
-  ABuilder.Append('type ');
-  ABuilder.Append(DisplayName);
+  if AAppendName then
+  begin
+    ABuilder.Append(' ', ANestedLevel*2);
+    ABuilder.Append('type ');
+    ABuilder.Append(DisplayName);
+  end;
+
   ABuilder.Append(' = array of ');
   TypeNameToString(ElementDataType, ABuilder);
 
-  GenericInstances2Str(ABuilder, ANestedLevel);
-
-  GenericOverloads2Str(ABuilder, ANestedLevel);
+  if AAppendName then
+  begin
+    GenericInstances2Str(ABuilder, ANestedLevel);
+    GenericOverloads2Str(ABuilder, ANestedLevel);
+  end;
 end;
 
 function TIDDynArray.GetHelperScope: TScope;
@@ -7036,9 +7058,16 @@ end;
 function TIDClass.FindInterface(const AIntfName: string;
                                 const AGenericParams: TIDTypeArray): TIDInterface;
 begin
+  var LFullIntfName := AIntfName;
+  if Length(AGenericParams) > 0 then
+    LFullIntfName := LFullIntfName + GenericArgsAsText(AGenericParams);
+
   for var LIndex := 0 to FInterfaces.Count - 1 do
   begin
     var LIntf := FInterfaces[LIndex];
+    if SameText(LIntf.Name, LFullIntfName) then
+      Exit(LIntf)
+    else
     if SameText(LIntf.Name, AIntfName) then
     begin
       if (
@@ -8192,23 +8221,9 @@ begin
   Result := fStructType.Name + '$record_init';
 end;
 
-function SameTypes(ASrcType, ADstType: TIDType; AStrictCheck: Boolean): Boolean;
-
-  function GetActualType(AType: TIDType): TIDType;
-  begin
-    if (AType is TIDAliasType) and not TIDAliasType(AType).NewType then
-      Result := AType.ActualDataType
-    else
-      Result := AType;
-  end;
-
+function SameTypes(ASrcType, ADstType: TIDType): Boolean;
 begin
-  // AStrictCheck is needed for resolving aliases
-  if AStrictCheck then
-    Result := GetActualType(ASrcType) = GetActualType(ADstType)
-  else
-    Result := ASrcType.ActualDataType = ADstType.ActualDataType;
-
+  Result := ASrcType.ActualDataType = ADstType.ActualDataType;
   if not Result then
   begin
     if ASrcType.IsGeneric and ADstType.IsGeneric then
@@ -8226,7 +8241,7 @@ begin
                    ((ASrcType.ClassType = TIDGenericParam) and
                     (ADstType.ClassType = TIDGenericInstantiation));
     end else
-      Result := ADstType.IsGeneric and not AStrictCheck;
+      Result := ADstType.IsGeneric;
 
     if not Result then
     begin
@@ -8237,6 +8252,34 @@ begin
           Result := SameTypes(TIDArray(ASrcType).ElementDataType,
                               TIDArray(ADstType).ElementDataType);
       end;
+    end;
+  end;
+end;
+
+function SameProcSignTypes(ASrcType, ADstType: TIDType): Boolean;
+
+  function GetActualType(AType: TIDType): TIDType;
+  begin
+    if (AType is TIDAliasType) and not TIDAliasType(AType).NewType then
+      Result := AType.ActualDataType
+    else
+      Result := AType;
+  end;
+
+begin
+  Result := GetActualType(ASrcType) = GetActualType(ADstType);
+  if not Result then
+  begin
+    if (ASrcType.ClassType = TIDGenericParam) and
+       (ADstType.ClassType = TIDGenericParam) then
+      Result := (ASrcType.Name = ADstType.Name)
+    else
+    if (ASrcType is TIDArray) and (ADstType is TIDArray) then
+    begin
+      if (ADstType.DataTypeID = dtOpenArray) or
+         (ASrcType.DataTypeID = ADstType.DataTypeID) then
+        Result := SameProcSignTypes(TIDArray(ASrcType).ElementDataType,
+                                    TIDArray(ADstType).ElementDataType);
     end;
   end;
 end;
@@ -8368,13 +8411,17 @@ begin
     ABuilder.Append('out ');
 
   ABuilder.Append(DisplayName);
-  ABuilder.Append(': ');
-  TypeNameToString(DataType, ABuilder);
-  
-  if Assigned(DefaultValue) then
+
+  if not (DataType is TIDUntypedRef) then
   begin
-    ABuilder.Append(' = ');
-    ABuilder.Append(DefaultValue.Text);
+    ABuilder.Append(': ');
+    TypeNameToString(DataType, ABuilder);
+
+    if Assigned(DefaultValue) then
+    begin
+      ABuilder.Append(' = ');
+      ABuilder.Append(DefaultValue.Text);
+    end;
   end;
 end;
 
@@ -8421,6 +8468,19 @@ end;
 function TIDCallExpression.GetProc: TIDProcedure;
 begin
   Result := fDeclaration as TIDProcedure;
+end;
+
+function CallConventionToStr(AConvention: TCallConvention): string;
+begin
+  case AConvention of
+    ConvRegister: Result := 'register';
+    ConvStdCall: Result := 'stdcall';
+    ConvCDecl: Result := 'cdecl';
+    ConvFastCall: Result := 'fastcall';
+    ConvSafeCall: Result := 'safecall';
+  else
+    Result := '';
+  end;
 end;
 
 initialization

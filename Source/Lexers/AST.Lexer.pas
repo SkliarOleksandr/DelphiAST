@@ -49,10 +49,8 @@ type
 
   // Token Class
   TTokenClass = (
-    StrongKeyword,                  // Strong keyword
-    AmbiguousPriorityKeyword,       // Can be keyword or id, returns as keyword
-    AmbiguousPriorityIdentifier{,    // Can be keyword or id, returns as id
-    Ambiguous                       // Can be keyword or id, returns as ambiguous}
+    tcStrongKeyword,   // strong reserved keyword
+    tcWeakKeyword      // weak reserved keyword (treated as identifier by default)
   );
 
 type
@@ -142,9 +140,9 @@ type
     fCurrentTokenId: Integer;          // The current token Id
     fIdentifireType: TIdentifierType;  // Тип идентификатора (литерал/строка/число/символ)
     property AmbiguousId: Integer read fAmbiguousId write fAmbiguousId;
-    procedure RegisterToken(const Token: string; aTokenID: Integer; aTokenType: TTokenType; const TokenCaption: string = ''); overload;
-    procedure RegisterToken(const Token: string; aTokenID: Integer; aTokenType: TTokenType;
-                            Priority: TTokenClass; const TokenCaption: string = ''); overload;
+    procedure RegisterToken(const Token: string; ATokenID: Integer; ATokenType: TTokenType; const TokenCaption: string = ''); overload;
+    procedure RegisterToken(const Token: string; ATokenID: Integer; ATokenType: TTokenType;
+                            ATokenClass: TTokenClass; const TokenCaption: string = ''); overload;
     //procedure RegisterRemToken(const BeginToken, EndToken: string);
 
     procedure RegisterRemToken(const BeginToken, EndToken: string; BeginTokenID, EndTokenID: Integer);
@@ -701,11 +699,11 @@ end;}
 
 procedure TGenericLexer.RegisterToken(const Token: string; aTokenID: Integer; aTokenType: TTokenType; const TokenCaption: string);
 begin
-  RegisterToken(Token, aTokenID, aTokenType, TTokenClass.StrongKeyword, TokenCaption);
+  RegisterToken(Token, aTokenID, aTokenType, tcStrongKeyword, TokenCaption);
 end;
 
-procedure TGenericLexer.RegisterToken(const Token: string; aTokenID: Integer; aTokenType: TTokenType;
-                                      Priority: TTokenClass; const TokenCaption: string);
+procedure TGenericLexer.RegisterToken(const Token: string; ATokenID: Integer; ATokenType: TTokenType;
+                                      ATokenClass: TTokenClass; const TokenCaption: string);
 var
   i, j, c, c2: Integer;
   pToken, pt: PCharToken;
@@ -742,7 +740,7 @@ begin
   end;
   pToken.TokenType := aTokenType;
   pToken.TokenID := aTokenID;
-  pToken.TokenClass := Priority;
+  pToken.TokenClass := ATokenClass;
   if TokenCaption <> '' then
     s := TokenCaption
   else
@@ -779,20 +777,11 @@ function TGenericLexer.GetNextTokenId: Integer;
 begin
   Result := MoveNextInternal();
   fAmbiguousTokenId := Result;
-  case CurToken.TokenClass of
-    TTokenClass.AmbiguousPriorityIdentifier: begin
-      fCurrentTokenId := fIdentifireId;
-      fIdentifireType := itIdentifier;
-      Exit(fIdentifireId);
-    end;
-    TTokenClass.AmbiguousPriorityKeyword: begin
-      fIdentifireType := itIdentifier;
-    end;
-//    TTokenClass.Ambiguous: begin
-//      fCurrentTokenId := fAmbiguousId;
-//      fIdentifireType := itIdentifier;
-//      Exit(fAmbiguousId);
-//    end;
+  if CurToken.TokenClass = tcWeakKeyword then
+  begin
+    fCurrentTokenId := fIdentifireId;
+    fIdentifireType := itIdentifier;
+    Exit(fIdentifireId);
   end;
 end;
 

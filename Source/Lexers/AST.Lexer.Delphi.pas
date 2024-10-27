@@ -12,7 +12,6 @@ type
     token_unknown {=0},             // unknown token
     token_eof,                      // end of file
     token_identifier,               // some id
-//    token_id_or_keyword,            // ambiguous token: id or keyword
 
     token_numbersign,               // #
     token_semicolon,                // ;
@@ -53,27 +52,27 @@ type
     token_closeround_asteriks,      // *)
 
     token_at,                       // keyword: at
-    token_absolute,                 // keyword: absolute
-    token_abstract,                 // keyword: abstract
-    token_aling,                    // keyword: align
+    tokenD_absolute,                // directive: absolute
+    tokenD_abstract,                // directive: abstract
+    tokenD_aling,                   // directive: align
     token_asm,                      // keyword: asm
-    token_stdcall  {=40},           // keyword: stdcall
-    token_fastcall,                 // keyword: fastcall
-    token_cdecl,                    // keyword: cdecl
-    token_safecall,                 // keyword: safecall
+    tokenD_stdcall  {=40},          // directive: stdcall
+    tokenD_fastcall,                // directive: fastcall
+    tokenD_cdecl,                   // directive: cdecl
+    tokenD_safecall,                // directive: safecall
     token_unit,                     // keyword: unit
     token_uses,                     // keyword: uses
 
     token_program,                  // keyword: program
     token_library,                  // keyword: library
 
-    token_export,                   // keyword: export
-    token_exports,                  // keyword: exports
-    token_external,                 // keyword: extern
-    token_name  {=50},              // keyword: name
+    tokenD_export,                  // directive: export
+    tokenD_exports,                 // directive: exports
+    tokenD_external,                // directive: extern
+    tokenD_name  {=50},             // directive: name
     token_interface,                // keyword: interface
     token_dispinterface,            // keyword: dispinterface
-    token_dispid,                   // keyword: dispid
+    tokenD_dispid,                  // directive: dispid
     token_implementation,           // keyword: implementation
     token_implement,                // keyword: implementation
     token_initialization,           // keyword: initialization
@@ -81,35 +80,31 @@ type
     token_begin,                    // keyword: begin
     token_end,                      // keyword: end
     token_var,                      // keyword: var
-    token_out,                      // keyword: out
+    tokenD_out,                     // directive: out
     token_const,                    // keyword: const
     token_procedure,                // keyword: procedure
     token_function,                 // keyword: function
-    token_overload,                 // keyword: overload
-    token_override,                 // keyword: override
-    token_message,                  // keyword: message
+    tokenD_overload,                // directive: overload
+    tokenD_override,                // directive: override
+    tokenD_message,                 // directive: message
     token_type,                     // keyword: type
     token_class,                    // keyword: class
     token_record,                   // keyword: record
     token_packed,                   // keyword: packed
-    token_package,                  // keyword: package
+    tokenD_package,                 // directive: package
     token_set,                      // keyword: set
-    token_sealed,                   // keyword: sealed
+    tokenD_sealed,                  // directive: sealed
     token_array,                    // keyword: array
     token_if,                       // keyword: if
     token_in,                       // keyword: in
-    token_index,                    // keyword: index
+    tokenD_index,                   // directive: index
     token_inline,                   // keyword: inline
     token_is,                       // keyword: is
     token_then,                     // keyword: if
     token_else,                     // keyword: else
-    token_forward,                  // keyword: forward
-    token_helper,                   // keyword: helper
-    token_stored,                   // keyword: stored
-
-    // made as built-in procedures
-    // token_continue,                 // keyword: continue
-    // token_break,                    // keyword: break
+    tokenD_forward,                 // directive: forward
+    tokenD_helper,                  // directive: helper
+    tokenD_stored,                  // directive: stored
 
     token_not,                      // keyword: not
     token_and,                      // keyword: and
@@ -128,43 +123,42 @@ type
     token_do,                       // keyword: do
     token_deprecated,               // keyword: depricated
     token_while,                    // keyword: while
-    token_weak,                     // keyword: weak
-    token_reference,                // keyword: reference
+    tokenD_reference,               // directive: reference
     token_repeat,                   // keyword: repeat
-    token_reintroduce,              // keyword: reintroduce
+    tokenD_reintroduce,             // directive: reintroduce
     token_until,                    // keyword: until
     token_with,                     // keyword: until
     token_case,                     // keyword: case
     token_of,                       // keyword: of
-    token_on,                       // keyword: on
+    tokenD_on,                      // directive: on
     token_object,                   // keyword: object
-    token_operator,                 // keyword: operator
+    tokenD_operator,                // directive: operator
     token_try,                      // keyword: try
-    token_final,                    // keyword: final
+    tokenD_final,                   // directive: final
     token_finally,                  // keyword: finally
     token_except,                   // keyword: except
     token_raise,                    // keyword: raise
-    token_strict,                   // keyword: strict
+    tokenD_strict,                  // directive: strict
     token_property,                 // keyword: property
-    token_private,                  // keyword: private
-    token_protected,                // keyword: protected
-    token_public,                   // keyword: public
-    token_published,                // keyword: published
-    token_platform,                 // keyword: platform
-    token_read,                     // keyword: read
-    token_readonly,                 // keyword: readonly
-    token_write,                    // keyword: write
-    token_writeonly,                // keyword: writeonly
+    tokenD_private,                 // directive: private
+    tokenD_protected,               // directive: protected
+    tokenD_public,                  // directive: public
+    tokenD_published,               // directive: published
+    tokenD_platform,                // keyword: platform
+    tokenD_read,                    // keyword: read
+    tokenD_readonly,                // keyword: readonly
+    tokenD_write,                   // keyword: write
+    tokenD_writeonly,               // keyword: writeonly
     token_inherited,                // keyword: inherited
-    token_virtual,                  // keyword: virtual
-    token_dynamic,                  // keyword: dynamic
-    token_delayed,                  // keyword: delayed
-    token_static,                   // keyword: static
+    tokenD_virtual,                 // directive: virtual
+    tokenD_dynamic,                 // directive: dynamic
+    tokenD_delayed,                 // directive: delayed
+    tokenD_static,                  // directive: static
     token_constructor,              // keyword: constructor
     token_destructor,               // keyword: destructor
-    token_default,                  // keyword: default
-    token_nodefault,                // keyword: nodefault
-    token_varargs,                  // keyword: varargs
+    tokenD_default,                 // directive: default
+    tokenD_nodefault,               // directive: nodefault
+    tokenD_varargs,                 // directive: varargs
     token_threadvar,                // keyword: threadvar
     token_label,                    // keyword: label
     token_goto,                     // keyword: goto
@@ -198,7 +192,7 @@ type
     procedure RegisterToken(const Token: string; TokenID: TTokenID; const TokenCaption:
                             string; TokenType: TTokenType = ttToken); overload;
     procedure RegisterToken(const Token: string; TokenID: TTokenID;
-                            Priority: TTokenClass = TTokenClass.StrongKeyword); overload;
+                            Priority: TTokenClass = tcStrongKeyword); overload;
     procedure ReadCurrIdentifier(var Identifier: TIdentifier); inline;
     procedure ReadNextIdentifier(var Identifier: TIdentifier); inline;
     procedure MatchToken(ActualToken, ExpectedToken: TTokenID); inline;
@@ -216,7 +210,7 @@ uses AST.Delphi.Errors, AST.Parser.Utils;
 
 function TDelphiLexer.TokenCanBeID(TokenID: TTokenID): Boolean;
 begin
-  Result := (TokenID = token_identifier) or (CurToken.TokenClass <> TTokenClass.StrongKeyword);
+  Result := (TokenID = token_identifier) or (CurToken.TokenClass = tcWeakKeyword);
 end;
 
 procedure TDelphiLexer.ReadCurrIdentifier(var Identifier: TIdentifier);
@@ -333,7 +327,7 @@ end;
 
 procedure TDelphiLexer.RegisterToken(const Token: string; TokenID: TTokenID; const TokenCaption: string; TokenType: TTokenType);
 begin
-  inherited RegisterToken(Token, Integer(TokenID), TokenType, TTokenClass.StrongKeyword, TokenCaption);
+  inherited RegisterToken(Token, Integer(TokenID), TokenType, tcStrongKeyword, TokenCaption);
 end;
 
 procedure TDelphiLexer.RegisterToken(const Token: string; TokenID: TTokenID; Priority: TTokenClass);
@@ -393,52 +387,50 @@ begin
   RegisterToken('@', token_address);
   RegisterToken('&', token_ampersand);
   RegisterToken(':=', token_assign);
-  RegisterToken('at', token_at, TTokenClass.AmbiguousPriorityIdentifier);
-  RegisterToken('absolute', token_absolute, TTokenClass.AmbiguousPriorityKeyword);
-  RegisterToken('abstract', token_abstract);
-  RegisterToken('align', token_aling, TTokenClass.AmbiguousPriorityIdentifier);
+  RegisterToken('at', token_at, tcWeakKeyword);
+  RegisterToken('absolute', tokenD_absolute, tcWeakKeyword);
+  RegisterToken('abstract', tokenD_abstract, tcWeakKeyword);
+  RegisterToken('align', tokenD_aling, tcWeakKeyword);
   RegisterToken('as', token_as);
   RegisterToken('asm', token_asm);
   RegisterToken('and', token_and);
   RegisterToken('array', token_array);
   RegisterToken('begin', token_begin);
-  //RegisterToken('break', token_break);
   RegisterToken('case', token_case);
-  RegisterToken('cdecl', token_cdecl);
+  RegisterToken('cdecl', tokenD_cdecl, tcWeakKeyword);
   RegisterToken('const', token_const);
   RegisterToken('constructor', token_constructor);
-  //RegisterToken('continue', token_continue);
   RegisterToken('class', token_class);
   RegisterToken('do', token_do);
   RegisterToken('downto', token_downto);
   RegisterToken('div', token_div);
   RegisterToken('destructor', token_destructor);
   RegisterToken('deprecated', token_deprecated);
-  RegisterToken('default', token_default, TTokenClass.AmbiguousPriorityIdentifier);
-  RegisterToken('nodefault', token_nodefault, TTokenClass.AmbiguousPriorityIdentifier);
-  RegisterToken('dynamic', token_dynamic);
-  RegisterToken('delayed', token_delayed);
+  RegisterToken('default', tokenD_default, tcWeakKeyword);
+  RegisterToken('nodefault', tokenD_nodefault, tcWeakKeyword);
+  RegisterToken('dynamic', tokenD_dynamic, tcWeakKeyword);
+  RegisterToken('delayed', tokenD_delayed, tcWeakKeyword);
   RegisterToken('end', token_end);
   RegisterToken('else', token_else);
   RegisterToken('except', token_except);
-  RegisterToken('export', token_export);
-  RegisterToken('exports', token_exports);
-  RegisterToken('external', token_external);
+  RegisterToken('export', tokenD_export, tcWeakKeyword);
+  RegisterToken('exports', tokenD_exports, tcWeakKeyword);
+  RegisterToken('external', tokenD_external, tcWeakKeyword);
   RegisterToken('function', token_Function);
   RegisterToken('for', token_for);
-  RegisterToken('forward', token_forward);
-  RegisterToken('final', token_final, TTokenClass.AmbiguousPriorityIdentifier);
+  RegisterToken('forward', tokenD_forward, tcWeakKeyword);
+  RegisterToken('final', tokenD_final, tcWeakKeyword);
   RegisterToken('finally', token_finally);
   RegisterToken('finalization', token_finalization);
-  RegisterToken('fastcall', token_fastcall);
+  RegisterToken('fastcall', tokenD_fastcall, tcWeakKeyword);
   RegisterToken('goto', token_goto);
   RegisterToken('if', token_if);
   RegisterToken('is', token_is);
-  RegisterToken('in', token_in, TTokenClass.AmbiguousPriorityKeyword);
-  RegisterToken('index', token_index, TTokenClass.AmbiguousPriorityIdentifier);
+  RegisterToken('in', token_in);
+  RegisterToken('index', tokenD_index, tcWeakKeyword);
   RegisterToken('interface', token_Interface);
   RegisterToken('dispinterface', token_dispinterface);
-  RegisterToken('dispid', token_dispid, TTokenClass.AmbiguousPriorityIdentifier);
+  RegisterToken('dispid', tokenD_dispid, tcWeakKeyword);
   RegisterToken('inherited', token_inherited);
   RegisterToken('inline', token_inline);
   RegisterToken('initialization', token_initialization);
@@ -447,64 +439,61 @@ begin
   RegisterToken('library', token_library);
   RegisterToken('label', token_label);
   RegisterToken('mod', token_mod);
-  RegisterToken('message', token_message, TTokenClass.AmbiguousPriorityIdentifier);
+  RegisterToken('message', tokenD_message, tcWeakKeyword);
   RegisterToken('not', token_not);
-  RegisterToken('name', token_name, TTokenClass.AmbiguousPriorityIdentifier);
+  RegisterToken('name', tokenD_name, tcWeakKeyword);
   RegisterToken('object', token_object);
   RegisterToken('of', token_of);
-  RegisterToken('on', token_on);
+  RegisterToken('on', tokenD_on, tcWeakKeyword);
   RegisterToken('or', token_or);
-  RegisterToken('out', token_out, TTokenClass.AmbiguousPriorityIdentifier);
-  RegisterToken('override', token_override);
-  RegisterToken('overload', token_overload);
-  RegisterToken('operator', token_operator, TTokenClass.AmbiguousPriorityKeyword);
-  RegisterToken('package', token_package, TTokenClass.AmbiguousPriorityIdentifier);
+  RegisterToken('out', tokenD_out, tcWeakKeyword);
+  RegisterToken('override', tokenD_override, tcWeakKeyword);
+  RegisterToken('overload', tokenD_overload, tcWeakKeyword);
+  RegisterToken('operator', tokenD_operator, tcWeakKeyword);
+  RegisterToken('package', tokenD_package, tcWeakKeyword);
   RegisterToken('procedure', token_procedure);
   RegisterToken('program', token_program);
   RegisterToken('property', token_property);
-  // TODO: rework Ambiguous
-  RegisterToken('protected', token_protected{, TTokenClass.AmbiguousPriorityKeyword});
+  RegisterToken('protected', tokenD_protected, tcWeakKeyword);
   RegisterToken('program', token_program);
-  RegisterToken('private', token_private);
-  RegisterToken('public', token_public);
-  RegisterToken('published', token_published);
+  RegisterToken('private', tokenD_private, tcWeakKeyword);
+  RegisterToken('public', tokenD_public, tcWeakKeyword);
+  RegisterToken('published', tokenD_published, tcWeakKeyword);
   RegisterToken('packed', token_packed);
-  RegisterToken('platform', token_platform, TTokenClass.AmbiguousPriorityIdentifier);
+  RegisterToken('platform', tokenD_platform, tcWeakKeyword);
   RegisterToken('raise', token_raise);
-  RegisterToken('read', token_read, TTokenClass.AmbiguousPriorityKeyword);
-  RegisterToken('readonly', token_readonly, TTokenClass.AmbiguousPriorityIdentifier);
+  RegisterToken('read', tokenD_read, tcWeakKeyword);
+  RegisterToken('readonly', tokenD_readonly, tcWeakKeyword);
   RegisterToken('record', token_record);
-  RegisterToken('reference', token_reference, TTokenClass.AmbiguousPriorityIdentifier);
+  RegisterToken('reference', tokenD_reference, tcWeakKeyword);
   RegisterToken('repeat', token_repeat);
   RegisterToken('resourcestring', token_resourcestring);
-  RegisterToken('reintroduce', token_reintroduce);
+  RegisterToken('reintroduce', tokenD_reintroduce, tcWeakKeyword);
   RegisterToken('set', token_set);
-  RegisterToken('sealed', token_sealed);
+  RegisterToken('sealed', tokenD_sealed, tcWeakKeyword);
   RegisterToken('shl', token_shl);
   RegisterToken('shr', token_shr);
-  RegisterToken('static', token_static);
-  RegisterToken('strict', token_strict);
-  RegisterToken('stdcall', token_stdcall);
-  RegisterToken('safecall', token_safecall);
-  RegisterToken('stored', token_stored, TTokenClass.AmbiguousPriorityKeyword);
-
+  RegisterToken('static', tokenD_static, tcWeakKeyword);
+  RegisterToken('strict', tokenD_strict, tcWeakKeyword);
+  RegisterToken('stdcall', tokenD_stdcall, tcWeakKeyword);
+  RegisterToken('safecall', tokenD_safecall, tcWeakKeyword);
+  RegisterToken('stored', tokenD_stored, tcWeakKeyword);
   RegisterToken('then', token_then);
   RegisterToken('to', token_to);
   RegisterToken('try', token_try);
   RegisterToken('threadvar', token_threadvar);
   RegisterToken('type', token_type);
-  RegisterToken('helper', token_helper);
+  RegisterToken('helper', tokenD_helper, tcWeakKeyword);
   RegisterToken('until', token_until);
   RegisterToken('unit', token_unit);
   RegisterToken('uses', token_uses);
   RegisterToken('var', token_var);
-  RegisterToken('varargs', token_varargs);
-  RegisterToken('virtual', token_virtual);
-  RegisterToken('weak', token_weak);
+  RegisterToken('varargs', tokenD_varargs, tcWeakKeyword);
+  RegisterToken('virtual', tokenD_virtual, tcWeakKeyword);
   RegisterToken('with', token_with);
   RegisterToken('while', token_while);
-  RegisterToken('write', token_write, TTokenClass.AmbiguousPriorityKeyword);
-  RegisterToken('writeonly', token_writeonly, TTokenClass.AmbiguousPriorityKeyword);
+  RegisterToken('write', tokenD_write, tcWeakKeyword);
+  RegisterToken('writeonly', tokenD_writeonly, tcWeakKeyword);
   RegisterToken('xor', token_xor);
   RegisterRemToken('{', '}', ord(token_openfigure), Ord(token_closefigure));
   RegisterRemToken('(*', '*)', ord(token_openround_asteriks), Ord(token_closeround_asteriks));

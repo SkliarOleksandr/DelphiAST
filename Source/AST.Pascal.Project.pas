@@ -499,17 +499,14 @@ begin
 end;
 
 function TPascalProject.OpenUnit(const UnitName: string): TASTModule;
-var
-  Stream: TStringStream;
-  UnitClass: TASTUnitClass;
 begin
-  Stream := TStringStream.Create('');
+  var LStrings := TStringList.Create();
   try
-    StringStreamLoadFromFile(UnitName, Stream);
-    UnitClass := GetUnitClass();
-    Result := UnitClass.Create(Self, UnitName, Stream.DataString);
+    LStrings.LoadFromFile(UnitName);
+    var LUnitClass := GetUnitClass();
+    Result := LUnitClass.Create(Self, UnitName, LStrings.Text);
   finally
-    Stream.Free;
+    LStrings.Free;
   end;
 end;
 

@@ -2,20 +2,18 @@ unit AVL;
 
 interface
 
-uses SysUtils, Classes, Math;
-
 type
 
   TSortOrder = (soASC, soDESC);
 
-  TAVLTree<TKey, TData> = class(TObject)
+  TAVLTree<TKey, TData> = class
   public
   type
     PAVLNode = ^TAVLNode;
     TAVLNode = record
     private
       FChilds: array[Boolean] of Integer; {Child nodes}
-      FBalance: Integer;         {Used during balancing}
+      FBalance: Integer;        {Used during balancing}
     public
       Key: TKey;
       Data: TData;

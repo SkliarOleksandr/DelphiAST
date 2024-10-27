@@ -1040,6 +1040,123 @@ type
     property item[index: Integer]: IMyDisp readonly dispid 0; default;
   end;
 
+  TTestClass = class
+  var
+    data: string;
+    at,
+    on,
+    out,
+//    protected,
+    virtual,
+    operator,
+    align,
+    override: string;
+
+//  const
+//    protected = 5;
+  protected
+    property automated: string read data;
+    property private: string read data;
+    property protected: string read data;
+    property public: string read data;
+    property published: string read data;
+    property strict: string read data;
+    property sealed: string read data;
+    property abstract: string read data;
+    property readonly: string read data;
+    property writeonly: string read data;
+    property dispid: string read data;
+    property default: string read data;
+    property stored: string read data;
+    property index: string read data;
+    property register: string read data;
+    property safecall: string read data;
+    property stdcall: string read data;
+    property cdecl: string read data;
+    property varargs: string read data;
+    property winapi: string read data;
+  end;
+
+  read = integer;
+
+  TTestClass2 = record
+    function read: read;
+    property _read: read read read;
+  end;
+
+  TTestRecord2 = record
+    on,
+    protected,
+    sealed,
+    abstract,
+    readonly,
+    writeonly,
+    dispid,
+    default,
+    stored,
+    index,
+    register,
+    safecall,
+    stdcall,
+    cdecl,
+    assembler,
+    export,
+    helper,
+    forward,
+    virtual,
+    override,
+    varargs: string;
+  end;
+
+  package = class
+    on,
+    protected,
+    sealed,
+    abstract,
+    readonly,
+    writeonly,
+    dispid,
+    default,
+    stored,
+    index,
+    register,
+    safecall,
+    stdcall,
+    cdecl,
+    assembler,
+    export,
+    helper,
+    forward,
+    virtual,
+    override,
+    varargs: string;
+  end;
+
+  TShortIntHelper = record helper for ShortInt
+    const
+      MaxValue = 127;
+      MinValue = -128;
+
+  end;
+
+  procedure public;
+  begin
+  end;
+
+  function TTestClass2.read: read;
+  begin
+  end;
+
+
+function CoRevokeMallocSpy: integer stdcall;
+begin
+
+end;
+
+var
+  automated,
+  on: Integer;
+
 const
   CX = IMyDisp;
 

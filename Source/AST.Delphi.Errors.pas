@@ -549,7 +549,7 @@ begin
     AbortWork(sExpected, ['Token "' + UpperCase(Lexer.TokenLexem(Token)) + '"'], Lexer.PrevPosition)
   else
     AbortWork(sExpectedButFoundFmt, ['Token "' + UpperCase(Lexer.TokenLexem(Token)) + '"',
-                                                 UpperCase(Lexer.TokenLexem(ActulToken))], Lexer.PrevPosition);
+                                                 Lexer.OriginalToken], Lexer.PrevPosition);
 end;
 
 procedure TASTDelphiErrors.IDENTIFIER_EXPECTED(ActualToken: TTokenID);
