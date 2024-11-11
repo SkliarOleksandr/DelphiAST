@@ -635,25 +635,6 @@ type
     function MatchExplicitFrom(ASrc: TIDType): Boolean; override;
   end;
 
-  {alias (for generics parameters)}
-  TIDAlias = class(TIDDeclaration)
-  private
-    FOriginalDecl: TIDDeclaration;
-  protected
-    function GetOriginalDecl: TIDDeclaration; override;
-  public
-    constructor CreateAlias(Scope: TScope; const ID: TIdentifier; Decl: TIDDeclaration);
-    property Original: TIDDeclaration read FOriginalDecl;
-  end;
-
-  TWithAlias = class(TIDAlias)
-  private
-    fExpression: TIDExpression;
-  public
-    constructor CreateAlias(Scope: TScope; OriginalDecl: TIDDeclaration; Expression: TIDExpression);
-    property Expression: TIDExpression read fExpression;
-  end;
-
   {range type}
   TIDRangeType = class(TIDOrdinal)
   private
@@ -1329,6 +1310,7 @@ type
     function GetAsUnit: TIDUnit; inline;
     function GetDeclClass: TIDDeclarationClass;
     function GetIsRangeConst: Boolean;
+    function GetActualDataType: TIDType;
   protected
     function GetDataType: TIDType; virtual;
   public
@@ -1337,7 +1319,10 @@ type
     constructor Create(Declaration: TIDDeclaration; const TextPosition: TTextPosition); overload;
     destructor Destroy; override;
     property ExpressionType: TExpressonType read GetExpressionType; // тип выражения
+    /// <summary> Returns the specified datatype (including aliases) </summary>
     property DataType: TIDType read GetDataType;
+    /// <summary> Returns the actual (original) datatype </summary>
+    property ActualDataType: TIDType read GetActualDataType;
     property DataTypeName: string read GetDataTypeName;
     property DisplayName: string read GetDisplayName;
     property DataTypeID: TDataTypeID read GetDataTypeID;
@@ -4268,6 +4253,11 @@ begin
   FDeclaration := Declaration;
 end;
 
+function TIDExpression.GetActualDataType: TIDType;
+begin
+  Result := DataType.ActualDataType;
+end;
+
 (*function DecStrToInt(Str: AnsiString; out Buf: PByte): cardinal;
 var
   Neg: boolean;
@@ -4384,8 +4374,7 @@ end;
 
 function TIDExpression.GetDataType: TIDType;
 begin
-  Result := FDeclaration.DataType.ActualDataType;
-  //Assert(Assigned(Result));
+  Result := FDeclaration.DataType;
 end;
 
 function TIDExpression.GetDataTypeID: TDataTypeID;
@@ -5899,6 +5888,7 @@ procedure TIDDynArray.CreateStandardOperators;
 begin
   inherited;
   AddBinarySysOperator(opEqual, SYSUnit.Operators.Equal_DynArray);
+  AddBinarySysOperator(opAdd, SYSUnit.Operators.Add_DynArray);
   OverloadExplicitToAny(SYSUnit.Operators.ExplicitDynArrayToAny);
 end;
 
@@ -7361,20 +7351,6 @@ begin
     Result := nil;
 end;
 
-{ TIDAlias }
-
-constructor TIDAlias.CreateAlias(Scope: TScope; const ID: TIdentifier; Decl: TIDDeclaration);
-begin
-  inherited Create(Scope, ID);
-  FItemType := itAlias;
-  FOriginalDecl := Decl.Original;
-end;
-
-function TIDAlias.GetOriginalDecl: TIDDeclaration;
-begin
-  Result := FOriginalDecl;
-end;
-
 { TGenericDescriptor }
 
 procedure TGenericDescriptor.AddGenericInstance(Decl: TIDDeclaration; const Args: TIDTypeArray);
@@ -8055,21 +8031,11 @@ end;
 procedure TDlphHelper.SetTarget(const Value: TIDType);
 begin
   fTarget := Value;
-  if Value is TIDStructure then
+  if Value.ActualDataType is TIDStructure then
   begin
-    fMembers.FAncestorScope := TIDStructure(Value).Members;
-    fAncestorDecl := Value as TIDStructure;
+    fMembers.FAncestorScope := TIDStructure(Value.ActualDataType).Members;
+    fAncestorDecl := Value;
   end;
-end;
-
-{ TWithAlias }
-
-constructor TWithAlias.CreateAlias(Scope: TScope; OriginalDecl: TIDDeclaration; Expression: TIDExpression);
-begin
-  inherited Create(Scope, OriginalDecl.ID);
-  fItemType := itAlias;
-  fOriginalDecl := OriginalDecl;
-  fExpression := Expression;
 end;
 
 { TIDNullPointerType }

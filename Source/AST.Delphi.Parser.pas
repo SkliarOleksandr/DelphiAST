@@ -973,8 +973,7 @@ begin
 
   TargetDecl.Helper := Decl;
 
-  if ID.Name <> '' then
-    Scope.AddType(Decl);
+  Scope.AddType(Decl);
 
   Result := Lexer_NextToken(Scope);
   while True do begin
@@ -1813,10 +1812,10 @@ begin
   {procedure call by proc type}
   if PExpr.DataTypeID = dtProcType then begin
 
-    Decl := PExpr.DataType;
+    Decl := PExpr.ActualDataType;
 
-    ProcParams := TIDProcType(Decl).Params;
-    ProcResult := TIDProcType(Decl).ResultType;
+    ProcParams := (Decl as TIDProcType).Params;
+    ProcResult := (Decl as TIDProcType).ResultType;
     MatchProc(EContext.SContext, PExpr, ProcParams, UserArguments);
   end else begin
     AbortWorkInternal(sProcOrProcVarRequired, Lexer_Position);
@@ -1848,7 +1847,7 @@ begin
       //  AExpr := GenConstToVar(SContext, AExpr, Param.DataType);
 
       {если параметр - метод, получаем ссылку на него}
-      if (AExpr.ItemType = itProcedure) and (not TIDProcType(AExpr.DataType).IsStatic) then
+      if (AExpr.ItemType = itProcedure) and (not (AExpr.DataType as TIDProcType).IsStatic) then
       begin
         NewExpr := GetTMPVarExpr(SContext^, AExpr.DataType, AExpr.TextPosition);
         AExpr := NewExpr;
@@ -1897,7 +1896,7 @@ begin
       //  AExpr := GenConstToVar(SContext, AExpr, Param.DataType);
 
       {если параметр - метод, получаем ссылку на него}
-      if (AExpr.ItemType = itProcedure) and (not TIDProcType(AExpr.DataType).IsStatic) then
+      if (AExpr.ItemType = itProcedure) and (not (AExpr.DataType as TIDProcType).IsStatic) then
       begin
         NewExpr := GetTMPVarExpr(SContext^, AExpr.DataType, AExpr.TextPosition);
         AExpr := NewExpr;
@@ -2340,14 +2339,9 @@ var
   TmpDecl: TIDVariable;
   DataType: TIDType;
 begin
-  Expr := EContext.RPNPopExpression();
-  DataType := Expr.DataType.DefaultReference;
-  if DataType = nil then
-  begin
-    DataType := Expr.DataType.GetDefaultReference(ImplScope);
-    AddType(DataType);
-  end;
+  DataType := fSysDecls._PointerType;
 
+  Expr := EContext.RPNPopExpression();
   if Expr.IsConstant or Expr.IsProcedure then
   begin
     // resourcestring -> PResStringRec support
@@ -2425,7 +2419,7 @@ begin
 
   CheckPointerType(Src);
 
-  PtrType := Src.DataType as TIDPointer;
+  PtrType := Src.ActualDataType as TIDPointer;
   RefType := GetPtrReferenceType(PtrType);
   if not Assigned(RefType) then
     RefType := Sys._Untyped;
@@ -3867,8 +3861,8 @@ var
   LeftDT, RightDT: TIDType;
   L2RImplicit, R2LImplicit: TIDDeclaration;
 begin
-  LeftDT := Left.DataType.ActualDataType;
-  RightDT := Right.DataType.ActualDataType;
+  LeftDT := Left.ActualDataType;
+  RightDT := Right.ActualDataType;
   // поиск оператора (у левого операнда)
   Result := LeftDT.BinarOperator(Op, RightDT);
   if Assigned(Result) then
@@ -4332,7 +4326,7 @@ begin
   begin
     if Expr.DataTypeID = dtProcType then
     begin
-      var LProcType := TIDProcType(Expr.DataType);
+      var LProcType := (Expr.ActualDataType as TIDProcType);
       if Assigned(LProcType.ResultType) then
       begin
         WasCall := True;
@@ -4347,10 +4341,10 @@ end;
 class function TASTDelphiUnit.CheckAndCallFuncImplicit(const EContext: TEContext; Expr: TIDExpression): TIDExpression;
 begin
   if (Expr.DataTypeID = dtProcType) and
-      Assigned(TIDProcType(Expr.DataType).ResultType) then
+      Assigned((Expr.ActualDataType as TIDProcType).ResultType) then
   begin
     // todo: generate func call
-    Result := GetTMPVarExpr(EContext, TIDProcType(Expr.DataType).ResultType, Expr.TextPosition);
+    Result := GetTMPVarExpr(EContext, (Expr.ActualDataType as TIDProcType).ResultType, Expr.TextPosition);
   end else
     Result := Expr;
 end;
@@ -4436,7 +4430,7 @@ var
   SDataType: TIDType;
   SrcDTID, DstDTID: TDataTypeID;
 begin
-  SDataType := Source.DataType.ActualDataType;
+  SDataType := Source.ActualDataType;
   Dest := Dest.ActualDataType;
 
   if SDataType = Dest then
@@ -4613,7 +4607,7 @@ begin
     ArrDecl := EContext.Proc.GetTMPVar(TIDProcedure(ArrDecl).ResultType);
     ArrExpr := TIDExpression.Create(ArrDecl, ArrExpr.TextPosition);
   end;
-  ArrType := ArrExpr.DataType;
+  ArrType := ArrExpr.ActualDataType;
   DataType := nil;
   DimensionsCount := 0;
   // indexed property case
@@ -6494,6 +6488,7 @@ function TASTDelphiUnit.ParseForInStatement(Scope: TScope; const SContext: TSCon
 var
   EContext: TEContext;
   LExpr: TIDExpression;
+  LExprDataType: TIDType;
   LoopArrayDT: TIDType;
   ASTExpr: TASTExpression;
   KW: TASTKWForIn;
@@ -6512,11 +6507,12 @@ begin
   LExpr := EContext.Result;
 
   LExpr := CheckAndCallFuncImplicit(SContext, LExpr, {out} AWasCall);
+  LExprDataType := LExpr.ActualDataType;
 
   // expression is array:
-  if (LExpr.DataType is TIDArray) then
+  if (LExprDataType is TIDArray) then
   begin
-    LoopArrayDT := (LExpr.DataType as TIDArray).ElementDataType;
+    LoopArrayDT := (LExprDataType as TIDArray).ElementDataType;
     if Assigned(LoopVar.DataType) then
     begin
       // match loop var type to the array element type
@@ -6527,9 +6523,9 @@ begin
     end;
   end else
   // expression has enumerator:
-  if LExpr.DataType is TIDStructure then
+  if LExprDataType is TIDStructure then
   begin
-    var LStruct := TIDStructure(LExpr.DataType);
+    var LStruct := TIDStructure(LExprDataType);
     var LCurrentProp: TIDProperty;
     if LStruct.GetEnumeratorSupported({out} LCurrentProp) then
     begin
@@ -9108,10 +9104,6 @@ begin
     end;
   end;
 
-  {проверяем на псевдоним}
-  if Decl.ItemType = itAlias then
-    Decl := TIDAlias(Decl).Original;
-
   {проверяем на доступ к члену типа}
   //if Assigned(EContext.SContext) then
   //  CheckAccessMember(SContext, Decl, PMContext.ID);
@@ -9234,6 +9226,48 @@ begin
 end;
 
 function TASTDelphiUnit.ParseMember(Scope: TScope; var EContext: TEContext; const ASTE: TASTExpression): TTokenID;
+
+  function GetTypeMembersScope(ATypeDecl: TIDType; ADereref: Boolean): TScope;
+  begin
+    while Assigned(ATypeDecl) do
+    begin
+      if Assigned(ATypeDecl.Helper) then
+        Exit(ATypeDecl.Helper.Members)
+      else
+      if ATypeDecl is TIDStructure then
+        Exit(TIDStructure(ATypeDecl).Members)
+      else
+      if ATypeDecl.ClassType = TIDEnum then
+        Exit(TIDEnum(ATypeDecl).Items)
+      else
+      if ATypeDecl.ClassType = TIDDynArray then
+        Exit(TIDDynArray(ATypeDecl).GetHelperScope)
+      else
+      if ATypeDecl.ClassType = TIDGenericParam then
+        Exit((TIDGenericParam(ATypeDecl).ConstraintType as TIDStructure).Members);
+
+      if (ATypeDecl.DataTypeID = dtProcType) and Assigned(TIDProcType(ATypeDecl).ResultType) and ADereref then
+      begin
+        ATypeDecl := TIDProcType(ATypeDecl).ResultType;
+        continue;
+      end;
+
+      if (ATypeDecl.DataTypeID in [dtPointer, dtClassOf]) and ADereref then
+      begin
+        ATypeDecl := GetPtrReferenceType(TIDPointer(ATypeDecl));
+        continue;
+      end;
+
+      if ATypeDecl is TIDAliasType then
+      begin
+        ATypeDecl := TIDAliasType(ATypeDecl).LinkedType;
+        continue;
+      end;
+
+      Exit(nil);
+    end;
+  end;
+
 var
   Left, Right: TIDExpression;
   Decl: TIDDeclaration;
@@ -9244,10 +9278,7 @@ begin
   Decl := Left.Declaration;
   // todo: system fail if decl is not assigned
 
-  SearchScope := nil;
-
   case Decl.ItemType of
-
     itUnit: begin
       // if this is the full name of THIS unit, let's search in implementation first
       if Decl.ID.Name = Self._ID.Name then
@@ -9255,64 +9286,12 @@ begin
       else
         SearchScope := TIDNameSpace(Decl).Members
     end;
-
-    itType: begin
-      if Decl is TIDAliasType then
-        Decl := TIDAliasType(Decl).Original;
-
-      if Assigned(TIDType(Decl).Helper) then
-        SearchScope := TIDType(Decl).Helper.Members
-      else
-      if Decl is TIDStructure then
-        SearchScope := TIDStructure(Decl).Members
-      else
-      if Decl.ClassType = TIDEnum then
-        SearchScope := TIDEnum(Decl).Items
-      else
-      if Decl.ClassType = TIDDynArray then
-        SearchScope := TIDDynArray(Decl).GetHelperScope;
-
-      if Decl.ClassType = TIDGenericParam then
-      begin
-        SearchScope := (TIDGenericParam(Decl).ConstraintType as TIDStructure).Members;
-      end;
-    end;
-
-    itProcedure, itVar, itConst, itProperty: begin
-
-      if Decl.ItemType = itProcedure then
-        DataType := TIDProcedure(Decl).ResultType.ActualDataType
-      else begin
-        DataType := Left.DataType.ActualDataType;
-        // auto-resolve of function call (when parentheses are missed)
-        if (DataType.DataTypeID = dtProcType) and Assigned(TIDProcType(DataType).ResultType) then
-          DataType := TIDProcType(DataType).ResultType;
-      end;
-
-      if DataType.ClassType = TIDAliasType then
-        DataType := TIDAliasType(DataType).Original;
-
-      while DataType.DataTypeID in [dtPointer, dtClassOf] do
-        if Assigned(TIDPointer(DataType).ReferenceType) then
-          DataType := GetPtrReferenceType(TIDPointer(DataType)).ActualDataType
-        else
-          ERRORS.IDENTIFIER_HAS_NO_MEMBERS(Decl);
-
-      if (DataType.DataTypeID = dtGeneric) and Assigned(TIDGenericParam(DataType).ConstraintType) then
-        DataType := TIDGenericParam(DataType).ConstraintType;
-
-      if Assigned(DataType.Helper) then
-        // todo: join helper scope and decl's scope together
-        SearchScope := DataType.Helper.Members
-      else
-      if DataType is TIDStructure then
-        SearchScope := TIDStructure(DataType).Members
-      else
-      if Decl.ClassType = TIDEnum then
-        SearchScope := TIDEnum(Decl).Items
-    end;
+    itType: SearchScope := GetTypeMembersScope(TIDType(Decl), {ADereref:} False);
+    itProcedure: SearchScope := GetTypeMembersScope(TIDProcedure(Decl).ResultType, {ADereref:} True);
+    itVar, itConst, itProperty: SearchScope := GetTypeMembersScope(Left.DataType, {ADereref:} True);
   else
-    AbortWorkInternal('Unsuported decl type: %d', [Ord(Decl.ItemType)])
+    AbortWorkInternal('Unsuported decl type: %d', [Ord(Decl.ItemType)]);
+    SearchScope := nil;
   end;
 
   if not Assigned(SearchScope) then
@@ -10613,13 +10592,13 @@ end;
 
 procedure TASTDelphiUnit.CheckArrayExpression(Expression: TIDExpression);
 begin
-  if not (Expression.DataType is TIDArray) then
+  if not (Expression.ActualDataType is TIDArray) then
     ERRORS.ARRAY_EXPRESSION_REQUIRED(Expression);
 end;
 
 procedure TASTDelphiUnit.CheckBooleanExpression(Expression: TIDExpression);
 begin
-  if Expression.DataType <> Sys._Boolean then
+  if Expression.ActualDataType <> Sys._Boolean then
     ERRORS.BOOLEAN_EXPRESSION_REQUIRED(Expression);
 end;
 

@@ -501,6 +501,11 @@ function TExpressionCalculator.CalcDynArrays(AScope: TScope; const Left, Right: 
 begin
   // todo:
   case Operation of
+    opAdd: begin
+      var LValue := (Left as TIDDynArrayConstant).Value +
+                    (Right as TIDDynArrayConstant).Value;
+      Result := TIDDynArrayConstant.CreateAsAnonymous(AScope, Left.DataType, LValue);
+    end;
     opEqual: Result := TIDBooleanConstant.CreateAsAnonymous(AScope, Sys._Boolean, False);
     opMultiply: Result := Left; // todo:
   else

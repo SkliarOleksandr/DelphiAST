@@ -1133,10 +1133,15 @@ type
   end;
 
   TShortIntHelper = record helper for ShortInt
-    const
+  const
       MaxValue = 127;
       MinValue = -128;
+    class function Get1: Integer; static;
+  end;
 
+  class function TShortIntHelper.Get1: Integer;
+  begin
+    Result := 1;
   end;
 
   procedure public;
@@ -1146,7 +1151,6 @@ type
   function TTestClass2.read: read;
   begin
   end;
-
 
 function CoRevokeMallocSpy: integer stdcall;
 begin
@@ -1159,6 +1163,38 @@ var
 
 const
   CX = IMyDisp;
+
+type
+  TStatic = record
+    class var SVar: Integer;
+  end;
+  PStatic = ^TStatic;
+
+procedure TestStaticAccess;
+var
+  Ptr: PStatic;
+begin
+  var R1 := Ptr.SVar;
+  var R2 := TStatic.SVar;
+  //var R3 := PStatic.SVar;
+end;
+
+procedure TestAddrOperator;
+type
+  TSProc = procedure;
+var
+  LInt: Integer;
+  LDbl: Double;
+  LProc: TSProc;
+begin
+  var p1 := @Lint;
+  var p2: PDouble := @LDbl;
+  var p3 := @TestStaticAccess;
+
+//  LInt := P1^;
+  LDbl := P2^;
+  LProc := p1;
+end;
 
 initialization
   Test0;

@@ -138,6 +138,7 @@ type
     Equal_Set: TIDOperator;
     NotEqual_Set: TIDOperator;
     // DynArray
+    Add_DynArray,
     Equal_DynArray: TIDOperator;
     Equal_NullPtr: TIDOperator;
     NotEqual_NullPtr: TIDOperator;
@@ -1744,6 +1745,7 @@ begin
   Equal_Set := TSys_Equal_Set.CreateAsSystem(Scope);
   NotEqual_Set := TSys_NotEqual_Set.CreateAsSystem(Scope);
 
+  Add_DynArray := TSys_Add_DynArray.CreateAsSystem(Scope);
   Equal_DynArray := TSys_Equal_DynArray.CreateAsSystem(Scope);
   Equal_NullPtr := TSys_Equal_NullPtr.CreateAsSystem(Scope);
   NotEqual_NullPtr := TSys_NotEqual_NullPtr.CreateAsSystem(Scope);

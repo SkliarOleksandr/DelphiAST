@@ -569,24 +569,21 @@ end;
 
 function TSF_AtomicCmpExchange.Process(var EContext: TEContext): TIDExpression;
 begin
-  var Arg1 := EContext.RPNPopExpression();
-  var Arg2 := EContext.RPNPopExpression();
-  var Arg3 := EContext.RPNPopExpression();
+  var ArgSucceeded := EContext.RPNPopExpression();
+  var ArgComparand := EContext.RPNPopExpression();
+  var ArgNewValue := EContext.RPNPopExpression();
+  var ArgTarget := EContext.RPNPopExpression();
 
-  case Arg1.DataTypeID of
-    dtNativeInt: Result := CreateTMPExpr(EContext, SYSUnit._NativeInt);
-    dtPointer: Result := CreateTMPExpr(EContext, SYSUnit._Pointer);
-  else
-    Result := CreateTMPExpr(EContext, SYSUnit._Int32);
-  end;
+  Result := CreateTMPExpr(EContext, ArgTarget.DataType);
 end;
 
 class function TSF_AtomicCmpExchange.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'AtomicCmpExchange', SYSUnit._NativeInt);
   Result.AddParam('Target', SYSUnit._Void, [VarInOut]);
-  Result.AddParam('Comparand', SYSUnit._Void, [VarIn]);
-  Result.AddParam('Succeeded', SYSUnit._Void, [VarOut]);
+  Result.AddParam('NewValue', SYSUnit._Int64, [VarIn]);
+  Result.AddParam('Comparand', SYSUnit._Int64, [VarIn]);
+  Result.AddParam('Succeeded', SYSUnit._Boolean, [VarOut], SysUnit._NullPtrExpression);
 end;
 
 
