@@ -95,7 +95,7 @@ begin
   raise ECompilerAbort.Create(Message, SourcePosition);
 end;
 
-procedure AbortWork(const MessageFmt: string; const  Params: array of const; const SourcePosition: TTextPosition);
+procedure AbortWork(const MessageFmt: string; const Params: array of const; const SourcePosition: TTextPosition);
 begin
   AbortWork(Format(MessageFmt, Params), SourcePosition);
 end;

@@ -120,7 +120,7 @@ type
     property FileName: string read fFileName write SetFileName;
     property Project: IASTProject read fProject;
     function GetTotalLinesParsed: Integer;
-    constructor Create(const Project: IASTProject; const FileName: string; const Source: string = ''); virtual;
+    constructor Create(const AProject: IASTProject; const AFileName: string; const ASource: string = ''); virtual;
     constructor CreateFromFile(const Project: IASTProject; const FileName: string); virtual;
     procedure EnumDeclarations(const AEnumProc: TEnumASTDeclProc; AUnitScope: TUnitScopeKind); virtual; abstract;
     property TotalLinesParsed: Integer read GetTotalLinesParsed;
@@ -641,10 +641,10 @@ end;
 
 { TASTUnit }
 
-constructor TASTModule.Create(const Project: IASTProject; const FileName: string; const Source: string);
+constructor TASTModule.Create(const AProject: IASTProject; const AFileName: string; const ASource: string);
 begin
-  fProject := Project;
-  fFileName := FileName;
+  fProject := AProject;
+  fFileName := AFileName;
 end;
 
 function TASTExpression.GetDisplayName: string;

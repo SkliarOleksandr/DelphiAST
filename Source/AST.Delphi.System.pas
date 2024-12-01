@@ -177,7 +177,8 @@ type
     procedure SystemFixup;
     procedure InsertToScope(Declaration: TIDDeclaration); overload;
     function RegisterType(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
-    function RegisterOrdinal(const TypeName: string; DataType: TDataTypeID; LowBound: Int64; HighBound: UInt64): TIDType;
+    function RegisterOrdinal(const TypeName: string; DataType: TDataTypeID; LowBound: Int64; HighBound: UInt64;
+                             ATypeClass: TIDOrdinalTypeClass): TIDType;
     function RegisterTypeAlias(const TypeName: string; OriginalType: TIDType): TIDAliasType;
     function RegisterPointer(const TypeName: string; TargetType: TIDType): TIDPointer;
     function RegisterConstInt(const Name: string; DataType: TIDType; Value: Int64): TIDIntConstant;
@@ -817,10 +818,11 @@ end;
 
 procedure TSYSTEMUnit.AddDivOperators;
 begin
-  AddBinarOperator(opDivide, _Int8, [_Int8, _UInt8, _Int16, _UInt16, _Int32, _UInt32, _Int64, _UInt64], _Float64);
-  AddBinarOperator(opDivide, _Int16, [_Int8, _UInt8, _Int16, _UInt16, _Int32, _UInt32, _Int64, _UInt64], _Float64);
-  AddBinarOperator(opDivide, _Int32, [_Int8, _UInt8, _Int16, _UInt16, _Int32, _UInt32, _Int64, _UInt64], _Float64);
-  AddBinarOperator(opDivide, _Int64, [_Int8, _UInt8, _Int16, _UInt16, _Int32, _UInt32, _Int64, _UInt64], _Float64);
+  AddBinarOperator(opDivide, _Int8, [_Int8, _UInt8, _Int16, _UInt16, _Int32, _UInt32, _Int64, _UInt64, _Float32, _Float64], _Float64);
+  AddBinarOperator(opDivide, _Int16, [_Int8, _UInt8, _Int16, _UInt16, _Int32, _UInt32, _Int64, _UInt64, _Float32, _Float64], _Float64);
+  AddBinarOperator(opDivide, _Int32, [_Int8, _UInt8, _Int16, _UInt16, _Int32, _UInt32, _Int64, _UInt64, _Float32, _Float64], _Float64);
+  AddBinarOperator(opDivide, _Int64, [_Int8, _UInt8, _Int16, _UInt16, _Int32, _UInt32, _Int64, _UInt64, _Float32, _Float64], _Float64);
+  AddBinarOperator(opDivide, _UInt64, [_Int8, _UInt8, _Int16, _UInt16, _Int32, _UInt32, _Int64, _UInt64, _Float32, _Float64], _Float64);
 
   AddBinarOperator(opDivide, _Float32, [_Int8, _UInt8, _Int16, _UInt16, _Int32, _UInt32, _Int64, _UInt64, _Float32, _Float64], _Float64);
   AddBinarOperator(opDivide, _Float64, [_Int8, _UInt8, _Int16, _UInt16, _Int32, _UInt32, _Int64, _UInt64, _Float32, _Float64], _Float64);
@@ -985,31 +987,31 @@ end;
 procedure TSYSTEMUnit.RegisterTypes;
 begin
   //===============================================================
-  fDecls._Int8 := RegisterOrdinal('ShortInt', dtInt8, MinInt8, MaxInt8);
-  fDecls._Int16 := RegisterOrdinal('SmallInt', dtInt16, MinInt16, MaxInt16);
-  fDecls._Int32 := RegisterOrdinal('Integer', dtInt32, MinInt32, MaxInt32);
-  fDecls._Int64 := RegisterOrdinal('Int64', dtInt64, MinInt64, MaxInt64);
-  fDecls._UInt8 := RegisterOrdinal('Byte', dtUInt8, 0, MaxUInt8);
-  fDecls._UInt16 := RegisterOrdinal('Word', dtUInt16, 0, MaxUInt16);
-  fDecls._UInt32 := RegisterOrdinal('Cardinal', dtUInt32, 0, MaxUInt32);
-  fDecls._UInt64 := RegisterOrdinal('UInt64', dtUInt64, 0, MaxUInt64);
+  fDecls._Int8 := RegisterOrdinal('ShortInt', dtInt8, MinInt8, MaxInt8, TBuiltin_IntType);
+  fDecls._Int16 := RegisterOrdinal('SmallInt', dtInt16, MinInt16, MaxInt16, TBuiltin_IntType);
+  fDecls._Int32 := RegisterOrdinal('Integer', dtInt32, MinInt32, MaxInt32, TBuiltin_IntType);
+  fDecls._Int64 := RegisterOrdinal('Int64', dtInt64, MinInt64, MaxInt64, TBuiltin_IntType);
+  fDecls._UInt8 := RegisterOrdinal('Byte', dtUInt8, 0, MaxUInt8, TBuiltin_IntType);
+  fDecls._UInt16 := RegisterOrdinal('Word', dtUInt16, 0, MaxUInt16, TBuiltin_IntType);
+  fDecls._UInt32 := RegisterOrdinal('Cardinal', dtUInt32, 0, MaxUInt32, TBuiltin_IntType);
+  fDecls._UInt64 := RegisterOrdinal('UInt64', dtUInt64, 0, MaxUInt64, TBuiltin_IntType);
   fDecls._NativeInt := RegisterOrdinal('NativeInt', dtNativeInt,
                                        Package.Target.MinNativeInt,
-                                       Package.Target.MaxNativeInt);
+                                       Package.Target.MaxNativeInt, TBuiltin_IntType);
   fDecls._NativeUInt := RegisterOrdinal('NativeUInt', dtNativeUInt,
                                         Package.Target.MinNativeUInt,
-                                        Package.Target.MaxNativeUInt);
-  fDecls._Float32 := RegisterType('Single', TIDFloat, dtFloat32);
-  fDecls._Float64 := RegisterType('Double', TIDFloat, dtFloat64);
+                                        Package.Target.MaxNativeUInt, TBuiltin_IntType);
+  fDecls._Float32 := RegisterType('Single', TBuiltin_FltType, dtFloat32);
+  fDecls._Float64 := RegisterType('Double', TBuiltin_FltType, dtFloat64);
   fDecls._Float80 := RegisterType('Extended', TBuiltin_Extended, dtFloat80);
   fDecls._Currency := RegisterType('Currency', TBuiltin_Currency, dtCurrency);
   fDecls._Comp := RegisterType('Comp', TBuiltin_Comp, dtComp);
   //===============================================================
-  fDecls._Boolean := RegisterOrdinal('Boolean', dtBoolean, 0, 1);
+  fDecls._Boolean := RegisterOrdinal('Boolean', dtBoolean, 0, 1, TBuiltin_Boolean);
   _Boolean.OverloadExplicitFromAny(Operators.IsOrdinal);
 
-  fDecls._AnsiChar := RegisterOrdinal('AnsiChar', dtAnsiChar, 0, MaxUInt8);
-  fDecls._WideChar := RegisterOrdinal('Char', dtChar, 0, MaxUInt16);
+  fDecls._AnsiChar := RegisterOrdinal('AnsiChar', dtAnsiChar, 0, MaxUInt8, TBuiltin_AnsiChar);
+  fDecls._WideChar := RegisterOrdinal('Char', dtChar, 0, MaxUInt16, TBuiltin_UnicodeChar);
   //===============================================================
   fDecls._ShortString := RegisterType('ShortString', TBuiltin_ShortString, dtShortString);
   TIDString(_ShortString).ElementDataType := _AnsiChar;
@@ -1083,14 +1085,16 @@ begin
   RegisterTypeAlias('OleVariant', _Variant);
 
   // PAnsiChar
-  fDecls._PAnsiChar := RegisterType('PAnsiChar', TIDPointer, dtPAnsiChar);
+  fDecls._PAnsiChar := RegisterType('PAnsiChar', TBuiltin_PAnsiChar, dtPAnsiChar);
   TIDPointer(fDecls._PAnsiChar).ReferenceType := _AnsiChar;
+  TIDPointer(fDecls._PAnsiChar).PointerMath := True;
   fDecls._PAnsiChar.OverloadImplicitTo(_Variant);
   fDecls._PAnsiChar.CreateStandardOperators;
 
   // PWideChar
-  fDecls._PWideChar := RegisterType('PWideChar', TIDPointer, dtPWideChar);
+  fDecls._PWideChar := RegisterType('PWideChar', TBuiltin_PWideChar, dtPWideChar);
   TIDPointer(fDecls._PWideChar).ReferenceType := _WideChar;
+  TIDPointer(fDecls._PWideChar).PointerMath := True;
   fDecls._PWideChar.OverloadImplicitTo(_Variant);
   fDecls._PWideChar.CreateStandardOperators;
 
@@ -1278,9 +1282,10 @@ begin
   RegisterBuiltin(TSCTF_Scope);
 end;
 
-function TSYSTEMUnit.RegisterOrdinal(const TypeName: string; DataType: TDataTypeID; LowBound: Int64; HighBound: UInt64): TIDType;
+function TSYSTEMUnit.RegisterOrdinal(const TypeName: string; DataType: TDataTypeID; LowBound: Int64; HighBound: UInt64;
+  ATypeClass: TIDOrdinalTypeClass): TIDType;
 begin
-  Result := RegisterType(TypeName, TIDOrdinal, DataType);
+  Result := RegisterType(TypeName, ATypeClass, DataType);
   TIDOrdinal(Result).LowBound := LowBound;
   TIDOrdinal(Result).HighBound := Int64(HighBound);
   TIDOrdinal(Result).SignedBound  := LowBound < 0;

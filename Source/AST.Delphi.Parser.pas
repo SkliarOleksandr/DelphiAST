@@ -30,17 +30,18 @@ uses
 // system
 // sysinit
 // GETMEM.INC
+// System.SysUtils
 // system.Classes
 // System.IOUtils
 // system.Rtti
 // System.JSON
 // system.Types
 // system.TypInfo
+// System.TimeSpan
 // system.Threading
 // system.UITypes
 // System.Contnrs
 // System.SyncObjs
-// System.SysUtils
 // System.Math
 // System.Messaging
 // System.Variants
@@ -186,7 +187,7 @@ type
     function MatchImplicitOrNil(const SContext: TSContext; Source: TIDExpression; Dest: TIDType): TIDExpression;
     function MatchArrayImplicit(const SContext: TSContext; Source: TIDExpression; DstArray: TIDArray): TIDExpression;
     function MatchRecordImplicit(const SContext: TSContext; Source: TIDExpression; DstRecord: TIDRecord): TIDExpression;
-    function MatchBinarOperator(const SContext: TSContext; Op: TOperatorID; var Left, Right: TIDExpression): TIDDeclaration;
+    function MatchBinarOperator(Op: TOperatorID; var Left, Right: TIDExpression): TIDDeclaration;
     function MatchBinarOperatorWithImplicit(const SContext: TSContext; Op: TOperatorID; var Left, Right: TIDexpression): TIDDeclaration;
     function FindBinaryOperator(const SContext: TSContext; OpID: TOperatorID; var Left, Right: TIDExpression): TIDDeclaration;
     class function MatchUnarOperator(Op: TOperatorID; Right: TIDType): TIDType; overload; static; inline;
@@ -246,6 +247,7 @@ type
     class procedure CheckStructType(Expression: TIDExpression); overload; static; inline;
     class procedure CheckStructType(Decl: TIDType); overload; static; inline;
     class procedure CheckExprHasMembers(Expression: TIDExpression); static;
+    class procedure CheckPropertyReadable(AExpr: TIDExpression); static;
     procedure CheckType(Expression: TIDExpression); inline;
     procedure CheckClassType(Expression: TIDExpression); inline;
     procedure CheckExceptionType(Decl: TIDDeclaration);
@@ -425,7 +427,7 @@ type
     function ParseRecordInitValue(Scope: TRecordInitScope; var FirstField: TIDExpression): TTokenID;
     function ParseConstSection(Scope: TScope; AInlineConst: Boolean = False): TTokenID;
     function ParseConstSectionInStruct(Scope: TScope): TTokenID;
-    function ParseVarSection(Scope: TScope; Visibility: TVisibility; IsWeak: Boolean = False): TTokenID;
+    function ParseVarSection(Scope: TScope; Visibility: TVisibility): TTokenID;
     function ParseFieldsSection(Scope: TScope; Visibility: TVisibility; Struct: TIDStructure; IsClass: Boolean): TTokenID;
     function ParseFieldsInCaseRecord(Scope: TScope; Visibility: TVisibility; ARecord: TIDRecord): TTokenID;
     function ParseParameters(EntryScope: TScope; ParamsScope: TParamsScope): TTokenID;
@@ -562,7 +564,7 @@ begin
   while True do
   begin
     // in Delphi, a semicolon is not required at the end of the last (or single) statement in a block
-    if LSemicolonRequired and not (Result in [token_end, token_finally, token_except]) then
+    if LSemicolonRequired and not (Result in [token_end, token_finally, token_except, token_until]) then
       Result := Lexer_MatchSemicolonAndNext(Scope, Result);
 
     LSemicolonRequired := True;
@@ -1229,7 +1231,11 @@ begin
     // find the unit file
     LUnit := Package.UsesUnit(ID.Name, nil) as TPascalUnit;
     if not Assigned(LUnit) then
+    begin
+      // for debug
+      Package.UsesUnit(ID.Name, nil);
       ERRORS.UNIT_NOT_FOUND(ID);
+    end;
 
     // check unique using
     if IntfImportedUnits.Find(ID.Name, {var} Idx) or
@@ -1345,8 +1351,16 @@ begin
     Item := TIDIntConstant.Create(Decl.Items, ID);
     Item.DataType := Decl;
     Decl.Items.AddConstant(Item);
+
+    // in Delphi enum constants are placed to the top-level scope (intf or impl), even it the enum is nested type!!!
     if not Options.SCOPEDENUMS then
-      InsertToScope(Scope, Item);
+    begin
+      var LGlobalScope := IntfScope;
+      if UnitState = UnitIntfCompiled then
+        LGlobalScope := ImplScope;
+      InsertToScope(LGlobalScope, Item);
+    end;
+
     Token := Lexer_NextToken(Scope);
     if Token = token_equal then begin
       Lexer_NextToken(Scope);
@@ -1653,10 +1667,12 @@ begin
     Lexer_MatchToken(Result, token_identifier);
     Result := ParseExpression(Scope, SContext, EContext, ASTExpr);
     KW.AddExpression(ASTExpr);
+
+    // check & call function implicitly in the WITH
+    CheckAndCallFuncImplicit(EContext);
+
     Expression := EContext.Result;
-
     CheckExprHasMembers(Expression);
-
     Decl := Expression.Declaration;
     // проверка на повторное выражение/одинаковый тип
     while Assigned(WNextScope) and (WNextScope.ScopeType = stWithScope) do begin
@@ -2050,24 +2066,6 @@ begin
   end;
 end;
 
-function GetOperatorInstance(Op: TOperatorID; Left, Right: TIDExpression): TIDExpression;
-var
-  LDT, RDT: TIDType;
-  Decl: TIDDeclaration;
-begin
-  LDT := Left.DataType.ActualDataType;
-  RDT := Right.DataType.ActualDataType;
-  // поиск оператора (у левого операнда)
-  Decl := LDT.BinarOperator(Op, RDT);
-  if Assigned(Decl) then
-    Exit(Left);
-  // поиск оператора (у правого операнда)
-  Decl := RDT.BinarOperatorFor(Op, LDT);
-  if Assigned(Decl) then
-    Exit(Right);
-  Result := nil
-end;
-
 function TASTDelphiUnit.Defined(const Name: string): Boolean;
 begin
   // поиск в локальном списке модуля
@@ -2090,9 +2088,9 @@ end;
 function TASTDelphiUnit.DoMatchBinarOperator(const SContext: TSContext; OpID: TOperatorID; var Left, Right: TIDExpression): TIDDeclaration;
 begin
   if OpID in [opShiftLeft, opShiftRight] then
-    Result := MatchBinarOperator(SContext, OpID, Left, Left)
+    Result := MatchBinarOperator(OpID, Left, Left)
   else
-    Result := MatchBinarOperator(SContext, OpID, Left, Right);
+    Result := MatchBinarOperator(OpID, Left, Right);
 
   if not Assigned(Result) then
     Result := MatchBinarOperatorWithImplicit(SContext, OpID, Left, Right);
@@ -2195,7 +2193,12 @@ begin
     end;
 
     if not Assigned(Result) then
-      ERRORS.NO_OVERLOAD_OPERATOR_FOR_TYPES(OpID, Left, Right);
+    begin
+      // for debug:
+      DoMatchBinarOperator(SContext, OpID, Left, Right);
+
+      ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Left.TextPosition);
+    end;
   end;
 end;
 
@@ -2272,7 +2275,7 @@ begin
         begin
           Result := TSysOpBinary(Op).Match(EContext.SContext, Left, Right);
           if Result = nil then
-            ERRORS.NO_OVERLOAD_OPERATOR_FOR_TYPES(OpID, Left, Right);
+            ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Left.TextPosition);
 
         end else begin
           TmpVar := GetTMPVar(EContext, TIDType(Op));
@@ -2322,11 +2325,12 @@ begin
         end;
       end else
       if Op.ItemType = itProcedure then begin
-        // вызов перегруженного бинарного оператора
+        // call the overload operator
         Result := TIDCallExpression.Create(Op);
         Result.TextPosition := Left.TextPosition;
         TIDCallExpression(Result).ArgumentsCount := 2;
-        TIDCallExpression(Result).Instance := GetOperatorInstance(OpID, Left, Right);
+        // operator is not a method
+        TIDCallExpression(Result).Instance := nil;
         Result := Process_CALL_direct(EContext.SContext, TIDCallExpression(Result), TIDExpressions.Create(Left, Right));
       end;
     end;
@@ -2455,7 +2459,7 @@ begin
 
   OperatorItem := MatchUnarOperator(EContext.SContext, opNegative, Right);
   if not Assigned(OperatorItem) then
-    ERRORS.NO_OVERLOAD_OPERATOR_FOR_TYPES(opNegative, Right);
+   ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Right.TextPosition);
 
   if Right.ItemType = itConst then
     Result := fCCalc.ProcessConstOperation(EContext.Scope, Right, Right, opNegative)
@@ -2474,7 +2478,7 @@ begin
 
   OperatorItem := MatchUnarOperator(EContext.SContext, opNot, Right);
   if not Assigned(OperatorItem) then
-    ERRORS.NO_OVERLOAD_OPERATOR_FOR_TYPES(opNot, Right);
+    ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Right.TextPosition);
 
   if Right.ItemType = itConst then
     Result := fCCalc.ProcessConstOperation(EContext.Scope, Right, Right, opNot)
@@ -2647,12 +2651,12 @@ begin
         token_var: begin
           CheckIntfSectionMissing(Scope);
           Lexer_NextToken(Scope);
-          Token := ParseVarSection(Scope, vLocal, False);
+          Token := ParseVarSection(Scope, vLocal);
         end;
         token_threadvar: begin
           CheckIntfSectionMissing(Scope);
           Lexer_NextToken(Scope);
-          Token := ParseVarSection(Scope, vLocal, False);
+          Token := ParseVarSection(Scope, vLocal);
         end;
         tokenD_exports: begin
           // todo:
@@ -2784,7 +2788,7 @@ begin
           token_var: begin
             CheckIntfSectionMissing(Scope);
             Lexer_NextToken(Scope);
-            Token := ParseVarSection(Scope, vLocal, False);
+            Token := ParseVarSection(Scope, vLocal);
           end;
           token_interface: begin
             Scope := IntfScope;
@@ -3856,89 +3860,44 @@ begin
     ERRORS.SETTER_MUST_BE_SUCH(GetProcDeclSring(PropParams, nil), Setter.TextPosition);
 end;
 
-function TASTDelphiUnit.MatchBinarOperator(const SContext: TSContext; Op: TOperatorID; var Left, Right: TIDExpression): TIDDeclaration;
+function TASTDelphiUnit.MatchBinarOperator(Op: TOperatorID; var Left, Right: TIDExpression): TIDDeclaration;
 var
   LeftDT, RightDT: TIDType;
   L2RImplicit, R2LImplicit: TIDDeclaration;
 begin
-  LeftDT := Left.ActualDataType;
-  RightDT := Right.ActualDataType;
-  // поиск оператора (у левого операнда)
-  Result := LeftDT.BinarOperator(Op, RightDT);
-  if Assigned(Result) then
-    Exit;
-  // поиск оператора (у правого операнда)
-  Result := RightDT.BinarOperatorFor(Op, LeftDT);
-  if Assigned(Result) then
-    Exit;
+  if Left.ItemType <> itType then LeftDT := Left.DataType else LeftDT := Left.AsType;
+  if Right.ItemType <> itType then RightDT := Right.DataType else RightDT := Right.AsType;
 
-  Result := LeftDT.SysBinayOperator[Op];
-  if Assigned(Result) then
-    Exit;
-
-  Result := RightDT.SysBinayOperator[Op];
-  if Assigned(Result) then
-    Exit;
-
-  if (LeftDT.DataTypeID = dtGeneric) then
-    Exit(LeftDT);
-
-  if RightDT.DataTypeID = dtGeneric then
-    Exit(RightDT);
-
-  if (Op = opIn) and (Right.Declaration.ClassType = TIDRangeConstant) then
+  while True do
   begin
-    Result := MatchOperatorIn(SContext, Left, Right);
-    Exit;
-  end;
-
-  if (LeftDT.DataTypeID = dtClass) and
-     (RightDT.DataTypeID = dtClass) then
-  begin
-    if TIDClass(LeftDT).IsInheritsForm(TIDClass(RightDT)) then
-      Exit(Sys._Boolean);
-    if TIDClass(RightDT).IsInheritsForm(TIDClass(LeftDT)) then
-      Exit(Sys._Boolean);
-  end;
-
-  // если ненайдено напрямую - ищем через неявное привидение
-  L2RImplicit := CheckImplicit(SContext, Left, RightDT);
-  R2LImplicit := CheckImplicit(SContext, Right, LeftDT);
-  if L2RImplicit is TIDType then
-  begin
-    Result := TIDType(L2RImplicit).BinarOperator(Op, RightDT);
+    // 1. search an user operator in the left operand
+    Result := LeftDT.FindBinarOperator(Op, LeftDT, RightDT);
     if Assigned(Result) then
-    begin
-      Left := MatchImplicit3(SContext, Left, RightDT);
       Exit;
-    end;
-  end;
-  if R2LImplicit is TIDType then
-  begin
-    Result := TIDType(R2LImplicit).BinarOperator(Op, LeftDT);
+
+    // 2. search an user operator in the right operand
+    Result := RightDT.FindBinarOperator(Op, LeftDT, RightDT);
     if Assigned(Result) then
-    begin
-      Right := MatchImplicit3(SContext, Right, LeftDT);
       Exit;
-    end;
-  end;
-  if Assigned(L2RImplicit) then
-  begin
-    Result := RightDT.BinarOperator(Op, L2RImplicit.DataType);
+
+    // 3. search system operator in the left operand
+    Result := LeftDT.FindSystemBinarOperatorLeft(Op, RightDT);
     if Assigned(Result) then
-    begin
-      Left := MatchImplicit3(SContext, Left, RightDT);
       Exit;
-    end;
-  end;
-  if Assigned(R2LImplicit) then
-  begin
-    Result := LeftDT.BinarOperator(Op, R2LImplicit.DataType);
+
+    // 4. search system operator in the right operand
+    Result := RightDT.FindSystemBinarOperatorRight(Op, LeftDT);
     if Assigned(Result) then
-    begin
-      Right := MatchImplicit3(SContext, Right, LeftDT);
       Exit;
-    end;
+
+    // if the type is an alias, let's try to find operators in a linked type
+    if LeftDT is TIDAliasType then
+      LeftDT := TIDAliasType(LeftDT).LinkedType
+    else
+    if RightDT is TIDAliasType then
+      RightDT := TIDAliasType(RightDT).LinkedType
+    else
+      Break;
   end;
   Result := nil;
 end;
@@ -4210,7 +4169,13 @@ end;
 
 class procedure TASTDelphiUnit.CheckExprHasMembers(Expression: TIDExpression);
 begin
-  if not (Expression.DataType is TIDStructure) and not Assigned(Expression.DataType.Helper) then
+  var LDataType := Expression.ActualDataType;
+
+  if (LDataType is TIDStructure) or
+     Assigned(LDataType.Helper) or
+     Assigned(Expression.DataType.Helper) then
+    Exit
+  else
     AbortWork('Expression has no members', Expression.TextPosition);
 end;
 
@@ -7321,7 +7286,7 @@ begin
       token_eof: Exit;
       token_var: begin
         Lexer_NextToken(Scope);
-        Result := ParseVarSection(Scope, vLocal, False);
+        Result := ParseVarSection(Scope, vLocal);
       end;
       token_label: Result := ParseLabelSection(Scope);
       token_const: begin
@@ -7708,6 +7673,7 @@ begin
       else
         ERRORS.DECL_DIFF_WITH_PREV_DECL(ID, ForwardDecl.DisplayName, Proc.DisplayName);
     end;
+
     Result := ParseProcBody(Proc);
     if Result = token_eof then
       Exit;
@@ -8347,12 +8313,8 @@ begin
         Proc := ForwardDecl;
         Break;
       end;
-      // не нашли подходящую декларацию, создаем новую
-      // проверку дерективы overload оставим на потом
       if not Assigned(ForwardDecl.PrevOverload) then
-      begin
         Break;
-      end;
       ForwardDecl := ForwardDecl.PrevOverload as TASTDelphiProc;
     end;
   end else
@@ -8394,10 +8356,13 @@ begin
           Struct.OverloadExplicitTo(ResultType, Proc);
       end;
     else
-    if LOperatorDef.OpID < opIn then
-      Struct.OverloadUnarOperator(LOperatorDef.OpID, Proc)
-    else
-      Struct.OverloadBinarOperator(LOperatorDef.OpID, TIDOperator(Proc));
+      if LOperatorDef.OpID < opIn then
+        Struct.OverloadUnarOperator(LOperatorDef.OpID, Proc)
+      else begin
+        var LLeftType := Proc.ExplicitParams[0].DataType;
+        var LRightType := Proc.ExplicitParams[1].DataType;
+        Struct.OverloadBinarOperator(LOperatorDef.OpID, LLeftType, LRightType, TIDOperator(Proc));
+      end;
     end;
   end;
 
@@ -8492,6 +8457,7 @@ begin
   Decl.HiDecl := CRange.Value.HBExpression.AsConst;
   Decl.LowBound := LB;
   Decl.HighBound := HB;
+  Decl.BaseType := RDataType as TIDOrdinal;
   Decl.OverloadImplicitFrom(RDataType);
 end;
 
@@ -8964,8 +8930,10 @@ begin
   if CallConvention = ConvCDecl then
     ERRORS.DUPLICATE_SPECIFICATION(PS_CDECL);
   CallConvention := ConvCDecl;
-  Lexer_ReadSemicolon(Scope);
+
   Result := Lexer_NextToken(Scope);
+  if Result = token_semicolon then
+    Result := Lexer_NextToken(Scope);
 end;
 
 function TASTDelphiUnit.ParseGenericMember(const PMContext: TPMContext;
@@ -9266,6 +9234,7 @@ function TASTDelphiUnit.ParseMember(Scope: TScope; var EContext: TEContext; cons
 
       Exit(nil);
     end;
+    Result := nil;
   end;
 
 var
@@ -9315,11 +9284,24 @@ begin
   if Expr.ItemType = itProcedure then
     CallExpr := TIDCallExpression.Create(Expr.Declaration, Expr.TextPosition)
   else
-  if (Expr.ItemType = itVar) and (Expr.DataType is TIDProcType) then
+  if (Expr.ItemType = itVar) and (Expr.ActualDataType is TIDProcType) then
   begin
     CallExpr := TIDCastedCallExpression.Create(Expr.Declaration, Expr.TextPosition);
     TIDCastedCallExpression(CallExpr).DataType := Expr.DataType;
-  end else begin
+  end else
+  if (Expr.ItemType = itProperty) and (Expr.ActualDataType is TIDProcType) then
+  begin
+    CheckPropertyReadable(Expr);
+    var LDecl := Expr.AsProperty.Getter;
+    if LDecl is TIDProcedure then
+    begin
+      // todo: generate func call
+      LDecl := GetTMPVar(EContext, TIDProcedure(LDecl).ResultType);
+    end;
+    CallExpr := TIDCastedCallExpression.Create(LDecl, Expr.TextPosition);
+    TIDCastedCallExpression(CallExpr).DataType := LDecl.DataType;
+  end else
+  begin
     ERRORS.FEATURE_NOT_SUPPORTED;
     CallExpr := nil;
   end;
@@ -9788,7 +9770,7 @@ begin
   Result := Lexer_NextToken(Scope);
 end;
 
-function TASTDelphiUnit.ParseVarSection(Scope: TScope; Visibility: TVisibility; IsWeak: Boolean): TTokenID;
+function TASTDelphiUnit.ParseVarSection(Scope: TScope; Visibility: TVisibility): TTokenID;
 var
   i, c: Integer;
   DataType: TIDType;
@@ -9835,9 +9817,6 @@ begin
 
     for i := 0 to c do begin
       Variable := TIDVariable.Create(Scope, Names.Items[i]);
-      // если это слабая ссылка - получаем соответствующий тип
-      if IsWeak then
-        DataType := GetWeakRefType(Scope, DataType);
       Variable.DataType := DataType;
       Variable.Visibility := Visibility;
       Variable.DefaultValue := DefaultValue;
@@ -9849,9 +9828,12 @@ begin
     if Result = token_semicolon then
       Result := Lexer_NextToken(Scope);
 
-    if Result <> token_identifier then
-      Exit;
-    c := 0;
+    if Result in [token_identifier, token_openblock] then
+    begin
+      c := 0;
+      continue;
+    end;
+    Exit;
   end;
 end;
 
@@ -10322,6 +10304,13 @@ procedure TASTDelphiUnit.CheckProcedureType(DeclType: TIDType);
 begin
   if (DeclType.DataTypeID <> dtProcType) then
     AbortWork('Procedure type required', Lexer.Position);
+end;
+
+class procedure TASTDelphiUnit.CheckPropertyReadable(AExpr: TIDExpression);
+begin
+  var LProperty := AExpr.AsProperty;
+  if not Assigned(LProperty.Getter) then
+    AbortWork('Property "%s" is write only', [LProperty.Name], AExpr.TextPosition);
 end;
 
 class procedure TASTDelphiUnit.CheckIntConstInRange(const Expr: TIDExpression; HiBount, LowBound: Int64);

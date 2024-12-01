@@ -41,7 +41,14 @@ uses
   AST.Delphi.Operators.Signatures in '..\Source\AST.Delphi.Operators.Signatures.pas',
   AST.Parser.Log in '..\Source\AST.Parser.Log.pas',
   AST.Delphi.SysTypes in '..\Source\AST.Delphi.SysTypes.pas',
-  AST.Delphi.Declarations in '..\Source\AST.Delphi.Declarations.pas';
+  AST.Delphi.Declarations in '..\Source\AST.Delphi.Declarations.pas',
+  ASTTest.Implicit.Pointers in '..\TestScripts\Implict\ASTTest.Implicit.Pointers.pas',
+  ASTTest.Cmp.Strings in '..\TestScripts\Operators\Compare\ASTTest.Cmp.Strings.pas',
+  ASTTest.Cmp.PChars in '..\TestScripts\Operators\Compare\ASTTest.Cmp.PChars.pas',
+  ASTTest.Sub.Integer in '..\TestScripts\Operators\Substruct\ASTTest.Sub.Integer.pas',
+  ASTTest.Add.Pointers in '..\TestScripts\Operators\Add\ASTTest.Add.Pointers.pas',
+  ASTTest.Cmp.Pointers in '..\TestScripts\Operators\Compare\ASTTest.Cmp.Pointers.pas',
+  ASTTest.Ops.OverloadWithImplicitCast in '..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadWithImplicitCast.pas';
 
 {$R *.res}
 

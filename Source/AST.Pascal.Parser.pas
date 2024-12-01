@@ -122,7 +122,7 @@ type
     property Lexer: TDelphiLexer read fLexer;
     property SysUnit: TASTModule read fSysUnit;
     ////////////////////////////////////////////////////////////////////////////
-    constructor Create(const Project: IASTProject; const FileName: string; const Source: string = ''); override;
+    constructor Create(const AProject: IASTProject; const AFileName: string; const ASource: string = ''); override;
     constructor CreateFromFile(const AProject: IASTProject; const AFileName: string); override;
     destructor Destroy; override;
     ////////////////////////////////////////////////////////////////////////////
@@ -190,11 +190,15 @@ begin
   Result := TCompilerResult.CompileFail;
 end;
 
-constructor TPascalUnit.Create(const Project: IASTProject; const FileName: string; const Source: string = '');
+constructor TPascalUnit.Create(const AProject: IASTProject; const AFileName: string; const ASource: string = '');
 begin
-  inherited Create(Project, FileName, Source);
+  var LSource := ASource;
+  if (ASource = '') and FileExists(AFileName) then
+    LSource := TFile.ReadAllText(AFileName);
+
+  inherited Create(AProject, AFileName, LSource);
   fSysUnit := (Project as IASTPascalProject).SysUnit;
-  fLexer := TDelphiLexer.Create(Source);
+  fLexer := TDelphiLexer.Create(LSource);
   FMessages := TCompilerMessages.Create;
   //FVisibility := vPublic;
 

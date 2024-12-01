@@ -28,7 +28,9 @@ type
   end;
 
   TSysOpBinary = class(TSysOperator)
-    function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; virtual; abstract;
+  public
+    function Check(const ALeft, ARight: TIDType): Boolean; virtual;
+    function Match(const SContext: TSContext; const ALeft, ARight: TIDExpression): TIDExpression; virtual;
   end;
 
 
@@ -647,6 +649,7 @@ end;
 function TSysImplicitTProcFromAny.Check(const SContext: TSContext; const Src: TIDExpression;
   const Dst: TIDType): TIDDeclaration;
 begin
+  var LSrcDataType := Src.ActualDataType;
   var LDstProcType := Dst as TIDProcType;
 
   if Src.ItemType = itProcedure then
@@ -661,9 +664,9 @@ begin
       LSrcProc := LSrcProc.PrevOverload;
     until not Assigned(LSrcProc);
   end else
-  if Src.DataTypeID = dtProcType then
+  if LSrcDataType.DataTypeID = dtProcType then
   begin
-    var LSrcProcType := Src.DataType as TIDProcType;
+    var LSrcProcType := LSrcDataType as TIDProcType;
     if TASTDelphiUnit.StrictMatchProcSingnatures(LSrcProcType.Params,
                                                  LDstProcType.Params,
                                                  LSrcProcType.ResultType,
@@ -671,7 +674,7 @@ begin
       Exit(Dst);
   end else
   begin
-    if (Src.DataTypeID = dtPointer) and LDstProcType.IsStatic then
+    if (LSrcDataType.DataTypeID = dtPointer) and LDstProcType.IsStatic then
       Exit(Dst);
   end;
 
@@ -1243,6 +1246,21 @@ function TSys_NotEqual_NullPtr.Match(const SContext: TSContext; const Left, Righ
 begin
   // todo:
   Result := SYSUnit._TrueExpression;
+end;
+
+{ TSysOpBinary }
+
+function TSysOpBinary.Check(const ALeft, ARight: TIDType): Boolean;
+begin
+  Result := True;
+end;
+
+function TSysOpBinary.Match(const SContext: TSContext; const ALeft, ARight: TIDExpression): TIDExpression;
+begin
+  if Check(ALeft.DataType, ARight.DataType) then
+    Result := ALeft
+  else
+    Result := nil;
 end;
 
 end.

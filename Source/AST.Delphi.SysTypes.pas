@@ -133,21 +133,31 @@ type
 
   PDelphiSystemDeclarations = TDelphiBuiltinTypes;
 
-
   TBuiltin_IntType = class(TIDOrdinal)
+  protected
+    function GetIsInteger: Boolean; override;
   public
     procedure SetupOperators(ADecls: PDelphiSystemDeclarations); virtual; abstract;
+    function SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType; override;
+    function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
   end;
 
   TBuiltin_FltType = class(TIDType)
+  protected
+    function GetIsFloat: Boolean; override;
   public
     procedure SetupOperators(ADecls: PDelphiSystemDeclarations); virtual; abstract;
-    function BinarOperator(Op: TOperatorID; Right: TIDType): TIDType; override;
+    function SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType; override;
+    function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
   end;
 
   TBuiltin_StrType = class(TIDString)
   public
     procedure SetupOperators(ADecls: PDelphiSystemDeclarations); virtual; abstract;
+  end;
+
+  TBuiltin_TypedPointer = class(TIDPointer)
+
   end;
 
 //  TST_Byte = class(TSys_IntType)
@@ -161,6 +171,14 @@ type
 //    constructor CreateAsBuiltin(ASystem: TASTModule); override;
 //    procedure CreateStandardOperators; override;
 //  end;
+   TBuiltin_Boolean = class(TBuiltin_IntType)
+   end;
+
+   TBuiltin_UnicodeChar = class(TBuiltin_IntType)
+   end;
+
+   TBuiltin_AnsiChar = class(TBuiltin_IntType)
+   end;
 
   TBuiltin_Extended = class(TBuiltin_FltType)
   public
@@ -191,6 +209,19 @@ type
   TBuiltin_ShortString = class(TBuiltin_AnsiString)
 
   end;
+
+  TBuiltin_PAnsiChar = class(TBuiltin_TypedPointer)
+  public
+    function SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType; override;
+    function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
+  end;
+
+  TBuiltin_PWideChar = class(TBuiltin_TypedPointer)
+  public
+    function SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType; override;
+    function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
+  end;
+
 
 
 implementation
@@ -288,18 +319,97 @@ begin
             ((ADst.DataTypeID = dtStaticArray) and (TIDStaticArray(ADst).ElementDataType.DataTypeID = dtAnsiChar));
 end;
 
+{ TBuiltin_IntType }
+
+function TBuiltin_IntType.GetIsInteger: Boolean;
+begin
+  Result := True;
+end;
+
+function TBuiltin_IntType.SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType;
+begin
+  if ARight.IsInteger then
+  begin
+    case AOpID of
+      opEqual,
+      opNotEqual,
+      opGreater,
+      opGreaterOrEqual,
+      opLess,
+      opLessOrEqual: Result := SYSUnit._Boolean;
+    else
+      Result := Self;
+    end;
+  end else
+    Result := nil;
+end;
+
+function TBuiltin_IntType.SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType;
+begin
+  if ALeft.IsInteger then
+  begin
+    case AOpID of
+      opEqual,
+      opNotEqual,
+      opGreater,
+      opGreaterOrEqual,
+      opLess,
+      opLessOrEqual: Result := SYSUnit._Boolean;
+    else
+      Result := Self;
+    end;
+  end else
+    Result := nil;
+end;
 
 { TBuiltin_FltType }
 
-function TBuiltin_FltType.BinarOperator(Op: TOperatorID; Right: TIDType): TIDType;
+function TBuiltin_FltType.GetIsFloat: Boolean;
 begin
-  case Op of
-    opAdd: Result := Self;
-    opSubtract: Result := Self;
-    opMultiply: Result := Self;
-    opDivide: Result := Self;
+  Result := True;
+end;
+
+function TBuiltin_FltType.SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType;
+begin
+  case AOpID of
+    opEqual,
+    opNotEqual,
+    opGreater,
+    opGreaterOrEqual,
+    opLess,
+    opLessOrEqual: begin
+      if ARight.IsFloat or ARight.IsInteger then
+        Result := SYSUnit._Boolean
+      else
+        Result := nil;
+    end
   else
-    Result := inherited;
+    if ARight.IsFloat or ARight.IsInteger then
+      Result := Self
+    else
+     Result := nil;
+  end;
+end;
+
+function TBuiltin_FltType.SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType;
+begin
+  case AOpID of
+    opEqual,
+    opNotEqual,
+    opGreater,
+    opGreaterOrEqual,
+    opLess,
+    opLessOrEqual: begin
+      if ALeft.IsFloat or ALeft.IsInteger then
+        Result := SYSUnit._Boolean
+      else
+        Result := nil;
+    end;
+  else
+    if ALeft.IsFloat or ALeft.IsInteger then
+      Result := Self
+    else
+     Result := nil;
   end;
 end;
 
@@ -563,6 +673,76 @@ begin
   else
     Assert(False, 'Data Type is unknown');
     Result := nil;
+  end;
+end;
+
+function _IsStrType(AType: TIDType): Boolean;
+begin
+  Result := AType.DataTypeID in [dtShortString, dtString, dtAnsiString];
+end;
+
+function _IsChrType(AType: TIDType): Boolean;
+begin
+  Result := AType.DataTypeID in [dtAnsiChar, dtChar];
+end;
+
+{ TBuiltin_PAnsiChar }
+
+function TBuiltin_PAnsiChar.SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType;
+begin
+  case AOpID of
+    opEqual, opNotEqual: begin
+      if (ARight = Self) or _IsStrType(ARight) or _IsChrType(ARight) then
+        Result := SYSUnit._Boolean
+      else
+        Result := inherited;
+    end;
+  else
+    Result := inherited;
+  end;
+end;
+
+function TBuiltin_PAnsiChar.SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType;
+begin
+  case AOpID of
+    opEqual, opNotEqual: begin
+      if (ALeft = Self) or _IsStrType(ALeft) or _IsChrType(ALeft) then
+        Result := SYSUnit._Boolean
+      else
+        Result := inherited;
+    end;
+  else
+    Result := inherited;
+  end;
+end;
+
+{ TBuiltin_PWideChar }
+
+function TBuiltin_PWideChar.SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType;
+begin
+  case AOpID of
+    opEqual, opNotEqual: begin
+      if (ARight = Self) or _IsStrType(ARight) or _IsChrType(ARight) then
+        Result := SYSUnit._Boolean
+      else
+        Result := inherited;
+    end;
+  else
+    Result := inherited;
+  end;
+end;
+
+function TBuiltin_PWideChar.SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType;
+begin
+  case AOpID of
+    opEqual, opNotEqual: begin
+      if (ALeft = Self) or _IsStrType(ALeft) or _IsChrType(ALeft) then
+        Result := SYSUnit._Boolean
+      else
+        Result := inherited;
+    end;
+  else
+    Result := inherited;
   end;
 end;
 

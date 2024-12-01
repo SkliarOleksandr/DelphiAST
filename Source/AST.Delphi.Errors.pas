@@ -69,8 +69,6 @@ resourcestring
   sTooManyActualParametersFmt = 'Too many actual parameters (expected: %d, actual: %d)';
   sCannotPassConstAsVarParamFmt = 'Can not pass const as var parameter "%s"';
     // Types
-  sNoOverloadOperatorForTypesFmt = 'No overload operator "%s" for types "%s" and "%s"';
-  sNoOverloadOperatorForTypeFmt = 'No overload operator "%s" for type "%s"';
   sUnknownOperatorFmt = 'Unknown operator "%s"';
   sOperatorNeedNCountOfParameters = 'Operator "%s" need %d explicit parameters';
   sIncompatibleTypesFmt = 'Incompatible types: Src: "%s" and Dst: "%s"';
@@ -255,8 +253,7 @@ type
     class procedure AMBIGUOUS_OVERLOAD_CALL(CallExpr: TIDExpression); overload; static;
     class procedure INCOMPLETE_PROC(Decl: TIDDeclaration); static;
     class procedure TYPE_NOT_COMPLETELY_DEFINED(Decl: TIDDeclaration); static;
-    class procedure NO_OVERLOAD_OPERATOR_FOR_TYPES(Op: TOperatorID; Left, Right: TIDExpression); overload; static;
-    class procedure NO_OVERLOAD_OPERATOR_FOR_TYPES(Op: TOperatorID; Right: TIDExpression); overload;
+    class procedure E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(const TextPosition: TTextPosition); overload;
     class procedure UNIT_NOT_FOUND(const ID: TIdentifier); static;
     class procedure UNIT_RECURSIVELY_USES_ITSELF(const ID: TIdentifier); static;
     class procedure SETTER_MUST_BE_SUCH(const DeclString: string; const TextPosition: TTextPosition); static;
@@ -293,6 +290,7 @@ type
 
     class procedure E2185_CANNOT_SPECIFY_DISPID(const AMethodID: TIdentifier);
     class procedure E2232_INTERFACE_HAS_NO_INTERFACE_IDENTIFICATION(ADecl: TIDDeclaration);
+    class procedure E2436_TYPE_NOT_ALLOWED_IN_ANONYMOUS_OR_LOCAL_RECORD_TYPE(ATextPosition: TTextPosition);
 
     procedure PROCEDURE_CANNOT_HAVE_RESULT;
     procedure BREAK_OR_CONTINUE_ALLOWED_ONLY_IN_LOOPS;
@@ -572,6 +570,11 @@ begin
   AbortWork(sIdentifierExpected, Lexer.PrevPosition);
 end;
 
+class procedure TASTDelphiErrors.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(const TextPosition: TTextPosition);
+begin
+  AbortWork('E2015 Operator not applicable to this operand type', TextPosition);
+end;
+
 class procedure TASTDelphiErrors.E2185_CANNOT_SPECIFY_DISPID(const AMethodID: TIdentifier);
 begin
   AbortWork('E2185 Overriding automated virtual method ''%s'' cannot specify a dispid',
@@ -581,6 +584,11 @@ end;
 class procedure TASTDelphiErrors.E2232_INTERFACE_HAS_NO_INTERFACE_IDENTIFICATION(ADecl: TIDDeclaration);
 begin
   AbortWork('E2232 Interface ''%s'' has no interface identification', [ADecl.Name], ADecl.TextPosition);
+end;
+
+class procedure TASTDelphiErrors.E2436_TYPE_NOT_ALLOWED_IN_ANONYMOUS_OR_LOCAL_RECORD_TYPE(ATextPosition: TTextPosition);
+begin
+  AbortWork('E2436 Type declarations not allowed in anonymous record or local record type', ATextPosition);
 end;
 
 procedure TASTDelphiErrors.EMPTY_EXPRESSION;
@@ -999,16 +1007,6 @@ begin
   if Assigned(TIDProcedure(Decl).Struct) then
     ProcName := TIDProcedure(Decl).Struct.Name + '.' + ProcName;
   AbortWork(sIncompleteProcFmt, [ProcName], Decl.SourcePosition);
-end;
-
-class procedure TASTDelphiErrors.NO_OVERLOAD_OPERATOR_FOR_TYPES(Op: TOperatorID; Left, Right: TIDExpression);
-begin
-  AbortWork(sNoOverloadOperatorForTypesFmt, [OperatorFullName(Op), Left.DataTypeName, Right.DataTypeName], Left.TextPosition);
-end;
-
-class procedure TASTDelphiErrors.NO_OVERLOAD_OPERATOR_FOR_TYPES(Op: TOperatorID; Right: TIDExpression);
-begin
-  AbortWork(sNoOverloadOperatorForTypeFmt, [OperatorFullName(Op), Right.DataTypeName], Right.TextPosition);
 end;
 
 procedure TASTDelphiErrors.NO_METHOD_IN_BASE_CLASS(Proc: TIDProcedure);
