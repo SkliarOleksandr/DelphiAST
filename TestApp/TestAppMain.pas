@@ -477,6 +477,8 @@ begin
   var LOptions := TDcc32CMDLineParser.Parse(ACMDLine);
   UnitSearchPathEdit.Text := LOptions['-I'].Value;
   UnitSearchPathIncludeSubDirCheck.Checked := False;
+  CondDefinesEdit.Text := LOptions['-D'].Value;
+  UnitScopeNamesEdit.Text := LOptions['-NS'].Value;
 end;
 
 procedure TfrmTestAppMain.LoadLSPConfigFiles(const AJSONArray: TJSONArray);
