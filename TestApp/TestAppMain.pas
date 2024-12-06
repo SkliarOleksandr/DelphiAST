@@ -5,7 +5,7 @@ interface
 {$I ../Source/AST.Parser.Defines.inc}
 
 uses
-  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics, System.JSON,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, System.Generics.Collections, AST.Pascal.Project,
   AST.Pascal.Parser, AST.Delphi.Classes, SynEdit, SynEditHighlighter, SynEditCodeFolding, SynHighlighterPas, AST.Delphi.Project,
   Vcl.ComCtrls, System.Types, Vcl.ExtCtrls, AST.Intf, AST.Parser.ProcessStatuses, Vcl.CheckLst, SynEditMiscClasses,
@@ -122,6 +122,19 @@ type
     TestsTopPanel: TPanel;
     RunAllTestsButton: TButton;
     TestsParseAllAction: TAction;
+    LoadLSPConfigButton: TButton;
+    LoadLSPConfigAction: TAction;
+    FilesPopup: TPopupMenu;
+    FilesCheckAllAction: TAction;
+    FilesCheckAllAction1: TMenuItem;
+    N2: TMenuItem;
+    FilesParseFocusedAction: TAction;
+    ParseFocused1: TMenuItem;
+    N3: TMenuItem;
+    FilesRemoveAllAction: TAction;
+    RemoveAll1: TMenuItem;
+    Label7: TLabel;
+    ProjectNameEdit: TEdit;
     procedure ASTParseRTLButtonClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure Button5Click(Sender: TObject);
@@ -155,6 +168,12 @@ type
     procedure RenameTestActionUpdate(Sender: TObject);
     procedure RenameTestActionExecute(Sender: TObject);
     procedure TestsParseAllActionExecute(Sender: TObject);
+    procedure LoadLSPConfigActionExecute(Sender: TObject);
+    procedure FilesCheckAllActionUpdate(Sender: TObject);
+    procedure FilesCheckAllActionExecute(Sender: TObject);
+    procedure FilesParseFocusedActionUpdate(Sender: TObject);
+    procedure FilesParseFocusedActionExecute(Sender: TObject);
+    procedure FilesRemoveAllActionExecute(Sender: TObject);
   private
     { Private declarations }
     //fPKG: INPPackage;
@@ -170,6 +189,8 @@ type
     procedure SaveSettings;
     procedure LoadSettings;
     procedure LoadTestScripts(const ALastTestName: string);
+    procedure LoadLSPConfigDccCmdLine(const ACMDLine: string);
+    procedure LoadLSPConfigFiles(const AJSONArray: TJSONArray);
     function CreateProject(AParseSystemUnit: Boolean): IASTDelphiProject;
     function FocusedTestData: TTestData;
     function GetTestSriptsPath: string;
@@ -191,6 +212,7 @@ uses
   System.Rtti,
   System.StrUtils,
   System.IniFiles,
+  System.NetEncoding,
   AST.Delphi.System,
   AST.Delphi.Parser,
   AST.Delphi.Declarations,
@@ -200,7 +222,8 @@ uses
   AST.Delphi.DataTypes,
   AST.Parser.Errors,
   AST.Parser.Utils,
-  AST.Parser.Log;
+  AST.Parser.Log,
+  AST.Utils.CmdLineParser;
 
 {$R *.dfm}
 
@@ -405,11 +428,13 @@ begin
       LINI.WriteBool(SGeneral, 'SHOW_WARNINGS', ShowWarningsCheck.Checked);
       LINI.WriteBool(SGeneral, 'SHOW_MEMLEAKS', ShowMemLeaksCheck.Checked);
       LINI.WriteBool(SGeneral, 'BREAKPOINT_ON_ERROR', BreakpointOnErrorCheck.Checked);
+      LINI.WriteInteger(SGeneral, 'LEFT_ACTIVE_TAB', LeftPageControl.ActivePageIndex);
 
       LINI.WriteString(SGeneral, 'PLATFORM', cbPlatform.Text);
       LINI.WriteString(SGeneral, 'DELPHI_SRC_PATH', DelphiSrcPathEdit.Text);
         LINI.WriteBool(SGeneral, 'DELPHI_SRC_PATH_INCLUDE_SUBDIRS', DelphiPathIncludeSubDirCheck.Checked);
 
+      LINI.WriteString(SGeneral, 'PROJECT_NAME', ProjectNameEdit.Text);
       LINI.WriteString(SGeneral, 'UNIT_SCOPE_NAMES', UnitScopeNamesEdit.Text);
       LINI.WriteString(SGeneral, 'UNIT_SEARCH_PATH', UnitSearchPathEdit.Text);
         LINI.WriteBool(SGeneral, 'UNIT_SEARCH_PATH_INCLUDE_SUBDIRS', UnitSearchPathIncludeSubDirCheck.Checked);
@@ -440,9 +465,70 @@ begin
   TAction(Sender).Enabled := Assigned(FSelectedTest) and edUnit.Modified;
 end;
 
+function FileURLDecode(const AFileURL: string): string;
+begin
+  Result := TURLEncoding.URL.Decode(AFileURL).
+              Replace('file:///', '', [rfIgnoreCase]).
+              Replace('/', '\', [rfReplaceAll]);
+end;
+
+procedure TfrmTestAppMain.LoadLSPConfigDccCmdLine(const ACMDLine: string);
+begin
+  var LOptions := TDcc32CMDLineParser.Parse(ACMDLine);
+  UnitSearchPathEdit.Text := LOptions['-I'].Value;
+  UnitSearchPathIncludeSubDirCheck.Checked := False;
+end;
+
+procedure TfrmTestAppMain.LoadLSPConfigFiles(const AJSONArray: TJSONArray);
+begin
+  lbFiles.Clear;
+  for var LObject in AJSONArray do
+  begin
+    var LFileField := LObject.FindValue('file');
+    if Assigned(LFileField) then
+    begin
+      var LFileName := FileURLDecode(LFileField.Value);
+      if FileExists(LFileName) then
+        lbFiles.AddItem(LFileName, nil);
+    end;
+  end;
+  lbFiles.CheckAll(cbChecked);
+end;
+
+procedure TfrmTestAppMain.LoadLSPConfigActionExecute(Sender: TObject);
+begin
+  var LDlg := TOpenDialog.Create(Self);
+  try
+    LDlg.Title := 'Select a Delphi LSP Config file';
+    LDlg.Filter := 'Delphi LSP Config|*.delphilsp.json';
+    if LDlg.Execute then
+    begin
+      var LJson := TJSONValue.ParseJSONValue(TFile.ReadAllText(LDlg.FileName));
+      try
+        var Lproject :=  LJson.FindValue('settings.project');
+        if Assigned(Lproject) then
+          ProjectNameEdit.Text := FileURLDecode(Lproject.Value);
+
+        var LdccOptions := LJson.FindValue('settings.dccOptions');
+        if Assigned(LdccOptions) then
+          LoadLSPConfigDccCmdLine(LdccOptions.Value);
+
+        var LprojectFiles := LJson.FindValue('settings.projectFiles');
+        if Assigned(LprojectFiles) and (LprojectFiles is TJSONArray) then
+          LoadLSPConfigFiles(TJSONArray(LprojectFiles));
+      finally
+        LJson.Free;
+      end;
+    end;
+  finally
+    LDlg.Free;
+  end;
+end;
+
 procedure TfrmTestAppMain.LoadSettings;
 begin
-  var LINI := TIniFile.Create(ChangeFileExt(Application.ExeName, '.ini'));
+  // TMemIniFile supports longer string values than TIniFile
+  var LINI := TMemIniFile.Create(ChangeFileExt(Application.ExeName, '.ini'));
   try
     // to avoid SaveSettings auto-triggering
     FLockSaveSettings := True;
@@ -453,9 +539,11 @@ begin
     WriteLogCheck.Checked := LINI.ReadBool(SGeneral, 'WRITE_LOG', True);
     ShowWarningsCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_WARNINGS', False);
     ShowMemLeaksCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_MEMLEAKS', False);
-    BreakpointOnErrorCheck.Checked :=  LINI.ReadBool(SGeneral, 'BREAKPOINT_ON_ERROR', False);
+    BreakpointOnErrorCheck.Checked := LINI.ReadBool(SGeneral, 'BREAKPOINT_ON_ERROR', False);
+    LeftPageControl.ActivePageIndex := LINI.ReadInteger(SGeneral, 'LEFT_ACTIVE_TAB', 0);
 
     cbPlatform.Text := LINI.ReadString(SGeneral, 'PLATFORM', 'WIN32');
+    ProjectNameEdit.Text := LINI.ReadString(SGeneral, 'PROJECT_NAME', ProjectNameEdit.Text);
     DelphiSrcPathEdit.Text := LINI.ReadString(SGeneral, 'DELPHI_SRC_PATH', DelphiSrcPathEdit.Text);
     DelphiPathIncludeSubDirCheck.Checked := LINI.ReadBool(SGeneral, 'DELPHI_SRC_PATH_INCLUDE_SUBDIRS', True);
     UnitScopeNamesEdit.Text := LINI.ReadString(SGeneral, 'UNIT_SCOPE_NAMES', UnitScopeNamesEdit.Text);
@@ -666,7 +754,11 @@ end;
 
 function TfrmTestAppMain.CreateProject(AParseSystemUnit: Boolean): IASTDelphiProject;
 begin
-  Result := TASTDelphiProject.Create('test');
+  if FileExists(ProjectNameEdit.Text) then
+    Result := TASTDelphiProject.CreateExisting(ProjectNameEdit.Text)
+  else
+    Result := TASTDelphiProject.Create(ProjectNameEdit.Text);
+
   Result.ParseSystemUnit := AParseSystemUnit;
   Result.AddUnitSearchPath(DelphiSrcPathEdit.Text, DelphiPathIncludeSubDirCheck.Checked);
   Result.AddUnitSearchPath(UnitSearchPathEdit.Text, UnitSearchPathIncludeSubDirCheck.Checked);
@@ -877,6 +969,8 @@ procedure TfrmTestAppMain.ParseFilesActionExecute(Sender: TObject);
 var
   Prj: IASTDelphiProject;
 begin
+  SaveSettings;
+
   Prj := CreateProject({AParseSystemUnit:} True);
 
   // add selected files to the project
@@ -913,6 +1007,42 @@ end;
 procedure TfrmTestAppMain.Button5Click(Sender: TObject);
 begin
   edAllItems.SearchReplace(NSSearchEdit.Text, '', []);
+end;
+
+procedure TfrmTestAppMain.FilesCheckAllActionExecute(Sender: TObject);
+begin
+  if TAction(Sender).Tag = 0 then
+  begin
+    lbFiles.CheckAll(cbUnchecked);
+    TAction(Sender).Tag := 1;
+  end else
+  begin
+    lbFiles.CheckAll(cbChecked);
+    TAction(Sender).Tag := 0;
+  end;
+end;
+
+procedure TfrmTestAppMain.FilesCheckAllActionUpdate(Sender: TObject);
+begin
+  TAction(Sender).Enabled := lbFiles.Count > 0;
+end;
+
+procedure TfrmTestAppMain.FilesParseFocusedActionExecute(Sender: TObject);
+begin
+  var LProject := CreateProject({AParseSystemUnit:} True);
+  LProject.AddUnit(lbFiles.Items[lbFiles.ItemIndex]);
+  ParseProject(LProject);
+  LProject.Clear;
+end;
+
+procedure TfrmTestAppMain.FilesParseFocusedActionUpdate(Sender: TObject);
+begin
+  TAction(Sender).Enabled := lbFiles.ItemIndex >= 0;
+end;
+
+procedure TfrmTestAppMain.FilesRemoveAllActionExecute(Sender: TObject);
+begin
+  lbFiles.Clear;
 end;
 
 function TfrmTestAppMain.FocusedTestData: TTestData;

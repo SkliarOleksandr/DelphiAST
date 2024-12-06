@@ -25,8 +25,6 @@ type
     function GetSysInitUnit: TASTModule;
     procedure DoBeforeCompileUnit(AUnit: TASTModule); override;
     procedure DoFinishCompileUnit(AUnit: TASTModule; AIntfOnly: Boolean); override;
-  public
-    constructor Create(const Name: string); override;
   end;
 
 implementation
@@ -35,12 +33,6 @@ uses AST.Delphi.Parser,
      AST.Delphi.System;
 
 { TASTDelphiProject }
-
-constructor TASTDelphiProject.Create(const Name: string);
-begin
-  inherited;
-
-end;
 
 procedure TASTDelphiProject.DoBeforeCompileUnit(AUnit: TASTModule);
 begin

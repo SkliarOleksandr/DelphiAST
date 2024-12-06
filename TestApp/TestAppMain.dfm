@@ -155,11 +155,12 @@ object frmTestAppMain: TfrmTestAppMain
                 TabOrder = 0
               end
               object ParseFilesButton: TButton
-                Left = 162
+                Left = 305
                 Top = 2
                 Width = 75
                 Height = 25
                 Action = ParseFilesAction
+                Anchors = [akTop, akRight]
                 TabOrder = 1
               end
               object Button1: TButton
@@ -178,6 +179,7 @@ object frmTestAppMain: TfrmTestAppMain
               Height = 449
               Align = alClient
               ItemHeight = 17
+              PopupMenu = FilesPopup
               TabOrder = 1
             end
           end
@@ -646,36 +648,43 @@ object frmTestAppMain: TfrmTestAppMain
       end
       object Label3: TLabel
         Left = 14
-        Top = 64
+        Top = 112
         Width = 86
         Height = 13
         Caption = 'Unit Scope Names'
       end
       object Label4: TLabel
         Left = 14
-        Top = 110
+        Top = 158
         Width = 80
         Height = 13
         Caption = 'Unit Search Path'
       end
       object Label5: TLabel
         Left = 14
-        Top = 156
+        Top = 204
         Width = 92
         Height = 13
         Caption = 'Conditional Defines'
       end
       object Label6: TLabel
         Left = 14
-        Top = 202
+        Top = 250
         Width = 81
         Height = 13
         Caption = 'Test Scripts Path'
       end
+      object Label7: TLabel
+        Left = 14
+        Top = 64
+        Width = 64
+        Height = 13
+        Caption = 'Project Name'
+      end
       object DelphiSrcPathEdit: TEdit
         Left = 14
         Top = 37
-        Width = 1241
+        Width = 1227
         Height = 21
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 0
@@ -683,8 +692,8 @@ object frmTestAppMain: TfrmTestAppMain
       end
       object UnitScopeNamesEdit: TEdit
         Left = 14
-        Top = 83
-        Width = 1241
+        Top = 131
+        Width = 1227
         Height = 21
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 1
@@ -694,8 +703,8 @@ object frmTestAppMain: TfrmTestAppMain
           ';Vcl.Samples;Vcl.Shell'
       end
       object SaveSettingsButton: TButton
-        Left = 1120
-        Top = 286
+        Left = 1122
+        Top = 326
         Width = 119
         Height = 25
         Anchors = [akTop, akRight]
@@ -705,8 +714,8 @@ object frmTestAppMain: TfrmTestAppMain
       end
       object UnitSearchPathEdit: TEdit
         Left = 14
-        Top = 129
-        Width = 1241
+        Top = 177
+        Width = 1227
         Height = 21
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 3
@@ -714,8 +723,8 @@ object frmTestAppMain: TfrmTestAppMain
       end
       object CondDefinesEdit: TEdit
         Left = 14
-        Top = 175
-        Width = 1241
+        Top = 223
+        Width = 1227
         Height = 21
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 4
@@ -745,7 +754,7 @@ object frmTestAppMain: TfrmTestAppMain
       end
       object ShowMemLeaksCheck: TCheckBox
         Left = 14
-        Top = 294
+        Top = 302
         Width = 123
         Height = 17
         Caption = 'Show Memory Leaks'
@@ -754,12 +763,29 @@ object frmTestAppMain: TfrmTestAppMain
       end
       object TestScriptsPathEdit: TEdit
         Left = 14
-        Top = 221
-        Width = 1241
+        Top = 269
+        Width = 1227
         Height = 21
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 8
         Text = '..\..\..\TestScripts'
+      end
+      object LoadLSPConfigButton: TButton
+        Left = 994
+        Top = 326
+        Width = 122
+        Height = 25
+        Action = LoadLSPConfigAction
+        TabOrder = 9
+      end
+      object ProjectNameEdit: TEdit
+        Left = 14
+        Top = 83
+        Width = 1227
+        Height = 21
+        Anchors = [akLeft, akTop, akRight]
+        TabOrder = 10
+        Text = 'Project1'
       end
     end
   end
@@ -818,6 +844,24 @@ object frmTestAppMain: TfrmTestAppMain
     object TestsParseAllAction: TAction
       Caption = 'Parse All'
       OnExecute = TestsParseAllActionExecute
+    end
+    object LoadLSPConfigAction: TAction
+      Caption = 'Load from LSP Config'
+      OnExecute = LoadLSPConfigActionExecute
+    end
+    object FilesCheckAllAction: TAction
+      Caption = 'Check/Uncheck All'
+      OnExecute = FilesCheckAllActionExecute
+      OnUpdate = FilesCheckAllActionUpdate
+    end
+    object FilesParseFocusedAction: TAction
+      Caption = 'Parse Focused'
+      OnExecute = FilesParseFocusedActionExecute
+      OnUpdate = FilesParseFocusedActionUpdate
+    end
+    object FilesRemoveAllAction: TAction
+      Caption = 'Remove All'
+      OnExecute = FilesRemoveAllActionExecute
     end
   end
   object ImageList1: TImageList
@@ -1110,6 +1154,25 @@ object frmTestAppMain: TfrmTestAppMain
     end
     object Rename1: TMenuItem
       Action = RenameTestAction
+    end
+  end
+  object FilesPopup: TPopupMenu
+    Left = 160
+    Top = 209
+    object ParseFocused1: TMenuItem
+      Action = FilesParseFocusedAction
+    end
+    object N2: TMenuItem
+      Caption = '-'
+    end
+    object FilesCheckAllAction1: TMenuItem
+      Action = FilesCheckAllAction
+    end
+    object N3: TMenuItem
+      Caption = '-'
+    end
+    object RemoveAll1: TMenuItem
+      Action = FilesRemoveAllAction
     end
   end
 end

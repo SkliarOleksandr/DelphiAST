@@ -175,6 +175,7 @@
         <DCCReference Include="..\TestScripts\Operators\Add\ASTTest.Add.Pointers.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Compare\ASTTest.Cmp.Pointers.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadWithImplicitCast.pas"/>
+        <DCCReference Include="AST.Utils.CmdLineParser.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

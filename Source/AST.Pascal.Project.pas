@@ -43,7 +43,7 @@ type
     fDefines: TDefines;
     fStrLiterals: TStrLiterals;
     fIncludeDebugInfo: Boolean;
-    fUnitSearchPathes: TStrings;
+    fUnitSearchPathes: TStringList;
     fMessages: ICompilerMessages;
     fRTTICharset: TRTTICharset;
     fOptions: TPackageOptions;
@@ -54,6 +54,7 @@ type
     fCompileAll: Boolean;
     fUnitScopeNames: TStrings;
     fParseSystemUnit: Boolean;
+    FProjectFileName: string;
     function GetIncludeDebugInfo: Boolean;
     function OpenUnit(const UnitName: string): TASTModule;
     function RefCount: Integer;
@@ -70,6 +71,7 @@ type
     function GetCompileAll: Boolean;
     function GetUnitScopeNames: string;
     function GetParseSystemUnit: Boolean;
+    function GetRootPath: string;
     procedure SetStopCompileIfError(const Value: Boolean);
     procedure SetIncludeDebugInfo(const Value: Boolean);
     procedure SetRTTICharset(const Value: TRTTICharset);
@@ -77,7 +79,9 @@ type
     procedure SetCompileAll(const Value: Boolean);
     procedure SetUnitScopeNames(const Value: string);
     procedure SetParseSystemUnit(AValue: Boolean);
+    procedure SetProjectFileName(const Value: string);
     class function StrListCompare(const Left, Right: TStrConstKey): NativeInt; static;
+    function GetProjectFileName: string;
   protected
     fSysUnit: TASTModule;
     function GetUnitClass: TASTUnitClass; override;
@@ -91,6 +95,7 @@ type
     procedure DoFinishCompileUnit(AUnit: TASTModule; AIntfOnly: Boolean); virtual;
   public
     constructor Create(const Name: string); override;
+    constructor CreateExisting(const AFileName: string);
     destructor Destroy; override;
     ////////////////////////////////////////
     procedure SaveToStream(Stream: TStream);
@@ -111,6 +116,8 @@ type
     property Options: TPackageOptions read GetOptions;
     property TotalLinesParsed: Integer read fTotalLinesParsed;
     property TotalUnitsParsed: Integer read fTotalUnitsParsed;
+    property ProjectFileName: string read GetProjectFileName write SetProjectFileName;
+    property RootPath: string read GetRootPath;
     function GetStringConstant(const Value: string): Integer; overload;
     function GetStringConstant(const StrConst: TIDStringConstant): Integer; overload;
     function FindUnitFile(const AUnitName: string; const AFileExt: string = ''): string;
@@ -127,9 +134,10 @@ type
 
 implementation
 
-uses AST.Parser.Errors,
-     AST.Delphi.Errors,
-     AST.Pascal.Parser;
+uses
+  AST.Parser.Errors,
+  AST.Delphi.Errors,
+  AST.Pascal.Parser;
 
 function TPascalProject.GetOptions: TPackageOptions;
 begin
@@ -154,6 +162,11 @@ end;
 function TPascalProject.GetMessages: ICompilerMessages;
 begin
   Result := fMessages;
+end;
+
+function TPascalProject.GetRootPath: string;
+begin
+  Result := ExtractFilePath(ProjectFileName);
 end;
 
 function TPascalProject.GetRTTICharset: TRTTICharset;
@@ -381,6 +394,14 @@ begin
   fUnitScopeNames := TStringList.Create({QuoteChar:} '''', {Delimiter:} ';');
 end;
 
+constructor TPascalProject.CreateExisting(const AFileName: string);
+begin
+  var LProjectName := ExtractFileName(AFileName);
+  LProjectName := LProjectName.Replace(ExtractFileExt(LProjectName), '');
+  Create(LProjectName);
+  FProjectFileName := AFileName;
+end;
+
 procedure TPascalProject.AddUnitSource(const Source: string);
 var
   UN: TPascalUnit;
@@ -400,8 +421,15 @@ end;
 
 procedure TPascalProject.AddUnitSearchPath(const APath: string; AIncludeSubDirs: Boolean);
 begin
-  if FUnitSearchPathes.IndexOf(APath) < 0 then
-    FUnitSearchPathes.AddObject(APath, TObject(AIncludeSubDirs));
+  var LStrings := TStringList.Create({QuoteChar:} '"', {Delimiter:} ';', [soStrictDelimiter]);
+  try
+    LStrings.DelimitedText := APath;
+    for var LPath in LStrings do
+      if FUnitSearchPathes.IndexOf(LPath) < 0 then
+        FUnitSearchPathes.AddObject(LPath, TObject(AIncludeSubDirs));
+  finally
+    LStrings.Free;
+  end;
 end;
 
 procedure TPascalProject.Clear;
@@ -582,14 +610,24 @@ function TPascalProject.FindUnitFile(const AUnitName: string; const AFileExt: st
   end;
 
 begin
+  if TPath.IsPathRooted(AUnitName) and FileExists(AUnitName) then
+    Exit(AUnitName);
+
   var LFileName := AUnitName;
   if AFileExt <> '' then
     LFileName := LFileName + AFileExt;
+
+  // search file in the root dir
+  if FileExists(RootPath + LFileName) then
+    Exit(RootPath + LFileName);
 
   // search using defined paths (in reverse order)
   for var LIndex := FUnitSearchPathes.Count - 1 downto 0 do
   begin
     var LPath := IncludeTrailingPathDelimiter(FUnitSearchPathes[LIndex]);
+    if IsRelativePath(LPath) then
+      LPath := TPath.Combine(RootPath, LPath);
+
     Result := DoFindFile(LPath, LFileName);
     // if not found search in the subdirs (if specified)
     if Result = '' then
@@ -625,6 +663,11 @@ end;
 procedure TPascalProject.SetParseSystemUnit(AValue: Boolean);
 begin
   fParseSystemUnit := AValue;
+end;
+
+procedure TPascalProject.SetProjectFileName(const Value: string);
+begin
+  FProjectFileName := Value;
 end;
 
 procedure TPascalProject.SetRTTICharset(const Value: TRTTICharset);
@@ -669,6 +712,11 @@ end;
 function TPascalProject.GetPointerSize: Integer;
 begin
   Result := FTarget.PointerSize;
+end;
+
+function TPascalProject.GetProjectFileName: string;
+begin
+  Result := FProjectFileName;
 end;
 
 function TPascalProject.GetNativeIntSize: Integer;
