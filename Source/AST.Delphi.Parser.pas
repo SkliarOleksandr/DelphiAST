@@ -328,25 +328,25 @@ type
     function ParsePointerType(Scope: TScope; const ID: TIdentifier; out Decl: TIDPointer): TTokenID;
 
     function ParseProcType(Scope: TScope; const ID: TIdentifier;
-                           GDescriptor: PGenericDescriptor; out Decl: TIDProcType): TTokenID;
+                           GDescriptor: IGenericDescriptor; out Decl: TIDProcType): TTokenID;
 
     function ParseRecordType(Scope: TScope; Decl: TIDRecord): TTokenID;
     function ParseCaseRecord(Scope: TScope; Decl: TIDRecord): TTokenID;
     function ParseClassAncestorType(Scope: TScope; ClassDecl: TIDClass): TTokenID;
-    function ParseClassType(Scope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier; out Decl: TIDClass): TTokenID;
+    function ParseClassType(Scope: TScope; GDescriptor: IGenericDescriptor; const ID: TIdentifier; out Decl: TIDClass): TTokenID;
     function ParseVisibilityModifiers(Scope: TScope; var AVisibility: TVisibility; AIsClass: Boolean): TTokenID;
     function ParseTypeMember(Scope: TScope; Struct: TIDStructure): TTokenID;
     function ParseClassOfType(Scope: TScope; const ID: TIdentifier; out Decl: TIDClassOf): TTokenID;
-    function ParseInterfaceType(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor;
+    function ParseInterfaceType(Scope, GenericScope: TScope; GDescriptor: IGenericDescriptor;
                                 ADispInterface: Boolean; const ID: TIdentifier; out Decl: TIDInterface): TTokenID;
     function ParseIntfGUID(Scope: TScope; Decl: TIDInterface): TTokenID;
     //=======================================================================================================================
-    function ParseTypeRecord(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
-    function ParseTypeArray(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
-    function ParseTypeHelper(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier;
+    function ParseTypeRecord(Scope, GenericScope: TScope; GDescriptor: IGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
+    function ParseTypeArray(Scope, GenericScope: TScope; GDescriptor: IGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
+    function ParseTypeHelper(Scope, GenericScope: TScope; GDescriptor: IGenericDescriptor; const ID: TIdentifier;
                              out Decl: TDlphHelper): TTokenID;
     // функция парсинга анонимного типа
-    function ParseTypeDecl(Scope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
+    function ParseTypeDecl(Scope: TScope; GDescriptor: IGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
     function ParseTypeDeclOther(Scope: TScope; const ID: TIdentifier; out Decl: TIDType): TTokenID;
     // функция парсинга именованного типа
     function ParseNamedTypeDecl(Scope: TScope): TTokenID;
@@ -364,7 +364,7 @@ type
                                out ACanInstantiate: Boolean): TTokenID;
 
     function ParseGenericTypeDecl(Scope: TScope;
-                                  GDescriptor: PGenericDescriptor;
+                                  GDescriptor: IGenericDescriptor;
                                   const ID: TIdentifier;
                                   ATypeClass: TIDTypeClass): TIDType;
 
@@ -775,7 +775,7 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.ParseTypeArray(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier;
+function TASTDelphiUnit.ParseTypeArray(Scope, GenericScope: TScope; GDescriptor: IGenericDescriptor; const ID: TIdentifier;
   out Decl: TIDType): TTokenID;
 var
   TypeScope: TScope;
@@ -812,7 +812,7 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.ParseTypeDecl(Scope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier;
+function TASTDelphiUnit.ParseTypeDecl(Scope: TScope; GDescriptor: IGenericDescriptor; const ID: TIdentifier;
                                       out Decl: TIDType): TTokenID;
 var
   IsPacked: Boolean;
@@ -953,7 +953,7 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.ParseTypeHelper(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier;
+function TASTDelphiUnit.ParseTypeHelper(Scope, GenericScope: TScope; GDescriptor: IGenericDescriptor; const ID: TIdentifier;
   out Decl: TDlphHelper): TTokenID;
 var
   TargetID: TIdentifier;
@@ -1027,7 +1027,7 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.ParseTypeRecord(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor;
+function TASTDelphiUnit.ParseTypeRecord(Scope, GenericScope: TScope; GDescriptor: IGenericDescriptor;
                                         const ID: TIdentifier;
                                         out Decl: TIDType): TTokenID;
 begin
@@ -4495,7 +4495,6 @@ end;
 function TASTDelphiUnit.ParseAnonymousProc(Scope: TScope; var EContext: TEContext; const SContext: TSContext; ProcType: TTokenID): TTokenID;
 var
   ProcScope: TProcScope;
-  GenericsArgs: TIDTypeArray;
   ResultType: TIDType;
   ProcDecl: TASTDelphiProc;
   Closure: TIDClosure;
@@ -4506,10 +4505,6 @@ begin
   // создаем Result переменную (тип будет определен позже)
 
   Result := Lexer_NextToken(Scope);
-
-  // если generic
-  if Result = token_less then
-    Result := ParseGenericsHeader(ProcScope, {out} GenericsArgs);
 
   // парсим параметры
   if Result = token_openround then
@@ -5779,7 +5774,7 @@ begin
 end;
 
 function TASTDelphiUnit.ParseGenericTypeDecl(Scope: TScope;
-                                             GDescriptor: PGenericDescriptor;
+                                             GDescriptor: IGenericDescriptor;
                                              const ID: TIdentifier;
                                              ATypeClass: TIDTypeClass): TIDType;
 var
@@ -5887,7 +5882,7 @@ begin
     end;
 end;
 
-function TASTDelphiUnit.ParseClassType(Scope: TScope; GDescriptor: PGenericDescriptor; const ID: TIdentifier;
+function TASTDelphiUnit.ParseClassType(Scope: TScope; GDescriptor: IGenericDescriptor; const ID: TIdentifier;
   out Decl: TIDClass): TTokenID;
 var
   Visibility: TVisibility;
@@ -7396,7 +7391,7 @@ var
   ID: TIdentifier;
   ProcScope: TProcScope;
   ResultType: TIDType;
-  GenericsParams: TIDTypeArray;
+  GenericParams: TIDTypeArray;
   Proc, ForwardDecl: TASTDelphiProc;
   ForwardDeclNode: TIDList.PAVLNode;
   FwdDeclState: TFwdDeclState;
@@ -7405,7 +7400,7 @@ var
   ImportLib, ImportName: TIDDeclaration;
 begin
   Result := ParseProcName(Scope, ProcType, {out} ID, {var} Struct,
-                          {out} ProcScope, {out} GenericsParams);
+                          {out} ProcScope, {out} GenericParams);
 
   if (Result = token_equal) and Assigned(Struct) then
   begin
@@ -7565,6 +7560,14 @@ begin
         Decl := TASTDelphiProc(Decl.PrevOverload);
       end;
     end;
+
+// TODO: implement genric params mach
+//    if Assigned(ForwardDecl.GenericDescriptor) then
+//    begin
+//      if not ForwardDecl.GenericDescriptor.SameParams(GenericParams) then
+//        ERRORS.E2037_DECLARATION_OF_DIFFERS_FROM_PREVIOUS_DECLARATION(ID);
+//    end;
+
   end else
     FwdDeclState := dsNew;
 
@@ -7572,13 +7575,9 @@ begin
   if not Assigned(Proc) then
   begin
     Proc := TASTDelphiProc.Create(Scope, ID);
-    // если это generic-процедура или это generic-метод
-    if Assigned(GenericsParams) then
-      Proc.CreateGenericDescriptor(GenericsParams)
-    else
-    if Assigned(Struct.GenericDescriptor) then
-      Proc.CreateGenericDescriptor(Struct.GenericDescriptor.GenericParams);
-
+    {if there are explict generic params - create generic descriptor}
+    if Assigned(GenericParams) then
+      Proc.GenericDescriptor := TGenericDescriptor.Create(Scope, GenericParams);
     Proc.ParamsScope := ProcScope;
     Proc.EntryScope := ProcScope;
     Proc.ResultType := ResultType;
@@ -8134,6 +8133,13 @@ begin
     Result := Lexer_NextToken(AScope);
     if Result = token_less then
     begin
+      if AProcType = ptOperator then
+        ERRORS.E2529_TYPE_PARAMETERS_NOT_ALLOWED_ON_OPERATOR(Lexer_Position);
+// todo:
+//      else
+//      if not Assigned(AStruct) then
+//        ERRORS.E2530_TYPE_PARAMETERS_NOT_ALLOWED_ON_GLOBAL_PROCEDURE_OR_FUNCTION(Lexer_Position);
+
       if Assigned(AStruct) or AScope.InheritsFrom(TMethodScope) then
         AProcScope := TMethodScope.CreateInDecl(AScope, GetStructScope(AStruct, AProcType), nil)
       else
@@ -8197,7 +8203,7 @@ begin
 end;
 
 function TASTDelphiUnit.ParseProcType(Scope: TScope; const ID: TIdentifier;
-                                      GDescriptor: PGenericDescriptor; out Decl: TIDProcType): TTokenID;
+                                      GDescriptor: IGenericDescriptor; out Decl: TIDProcType): TTokenID;
 var
   ParentScope: TScope;
   ResultType: TIDType;
@@ -8264,7 +8270,7 @@ var
   ID: TIdentifier;
   ProcScope: TProcScope;
   ResultType: TIDType;
-  GenericsParams: TIDTypeArray;
+  GenericParams: TIDTypeArray;
   Proc, ForwardDecl: TASTDelphiProc;
   FwdDeclState: TFwdDeclState;
   ProcFlags: TProcFlags;
@@ -8272,7 +8278,7 @@ var
   LOperatorDef: TOperatorClass;
 begin
   Result := ParseProcName(Scope, ptOperator, {out} ID, {var} Struct,
-                          {out} ProcScope, {out} GenericsParams);
+                          {out} ProcScope, {out} GenericParams);
 
   LOperatorDef := TOperatorSignatures.FindOperator(ID.Name);
   if not Assigned(LOperatorDef) then
@@ -8321,13 +8327,10 @@ begin
     FwdDeclState := dsNew;
 
   ProcFlags := [pfOperator];
-  {создаем новую декларацию}
+  {create a new declaration}
   if not Assigned(Proc) then
   begin
     Proc := TIDOperator.Create(Struct.Operators, ID, LOperatorDef.OpID);
-    if Assigned(GenericsParams) then
-      Proc.CreateGenericDescriptor(GenericsParams);
-
     Proc.ParamsScope := ProcScope;
     Proc.ResultType := ResultType;
     Proc.ExplicitParams := ProcScope.ExplicitParams;
@@ -8536,7 +8539,7 @@ end;
 function TASTDelphiUnit.InstantiateGenericProc(AScope: TScope; AGenericProc: TIDProcedure;
                                                const AGenericArgs: TIDExpressions): TIDProcedure;
 var
-  GDescriptor: PGenericDescriptor;
+  GDescriptor: IGenericDescriptor;
   LContext: TGenericInstantiateContext;
   LGArgs: TIDTypeArray;
   LGArgsCount: Integer;
@@ -8549,7 +8552,10 @@ begin
   LGArgsCount := Length(AGenericArgs);
   SetLength(LGArgs, LGArgsCount);
   for var LIndex := 0 to LGArgsCount - 1 do
-    LGArgs[LIndex] := AGenericArgs[LIndex].AsType;
+    if Assigned( AGenericArgs[LIndex]) then
+      LGArgs[LIndex] := AGenericArgs[LIndex].AsType
+    else
+      AbortWorkInternal('Generic argument is not initialized');
 
   {find in the pool first}
   var LDecl: TIDDeclaration;
@@ -8559,33 +8565,37 @@ begin
     Exit;
   end;
 
-  LContext.SrcDecl := AGenericProc;
-  var AStrSufix := '';
-  var AArgsCount := Length(AGenericArgs);
-  LContext.Args := LGArgs;
-  LContext.Params := GDescriptor.GenericParams;
-  for var AIndex := 0 to AArgsCount - 1 do
-  begin
-    var AArgType := AGenericArgs[AIndex].AsType;
-    AStrSufix := AddStringSegment(AStrSufix, AArgType.Name, ', ');
-  end;
-  LContext.DstID.Name := AGenericProc.Name + '<' + AStrSufix + '>';
-  LContext.DstID.TextPosition := Lexer_Position;
+  LContext := TGenericInstantiateContext.Create({AParent} nil, AGenericProc);
   try
-    WriteLog('# (%s: %d): %s', [Name, Lexer_Line, LContext.DstID.Name]);
-    Result := AGenericProc.InstantiateGeneric(AScope, {ADstStruct:} nil, LContext) as TIDProcedure;
-    {add new instance to the pool}
-    GDescriptor.AddGenericInstance(Result, LGArgs);
-  except
-    Error('Generic Instantiation Error: %s', [LContext.DstID.Name], LContext.DstID.TextPosition);
-    raise;
+    var AStrSufix := '';
+    var AArgsCount := Length(AGenericArgs);
+    LContext.Args := LGArgs;
+    LContext.Params := GDescriptor.GenericParams;
+    for var AIndex := 0 to AArgsCount - 1 do
+    begin
+      var AArgType := AGenericArgs[AIndex].AsType;
+      AStrSufix := AddStringSegment(AStrSufix, AArgType.Name, ', ');
+    end;
+    LContext.DstID.Name := AGenericProc.Name + '<' + AStrSufix + '>';
+    LContext.DstID.TextPosition := Lexer_Position;
+    try
+      WriteLog('# (%s: %d): %s', [Name, Lexer_Line, LContext.DstID.Name]);
+      Result := AGenericProc.InstantiateGeneric(AScope, {ADstStruct:} nil, LContext) as TIDProcedure;
+      {add new instance to the pool}
+      GDescriptor.AddGenericInstance(Result, LGArgs);
+    except
+      Error('Generic Instantiation Error: %s', [LContext.DstID.Name], LContext.DstID.TextPosition);
+      raise;
+    end;
+  finally
+    LContext.Free;
   end;
 end;
 
 function TASTDelphiUnit.InstantiateGenericType(AScope: TScope; AGenericType: TIDType;
                                                const AGenericArgs: TIDExpressions): TIDType;
 var
-  GDescriptor: PGenericDescriptor;
+  GDescriptor: IGenericDescriptor;
   LContext: TGenericInstantiateContext;
   LGArgs: TIDTypeArray;
   LGArgsCount: Integer;
@@ -8605,25 +8615,29 @@ begin
     Exit;
   end;
 
-  LContext.SrcDecl := AGenericType;
-  var AStrSufix := '';
-  var AArgsCount := Length(AGenericArgs);
-  LContext.Args := LGArgs;
-  LContext.Params := GDescriptor.GenericParams;
-  for var AIndex := 0 to AArgsCount - 1 do
-  begin
-    var AArgType := AGenericArgs[AIndex].AsType;
-    AStrSufix := AddStringSegment(AStrSufix, AArgType.Name, ', ');
-  end;
-  LContext.DstID.Name := AGenericType.Name + '<' + AStrSufix + '>';
-  LContext.DstID.TextPosition := Lexer_Position;
-
+  LContext := TGenericInstantiateContext.Create({AParent} nil, AGenericType);
   try
-    WriteLog('# (%s: %d): %s', [Name, Lexer_Line, LContext.DstID.Name]);
-    Result := AGenericType.InstantiateGeneric(AScope, {ADstStruct:} nil, LContext) as TIDType;
-  except
-    Error('Generic Instantiation Error: %s', [LContext.DstID.Name], LContext.DstID.TextPosition);
-    raise;
+    var AStrSufix := '';
+    var AArgsCount := Length(AGenericArgs);
+    LContext.Args := LGArgs;
+    LContext.Params := GDescriptor.GenericParams;
+    for var AIndex := 0 to AArgsCount - 1 do
+    begin
+      var AArgType := AGenericArgs[AIndex].AsType;
+      AStrSufix := AddStringSegment(AStrSufix, AArgType.Name, ', ');
+    end;
+    LContext.DstID.Name := AGenericType.Name + '<' + AStrSufix + '>';
+    LContext.DstID.TextPosition := Lexer_Position;
+
+    try
+      WriteLog('# (%s: %d): %s', [Name, Lexer_Line, LContext.DstID.Name]);
+      Result := AGenericType.InstantiateGeneric(AScope, {ADstStruct:} nil, LContext) as TIDType;
+    except
+      Error('Generic Instantiation Error: %s', [LContext.DstID.Name], LContext.DstID.TextPosition);
+      raise;
+    end;
+  finally
+    LContext.Free;
   end;
 end;
 
@@ -9335,7 +9349,7 @@ var
   ID: TIdentifier;
   Decl: TIDType;
   GenericParams: TIDTypeArray;
-  GDescriptor: PGenericDescriptor;
+  GDescriptor: IGenericDescriptor;
 begin
   CheckAndParseAttribute(Scope);
 
@@ -9344,13 +9358,12 @@ begin
   Result := Lexer_NextToken(Scope);
 
   {if there is "<" - read generic params}
-  if Result = token_less then begin
-    GDescriptor := TGenericDescriptor.Create(Scope);
+  if Result = token_less then
+  begin
+    GDescriptor := TGenericDescriptor.Create(Scope, nil);
     Result := ParseGenericsHeader(GDescriptor.Scope, {out} GenericParams);
     GDescriptor.GenericParams := GenericParams;
-    GDescriptor.SearchName := format('%s<%d>', [ID.Name, Length(GenericParams)]);
-  end else
-    GDescriptor := nil;
+  end;
 
   Lexer_MatchToken(Result, token_equal);
 
@@ -9530,7 +9543,7 @@ begin
   InitProc.LastBodyLine := Lexer_Line;
 end;
 
-function TASTDelphiUnit.ParseInterfaceType(Scope, GenericScope: TScope; GDescriptor: PGenericDescriptor;
+function TASTDelphiUnit.ParseInterfaceType(Scope, GenericScope: TScope; GDescriptor: IGenericDescriptor;
   ADispInterface: Boolean; const ID: TIdentifier; out Decl: TIDInterface): TTokenID;
 var
   Expr: TIDExpression;

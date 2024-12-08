@@ -288,9 +288,13 @@ type
 
     procedure GENERIC_INVALID_CONSTRAINT(ActualToken: TTokenID);
 
+    class procedure E2037_DECLARATION_OF_DIFFERS_FROM_PREVIOUS_DECLARATION(const AID: TIdentifier);
     class procedure E2185_CANNOT_SPECIFY_DISPID(const AMethodID: TIdentifier);
     class procedure E2232_INTERFACE_HAS_NO_INTERFACE_IDENTIFICATION(ADecl: TIDDeclaration);
     class procedure E2436_TYPE_NOT_ALLOWED_IN_ANONYMOUS_OR_LOCAL_RECORD_TYPE(ATextPosition: TTextPosition);
+    class procedure E2529_TYPE_PARAMETERS_NOT_ALLOWED_ON_OPERATOR(ATextPosition: TTextPosition);
+    class procedure E2530_TYPE_PARAMETERS_NOT_ALLOWED_ON_GLOBAL_PROCEDURE_OR_FUNCTION(ATextPosition: TTextPosition);
+
 
     procedure PROCEDURE_CANNOT_HAVE_RESULT;
     procedure BREAK_OR_CONTINUE_ALLOWED_ONLY_IN_LOOPS;
@@ -575,6 +579,11 @@ begin
   AbortWork('E2015 Operator not applicable to this operand type', TextPosition);
 end;
 
+class procedure TASTDelphiErrors.E2037_DECLARATION_OF_DIFFERS_FROM_PREVIOUS_DECLARATION(const AID: TIdentifier);
+begin
+  AbortWork('E2037 Declaration of ''%s'' differs from previous declaration', [AID.Name], AID.TextPosition);
+end;
+
 class procedure TASTDelphiErrors.E2185_CANNOT_SPECIFY_DISPID(const AMethodID: TIdentifier);
 begin
   AbortWork('E2185 Overriding automated virtual method ''%s'' cannot specify a dispid',
@@ -589,6 +598,17 @@ end;
 class procedure TASTDelphiErrors.E2436_TYPE_NOT_ALLOWED_IN_ANONYMOUS_OR_LOCAL_RECORD_TYPE(ATextPosition: TTextPosition);
 begin
   AbortWork('E2436 Type declarations not allowed in anonymous record or local record type', ATextPosition);
+end;
+
+class procedure TASTDelphiErrors.E2529_TYPE_PARAMETERS_NOT_ALLOWED_ON_OPERATOR(ATextPosition: TTextPosition);
+begin
+  AbortWork('E2529 Type parameters not allowed on operator', ATextPosition);
+end;
+
+class procedure TASTDelphiErrors.E2530_TYPE_PARAMETERS_NOT_ALLOWED_ON_GLOBAL_PROCEDURE_OR_FUNCTION(
+  ATextPosition: TTextPosition);
+begin
+  AbortWork('E2530 Type parameters not allowed on global procedure or function', ATextPosition);
 end;
 
 procedure TASTDelphiErrors.EMPTY_EXPRESSION;

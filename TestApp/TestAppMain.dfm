@@ -728,7 +728,7 @@ object frmTestAppMain: TfrmTestAppMain
         Height = 21
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 4
-        Text = './'
+        Text = 'DEBUG'
       end
       object DelphiPathIncludeSubDirCheck: TCheckBox
         Left = 1118

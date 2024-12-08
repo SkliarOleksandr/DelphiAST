@@ -100,6 +100,7 @@ type
   TPooledObject = class(TNoRefCountObject)
   private
     FPrevObect: TPooledObject;
+    FDisposed: Boolean;
     class var FLastObject: TPooledObject;
     class var FCount: Integer;
     class procedure Initialize;
@@ -107,6 +108,7 @@ type
     procedure CreateFromPool; inline;
   public
     class procedure ClearPool;
+    destructor Destroy; override;
   end;
 
   TRTTICharset = (
@@ -1278,9 +1280,16 @@ end;
 
 procedure TPooledObject.CreateFromPool;
 begin
+  FDisposed := False;
   FPrevObect := FLastObject;
   FLastObject := Self;
   Inc(FCount);
+end;
+
+destructor TPooledObject.Destroy;
+begin
+  FDisposed := True;
+  inherited;
 end;
 
 class procedure TPooledObject.ClearPool;
@@ -1293,6 +1302,8 @@ begin
     Obj := Obj.FPrevObect;
     try
       dec(FCount);
+      if Tmp.FDisposed then
+        raise Exception.CreateFmt('Class %s already disposed', [Tmp.ClassNAme]);
       Tmp.Free;
     except
     end;

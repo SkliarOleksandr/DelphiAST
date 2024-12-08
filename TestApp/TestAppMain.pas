@@ -1057,6 +1057,7 @@ end;
 
 procedure TfrmTestAppMain.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
+  SaveSettings;
   TPooledObject.ClearPool;
 end;
 
