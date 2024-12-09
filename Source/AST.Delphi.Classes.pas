@@ -3260,8 +3260,16 @@ function TIDProcedure.InstantiateGenericProc(ADstScope: TScope; ADstStruct: TIDS
       var AParam := AProcParams[AIndex].MakeCopy as TIDParam;
       var LParamType := AParam.DataType;
       // if a param data type is generic and belongs current context, instantiate it
-      if AParam.IsGeneric and (not Assigned(GenericDescriptor) or GenericDescriptor.Contains(LParamType)) then
+      if AParam.IsGeneric and
+         (
+            not Assigned(GenericDescriptor) or
+            (
+              GenericDescriptor.Contains(LParamType) and (AContext.FSrcDecl = Self)
+            )
+         ) then
+       begin
         AParam.DataType := LParamType.InstantiateGeneric(ANewScope, ADstStruct, AContext) as TIDType;
+       end;
       Result[AIndex] := AParam;
     end;
   end;
@@ -3279,17 +3287,20 @@ begin
   if Assigned(ResultType) then
     LNewProc.ResultType := ResultType.InstantiateGeneric(ADstScope, ADstStruct, AContext) as TIDType;
 
-  // a new proc instance should have the same generic params, that has a source generic declaration
-  // TODO: possible issue with instance pool
-  if Assigned(GenericDescriptor) then
-    LNewProc.FGenericDescriptor := GenericDescriptor{.Clone(ADstScope)};
+  // a new method instance (in case of owner struct instantiation) must have the same generic params,
+  // that has a source generic declaration
+  if Assigned(GenericDescriptor) and (AContext.FSrcDecl <> Self) then
+    LNewProc.FGenericDescriptor := GenericDescriptor.Clone(ADstScope);
+
+  // a prototype can be assigned for only fully-instantiated methods
+  if (AContext.FSrcDecl = Self) then
+    LNewProc.FGenericPrototype := Self;
 
   LNewProc.FStruct := ADstStruct;
   LNewProc.FProcFlags := FProcFlags;
   LNewProc.FNextOverload := FNextOverload;
   LNewProc.FCallConv := FCallConv;
   LNewProc.FVirtualIndex := FVirtualIndex;
-  LNewProc.FGenericPrototype := Self;
   LNewProc.FFirstBodyLine := FFirstBodyLine;
   LNewProc.FLastBodyLine := FLastBodyLine;
   LNewProc.FFinalSection := FFinalSection;

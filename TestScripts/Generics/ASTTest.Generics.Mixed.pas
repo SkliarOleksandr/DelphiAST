@@ -12,10 +12,10 @@ var
 
 implementation
 
-//procedure Main;
-//begin
-//  GRec.Foo<string>('str');
-//end;
+procedure Main;
+begin
+  GRec.Foo<string>('str');
+end;
 
 { TRec<T> }
 
