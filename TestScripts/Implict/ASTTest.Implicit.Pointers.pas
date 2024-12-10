@@ -2,6 +2,8 @@
 
 interface
 
+{$HINTS OFF}
+
 implementation
 
 type

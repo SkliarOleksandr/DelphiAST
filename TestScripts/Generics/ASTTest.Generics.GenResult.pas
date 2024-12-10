@@ -2,6 +2,8 @@ unit ASTTest.Generics.GenResult;
 
 interface
 
+{$HINTS OFF}
+
 type
   TRec<T> = class
     class function Get: T;

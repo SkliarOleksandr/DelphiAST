@@ -180,6 +180,8 @@
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenResult.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Methods.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Mixed.pas"/>
+        <DCCReference Include="..\TestScripts\Classes\TASTTest.Classes.Inherited1.pas"/>
+        <DCCReference Include="..\TestScripts\Classes\TASTTest.Classes.Inherited2.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

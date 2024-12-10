@@ -12,8 +12,10 @@ type
 
   TDelphiOptions = class(TOptions)
   private
-    fOptSCOPEDENUMS: TBoolOption;
-    fOptPOINTERMATH: TBoolOption;
+    fOptSCOPEDENUMS: TSwitchOption;
+    fOptPOINTERMATH: TSwitchOption;
+    fOptHINTS: TSwitchOption;
+    //fOptNODEFINE: TStrOption;
     function GetSCOPEDENUMSValue: Boolean;
     function GetPOINTERMATHValue: Boolean;
   public
@@ -37,8 +39,11 @@ end;
 constructor TDelphiOptions.Create(Parent: TOptions);
 begin
   inherited;
-  fOptSCOPEDENUMS := AddBoolOption('SCOPEDENUMS');
-  fOptPOINTERMATH := AddBoolOption('POINTERMATH');
+  fOptSCOPEDENUMS := AddSwitchOption('SCOPEDENUMS', {AShortName:} '', {ADefault:} False);
+  fOptPOINTERMATH := AddSwitchOption('POINTERMATH', {AShortName:} '', {ADefault:} False);
+  fOptHINTS := AddSwitchOption('HINTS', {AShortName:} '', {ADefault:} True);
+  //fOptNODEFINE := AddStrOption('NODEFINE');
+
 //// Align fields (Delphi)
 //{$A},{$ALIGN}
 //// Application type (Delphi)

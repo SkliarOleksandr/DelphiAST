@@ -2,6 +2,8 @@ unit ASTTest.Cmp.Strings;
 
 interface
 
+{$HINTS OFF}
+
 implementation
 
 procedure CmpAnsiStr;

@@ -10,38 +10,36 @@ type
   // base class for option
   TOption = class(TList<Variant>)
   private
+    FName: string;
     OptionType: TOptDataType;
     BoosterPtr: Pointer;  // указатель на значение-кеш
   public
     class function ArgsCount: Integer; virtual;
+    procedure SetValueFromStr(const AValue: string; out AError: string); virtual; abstract;
+    property Name: string read FName;
   end;
   TOptionClass = class of TOption;
 
-  TValueOption = class(TOption)
+  TValueOption<T> = class(TOption)
+  protected
+    FValue: T;
   public
+    constructor Create(const AName: string; const ADefaultValue: T);
     class function ArgsCount: Integer; override;
-    procedure SetValue(const Value: string; out Error: string); virtual;
+    property Value: T read FValue;
   end;
 
-  TStrOption = class(TValueOption)
-  private
-    fValue: string;
+  TStrOption = class(TValueOption<string>)
   public
-    procedure SetValue(const Value: string; out Error: string); override;
-    property Value: string read fValue;
+    procedure SetValueFromStr(const AValue: string; out AError: string); override;
   end;
 
-//  TIntOption = class(TValueOption)
-//  private
-//    fValue: Integer;
-//  end;
-
-  TBoolOption = class(TValueOption)
+  TSwitchOption = class(TValueOption<Boolean>)
   private
-    fValue: Boolean;
+    FShortName: string;
   public
-    procedure SetValue(const Value: string; out Error: string); override;
-    property Value: Boolean read fValue;
+    constructor Create(const AName, AShortName: string; const ADefaultValue: Boolean); overload;
+    procedure SetValueFromStr(const AValue: string; out AError: string); override;
   end;
 
   TOptions = class
@@ -54,10 +52,10 @@ type
     constructor Create(Parent: TOptions); virtual;
     destructor Destroy; override;
 
-    function AddBoolOption(const OptName: string): TBoolOption; overload;
-    function AddOption(const OptShortName, OptName: string; OptionClass: TOptionClass): TOption; overload;
-    function FindOption(const Name: string): TOption;
+    function AddSwitchOption(const AName: string; const AShortName: string = ''; ADefault: Boolean = False): TSwitchOption;
+    function AddStrOption(const AName: string): TStrOption;
 
+    function FindOption(const Name: string): TOption;
     function Exist(const OptName: string): Boolean;
     function OptPush(const OptName: string): Boolean;
     function OptPop(const OptName: string): Boolean;
@@ -84,15 +82,18 @@ type
 
 { TOptions }
 
-function TOptions.AddBoolOption(const OptName: string): TBoolOption;
+function TOptions.AddStrOption(const AName: string): TStrOption;
 begin
-  Result := TBoolOption.Create();
-  FOptions.Add(OptName, Result);
+  Result := TStrOption.Create(AName, {ADefaultValue:} '');
+  FOptions.Add(AName, Result);
 end;
 
-function TOptions.AddOption(const OptShortName, OptName: string; OptionClass: TOptionClass): TOption;
+function TOptions.AddSwitchOption(const AName, AShortName: string; ADefault: Boolean): TSwitchOption;
 begin
-  Result := nil;
+  Result := TSwitchOption.Create(AName, AShortName, ADefault);
+  FOptions.Add(AName, Result);
+  if AShortName <> '' then
+    FOptions.Add(AShortName, Result);
 end;
 
 constructor TOptions.Create(Parent: TOptions);
@@ -187,14 +188,9 @@ end;
 
 { TValueOption }
 
-class function TValueOption.ArgsCount: Integer;
+class function TValueOption<T>.ArgsCount: Integer;
 begin
   Result := 1;
-end;
-
-procedure TValueOption.SetValue(const Value: string; out Error: string);
-begin
-
 end;
 
 { TOption }
@@ -204,27 +200,48 @@ begin
   Result := 0;
 end;
 
-{ TStrOption }
+{ TSwitchOption }
 
-procedure TStrOption.SetValue(const Value: string; out Error: string);
+constructor TSwitchOption.Create(const AName, AShortName: string; const ADefaultValue: Boolean);
 begin
-  fValue := Value;
+  inherited Create(AName, ADefaultValue);
+  FShortName := AShortName;
 end;
 
-{ TBoolOption }
-
-procedure TBoolOption.SetValue(const Value: string; out Error: string);
+procedure TSwitchOption.SetValueFromStr(const AValue: string; out AError: string);
 begin
-  var UCVal := UpperCase(Value);
-  if (UCVal <> '+') and
-     (UCVal <> '-') and
-     (UCVal <> 'ON') and
-     (UCVal <> 'OFF') then
+  var LValue := UpperCase(AValue);
+
+  if LValue = 'ON' then
+    FValue := True
+  else
+  if LValue = 'OFF' then
+    FValue := False
+  else
+  if FShortName <> ''  then
   begin
-    Error := 'The switch value can be only +, -, ON, OFF';
-    Exit;
-  end;
-  fValue := (UCVal = '+') or (UCVal = 'ON');
+    if LValue = '+' then
+      FValue := True
+    else
+    if LValue = '-' then
+      FValue := False
+    else
+      AError := 'The switch value can be only +, -, ON, OFF';
+  end else
+    AError := 'The switch value can be only +, -, ON, OFF';
+end;
+
+constructor TValueOption<T>.Create(const AName: string; const ADefaultValue: T);
+begin
+  FName := AName;
+  FValue := ADefaultValue;
+end;
+
+{ TStrOption }
+
+procedure TStrOption.SetValueFromStr(const AValue: string; out AError: string);
+begin
+  FValue := AValue;
 end;
 
 end.

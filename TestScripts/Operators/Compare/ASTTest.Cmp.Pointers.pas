@@ -2,6 +2,8 @@ unit ASTTest.Cmp.Pointers;
 
 interface
 
+{$HINTS OFF}
+
 implementation
 
 type

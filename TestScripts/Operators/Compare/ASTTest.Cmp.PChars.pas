@@ -2,6 +2,8 @@ unit ASTTest.Cmp.PChars;
 
 interface
 
+{$HINTS OFF}
+
 implementation
 
 type

@@ -2,6 +2,8 @@ unit ASTTest.Add.Pointers;
 
 interface
 
+{$HINTS OFF}
+
 implementation
 
 procedure AddPChars;

@@ -2,6 +2,8 @@ unit ASTTest.Generics.Methods;
 
 interface
 
+{$HINTS OFF}
+
 type
   TStruct = record
     class procedure GProc<T>(Value: T); static;

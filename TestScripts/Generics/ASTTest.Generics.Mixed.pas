@@ -2,6 +2,8 @@ unit ASTTest.Generics.Mixed;
 
 interface
 
+{$HINTS OFF}
+
 type
   TRec<T> = record
     procedure Foo<V>(Value: V);

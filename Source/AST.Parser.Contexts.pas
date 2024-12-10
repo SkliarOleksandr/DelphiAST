@@ -9,23 +9,23 @@ uses System.SysUtils,
 
 type
 
-  TASTSContext<TProc> = record
+  TASTSContext<TProcType> = record
   private
     fModule: TASTModule;
     fScope: TScope;
     fBlock: TASTBlock;
-    fProc: TProc;
+    fProc: TProcType;
     function GetIsLoopBody: Boolean; inline;
     function GetIsTryBlock: Boolean; inline;
   public
-    constructor Create(const Module: TASTModule; Scope: TScope; Proc: TProc; Block: TASTBlock); overload;
+    constructor Create(const Module: TASTModule; Scope: TScope; Proc: TProcType; Block: TASTBlock); overload;
     constructor Create(const Module: TASTModule; Scope: TScope); overload;
-    function MakeChild(Scope: TScope; Block: TASTBlock): TASTSContext<TProc>; //inline;
+    function MakeChild(Scope: TScope; Block: TASTBlock): TASTSContext<TProcType>; //inline;
     function Add<T: TASTItem>: T; overload; // do not use due to compiler erros
     function Add(T: TASTItemClass): TASTItem; overload;
     procedure AddItem(const Item: TASTItem);
     property Module: TASTModule read fModule;
-    property Proc: TProc read fProc;
+    property Proc: TProcType read fProc;
     property Block: TASTBlock read fBlock;
     property Scope: TScope read fScope;
     property IsLoopBody: Boolean read GetIsLoopBody;
@@ -37,11 +37,11 @@ type
   TRPNStatus = (rprOk, rpOperand, rpOperation);
 
   {expression context - use RPN (Reverse Polish Notation) stack}
-  TASTEContext<TProc> = record
+  TASTEContext<TProcType> = record
   type
     TRPNItems = array of TOperatorID;
     TRPNError = (reDublicateOperation, reUnnecessaryClosedBracket, reUnclosedOpenBracket);
-    TRPNPocessProc = function (var EContext: TASTEContext<TProc>; OpID: TOperatorID): TIDExpression of object;
+    TRPNPocessProc = function (var EContext: TASTEContext<TProcType>; OpID: TOperatorID): TIDExpression of object;
   private
     fRPNOArray: TRPNItems;              // Operations array
     fRPNEArray: TIDExpressions;         // Operands array
@@ -53,13 +53,13 @@ type
     fRPNPrevPriority: Integer;
     fProcessProc: TRPNPocessProc;
     fPosition: TExpessionPosition;      // позиция выражения (Nested, LValue, RValue...);
-    fSContext: TASTSContext<TProc>;
+    fSContext: TASTSContext<TProcType>;
     procedure RPNCheckInputSize;
     function GetExpression: TIDExpression;
-    function GetProc: TProc;
+    function GetProc: TProcType;
     function GetScope: TScope;
   public
-    procedure Initialize(const SContext: TASTSContext<TProc>; const ProcessProc: TRPNPocessProc);
+    procedure Initialize(const SContext: TASTSContext<TProcType>; const ProcessProc: TRPNPocessProc);
     procedure Reset;                    // clear RPN stack and reinit
     procedure RPNPushExpression(Expr: TIDExpression);
     procedure RPNError(Status: TRPNError);
@@ -77,8 +77,8 @@ type
     property RPNLastOp: TOperatorID read fRPNLastOp;
     property Result: TIDExpression read GetExpression;
     property EPosition: TExpessionPosition read fPosition write fPosition;
-    property SContext: TASTSContext<TProc> read fSContext;
-    property Proc: TProc read GetProc;
+    property SContext: TASTSContext<TProcType> read fSContext;
+    property Proc: TProcType read GetProc;
     property Scope: TScope read GetScope;
   end;
 
@@ -92,7 +92,7 @@ uses
 
 { TRPN }
 
-procedure TASTEContext<TProc>.RPNCheckInputSize;
+procedure TASTEContext<TProcType>.RPNCheckInputSize;
 begin
   if fRPNOpCount >= fRPNOArrayLen then begin
     Inc(fRPNOArrayLen, 8);
@@ -100,7 +100,7 @@ begin
   end;
 end;
 
-procedure TASTEContext<TProc>.RPNPushExpression(Expr: TIDExpression);
+procedure TASTEContext<TProcType>.RPNPushExpression(Expr: TIDExpression);
 begin
   fRPNEArray[fRPNExprCount] := Expr;
   Inc(fRPNExprCount);
@@ -111,7 +111,7 @@ begin
   fRPNLastOp := opNone;
 end;
 
-procedure TASTEContext<TProc>.RPNError(Status: TRPNError);
+procedure TASTEContext<TProcType>.RPNError(Status: TRPNError);
 begin
   case Status of
     reUnclosedOpenBracket: AbortWork(sUnclosedOpenBracket, TTextPosition.Empty);
@@ -119,7 +119,7 @@ begin
   end;
 end;
 
-procedure TASTEContext<TProc>.RPNPushOpenRaund;
+procedure TASTEContext<TProcType>.RPNPushOpenRaund;
 begin
   fRPNOArray[fRPNOpCount] := opOpenRound;
   Inc(fRPNOpCount);
@@ -127,7 +127,7 @@ begin
   fRPNLastOp := opOpenRound;
 end;
 
-procedure TASTEContext<TProc>.RPNPushCloseRaund;
+procedure TASTEContext<TProcType>.RPNPushCloseRaund;
 var
   op: TOperatorID;
 begin
@@ -144,7 +144,7 @@ begin
   RPNError(reUnnecessaryClosedBracket);
 end;
 
-function TASTEContext<TProc>.RPNPopOperator: TIDExpression;
+function TASTEContext<TProcType>.RPNPopOperator: TIDExpression;
 var
   Op: TOperatorID;
 begin
@@ -157,7 +157,7 @@ begin
     Result := nil;
 end;
 
-procedure TASTEContext<TProc>.RPNFinish;
+procedure TASTEContext<TProcType>.RPNFinish;
 var
   op: TOperatorID;
   Expr: TIDExpression;
@@ -184,7 +184,7 @@ begin
   end;
 end;
 
-function TASTEContext<TProc>.RPNPushOperator(OpID: TOperatorID): TRPNStatus;
+function TASTEContext<TProcType>.RPNPushOperator(OpID: TOperatorID): TRPNStatus;
 var
   Priority: Integer;
   Op: TOperatorID;
@@ -219,12 +219,12 @@ begin
   Result := rpOperation;
 end;
 
-function TASTEContext<TProc>.RPNReadExpression(Index: Integer): TIDExpression;
+function TASTEContext<TProcType>.RPNReadExpression(Index: Integer): TIDExpression;
 begin
   Result := fRPNEArray[Index];
 end;
 
-function TASTEContext<TProc>.RPNLastOperator: TOperatorID;
+function TASTEContext<TProcType>.RPNLastOperator: TOperatorID;
 begin
   if fRPNOpCount > 0 then
     Result := fRPNOArray[fRPNOpCount - 1]
@@ -232,7 +232,7 @@ begin
     Result := TOperatorID.opNone;
 end;
 
-function TASTEContext<TProc>.RPNPopExpression: TIDExpression;
+function TASTEContext<TProcType>.RPNPopExpression: TIDExpression;
 begin
   Dec(fRPNExprCount);
   if fRPNExprCount >= 0 then begin
@@ -244,7 +244,7 @@ begin
   Result := nil; // for prevent compiler warning
 end;
 
-function TASTEContext<TProc>.RPNTryPopExpression: TIDExpression;
+function TASTEContext<TProcType>.RPNTryPopExpression: TIDExpression;
 begin
   if fRPNExprCount > 0 then
   begin
@@ -254,17 +254,17 @@ begin
     Result := nil;
 end;
 
-function TASTEContext<TProc>.GetProc: TProc;
+function TASTEContext<TProcType>.GetProc: TProcType;
 begin
   Result := fSContext.fProc;
 end;
 
-function TASTEContext<TProc>.GetScope: TScope;
+function TASTEContext<TProcType>.GetScope: TScope;
 begin
   Result := fSContext.Scope;
 end;
 
-procedure TASTEContext<TProc>.Initialize(const SContext: TASTSContext<TProc>; const ProcessProc: TRPNPocessProc);
+procedure TASTEContext<TProcType>.Initialize(const SContext: TASTSContext<TProcType>; const ProcessProc: TRPNPocessProc);
 begin
   SetLength(fRPNOArray, 4);
   fRPNOArrayLen := 4;
@@ -278,12 +278,12 @@ begin
   fSContext := SContext;
 end;
 
-procedure TASTEContext<TProc>.RPNEraiseTopOperator;
+procedure TASTEContext<TProcType>.RPNEraiseTopOperator;
 begin
   Dec(fRPNOpCount);
 end;
 
-procedure TASTEContext<TProc>.Reset;
+procedure TASTEContext<TProcType>.Reset;
 begin
   fRPNLastOp := opNone;
   fRPNPrevPriority := 0;
@@ -291,7 +291,7 @@ begin
   fRPNExprCount := 0;
 end;
 
-function TASTEContext<TProc>.GetExpression: TIDExpression;
+function TASTEContext<TProcType>.GetExpression: TIDExpression;
 begin
   if fRPNExprCount > 0 then
     Result := fRPNEArray[fRPNExprCount - 1]
@@ -301,24 +301,24 @@ end;
 
 { TASTSContext }
 
-function TASTSContext<TProc>.Add(T: TASTItemClass): TASTItem;
+function TASTSContext<TProcType>.Add(T: TASTItemClass): TASTItem;
 begin
   Result := T.Create(Block);
   Block.AddChild(Result);
 end;
 
-function TASTSContext<TProc>.Add<T>: T;
+function TASTSContext<TProcType>.Add<T>: T;
 begin
   Result := T.Create(Block);
   Block.AddChild(Result);
 end;
 
-procedure TASTSContext<TProc>.AddItem(const Item: TASTItem);
+procedure TASTSContext<TProcType>.AddItem(const Item: TASTItem);
 begin
   fBlock.AddChild(Item)
 end;
 
-constructor TASTSContext<TProc>.Create(const Module: TASTModule; Scope: TScope; Proc: TProc; Block: TASTBlock);
+constructor TASTSContext<TProcType>.Create(const Module: TASTModule; Scope: TScope; Proc: TProcType; Block: TASTBlock);
 begin
   fModule := Module;
   fScope := Scope;
@@ -326,27 +326,27 @@ begin
   fBlock := Block;
 end;
 
-constructor TASTSContext<TProc>.Create(const Module: TASTModule; Scope: TScope);
+constructor TASTSContext<TProcType>.Create(const Module: TASTModule; Scope: TScope);
 begin
   fModule := Module;
   fScope := Scope;
-  fProc := default(TProc);
+  fProc := default(TProcType);
   fBlock := nil;
 end;
 
-function TASTSContext<TProc>.GetIsLoopBody: Boolean;
+function TASTSContext<TProcType>.GetIsLoopBody: Boolean;
 begin
   Result := Block.IsLoopBody;
 end;
 
-function TASTSContext<TProc>.GetIsTryBlock: Boolean;
+function TASTSContext<TProcType>.GetIsTryBlock: Boolean;
 begin
   Result := Block.IsTryBlock;
 end;
 
-function TASTSContext<TProc>.MakeChild(Scope: TScope; Block: TASTBlock): TASTSContext<TProc>;
+function TASTSContext<TProcType>.MakeChild(Scope: TScope; Block: TASTBlock): TASTSContext<TProcType>;
 begin
-  Result := TASTSContext<TProc>.Create(fModule, Scope, fProc, Block);
+  Result := TASTSContext<TProcType>.Create(fModule, Scope, fProc, Block);
 end;
 
 end.

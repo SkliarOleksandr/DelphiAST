@@ -2,6 +2,8 @@ unit ASTTest.Generics.Class1;
 
 interface
 
+{$HINTS OFF}
+
 type
   TList<T> = class
     F: T;
