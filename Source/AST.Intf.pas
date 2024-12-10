@@ -28,12 +28,14 @@ type
     property OnProgress: TASTProgressEvent read GetOnProgress write SetOnProgress;
     property OnConsoleWrite: TASTRrojectConsoleWriteEvent read GetOnConsoleWrite write SetOnConsoleWrite;
 
+    function GetName: string;
     function GetPointerSize: Integer;
     function GetNativeIntSize: Integer;
     function GetTotalLinesParsed: Integer;
     function GetTotalUnitsParsed: Integer;
     function GetTotalUnitsIntfOnlyParsed: Integer;
 
+    property Name: string read GetName;
     property PointerSize: Integer read GetPointerSize;
     property NativeIntSize: Integer read GetNativeIntSize;
     property TotalLinesParsed: Integer read GetTotalLinesParsed;

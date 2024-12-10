@@ -37,7 +37,6 @@ type
     end;
     TStrLiterals = TAVLTree<TStrConstKey, TConstInfo>;
   private
-    fName: string;
     fUnits: TUnits;
     fTarget: TASTTargetClass;
     fDefines: TDefines;
@@ -383,7 +382,7 @@ end;
 
 constructor TPascalProject.Create(const Name: string);
 begin
-  FName := Name;
+  inherited;
   FUnits := TUnits.Create;
   FDefines := TDefines.Create();
   FOptions := TPackageOptions.Create(nil);

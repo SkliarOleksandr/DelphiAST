@@ -5,12 +5,19 @@ interface
 {$I ../Source/AST.Parser.Defines.inc}
 
 uses
-  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics, System.JSON,
-  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, System.Generics.Collections, AST.Pascal.Project,
-  AST.Pascal.Parser, AST.Delphi.Classes, SynEdit, SynEditHighlighter, SynEditCodeFolding, SynHighlighterPas, AST.Delphi.Project,
-  Vcl.ComCtrls, System.Types, Vcl.ExtCtrls, AST.Intf, AST.Parser.ProcessStatuses, Vcl.CheckLst, SynEditMiscClasses,
-  SynEditSearch, AST.Parser.Messages, System.Actions, Vcl.ActnList,
-  VirtualTrees, VirtualTrees.Types, VirtualTrees.Classes, Vcl.ImgList, System.ImageList, System.UITypes, Vcl.Menus;   // system
+  System.SysUtils, System.Variants, System.Classes, System.JSON, System.Generics.Collections, Winapi.Windows,
+  Winapi.Messages, Vcl.Graphics, Vcl.ComCtrls, System.Types, Vcl.ExtCtrls, Vcl.CheckLst, System.Actions, Vcl.ActnList,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.Menus, System.ImageList, Vcl.ImgList, System.UITypes,
+  SynEdit, SynEditMiscClasses, SynEditSearch, SynEditHighlighter, SynEditCodeFolding, SynHighlighterPas, SynHighlighterJSON,
+  VirtualTrees, VirtualTrees.Types, VirtualTrees.Classes,
+  AST.Intf,
+  AST.Classes,
+  AST.Pascal.Project,
+  AST.Delphi.Project,
+  AST.Delphi.Classes,
+  AST.Pascal.Parser,
+  AST.Parser.Messages,
+  AST.Parser.ProcessStatuses;   // system
 
 type
   TSourceFileInfo = record
@@ -45,10 +52,7 @@ type
     tsSource: TTabSheet;
     edUnit: TSynEdit;
     tsAST: TTabSheet;
-    tvAST: TTreeView;
     BottomPanel: TPanel;
-    tsNameSpace: TTabSheet;
-    edAllItems: TSynEdit;
     Panel2: TPanel;
     Panel3: TPanel;
     AddFilesButton: TButton;
@@ -60,9 +64,6 @@ type
     Splitter2: TSplitter;
     MainPanel: TPanel;
     SynEditSearch1: TSynEditSearch;
-    Panel5: TPanel;
-    Button5: TButton;
-    NSSearchEdit: TEdit;
     ErrMemo: TSynEdit;
     Panel6: TPanel;
     LeftPageControl: TPageControl;
@@ -135,9 +136,16 @@ type
     RemoveAll1: TMenuItem;
     Label7: TLabel;
     ProjectNameEdit: TEdit;
+    ASTResultTopPanel: TPanel;
+    ASTResultFormatComboBox: TComboBox;
+    ASTResultViewComboBox: TComboBox;
+    ASTPageControl: TPageControl;
+    SynJSONSyn1: TSynJSONSyn;
+    SearchEdit: TEdit;
+    SearchButton: TButton;
     procedure ASTParseRTLButtonClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
-    procedure Button5Click(Sender: TObject);
+    procedure SearchButtonClick(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure SaveSettingsButtonClick(Sender: TObject);
     procedure StopIfErrorCheckClick(Sender: TObject);
@@ -174,6 +182,7 @@ type
     procedure FilesParseFocusedActionUpdate(Sender: TObject);
     procedure FilesParseFocusedActionExecute(Sender: TObject);
     procedure FilesRemoveAllActionExecute(Sender: TObject);
+    procedure ASTResultFormatComboBoxChange(Sender: TObject);
   private
     { Private declarations }
     //fPKG: INPPackage;
@@ -181,8 +190,13 @@ type
     FLockSaveSettings: Boolean;
     FAllTests: TDictionary<{Unit FileName} string, {Test Data} TTestData>;
     FSelectedTest: TTestData;
+    FLastProject: IASTDelphiProject;
     procedure OnProgress(const Module: IASTModule; Status: TASTProcessStatusClass);
-    procedure ShowAllItems(const Project: IASTDelphiProject);
+    procedure ShowASTResultAsCode(const Project: IASTDelphiProject; ASynEdit: TSynEdit); overload;
+    procedure ShowASTResultAsCode(const AModule: TASTModule; ASynEdit: TSynEdit); overload;
+    procedure ShowASTResultAsJSON(const Project: IASTDelphiProject; ASynEdit: TSynEdit); overload;
+    procedure ShowASTResultAsJSON(const AModule: TASTModule; ASynEdit: TSynEdit); overload;
+    procedure ShowASTResults(const AProject: IASTDelphiProject);
     procedure ParseProject(const Project: IASTDelphiProject; AClearOutput: Boolean = True);
     procedure CompilerMessagesToStrings(const Project: IASTDelphiProject);
     procedure SetDefines(const APrj: IASTDelphiProject);
@@ -216,7 +230,6 @@ uses
   AST.Delphi.System,
   AST.Delphi.Parser,
   AST.Delphi.Declarations,
-  AST.Classes,
   AST.Writer,
   AST.Targets,
   AST.Delphi.DataTypes,
@@ -229,6 +242,11 @@ uses
 
 const
   SDefTestScriptName = 'DefaultTest';
+
+type
+  TASTTabSheet = class(TTabSheet)
+    SynEdit: TSynEdit;
+  end;
 
 procedure TfrmTestAppMain.CompilerMessagesToStrings(const Project: IASTDelphiProject);
 var
@@ -362,8 +380,6 @@ begin
   Prj.AddUnit(UN, nil);
 
   ParseProject(Prj);
-
-  Prj.Clear;
 end;
 
 procedure TfrmTestAppMain.ASTParseRTLButtonClick(Sender: TObject);
@@ -404,6 +420,12 @@ begin
   Prj.AddUnit(UN, nil);
 
   ParseProject(Prj);
+end;
+
+procedure TfrmTestAppMain.ASTResultFormatComboBoxChange(Sender: TObject);
+begin
+  if Assigned(FLastProject) then
+    ShowASTResults(FLastProject);
 end;
 
 procedure TfrmTestAppMain.OnProgress(const Module: IASTModule; Status: TASTProcessStatusClass);
@@ -797,11 +819,10 @@ begin
   end;
 end;
 
-procedure TfrmTestAppMain.ShowAllItems(const Project: IASTDelphiProject);
+procedure TfrmTestAppMain.ShowASTResultAsCode(const Project: IASTDelphiProject; ASynEdit: TSynEdit);
 begin
-  edAllItems.BeginUpdate;
+  ASynEdit.BeginUpdate;
   try
-    edAllItems.Clear;
     var LBuilder := TStringBuilder.Create;
     try
       Project.EnumDeclarations(
@@ -826,12 +847,106 @@ begin
           end;
         end, {AUnitScope} scopeBoth);
     finally
-      edAllItems.Text := LBuilder.ToString;
+      ASynEdit.Text := LBuilder.ToString;
       LBuilder.Free;
     end;
   finally
-    edAllItems.EndUpdate;
+    ASynEdit.EndUpdate;
   end;
+end;
+
+procedure TfrmTestAppMain.ShowASTResultAsCode(const AModule: TASTModule; ASynEdit: TSynEdit);
+begin
+  ASynEdit.BeginUpdate;
+  try
+    var LBuilder := TStringBuilder.Create;
+    try
+      AModule.EnumDeclarations(
+        procedure(const Module: TASTModule; const Decl: TASTDeclaration)
+        begin
+          if not chkbShowAnonymous.Checked and (Decl.ID.Name = '') then
+            Exit;
+
+          if not chkbShowSysDecls.Checked and (Module.Name = 'system') then
+            Exit;
+
+          try
+            Decl.Decl2Str(LBuilder, {ANestedLevel:} 0, {AAppendName:} True);
+            LBuilder.Append(sLineBreak);
+          except
+            on E: Exception do
+              LBuilder.Append(E.Message);
+          end;
+        end, {AUnitScope} scopeBoth);
+    finally
+      ASynEdit.Text := LBuilder.ToString;
+      LBuilder.Free;
+    end;
+  finally
+    ASynEdit.EndUpdate;
+  end;
+end;
+
+procedure TfrmTestAppMain.ShowASTResultAsJSON(const AModule: TASTModule; ASynEdit: TSynEdit);
+begin
+  //todo:
+end;
+
+procedure TfrmTestAppMain.ShowASTResultAsJSON(const Project: IASTDelphiProject; ASynEdit: TSynEdit);
+begin
+  //todo:
+end;
+
+procedure TfrmTestAppMain.ShowASTResults(const AProject: IASTDelphiProject);
+
+  function CreateTab(const ATitle: string): TSynEdit;
+  begin
+    var LTab := TASTTabSheet.Create(Self);
+    LTab.PageControl := ASTPageControl;
+    LTab.Caption := ATitle;
+    Result := TSynEdit.Create(LTab);
+    Result.Parent := LTab;
+    Result.Align := alClient;
+    Result.Font.Assign(edUnit.Font);
+    Result.SearchEngine := SynEditSearch1;
+    Result.Options := Result.Options + [eoTabsToSpaces];
+    Result.Gutter.ShowLineNumbers := True;
+    LTab.SynEdit := Result;
+    case ASTResultFormatComboBox.ItemIndex of
+      0: Result.Highlighter := SynPasSyn1;
+      1: Result.Highlighter := SynJSONSyn1;
+    end;
+  end;
+
+begin
+  // clear previous results
+  for var LIndex := ASTPageControl.PageCount - 1 downto 0 do
+     ASTPageControl.Pages[LIndex].Free;
+
+  case ASTResultViewComboBox.ItemIndex of
+    // single file
+    0: begin
+         var LTab := CreateTab(AProject.Name);
+         case ASTResultFormatComboBox.ItemIndex of
+           0: ShowASTResultAsCode(AProject, LTab);
+           1: ShowASTResultAsJSON(AProject, LTab);
+         end;
+       end;
+    // separate files
+    1: begin
+         for var LIndex := 0 to AProject.UnitsCount - 1 do
+         begin
+           var LUnit := AProject.Units[LIndex];
+           var LTab := CreateTab(LUnit.Name);
+           case ASTResultFormatComboBox.ItemIndex of
+             0: ShowASTResultAsCode(LUnit, LTab);
+             1: ShowASTResultAsJSON(LUnit, LTab);
+           end;
+         end;
+       end;
+  end;
+
+  FLastProject := AProject;
 end;
 
 procedure TfrmTestAppMain.ShowMemLeaksCheckClick(Sender: TObject);
@@ -953,9 +1068,7 @@ begin
     Msg.Add(format('total lines parsed: %d in %s', [Project.TotalLinesParsed,
                                                     FormatDateTime('nn:ss.zzz', Now - LStartedAt)]));
 
-      //ASTToTreeView2(UN, tvAST);
-
-    ShowAllItems(Project);
+    ShowASTResults(Project);
     CompilerMessagesToStrings(Project);
 
     ErrMemo.Lines.AddStrings(Msg);
@@ -1006,9 +1119,10 @@ begin
   TAction(Sender).Enabled := FocusedTestData <> nil;
 end;
 
-procedure TfrmTestAppMain.Button5Click(Sender: TObject);
+procedure TfrmTestAppMain.SearchButtonClick(Sender: TObject);
 begin
-  edAllItems.SearchReplace(NSSearchEdit.Text, '', []);
+  if (ASTPageControl.ActivePage is TASTTabSheet) then
+    TASTTabSheet(ASTPageControl.ActivePage).SynEdit.SearchReplace(SearchEdit.Text, '', []);
 end;
 
 procedure TfrmTestAppMain.FilesCheckAllActionExecute(Sender: TObject);

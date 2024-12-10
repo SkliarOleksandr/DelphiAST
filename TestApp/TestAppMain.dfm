@@ -425,74 +425,68 @@ object frmTestAppMain: TfrmTestAppMain
           object tsAST: TTabSheet
             Caption = 'AST'
             ImageIndex = 1
-            object tvAST: TTreeView
-              Left = 0
-              Top = 0
-              Width = 849
-              Height = 474
-              Align = alClient
-              Indent = 19
-              TabOrder = 0
-            end
-          end
-          object tsNameSpace: TTabSheet
-            Caption = 'NameSpace'
-            ImageIndex = 2
-            object edAllItems: TSynEdit
-              Left = 0
-              Top = 31
-              Width = 849
-              Height = 443
-              Align = alClient
-              Font.Charset = DEFAULT_CHARSET
-              Font.Color = clWindowText
-              Font.Height = -13
-              Font.Name = 'Courier New'
-              Font.Style = []
-              Font.Quality = fqClearTypeNatural
-              TabOrder = 0
-              UseCodeFolding = False
-              BookMarkOptions.LeftMargin = 0
-              BookMarkOptions.Xoffset = 0
-              Gutter.Font.Charset = DEFAULT_CHARSET
-              Gutter.Font.Color = clWindowText
-              Gutter.Font.Height = -11
-              Gutter.Font.Name = 'Courier New'
-              Gutter.Font.Style = []
-              Gutter.Font.Quality = fqClearTypeNatural
-              Gutter.ShowLineNumbers = True
-              Gutter.Bands = <
-                item
-                  Kind = gbkMarks
-                  Width = 13
-                end
-                item
-                  Kind = gbkLineNumbers
-                end
-                item
-                  Kind = gbkFold
-                end
-                item
-                  Kind = gbkTrackChanges
-                end
-                item
-                  Kind = gbkMargin
-                  Width = 3
-                end>
-              Highlighter = SynPasSyn1
-              Options = [eoAutoIndent, eoDragDropEditing, eoEnhanceEndKey, eoGroupUndo, eoRightMouseMovesCursor, eoScrollPastEol, eoShowScrollHint, eoSmartTabDelete, eoSmartTabs, eoTabsToSpaces]
-              SearchEngine = SynEditSearch1
-              SelectedColor.Alpha = 0.400000005960464500
-            end
-            object Panel5: TPanel
+            object ASTResultTopPanel: TPanel
               Left = 0
               Top = 0
               Width = 849
               Height = 31
               Align = alTop
               BevelOuter = bvNone
-              TabOrder = 1
-              object Button5: TButton
+              ShowCaption = False
+              TabOrder = 0
+              ExplicitLeft = -2
+              ExplicitTop = 1
+              object ASTResultFormatComboBox: TComboBox
+                AlignWithMargins = True
+                Left = 3
+                Top = 3
+                Width = 145
+                Height = 22
+                Align = alLeft
+                Style = csOwnerDrawFixed
+                ItemIndex = 0
+                TabOrder = 0
+                Text = 'Show as Code'
+                OnChange = ASTResultFormatComboBoxChange
+                Items.Strings = (
+                  'Show as Code'
+                  'Show as JSON')
+                ExplicitLeft = -2
+                ExplicitTop = 0
+              end
+              object ASTResultViewComboBox: TComboBox
+                AlignWithMargins = True
+                Left = 154
+                Top = 3
+                Width = 145
+                Height = 22
+                Align = alLeft
+                Style = csOwnerDrawFixed
+                ItemIndex = 0
+                TabOrder = 1
+                Text = 'Show in Single File'
+                OnChange = ASTResultFormatComboBoxChange
+                Items.Strings = (
+                  'Show in Single File'
+                  'Show in Separate Files ')
+                ExplicitLeft = 305
+                ExplicitTop = 1
+              end
+              object SearchEdit: TEdit
+                AlignWithMargins = True
+                Left = 305
+                Top = 3
+                Width = 460
+                Height = 24
+                Margins.Bottom = 4
+                Align = alClient
+                TabOrder = 2
+                ExplicitLeft = 308
+                ExplicitTop = 8
+                ExplicitWidth = 541
+                ExplicitHeight = 23
+              end
+              object SearchButton: TButton
                 AlignWithMargins = True
                 Left = 771
                 Top = 3
@@ -500,21 +494,18 @@ object frmTestAppMain: TfrmTestAppMain
                 Height = 25
                 Align = alRight
                 Caption = 'Search'
-                TabOrder = 0
-                OnClick = Button5Click
+                TabOrder = 3
+                OnClick = SearchButtonClick
               end
-              object NSSearchEdit: TEdit
-                AlignWithMargins = True
-                Left = 3
-                Top = 4
-                Width = 762
-                Height = 23
-                Margins.Top = 4
-                Margins.Bottom = 4
-                Align = alClient
-                TabOrder = 1
-                ExplicitHeight = 21
-              end
+            end
+            object ASTPageControl: TPageControl
+              Left = 0
+              Top = 31
+              Width = 849
+              Height = 443
+              Align = alClient
+              TabOrder = 1
+              ExplicitLeft = -2
             end
           end
         end
@@ -1174,5 +1165,9 @@ object frmTestAppMain: TfrmTestAppMain
     object RemoveAll1: TMenuItem
       Action = FilesRemoveAllAction
     end
+  end
+  object SynJSONSyn1: TSynJSONSyn
+    Left = 128
+    Top = 417
   end
 end
