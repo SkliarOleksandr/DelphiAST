@@ -1,0 +1,13 @@
+===== DELPHI AST PARSER TODO LIST =====
+
+// GENERAL:
+
+1. Delphi 12 multiline string literals
+2. Parsing .dpr, .dpk files
+3. Array default properties overloading 
+4. Keep parsing when errors found
+
+// IMPROVE:
+
+1. Procedure overloading
+2. AnsiString vs UnicodeString literals
