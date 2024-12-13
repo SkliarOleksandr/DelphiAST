@@ -434,8 +434,6 @@ object frmTestAppMain: TfrmTestAppMain
               BevelOuter = bvNone
               ShowCaption = False
               TabOrder = 0
-              ExplicitLeft = -2
-              ExplicitTop = 1
               object ASTResultFormatComboBox: TComboBox
                 AlignWithMargins = True
                 Left = 3
@@ -451,8 +449,6 @@ object frmTestAppMain: TfrmTestAppMain
                 Items.Strings = (
                   'Show as Code'
                   'Show as JSON')
-                ExplicitLeft = -2
-                ExplicitTop = 0
               end
               object ASTResultViewComboBox: TComboBox
                 AlignWithMargins = True
@@ -469,8 +465,6 @@ object frmTestAppMain: TfrmTestAppMain
                 Items.Strings = (
                   'Show in Single File'
                   'Show in Separate Files ')
-                ExplicitLeft = 305
-                ExplicitTop = 1
               end
               object SearchEdit: TEdit
                 AlignWithMargins = True
@@ -481,10 +475,7 @@ object frmTestAppMain: TfrmTestAppMain
                 Margins.Bottom = 4
                 Align = alClient
                 TabOrder = 2
-                ExplicitLeft = 308
-                ExplicitTop = 8
-                ExplicitWidth = 541
-                ExplicitHeight = 23
+                ExplicitHeight = 21
               end
               object SearchButton: TButton
                 AlignWithMargins = True
@@ -505,7 +496,6 @@ object frmTestAppMain: TfrmTestAppMain
               Height = 443
               Align = alClient
               TabOrder = 1
-              ExplicitLeft = -2
             end
           end
         end

@@ -1047,8 +1047,6 @@ begin
 
   // null ptr type (special type for "nil" constant)
   fDecls._NullPtrType := TIDNullPointerType.CreateAsSystem(IntfScope, 'null ptr');
-//  fDecls._NullPtrType.AddBinarySysOperator(opEqual, fOperators.Equal_NullPtr);
-//  fDecls._NullPtrType.AddBinarySysOperator(opNotEqual, fOperators.NotEqual_NullPtr);
   // null ptr type constant
   fDecls._NullPtrConstant := TIDIntConstant.Create(IntfScope, Identifier('nil'), fDecls._NullPtrType, 0);
   fDecls._NullPtrExpression := TIDExpression.Create(fDecls._NullPtrConstant);

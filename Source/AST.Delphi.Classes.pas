@@ -430,6 +430,7 @@ type
     function FindSystemBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDDeclaration;
     function FindSystemBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDDeclaration;
 
+    function SysUnarOperator(AOpID: TOperatorID): TIDType; virtual;
     function SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType; virtual;
     function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; virtual;
 
@@ -717,6 +718,9 @@ type
     constructor Create(Scope: TScope; const ID: TIdentifier); override;
     constructor CreateAsAnonymous(Scope: TScope); override;
     procedure CreateStandardOperators; override;
+    function SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType; override;
+    function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
+    function SysUnarOperator(AOpID: TOperatorID): TIDType; override;
     property Items: TScope read FItems write FItems;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
   end;
@@ -3790,6 +3794,11 @@ begin
   Result := nil;
 end;
 
+function TIDType.SysUnarOperator(AOpID: TOperatorID): TIDType;
+begin
+  Result := nil;
+end;
+
 procedure TIDType.OverloadBinarOperator(AOpID: TOperatorID; ALeft, ARight: TIDType; AOperator: TIDOperator);
 begin
   var LOperators := FBinarOperators[AOpID];
@@ -5944,6 +5953,30 @@ begin
     end;
     Result := 'Enum(' + s +')';
   end;
+end;
+
+function TIDEnum.SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType;
+begin
+  // TODO: Delphi allows some arithmetic operation in enum declaration only
+  if IsBinArithmeticOperator(AOpID) then
+    Result := ARight
+  else
+    Result := inherited;
+end;
+
+function TIDEnum.SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType;
+begin
+  // TODO: Delphi allows some arithmetic operation in enum declaration only
+  if IsBinArithmeticOperator(AOpID) then
+    Result := ALeft
+  else
+    Result := inherited;
+end;
+
+function TIDEnum.SysUnarOperator(AOpID: TOperatorID): TIDType;
+begin
+  // TODO: Delphi allows some arithmetic operation in enum declaration only
+  Result := Self;
 end;
 
 { TIDDynArray }

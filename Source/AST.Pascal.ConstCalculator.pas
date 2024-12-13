@@ -319,6 +319,7 @@ begin
        Exit(TIDFloatConstant.CreateAsAnonymous(AScope, Sys._Float64, fValue));
       end;
     end;
+    opModDiv: iValue := LValue mod RValue;
     opEqual,
     opNotEqual,
     opGreater,

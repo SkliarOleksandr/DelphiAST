@@ -182,6 +182,8 @@
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Mixed.pas"/>
         <DCCReference Include="..\TestScripts\Classes\TASTTest.Classes.Inherited1.pas"/>
         <DCCReference Include="..\TestScripts\Classes\TASTTest.Classes.Inherited2.pas"/>
+        <DCCReference Include="..\TestScripts\Ordinals\ASTTest.Ordian.Enums.Init.pas"/>
+        <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.External.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

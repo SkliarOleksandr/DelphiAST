@@ -105,6 +105,7 @@ type
 function OperatorFullName(&Operator: TOperatorID): string;
 function OperatorShortName(&Operator: TOperatorID): string;
 function GetOperatorID(const Name: string): TOperatorID; inline;
+function IsBinArithmeticOperator(AOpID: TOperatorID): Boolean;
 
 
 // todo:
@@ -354,6 +355,12 @@ begin
     Result := TOperatorID(_operators.Objects[idx])
   else
     Result := opNone;
+end;
+
+function IsBinArithmeticOperator(AOpID: TOperatorID): Boolean;
+begin
+  Result := AOpID in [opAdd, opSubtract, opMultiply, opDivide, opIntDiv,
+                      opModDiv, opShiftLeft, opShiftRight, opAnd, opOr, opXor];
 end;
 
 initialization

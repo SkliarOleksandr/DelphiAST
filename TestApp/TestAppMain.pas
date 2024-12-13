@@ -686,6 +686,8 @@ begin
   // add custom defines
   for var LDefine in string(CondDefinesEdit.Text).Split([';']) do
     APrj.Defines.Add(LDefine);
+
+  APrj.Defines.Add('AST_PARSING');
 end;
 
 procedure TfrmTestAppMain.CreateNewDirActionExecute(Sender: TObject);

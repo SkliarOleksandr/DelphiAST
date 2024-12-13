@@ -46,6 +46,8 @@ uses
 // System.Messaging
 // System.Variants
 // System.UITypes
+// System.RegularExpressionsAPI
+// System.RegularExpressions
 // Winapi.Windows
 // Winapi.ActiveX
 // Winapi.CommCtrl
@@ -54,6 +56,7 @@ uses
 // Winapi.MSXMLIntf
 // Winapi.ShlObj
 // Winapi.ImageHlp
+// Winapi.D3DCommon
 // AnsiStrings
 // Character
 // Vcl.Forms
@@ -190,7 +193,7 @@ type
     function MatchBinarOperator(Op: TOperatorID; var Left, Right: TIDExpression): TIDDeclaration;
     function MatchBinarOperatorWithImplicit(const SContext: TSContext; Op: TOperatorID; var Left, Right: TIDexpression): TIDDeclaration;
     function FindBinaryOperator(const SContext: TSContext; OpID: TOperatorID; var Left, Right: TIDExpression): TIDDeclaration;
-    class function MatchUnarOperator(Op: TOperatorID; Right: TIDType): TIDType; overload; static; inline;
+    class function FindUnarOperator(Op: TOperatorID; Right: TIDExpression): TIDType; overload; static; inline;
     class function MatchUnarOperator(const SContext: TSContext; Op: TOperatorID; Source: TIDExpression): TIDExpression; overload; static;
     function DoMatchBinarOperator(const SContext: TSContext; OpID: TOperatorID; var Left, Right: TIDExpression): TIDDeclaration;
     procedure MatchProc(const SContext: TSContext; CallExpr: TIDExpression; const ProcParams: TIDParamArray; var CallArgs: TIDExpressions);
@@ -3553,14 +3556,30 @@ begin
   Result := Source;
 end;
 
-class function TASTDelphiUnit.MatchUnarOperator(Op: TOperatorID; Right: TIDType): TIDType;
+class function TASTDelphiUnit.FindUnarOperator(Op: TOperatorID; Right: TIDExpression): TIDType;
+var
+  LDataType: TIDType;
 begin
-  Right := Right.ActualDataType;
-  Result := Right.UnarOperator(Op, Right);
-  if Assigned(Result) then
-    Exit;
-  if (Right.DataTypeID = dtGeneric) then
-    Exit(Right);
+  if Right.ItemType <> itType then
+    LDataType := Right.DataType
+  else
+    LDataType := Right.AsType;
+
+  while True do
+  begin
+    Result := LDataType.UnarOperator(Op, LDataType);
+    if Assigned(Result) then
+      Exit;
+
+    Result := LDataType.SysUnarOperator(Op);
+    if Assigned(Result) then
+      Exit;
+
+    if LDataType is TIDAliasType then
+      LDataType := TIDAliasType(LDataType).LinkedType
+    else
+      Break;
+  end;
 end;
 
 class function TASTDelphiUnit.MatchUnarOperator(const SContext: TSContext; Op: TOperatorID; Source: TIDExpression): TIDExpression;
@@ -3568,14 +3587,14 @@ var
   OpDecl: TIDType;
   WasCall: Boolean;
 begin
-  OpDecl := MatchUnarOperator(Op, Source.DataType.ActualDataType);
+  OpDecl := FindUnarOperator(Op, Source);
   if Assigned(OpDecl) then
     Exit(Source);
 
   Source := CheckAndCallFuncImplicit(SContext, Source, WasCall);
   if WasCall then
   begin
-    OpDecl := MatchUnarOperator(Op, Source.DataType.ActualDataType);
+    OpDecl := FindUnarOperator(Op, Source);
     if Assigned(OpDecl) then
       Exit(Source);
   end;
@@ -6996,35 +7015,51 @@ begin
 end;
 
 function TASTDelphiUnit.ParseImportStatement(Scope: TScope; out ImportLib, ImportName: TIDDeclaration): TTokenID;
-var
-  LLibNameExpr, LProcNameExpr: TIDExpression;
-begin
-  // читаем имя библиотеки
-  Lexer_NextToken(Scope);
-  Result := ParseConstExpression(Scope, {out} LLibNameExpr, ExprRValue);
-  if Assigned(LLibNameExpr) then
+
+  function ParseLibNameDecl: TIDDeclaration;
+  var
+    LProcNameExpr: TIDExpression;
   begin
-    CheckStringExpression(LLibNameExpr);
+    // читаем имя декларации
+    Lexer_NextToken(Scope);
+    ParseConstExpression(Scope, {out} LProcNameExpr, ExprRValue);
 
-    ImportLib := LLibNameExpr.Declaration;
+    CheckEmptyExpression(LProcNameExpr);
+    CheckStringExpression(LProcNameExpr);
 
-    if Lexer_AmbiguousId = tokenD_name then
+    Result := LProcNameExpr.Declaration;
+  end;
+
+var
+  LLibNameExpr: TIDExpression;
+begin
+  ImportLib := nil;
+  ImportName := nil;
+
+  Lexer_NextToken(Scope);
+
+  if Lexer_AmbiguousId = tokenD_name then
+  begin
+    // static linking:
+    ImportName := ParseLibNameDecl;
+  end else
+  begin
+    // dynamic linking:
+    Result := ParseConstExpression(Scope, {out} LLibNameExpr, ExprRValue);
+    if Assigned(LLibNameExpr) then
     begin
-      // читаем имя декларации
-      Lexer_NextToken(Scope);
-      Result := ParseConstExpression(Scope, LProcNameExpr, ExprRValue);
-
-      CheckEmptyExpression(LProcNameExpr);
-      CheckStringExpression(LProcNameExpr);
-
-      ImportName := LProcNameExpr.Declaration;
-    end else
-      ImportName := nil;
-  end; // else todo:
+      CheckStringExpression(LLibNameExpr);
+      ImportLib := LLibNameExpr.Declaration;
+      if Lexer_AmbiguousId = tokenD_name then
+        ImportName := ParseLibNameDecl;
+    end;
+  end;
 
   // delayed
   if Lexer_AmbiguousId = tokenD_delayed then
     Result := Lexer_NextToken(Scope);
+
+  Result := Lexer_CurTokenID;
 
   Lexer_MatchSemicolon(Result);
 end;
