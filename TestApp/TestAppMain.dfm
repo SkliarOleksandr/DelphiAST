@@ -60,7 +60,7 @@ object frmTestAppMain: TfrmTestAppMain
             Left = 0
             Top = 35
             Width = 382
-            Height = 447
+            Height = 421
             Align = alClient
             Colors.BorderColor = 15987699
             Colors.DisabledColor = clGray
@@ -123,6 +123,42 @@ object frmTestAppMain: TfrmTestAppMain
               TabOrder = 0
             end
           end
+          object TestsBottomPanel: TPanel
+            Left = 0
+            Top = 456
+            Width = 382
+            Height = 26
+            Align = alBottom
+            BevelOuter = bvNone
+            ShowCaption = False
+            TabOrder = 2
+            object TotalTestCntLabel: TLabel
+              AlignWithMargins = True
+              Left = 3
+              Top = 3
+              Width = 66
+              Height = 20
+              Align = alLeft
+              Caption = 'Total Tests: 0'
+              Layout = tlCenter
+              ExplicitLeft = 8
+              ExplicitTop = 6
+              ExplicitHeight = 13
+            end
+            object TestRunProgressLabel: TLabel
+              AlignWithMargins = True
+              Left = 75
+              Top = 3
+              Width = 304
+              Height = 20
+              Align = alClient
+              Alignment = taRightJustify
+              Caption = 'Test Not Run'
+              Layout = tlCenter
+              ExplicitWidth = 63
+              ExplicitHeight = 13
+            end
+          end
         end
         object tsFiles: TTabSheet
           Caption = 'Parse Files'
@@ -146,6 +182,9 @@ object frmTestAppMain: TfrmTestAppMain
               Caption = 'Panel3'
               ShowCaption = False
               TabOrder = 0
+              DesignSize = (
+                382
+                33)
               object AddFilesButton: TButton
                 Left = 0
                 Top = 2
@@ -543,8 +582,8 @@ object frmTestAppMain: TfrmTestAppMain
           1252
           27)
         object Label2: TLabel
-          Left = 552
-          Top = 6
+          Left = 608
+          Top = 3
           Width = 40
           Height = 13
           Caption = 'Platform'
@@ -569,8 +608,8 @@ object frmTestAppMain: TfrmTestAppMain
           OnClick = StopIfErrorCheckClick
         end
         object cbPlatform: TComboBox
-          Left = 598
-          Top = 3
+          Left = 654
+          Top = 0
           Width = 81
           Height = 21
           ItemIndex = 0
@@ -584,9 +623,9 @@ object frmTestAppMain: TfrmTestAppMain
         object ParseImplsCheck: TCheckBox
           Left = 331
           Top = 2
-          Width = 79
+          Width = 142
           Height = 17
-          Caption = 'Parse Impls'
+          Caption = 'Parse Used Units Impl.'
           Checked = True
           State = cbChecked
           TabOrder = 3
@@ -604,7 +643,7 @@ object frmTestAppMain: TfrmTestAppMain
           OnClick = StopIfErrorCheckClick
         end
         object BreakpointOnErrorCheck: TCheckBox
-          Left = 416
+          Left = 479
           Top = -3
           Width = 114
           Height = 27

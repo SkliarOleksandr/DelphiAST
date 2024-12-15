@@ -17,13 +17,13 @@ uses System.SysUtils, System.Classes, System.Types, Generics.Collections, System
 
 type
   TUnits = TList<TASTModule>;
+  TUnitsDict = TDictionary<{name} string, {module} TASTModule>;
   TTypes = TList<TIDType>;
   TEnumDeclProc = procedure (Module: TASTModule; Decl: TASTDeclaration);
 
   TPascalProjectSettings = class(TASTProjectSettings, IPascalProjectSettings)
 
   end;
-
 
   TPascalProject = class(TASTProject, IASTProject, IASTPascalProject)
   type
@@ -38,6 +38,7 @@ type
     TStrLiterals = TAVLTree<TStrConstKey, TConstInfo>;
   private
     fUnits: TUnits;
+    fImplicitUnits: TUnitsDict;
     fTarget: TASTTargetClass;
     fDefines: TDefines;
     fStrLiterals: TStrLiterals;
@@ -89,7 +90,6 @@ type
     function GetPointerSize: Integer; override;
     function GetNativeIntSize: Integer; override;
     function GetVariantSize: Integer;  override;
-    procedure InitSystemUnit; virtual;
     procedure DoBeforeCompileUnit(AUnit: TASTModule); virtual;
     procedure DoFinishCompileUnit(AUnit: TASTModule; AIntfOnly: Boolean); virtual;
   public
@@ -104,7 +104,7 @@ type
     procedure AddUnit(const AFileName: string); overload;
     procedure AddUnitSource(const Source: string);
     procedure AddUnitSearchPath(const APath: string; AIncludeSubDirs: Boolean);
-    procedure Clear;
+    procedure Clear(AClearImplicitUnits: Boolean); virtual;
     function GetTotalLinesParsed: Integer; override;
     function GetTotalUnitsParsed: Integer; override;
     function GetTotalUnitsIntfOnlyParsed: Integer; override;
@@ -233,6 +233,16 @@ end;
 
 function TPascalProject.GetSysUnit: TASTModule;
 begin
+  if not Assigned(fSysUnit) then
+  begin
+    var LSystemName := GetSystemUnitFileName;
+    var LSystemUnitFileName := FindUnitFile(LSystemName);
+    fSysUnit := GetSystemUnitClass.Create(Self, LSystemUnitFileName);
+    if FileExists(LSystemUnitFileName) and fParseSystemUnit then
+      fSysUnit.Compile(fCompileAll);
+
+    fImplicitUnits.Add(LowerCase(TPath.GetFileNameWithoutExtension(LSystemName)), fSysUnit);
+  end;
   Result := fSysUnit;
 end;
 
@@ -302,35 +312,6 @@ begin
   end;
 end;
 
-procedure TPascalProject.InitSystemUnit;
-var
-  SysFileName, SysSource: string;
-begin
-  try
-    if not Assigned(fSysUnit) then
-    begin
-      SysFileName := FindUnitFile('system.pas');
-      if FileExists(SysFileName) and fParseSystemUnit then
-      begin
-        var AList := TStringList.Create;
-        try
-          AList.LoadFromFile(SysFileName);
-          SysSource := AList.Text;
-        finally
-          AList.Free;
-        end;
-      end else
-        SysSource := 'unit system; end.';
-
-      fSysUnit := GetSystemUnitClass.Create(Self, SysFileName, SysSource);
-      FUnits.Insert(0, fSysUnit);
-    end;
-  except
-    on e: exception do
-      AbortWorkInternal('Internal ERROR: ' + e.Message);
-  end;
-end;
-
 procedure TPascalProject.AddUnit(aUnit, BeforeUnit: TASTModule);
 var
   i: Integer;
@@ -370,12 +351,18 @@ begin
     if AnsiCompareText(SUnitName, UnitName) = 0 then
       Exit(FUnits[i]);
   end;
+
+  if fImplicitUnits.TryGetValue(LowerCase(UnitName), {out} Result) then
+    Exit;
+
   // ищем на файловой системе
   SUnitName := FindUnitFile(UnitName, '.pas');
   if SUnitName <> '' then
   begin
     Result := OpenUnit(SUnitName);
-    AddUnit(Result, AfterUnit);
+    // add a unit to implicit unit list
+    if not fImplicitUnits.TryAdd(LowerCase(UnitName), Result) then
+      raise ECompilerInternalError.CreateFmt(sUnitAlreadyExistFmt, [UnitName]);
   end else
     Result := nil;
 end;
@@ -384,6 +371,7 @@ constructor TPascalProject.Create(const Name: string);
 begin
   inherited;
   FUnits := TUnits.Create;
+  fImplicitUnits := TUnitsDict.Create;
   FDefines := TDefines.Create();
   FOptions := TPackageOptions.Create(nil);
   FUnitSearchPathes := TStringList.Create;
@@ -395,8 +383,7 @@ end;
 
 constructor TPascalProject.CreateExisting(const AFileName: string);
 begin
-  var LProjectName := ExtractFileName(AFileName);
-  LProjectName := LProjectName.Replace(ExtractFileExt(LProjectName), '');
+  var LProjectName := TPath.GetFileNameWithoutExtension(AFileName);
   Create(LProjectName);
   FProjectFileName := AFileName;
 end;
@@ -431,13 +418,24 @@ begin
   end;
 end;
 
-procedure TPascalProject.Clear;
+procedure TPascalProject.Clear(AClearImplicitUnits: Boolean);
 var
   i: Integer;
 begin
   for i := 0 to FUnits.Count - 1 do
     FUnits[i].Free;
+
   FUnits.Clear;
+
+  if AClearImplicitUnits then
+  begin
+    for var LUnit in fImplicitUnits.Values do
+      LUnit.Free;
+
+    fImplicitUnits.Clear;
+    fSysUnit := nil;
+  end;
+
   FStrLiterals.Free;
   FStrLiterals := TStrLiterals.Create(StrListCompare);
 end;
@@ -447,20 +445,6 @@ var
   i: Integer;
 begin
   Result := CompileInProgress;
-  // init system first
-  try
-    InitSystemUnit;
-  except
-    on e: ECompilerAbort do begin
-      PutMessage(ECompilerAbort(e).CompilerMessage^);
-      Exit(CompileFail);
-    end;
-    on e: Exception do begin
-      PutMessage(cmtInteranlError, e.Message);
-      Exit(CompileFail);
-    end;
-  end;
-
   fTotalLinesParsed := 0;
   try
     // compile explicit project units ("uses units" will be compiled for interface only)
@@ -497,8 +481,9 @@ end;
 
 destructor TPascalProject.Destroy;
 begin
-  Clear;
+  Clear({AClearImplicitUnits:} True);
   FUnits.Free;
+  FImplicitUnits.Free;
   FDefines.Free;
   FStrLiterals.Free;
   FUnitSearchPathes.Free;

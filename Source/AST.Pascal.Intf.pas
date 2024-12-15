@@ -46,7 +46,7 @@ type
     procedure AddUnit(const FileName: string); overload;
     procedure AddUnitSource(const Source: string); overload;
     procedure AddUnitSearchPath(const APath: string; AIncludeSubDirs: Boolean = True);
-    procedure Clear;
+    procedure Clear(AClearImplicitUnits: Boolean);
     procedure EnumDeclarations(const AEnumProc: TEnumASTDeclProc; AUnitScope: TUnitScopeKind);
     procedure DoBeforeCompileUnit(AUnit: TASTModule);
     procedure DoFinishCompileUnit(AUnit: TASTModule; AIntfOnly: Boolean);

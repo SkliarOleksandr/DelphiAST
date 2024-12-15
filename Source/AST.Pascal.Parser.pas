@@ -103,11 +103,11 @@ type
     fConsts: TConstSpace;              // список нетривиальных констант (массивы, структуры)
     function GetMessagesText: string;
     function GetProject: IASTPascalProject;
+    function GetSysUnit: TASTModule; inline;
   protected
     fCompiled: TCompilerResult;
     fUnitState: TUnitState;
     fUnitName: TIdentifier;            // the Unit declaration name
-    fSysUnit: TASTModule;
     fProcMatches: TASTProcMachArray;
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
     function FindPublicDecl(const Name: string): TIDDeclaration;
@@ -120,7 +120,7 @@ type
     procedure AddType(const Decl: TIDType); inline;
     procedure AddConstant(const Decl: TIDConstant); inline;
     property Lexer: TDelphiLexer read fLexer;
-    property SysUnit: TASTModule read fSysUnit;
+    property SysUnit: TASTModule read GetSysUnit;
     ////////////////////////////////////////////////////////////////////////////
     constructor Create(const AProject: IASTProject; const AFileName: string; const ASource: string = ''); override;
     constructor CreateFromFile(const AProject: IASTProject; const AFileName: string); override;
@@ -132,7 +132,7 @@ type
     procedure SaveBodyToStream(Stream: TStream);   // сохраняет тела всех глобальных процедур модуля
     procedure SaveTypesToStream(Stream: TStream);  // сохраняет все типы модуля
 
-    function Compile(ACompileIntfOnly: Boolean; RunPostCompile: Boolean = True): TCompilerResult; virtual;
+    function Compile(ACompileIntfOnly: Boolean; RunPostCompile: Boolean = True): TCompilerResult; override;
 
     function CompileIntfOnly: TCompilerResult; virtual;
 
@@ -174,14 +174,12 @@ begin
   Result := TCompilerResult.CompileInProgress;
   FCompiled := Result;
 
-  fSysUnit := (Project as IASTPascalProject).SysUnit;
-
   // add system unit implicitly
-  if Assigned(fSysUnit) and (Self <> fSysUnit) then
+  if Assigned(SysUnit) and (Self <> SysUnit) then
   begin
-    fIntfImportedUnits.AddObject('system', fSysUnit);
+    fIntfImportedUnits.AddObject('system', SysUnit);
     // add system unit scope as joint
-    fIntfScope.AddScope(TPascalUnit(fSysUnit).IntfScope);
+    fIntfScope.AddScope(TPascalUnit(SysUnit).IntfScope);
   end;
 end;
 
@@ -197,7 +195,7 @@ begin
     LSource := TFile.ReadAllText(AFileName);
 
   inherited Create(AProject, AFileName, LSource);
-  fSysUnit := (Project as IASTPascalProject).SysUnit;
+
   fLexer := TDelphiLexer.Create(LSource);
   FMessages := TCompilerMessages.Create;
   //FVisibility := vPublic;
@@ -322,6 +320,11 @@ var
 begin
   Res := FindPublicDecl(Name);
   Result := Res as TIDType;
+end;
+
+function TPascalUnit.GetSysUnit: TASTModule;
+begin
+  Result := Project.SysUnit;
 end;
 
 {parser methods}

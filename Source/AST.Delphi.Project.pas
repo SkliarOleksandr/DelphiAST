@@ -25,6 +25,8 @@ type
     function GetSysInitUnit: TASTModule;
     procedure DoBeforeCompileUnit(AUnit: TASTModule); override;
     procedure DoFinishCompileUnit(AUnit: TASTModule; AIntfOnly: Boolean); override;
+  public
+    procedure Clear(AClearImplicitUnits: Boolean); override;
   end;
 
 implementation
@@ -33,6 +35,12 @@ uses AST.Delphi.Parser,
      AST.Delphi.System;
 
 { TASTDelphiProject }
+
+procedure TASTDelphiProject.Clear(AClearImplicitUnits: Boolean);
+begin
+  inherited;
+  fSysInitUnit := nil;
+end;
 
 procedure TASTDelphiProject.DoBeforeCompileUnit(AUnit: TASTModule);
 begin

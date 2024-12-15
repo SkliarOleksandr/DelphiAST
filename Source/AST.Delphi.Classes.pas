@@ -181,6 +181,7 @@ type
     Args: TIDTypeArray;
     DstID: TIdentifier;
     constructor Create(AParent: TGenericInstantiateContext; ASrcDecl: TIDDeclaration);
+    function IndexOfParam(AParam: TIDGenericParam): Integer;
     function GetArgByParam(AParam: TIDGenericParam): TIDType;
     function Args2Str: string;
   end;
@@ -491,6 +492,7 @@ type
     property Helper: TDlphHelper read fHelper write fHelper;
     function MakeCopy: TIDDeclaration; override;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
+    function CanBeInstantiated(AContext: TGenericInstantiateContext): Boolean; virtual;
     function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                 AContext: TGenericInstantiateContext): TIDDeclaration; override;
 
@@ -531,6 +533,7 @@ type
     constructor Create(Scope: TScope; const ID: TIdentifier); override;
     property Constraint: TGenericConstraint read fConstraint write fConstraint;
     property ConstraintType: TIDType read fConstraintType write fConstraintType;
+    function CanBeInstantiated(AContext: TGenericInstantiateContext): Boolean; override;
     function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                 AContext: TGenericInstantiateContext): TIDDeclaration; override;
 
@@ -581,6 +584,7 @@ type
                                     AGenericType: TIDType;
                                     const AGenericArguments: TIDExpressions);
 
+    function CanBeInstantiated(AContext: TGenericInstantiateContext): Boolean; override;
     function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                 AContext: TGenericInstantiateContext): TIDDeclaration; override;
 
@@ -957,6 +961,7 @@ type
     procedure IncRefCount(RCPath: UInt32); override;
     procedure DecRefCount(RCPath: UInt32); override;
     function IsOpenArrayOfConst: Boolean;
+    function CanBeInstantiated(AContext: TGenericInstantiateContext): Boolean; override;
     function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                 AContext: TGenericInstantiateContext): TIDDeclaration; override;
 
@@ -3264,16 +3269,8 @@ function TIDProcedure.InstantiateGenericProc(ADstScope: TScope; ADstStruct: TIDS
       var AParam := AProcParams[AIndex].MakeCopy as TIDParam;
       var LParamType := AParam.DataType;
       // if a param data type is generic and belongs current context, instantiate it
-      if AParam.IsGeneric and
-         (
-            not Assigned(GenericDescriptor) or
-            (
-              GenericDescriptor.Contains(LParamType) and (AContext.FSrcDecl = Self)
-            )
-         ) then
-       begin
+      if LParamType.CanBeInstantiated(AContext) then
         AParam.DataType := LParamType.InstantiateGeneric(ANewScope, ADstStruct, AContext) as TIDType;
-       end;
       Result[AIndex] := AParam;
     end;
   end;
@@ -3288,8 +3285,10 @@ begin
 
   // todo: what about implicit params (self, open array len, etc)?
   LNewProc.ExplicitParams := InstantiateParams(ParamsScope, ExplicitParams, AContext);
-  if Assigned(ResultType) then
-    LNewProc.ResultType := ResultType.InstantiateGeneric(ADstScope, ADstStruct, AContext) as TIDType;
+  if Assigned(ResultType) and ResultType.CanBeInstantiated(AContext) then
+    LNewProc.ResultType := ResultType.InstantiateGeneric(ADstScope, ADstStruct, AContext) as TIDType
+  else
+    LNewProc.ResultType := ResultType;
 
   // a new method instance (in case of owner struct instantiation) must have the same generic params,
   // that has a source generic declaration
@@ -3344,6 +3343,11 @@ begin
 end;
 
 { TIDType }
+
+function TIDType.CanBeInstantiated(AContext: TGenericInstantiateContext): Boolean;
+begin
+  Result := False;
+end;
 
 constructor TIDType.Create(Scope: TScope; const ID: TIdentifier);
 begin
@@ -5337,6 +5341,11 @@ begin
   SetLength(FDimensions, FDimensionsCount + 1);
   FDimensions[FDimensionsCount] := Bound;
   Inc(FDimensionsCount);
+end;
+
+function TIDArray.CanBeInstantiated(AContext: TGenericInstantiateContext): Boolean;
+begin
+  Result := FElementDataType.CanBeInstantiated(AContext);
 end;
 
 constructor TIDArray.Create(Scope: TScope; const Name: TIdentifier);
@@ -7452,6 +7461,11 @@ end;
 
 { TIDGenericParam }
 
+function TIDGenericParam.CanBeInstantiated(AContext: TGenericInstantiateContext): Boolean;
+begin
+  Result := (AContext.IndexOfParam(Self) >= 0);
+end;
+
 constructor TIDGenericParam.Create(Scope: TScope; const ID: TIdentifier);
 begin
   inherited Create(Scope, ID);
@@ -8622,6 +8636,16 @@ end;
 { TIDGenericInstantiation }
 
 
+function TIDGenericInstantiation.CanBeInstantiated(AContext: TGenericInstantiateContext): Boolean;
+begin
+  Result := True;
+  for var LIndex := 0 to Length(FGenericArguments) - 1 do
+  begin
+    var LArg := FGenericArguments[LIndex].AsType;
+    Result := Result and LArg.CanBeInstantiated(AContext);
+  end;
+end;
+
 constructor TIDGenericInstantiation.CreateInstantiation(AScope: TScope;
                                                         AGenericType: TIDType;
                                                         const AGenericArguments: TIDExpressions);
@@ -8747,6 +8771,15 @@ begin
 
   AbortWorkInternal('Unknown generic param: %s', [AParam.Name]);
   Result := nil;
+end;
+
+function TGenericInstantiateContext.IndexOfParam(AParam: TIDGenericParam): Integer;
+begin
+  for var LIndex := 0 to Length(Params) - 1 do
+    if Params[LIndex] = AParam then
+      Exit(LIndex);
+
+  Result := -1;
 end;
 
 { TIDCallExpression }

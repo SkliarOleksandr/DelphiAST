@@ -47,7 +47,7 @@ type
   protected
     function GetDisplayName: string; virtual;
   public
-    constructor Create(Parent: TASTItem); virtual;
+    constructor Create(Parent: TASTItem); overload; virtual;
 //    property TypeID: TASTItemTypeID read GetItemTypeID;
     property Next: TASTItem read fNext write fNext;
     property DisplayName: string read GetDisplayName;
@@ -126,6 +126,8 @@ type
     constructor CreateFromFile(const Project: IASTProject; const FileName: string); virtual;
     procedure EnumDeclarations(const AEnumProc: TEnumASTDeclProc; AUnitScope: TUnitScopeKind); virtual; abstract;
     property TotalLinesParsed: Integer read GetTotalLinesParsed;
+
+    function Compile(ACompileIntfOnly: Boolean; RunPostCompile: Boolean = True): TCompilerResult; virtual; abstract;
   end;
 
   TASTDeclaration = class(TASTItem, IASTDeclaration)

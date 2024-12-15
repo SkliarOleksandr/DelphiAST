@@ -143,6 +143,9 @@ type
     SynJSONSyn1: TSynJSONSyn;
     SearchEdit: TEdit;
     SearchButton: TButton;
+    TestsBottomPanel: TPanel;
+    TotalTestCntLabel: TLabel;
+    TestRunProgressLabel: TLabel;
     procedure ASTParseRTLButtonClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure SearchButtonClick(Sender: TObject);
@@ -197,7 +200,7 @@ type
     procedure ShowASTResultAsJSON(const Project: IASTDelphiProject; ASynEdit: TSynEdit); overload;
     procedure ShowASTResultAsJSON(const AModule: TASTModule; ASynEdit: TSynEdit); overload;
     procedure ShowASTResults(const AProject: IASTDelphiProject);
-    procedure ParseProject(const Project: IASTDelphiProject; AClearOutput: Boolean = True);
+    function ParseProject(const Project: IASTDelphiProject; AClearOutput: Boolean = True): TCompilerResult;
     procedure CompilerMessagesToStrings(const Project: IASTDelphiProject);
     procedure SetDefines(const APrj: IASTDelphiProject);
     procedure SaveSettings;
@@ -420,6 +423,8 @@ begin
   Prj.AddUnit(UN, nil);
 
   ParseProject(Prj);
+
+  Prj.Clear({AClearImplicitUnits:} True);
 end;
 
 procedure TfrmTestAppMain.ASTResultFormatComboBoxChange(Sender: TObject);
@@ -635,6 +640,7 @@ begin
       end;
     end;
   end;
+  TotalTestCntLabel.Caption := 'Total Tests: ' + FAllTests.Count.ToString;
 end;
 
 procedure TfrmTestAppMain.SelectTest(ATestData: TTestData);
@@ -965,16 +971,25 @@ procedure TfrmTestAppMain.TestsParseAllActionExecute(Sender: TObject);
 begin
   ErrMemo.Clear;
   LogMemo.Clear;
-
+  var LRunCount := 0;
+  var LFailCount := 0;
   var LProject := CreateProject({AParseSystemUnit:} ParseSystemCheck.Checked);
-  for var LTestFile in TDirectory.GetFiles(GetTestSriptsPath, '*.pas') do
+  for var LTestData in FAllTests.Values do
   begin
     TASTParserLog.Instance.ResetNestedLevel;
-    var LUnit := TASTDelphiUnit.Create(LProject, LTestFile);
+    var LUnit := TASTDelphiUnit.Create(LProject, LTestData.FilePath);
     LProject.AddUnit(LUnit, nil);
-    ParseProject(LProject, {AClearOutput:} False);
-    LProject.Clear;
+    if ParseProject(LProject, {AClearOutput:} False) <> CompileSuccess then
+      Inc(LFailCount);
+
+    // do not clear implict units (RTL) between tests
+    LProject.Clear({AClearImplicitUnits:} False);
+    Inc(LRunCount);
+    TestRunProgressLabel.Caption := Format('Run Tests: %d from %d (Fail: %d)',
+                                           [LRunCount, FAllTests.Count, LFailCount]);
+    Application.ProcessMessages;
   end;
+  LProject.Clear({AClearImplicitUnits:} True);
 end;
 
 procedure SetNodeChecked(Sender: TBaseVirtualTree; Node: PVirtualNode; CheckState: TCheckState);
@@ -1045,7 +1060,7 @@ begin
     SelectTest(LTestData);
 end;
 
-procedure TfrmTestAppMain.ParseProject(const Project: IASTDelphiProject; AClearOutput: Boolean);
+function TfrmTestAppMain.ParseProject(const Project: IASTDelphiProject; AClearOutput: Boolean): TCompilerResult;
 begin
   if AClearOutput then
   begin
@@ -1059,8 +1074,8 @@ begin
   var Msg := TStringList.Create;
   try
     var LStartedAt := Now;
-    var CResult := Project.Compile;
-    if CResult = CompileSuccess then
+    Result := Project.Compile;
+    if Result = CompileSuccess then
       Msg.Add('compile success')
     else
       Msg.Add('compile fail');
@@ -1097,7 +1112,7 @@ begin
 
   ParseProject(Prj);
 
-  Prj.Clear;
+  Prj.Clear({AClearImplicitUnits:} True);
 end;
 
 procedure TfrmTestAppMain.ParseFilesActionUpdate(Sender: TObject);
@@ -1150,7 +1165,7 @@ begin
   var LProject := CreateProject({AParseSystemUnit:} True);
   LProject.AddUnit(lbFiles.Items[lbFiles.ItemIndex]);
   ParseProject(LProject);
-  LProject.Clear;
+  LProject.Clear({AClearImplicitUnits:} True);
 end;
 
 procedure TfrmTestAppMain.FilesParseFocusedActionUpdate(Sender: TObject);

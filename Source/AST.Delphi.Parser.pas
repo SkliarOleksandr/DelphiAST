@@ -10643,7 +10643,7 @@ end;
 
 function TSContextHelper.GetSysUnit: TSYSTEMUnit;
 begin
-  Result := TASTDelphiUnit(Module).fSysUnit as TSYSTEMUnit;
+  Result := TASTDelphiUnit(Module).SysUnit as TSYSTEMUnit;
 end;
 
 { TDeclCache }

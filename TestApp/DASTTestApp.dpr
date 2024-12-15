@@ -57,7 +57,8 @@ uses
   TASTTest.Classes.Inherited1 in '..\TestScripts\Classes\TASTTest.Classes.Inherited1.pas',
   TASTTest.Classes.Inherited2 in '..\TestScripts\Classes\TASTTest.Classes.Inherited2.pas',
   ASTTest.Ordian.Enums.Init in '..\TestScripts\Ordinals\ASTTest.Ordian.Enums.Init.pas',
-  ASTTest.Procs.External in '..\TestScripts\Procedures\ASTTest.Procs.External.pas';
+  ASTTest.Procs.External in '..\TestScripts\Procedures\ASTTest.Procs.External.pas',
+  ASTTest.Generics.Arrays in '..\TestScripts\Generics\ASTTest.Generics.Arrays.pas';
 
 {$R *.res}
 
