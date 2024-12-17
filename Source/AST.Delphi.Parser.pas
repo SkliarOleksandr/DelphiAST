@@ -45,6 +45,8 @@ uses
 // System.Math
 // System.Messaging
 // System.Variants
+// System.VarUtils
+// System.Internal.VarHlpr
 // System.UITypes
 // System.RegularExpressionsAPI
 // System.RegularExpressions
@@ -470,9 +472,10 @@ type
     procedure PostCompileChecks;
 
     property Source: string read GetSource;
+    function DoParse(Scope: TScope; ACompileIntfOnly: Boolean): TCompilerResult;
     function Compile(ACompileIntfOnly: Boolean; RunPostCompile: Boolean = True): TCompilerResult; override;
     function CompileIntfOnly: TCompilerResult; override;
-    function CompileSource(Scope: TScope; const FileName: string; const Source: string): ICompilerMessages;
+    function CompileSource(Scope: TScope; const AFileName: string; const ASource: string): ICompilerMessages;
     constructor Create(const Project: IASTProject; const FileName: string; const Source: string = ''); override;
     destructor Destroy; override;
   end;
@@ -2042,7 +2045,7 @@ var
   LInstanceType: TIDType;
 begin
   var LInstanceEpr := CallExpression.Instance;
-  if Assigned(LInstanceEpr) and  Assigned(LInstanceEpr.Declaration) then
+  if Assigned(LInstanceEpr) and Assigned(LInstanceEpr.Declaration) then
   begin
     case LInstanceEpr.ItemType of
       // #1 case: TMyClass.Create()
@@ -2592,119 +2595,13 @@ begin
     end else
       AbortWorkInternal('Invalid unit state');
 
-    Token := Lexer_NextToken(Scope);
-    while true do begin
-      // since this is a "root" of Delphi unit, all keywords should be treated as "reserved"
-      case Lexer_AmbiguousId of
-        token_type: begin
-          CheckIntfSectionMissing(Scope);
-          Token := ParseTypeSection(Scope);
-        end;
-        token_asm: begin
-          CheckIntfSectionMissing(Scope);
-          Token := ParseAsmSpecifier();
-          case Token of
-            token_function: Token := ParseProcedure(Scope, ptFunc);
-            token_procedure: Token := ParseProcedure(Scope, ptProc);
-            else
-              ERRORS.FEATURE_NOT_SUPPORTED;
-          end;
-        end;
-        token_uses: Token := ParseUsesSection(Scope);
-        token_function: begin
-          CheckIntfSectionMissing(Scope);
-          Token := ParseProcedure(Scope, ptFunc);
-        end;
-        token_procedure: begin
-          CheckIntfSectionMissing(Scope);
-          Token := ParseProcedure(Scope, ptProc);
-        end;
-        token_constructor: begin
-          CheckIntfSectionMissing(Scope);
-          Token := ParseProcedure(Scope, ptConstructor);
-        end;
-        token_destructor: begin
-          CheckIntfSectionMissing(Scope);
-          Token := ParseProcedure(Scope, ptDestructor);
-        end;
-        token_const: begin
-          CheckIntfSectionMissing(Scope);
-          Lexer_NextToken(Scope);
-          Token := ParseConstSection(Scope);
-        end;
-        token_resourcestring: begin
-          CheckIntfSectionMissing(Scope);
-          Lexer_NextToken(Scope);
-          // todo: parse resourcestring
-          Token := ParseConstSection(Scope);
-        end;
-        token_class: begin
-          CheckIntfSectionMissing(Scope);
-          Token := Lexer_NextReseredToken(Scope);
-          case Token of
-            token_function: Token := ParseProcedure(Scope, ptClassFunc);
-            token_procedure: Token := ParseProcedure(Scope, ptClassProc);
-            token_constructor: Token := ParseProcedure(Scope, ptClassConstructor);
-            token_destructor: Token := ParseProcedure(Scope, ptClassDestructor);
-            tokenD_operator: Token := ParseOperator(Scope, nil);
-          else
-            ERRORS.FEATURE_NOT_SUPPORTED(Lexer_TokenLexem(Token));
-          end;
-        end;
-        token_var: begin
-          CheckIntfSectionMissing(Scope);
-          Lexer_NextToken(Scope);
-          Token := ParseVarSection(Scope, vLocal);
-        end;
-        token_threadvar: begin
-          CheckIntfSectionMissing(Scope);
-          Lexer_NextToken(Scope);
-          Token := ParseVarSection(Scope, vLocal);
-        end;
-        tokenD_exports: begin
-          // todo:
-          Token := Lexer_SkipTo(Scope, token_semicolon);
-          Token := Lexer_NextToken(Scope);
-        end;
-        token_interface: begin
-          Scope := IntfScope;
-          Token := Lexer_NextToken(Scope);
-        end;
-        token_implementation: begin
-          CheckIntfSectionMissing(Scope);
-          fUnitState := UnitIntfCompiled;
-          if ACompileIntfOnly then
-          begin
-            Package.DoFinishCompileUnit(Self, {AIntfOnly:} True);
-            Progress(TASTStatusParseIntfSucess);
-            Result := CompileSuccess;
-            Exit;
-          end;
-          Scope := ImplScope;
-          Token := Lexer_NextToken(Scope);
-        end;
-        token_end: begin
-          Lexer_MatchToken(Lexer_NextToken(Scope), token_dot);
-          Token := Lexer_NextToken(Scope);
-          if Token <> token_eof then
-            ERRORS.HINT_TEXT_AFTER_END;
-          Break;
-        end;
-        token_initialization: Token := ParseInitSection;
-        token_finalization: Token := ParseFinalSection;
-        token_eof: Break;
-      else
-        if Token >= token_cond_define then
-        begin
-          Token := ParseCondStatements(Scope, Token);
-          continue;
-        end;
-        ERRORS.KEYWORD_EXPECTED;
-      end;
-    end;
+
+    Result := DoParse(Scope, ACompileIntfOnly);
+    if ACompileIntfOnly then
+      Exit;
+
     PostCompileChecks;
     fUnitState := UnitAllCompiled;
-    Result := CompileSuccess;
     FCompiled := Result;
     Progress(TASTStatusParseSuccess);
     Package.DoFinishCompileUnit(Self, {AIntfOnly:} False);
@@ -2724,12 +2621,128 @@ begin
   end;
 end;
 
+function TASTDelphiUnit.DoParse(Scope: TScope; ACompileIntfOnly: Boolean): TCompilerResult;
+var
+  Token: TTokenID;
+begin
+  Result := TCompilerResult.CompileSuccess;
+  Token := Lexer_NextToken(Scope);
+  while true do begin
+    // since this is a "root" of Delphi unit, all keywords should be treated as "reserved"
+    case Lexer_AmbiguousId of
+      token_type: begin
+        CheckIntfSectionMissing(Scope);
+        Token := ParseTypeSection(Scope);
+      end;
+      token_asm: begin
+        CheckIntfSectionMissing(Scope);
+        Token := ParseAsmSpecifier();
+        case Token of
+          token_function: Token := ParseProcedure(Scope, ptFunc);
+          token_procedure: Token := ParseProcedure(Scope, ptProc);
+          else
+            ERRORS.FEATURE_NOT_SUPPORTED;
+        end;
+      end;
+      token_uses: Token := ParseUsesSection(Scope);
+      token_function: begin
+        CheckIntfSectionMissing(Scope);
+        Token := ParseProcedure(Scope, ptFunc);
+      end;
+      token_procedure: begin
+        CheckIntfSectionMissing(Scope);
+        Token := ParseProcedure(Scope, ptProc);
+      end;
+      token_constructor: begin
+        CheckIntfSectionMissing(Scope);
+        Token := ParseProcedure(Scope, ptConstructor);
+      end;
+      token_destructor: begin
+        CheckIntfSectionMissing(Scope);
+        Token := ParseProcedure(Scope, ptDestructor);
+      end;
+      token_const: begin
+        CheckIntfSectionMissing(Scope);
+        Lexer_NextToken(Scope);
+        Token := ParseConstSection(Scope);
+      end;
+      token_resourcestring: begin
+        CheckIntfSectionMissing(Scope);
+        Lexer_NextToken(Scope);
+        // todo: parse resourcestring
+        Token := ParseConstSection(Scope);
+      end;
+      token_class: begin
+        CheckIntfSectionMissing(Scope);
+        Token := Lexer_NextReseredToken(Scope);
+        case Token of
+          token_function: Token := ParseProcedure(Scope, ptClassFunc);
+          token_procedure: Token := ParseProcedure(Scope, ptClassProc);
+          token_constructor: Token := ParseProcedure(Scope, ptClassConstructor);
+          token_destructor: Token := ParseProcedure(Scope, ptClassDestructor);
+          tokenD_operator: Token := ParseOperator(Scope, nil);
+        else
+          ERRORS.FEATURE_NOT_SUPPORTED(Lexer_TokenLexem(Token));
+        end;
+      end;
+      token_var: begin
+        CheckIntfSectionMissing(Scope);
+        Lexer_NextToken(Scope);
+        Token := ParseVarSection(Scope, vLocal);
+      end;
+      token_threadvar: begin
+        CheckIntfSectionMissing(Scope);
+        Lexer_NextToken(Scope);
+        Token := ParseVarSection(Scope, vLocal);
+      end;
+      tokenD_exports: begin
+        // todo:
+        Token := Lexer_SkipTo(Scope, token_semicolon);
+        Token := Lexer_NextToken(Scope);
+      end;
+      token_interface: begin
+        Scope := IntfScope;
+        Token := Lexer_NextToken(Scope);
+      end;
+      token_implementation: begin
+        CheckIntfSectionMissing(Scope);
+        fUnitState := UnitIntfCompiled;
+        if ACompileIntfOnly then
+        begin
+          Package.DoFinishCompileUnit(Self, {AIntfOnly:} True);
+          Progress(TASTStatusParseIntfSucess);
+          Exit;
+        end;
+        Scope := ImplScope;
+        Token := Lexer_NextToken(Scope);
+      end;
+      token_end: begin
+        Lexer_MatchToken(Lexer_NextToken(Scope), token_dot);
+        Token := Lexer_NextToken(Scope);
+        if Token <> token_eof then
+          ERRORS.HINT_TEXT_AFTER_END;
+        Break;
+      end;
+      token_initialization: Token := ParseInitSection;
+      token_finalization: Token := ParseFinalSection;
+      token_eof: Break;
+    else
+      if Token >= token_cond_define then
+      begin
+        Token := ParseCondStatements(Scope, Token);
+        continue;
+      end;
+      ERRORS.KEYWORD_EXPECTED;
+    end;
+  end;
+end;
+
 function TASTDelphiUnit.CompileIntfOnly: TCompilerResult;
 begin
   Result := Compile({ACompileIntfOnly:} True);
 end;
 
-function TASTDelphiUnit.CompileSource(Scope: TScope; const FileName: string; const Source: string): ICompilerMessages;
+function TASTDelphiUnit.CompileSource(Scope: TScope; const AFileName: string; const ASource: string): ICompilerMessages;
 var
   ParserState: TParserPosition;
   ParserSource: string;
@@ -2738,97 +2751,17 @@ begin
   Result := Messages;
   Lexer.SaveState(ParserState);
   ParserSource := Lexer.Source;
-  fIncludeFilesStack.Push(FileName);
+  if AFileName <> '' then
+    fIncludeFilesStack.Push(FileName);
   try
-    try
-      Lexer.Source := Source;
-      Lexer.First;
-      Token := Lexer_NextToken(Scope);
-      while true do begin
-        case Lexer_AmbiguousId of
-          token_type: begin
-            CheckIntfSectionMissing(Scope);
-            Token := ParseTypeSection(Scope);
-          end;
-          token_uses: Token := ParseUsesSection(Scope);
-          token_function: begin
-            CheckIntfSectionMissing(Scope);
-            Token := ParseProcedure(Scope, ptFunc);
-          end;
-          token_procedure: begin
-            CheckIntfSectionMissing(Scope);
-            Token := ParseProcedure(Scope, ptProc);
-          end;
-          token_constructor: begin
-            CheckIntfSectionMissing(Scope);
-            Token := ParseProcedure(Scope, ptConstructor);
-          end;
-          token_destructor: begin
-            CheckIntfSectionMissing(Scope);
-            Token := ParseProcedure(Scope, ptDestructor);
-          end;
-          tokenD_operator: begin
-            CheckIntfSectionMissing(Scope);
-            Token := ParseOperator(Scope, nil);
-          end;
-          token_const: begin
-            CheckIntfSectionMissing(Scope);
-            Lexer_NextToken(Scope);
-            Token := ParseConstSection(Scope);
-          end;
-          token_class: begin
-            CheckIntfSectionMissing(Scope);
-            Token := Lexer_NextReseredToken(Scope);
-            case Token of
-              token_function: Token := ParseProcedure(Scope, ptClassFunc);
-              token_procedure: Token := ParseProcedure(Scope, ptClassProc);
-              token_constructor: Token := ParseProcedure(Scope, ptClassConstructor);
-              token_destructor: Token := ParseProcedure(Scope, ptClassDestructor);
-            else
-              ERRORS.FEATURE_NOT_SUPPORTED;
-            end;
-          end;
-          token_var: begin
-            CheckIntfSectionMissing(Scope);
-            Lexer_NextToken(Scope);
-            Token := ParseVarSection(Scope, vLocal);
-          end;
-          token_interface: begin
-            Scope := IntfScope;
-            Token := Lexer_NextToken(Scope);
-          end;
-          token_implementation: begin
-            CheckIntfSectionMissing(Scope);
-            Scope := ImplScope;
-            Token := Lexer_NextToken(Scope);
-          end;
-          token_end: begin
-            Lexer_MatchToken(Lexer_NextToken(Scope), token_dot);
-            Token := Lexer_NextToken(Scope);
-            if Token <> token_eof then
-              ERRORS.HINT_TEXT_AFTER_END;
-            Break;
-          end;
-          token_initialization: Token := ParseInitSection;
-          token_finalization: Token := ParseFinalSection;
-          token_eof: Break;
-        else
-          if Token >= token_cond_define then
-          begin
-            Token := ParseCondStatements(Scope, Token);
-            continue;
-          end;
-          ERRORS.KEYWORD_EXPECTED;
-        end;
-      end;
-    except
-      on e: ECompilerAbort do PutMessage(ECompilerAbort(e).CompilerMessage^);
-      on e: Exception do PutMessage(cmtInteranlError, e.Message, Lexer_Position);
-    end;
+    Lexer.Source := ASource;
+    Lexer.First;
+    DoParse(Scope, True);
   finally
     Lexer.Source := ParserSource;
     Lexer.LoadState(ParserState);
-    fIncludeFilesStack.Pop;
+    if AFileName <> '' then
+      fIncludeFilesStack.Pop;
   end;
 end;
 
@@ -4696,9 +4629,9 @@ begin
     Result := Lexer_NextToken(Scope);
     Break;
   end;
-  if IdxCount > DimensionsCount then
+  // Variant type can have variable dimensions count, so no sense to check it in compile time
+  if (IdxCount > DimensionsCount) and (ArrType.DataTypeID <> dtVariant) then
     ERRORS.NEED_SPECIFY_NINDEXES(ArrDecl);
-
 
   var ATmpVar := GetTMPVar(EContext, DataType);
   var AExpr := TIDArrayExpression.Create(ATmpVar, ArrExpr.TextPosition);
@@ -4759,7 +4692,6 @@ var
 begin
   Lexer_ReadNextIdentifier(Scope, ID);
   Prop := TIDProperty.Create(Scope, ID);
-  Scope.AddProperty(Prop);
 
   Result := Lexer_NextReseredToken(Scope);
 
@@ -4912,6 +4844,8 @@ begin
     Lexer_ReadSemicolon(Scope);
     Result := Lexer_NextToken(Scope);
   end;
+
+  Scope.AddProperty(Prop);
 end;
 
 function TASTDelphiUnit.ParsePropertyGetter(Scope: TScope; AProp: TIDProperty): TTokenID;
@@ -9125,6 +9059,9 @@ begin
   //if Assigned(EContext.SContext) then
   //  CheckAccessMember(SContext, Decl, PMContext.ID);
 
+  // current parsing procedure
+  var LCurProc := EContext.SContext.Proc;
+
   case Decl.ItemType of
     {процедура/функция}
     itProcedure: begin
@@ -9163,15 +9100,14 @@ begin
           LCallExpr.Instance := Expr;
         end else
         if (Decl.ItemType = itProcedure) and
-            Assigned(TIDProcedure(Decl).Struct) and
-            not Assigned(LCallExpr.Instance) and
-           (TIDProcedure(Decl).Struct = EContext.SContext.Proc.Struct) then
+           not Assigned(LCallExpr.Instance) and
+           Assigned(LCurProc.Struct) and
+           Assigned(TIDProcedure(Decl).Struct) and
+           LCurProc.Struct.IsInheritsForm(TIDProcedure(Decl).Struct) then
         begin
-          // если это собственный метод, добавляем self из списка параметров
-          // todo: SelfParam has no declaration asssigned
-          LCallExpr.Instance := TIDExpression.Create(EContext.SContext.Proc.SelfParam);
+          // when calling a method of the same (or parent) structure, use self as the "instance" parameter
+          LCallExpr.Instance := LCurProc.SelfParamExpression;
         end;
-
         // process call operator
         Expression := EContext.RPNPopOperator();
       end else
@@ -9180,7 +9116,7 @@ begin
       begin
         // case when we call overload/inherited constructor as a method within a method
         if not Assigned(LCallExpr.Instance) then
-          LCallExpr.Instance := EContext.SContext.Proc.SelfParamExpression;
+          LCallExpr.Instance := LCurProc.SelfParamExpression;
 
         Expression := process_CALL_constructor(EContext.SContext, LCallExpr, []);
       end else
@@ -10585,14 +10521,21 @@ end;
 
 procedure TASTDelphiUnit.CheckVarParamConformity(Param: TIDVariable; Arg: TIDExpression);
 begin
-  if (Param.DataTypeID = dtOpenArray) and (Arg.DataType is TIDArray) then
+  if (Param.DataTypeID = dtOpenArray) and (Arg.ActualDataType is TIDArray) then
     Exit;
 
   if (Param.DataType <> Sys._UntypedReference) and
-     (Param.DataTypeID <> dtGeneric) and
+     not SameTypes(Param.DataType, Arg.DataType) and
      not ((Param.DataType.DataTypeID = dtPointer) and
           (Arg.DataType.DataTypeID = dtPointer)) then
-  ERRORS.REF_PARAM_MUST_BE_IDENTICAL(Arg);
+  begin
+    // for debug
+    if (Param.DataType <> Sys._UntypedReference) and
+       not SameTypes(Param.DataType, Arg.DataType) and
+       not ((Param.DataType.DataTypeID = dtPointer) and
+            (Arg.DataType.DataTypeID = dtPointer)) then
+    ERRORS.REF_PARAM_MUST_BE_IDENTICAL(Arg);
+  end;
 end;
 
 class procedure TASTDelphiUnit.CheckAccessMember(SContext: PSContext; Decl: TIDDeclaration; const ID: TIdentifier);

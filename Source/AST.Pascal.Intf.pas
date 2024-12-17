@@ -26,6 +26,8 @@ type
     function GetIncludeDebugInfo: Boolean;
     function GetUnitsCount: Integer;
     function GetUnit(Index: Integer): TASTModule; overload;
+    function GetAllUnitsCount: Integer;
+    function GetAllUnit(AIndex: Integer): TASTModule;
     function GetSearchPathes: TStrings;
     function GetOptions: TPackageOptions;
     function GetTarget: TASTTargetClass;
@@ -70,6 +72,8 @@ type
     property CompileAll: Boolean read GetCompileAll write SetCompileAll;
     property UnitsCount: Integer read GetUnitsCount;
     property Units[Index: Integer]: TASTModule read GetUnit;
+    property AllUnitsCount: Integer read GetAllUnitsCount;
+    property AllUnits[AIndex: Integer]: TASTModule read GetAllUnit;
     property SearchPathes: TStrings read GetSearchPathes;
     property Options: TPackageOptions read GetOptions;
     property Target: TASTTargetClass read GetTarget write SetTarget;

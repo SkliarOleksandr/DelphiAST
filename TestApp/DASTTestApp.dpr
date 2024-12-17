@@ -58,7 +58,10 @@ uses
   TASTTest.Classes.Inherited2 in '..\TestScripts\Classes\TASTTest.Classes.Inherited2.pas',
   ASTTest.Ordian.Enums.Init in '..\TestScripts\Ordinals\ASTTest.Ordian.Enums.Init.pas',
   ASTTest.Procs.External in '..\TestScripts\Procedures\ASTTest.Procs.External.pas',
-  ASTTest.Generics.Arrays in '..\TestScripts\Generics\ASTTest.Generics.Arrays.pas';
+  ASTTest.Generics.Arrays in '..\TestScripts\Generics\ASTTest.Generics.Arrays.pas',
+  ASTTest.Props.ArrayPropOverload in '..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload.pas',
+  TASTTest.Classes.Construct1 in '..\TestScripts\Classes\Constructors\TASTTest.Classes.Construct1.pas',
+  TASTTest.Classes.Construct2 in '..\TestScripts\Classes\Constructors\TASTTest.Classes.Construct2.pas';
 
 {$R *.res}
 

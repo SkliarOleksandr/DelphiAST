@@ -1022,7 +1022,7 @@ begin
   fDecls._UnicodeString := RegisterType('String', TIDString, dtString);
   TIDString(_UnicodeString).ElementDataType := _WideChar;
   //===============================================================
-  fDecls._Variant := RegisterType('Variant', TIDVariant, dtVariant);
+  fDecls._Variant := RegisterType('Variant', TBuiltin_Variant, dtVariant);
   //===============================================================
   fDecls._WideString := RegisterType('WideString', TIDString, dtWideString);
   TIDString(_WideString).ElementDataType := _WideChar;
@@ -1260,7 +1260,6 @@ begin
   RegisterBuiltin(TSF_VarCast);
   RegisterBuiltin(TSF_VarClear);
 
-
   if Project.Target = TWINX64_Target then
   begin
     RegisterBuiltin(TSF_AtomicCmpExchange128);
@@ -1270,6 +1269,8 @@ begin
     RegisterBuiltin(TSF_VarArgCopy);
     RegisterBuiltin(TSF_VarArgEnd);
   end;
+
+  CompileSource(IntfScope, '', 'procedure VarArrayRedim(var V: Variant; HighBound: Integer);');
 
   RegisterVariable(ImplScope, 'ReturnAddress', _Pointer);
   RegisterConstStr(ImplScope, 'libmmodulename', '');

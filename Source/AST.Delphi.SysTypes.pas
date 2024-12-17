@@ -160,6 +160,13 @@ type
 
   end;
 
+  TBuiltin_Variant = class(TIDVariant)
+  public
+    function SysUnarOperator(AOpID: TOperatorID): TIDType; override;
+    function SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType; override;
+    function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
+  end;
+
 //  TST_Byte = class(TSys_IntType)
 //  public
 //    constructor CreateAsBuiltin(ASystem: TASTModule); override;
@@ -744,6 +751,31 @@ begin
   else
     Result := inherited;
   end;
+end;
+
+{ TBuiltin_Variant }
+
+function TBuiltin_Variant.SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType;
+begin
+  case AOpID of
+    opEqual, opNotEqual, opLess, opLessOrEqual, opGreater, opGreaterOrEqual: Result := SYSUnit._Boolean;
+  else
+    Result := Self;
+  end;
+end;
+
+function TBuiltin_Variant.SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType;
+begin
+  case AOpID of
+    opEqual, opNotEqual, opLess, opLessOrEqual, opGreater, opGreaterOrEqual: Result := SYSUnit._Boolean;
+  else
+    Result := Self;
+  end;
+end;
+
+function TBuiltin_Variant.SysUnarOperator(AOpID: TOperatorID): TIDType;
+begin
+  Result := Self;
 end;
 
 end.

@@ -2,6 +2,8 @@ unit ASTTest.Sub.Integer;
 
 interface
 
+{$HINTS OFF}
+
 implementation
 
 procedure SubIntVsFlt;

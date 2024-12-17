@@ -402,11 +402,10 @@ procedure TfrmTestAppMain.ASTParseRTLButtonClick(Sender: TObject);
 
 var
   UN: TASTDelphiUnit;
-  Prj: IASTDelphiProject;
 begin
   TASTParserLog.Instance.ResetNestedLevel;
 
-  Prj := CreateProject({AParseSystemUnit:} True);
+  FLastProject := CreateProject({AParseSystemUnit:} True);
 
   var LUsesUntis := '';
   AddDelphiUnits({var} LUsesUntis, 'rtl\sys');
@@ -419,12 +418,10 @@ begin
   'implementation'#10#13 +
   'end.';
 
-  UN := TASTDelphiUnit.Create(Prj, 'RTLParseTest', RTLUsesSourceText);
-  Prj.AddUnit(UN, nil);
+  UN := TASTDelphiUnit.Create(FLastProject, 'RTLParseTest', RTLUsesSourceText);
+  FLastProject.AddUnit(UN, nil);
 
-  ParseProject(Prj);
-
-  Prj.Clear({AClearImplicitUnits:} True);
+  ParseProject(FLastProject);
 end;
 
 procedure TfrmTestAppMain.ASTResultFormatComboBoxChange(Sender: TObject);
@@ -942,9 +939,9 @@ begin
        end;
     // separate files
     1: begin
-         for var LIndex := 0 to AProject.UnitsCount - 1 do
+         for var LIndex := 0 to AProject.AllUnitsCount - 1 do
          begin
-           var LUnit := AProject.Units[LIndex];
+           var LUnit := AProject.AllUnits[LIndex];
            var LTab := CreateTab(LUnit.Name);
            case ASTResultFormatComboBox.ItemIndex of
              0: ShowASTResultAsCode(LUnit, LTab);

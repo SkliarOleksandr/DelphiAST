@@ -38,6 +38,7 @@ type
     TStrLiterals = TAVLTree<TStrConstKey, TConstInfo>;
   private
     fUnits: TUnits;
+    fAllUnits: TUnits; // explicit & implicit units
     fImplicitUnits: TUnitsDict;
     fTarget: TASTTargetClass;
     fDefines: TDefines;
@@ -62,6 +63,8 @@ type
     function GetUnitsCount: Integer;
     function GetUnit(Index: Integer): TASTModule; overload;
     function GetUnit(const UnitName: string): TObject; overload;
+    function GetAllUnitsCount: Integer;
+    function GetAllUnit(AIndex: Integer): TASTModule;
     function GetSearchPathes: TStrings;
     function GetOptions: TPackageOptions;
     function GetTarget: TASTTargetClass;
@@ -141,6 +144,16 @@ uses
 function TPascalProject.GetOptions: TPackageOptions;
 begin
   Result := FOptions;
+end;
+
+function TPascalProject.GetAllUnitsCount: Integer;
+begin
+  Result := fAllUnits.Count;
+end;
+
+function TPascalProject.GetAllUnit(AIndex: Integer): TASTModule;
+begin
+  Result := fAllUnits[AIndex];
 end;
 
 function TPascalProject.GetCompileAll: Boolean;
@@ -239,7 +252,7 @@ begin
     var LSystemUnitFileName := FindUnitFile(LSystemName);
     fSysUnit := GetSystemUnitClass.Create(Self, LSystemUnitFileName);
     if FileExists(LSystemUnitFileName) and fParseSystemUnit then
-      fSysUnit.Compile(fCompileAll);
+      fSysUnit.Compile(not fCompileAll);
 
     fImplicitUnits.Add(LowerCase(TPath.GetFileNameWithoutExtension(LSystemName)), fSysUnit);
   end;
@@ -330,6 +343,7 @@ begin
     end;
   end;
   FUnits.Add(aUnit);
+  fAllUnits.Add(aUnit);
 end;
 
 class function TPascalProject.StrListCompare(const Left, Right: TStrConstKey): NativeInt;
@@ -363,6 +377,8 @@ begin
     // add a unit to implicit unit list
     if not fImplicitUnits.TryAdd(LowerCase(UnitName), Result) then
       raise ECompilerInternalError.CreateFmt(sUnitAlreadyExistFmt, [UnitName]);
+
+    fAllUnits.Add(Result);
   end else
     Result := nil;
 end;
@@ -370,7 +386,8 @@ end;
 constructor TPascalProject.Create(const Name: string);
 begin
   inherited;
-  FUnits := TUnits.Create;
+  fUnits := TUnits.Create;
+  fAllUnits := TUnits.Create;
   fImplicitUnits := TUnitsDict.Create;
   FDefines := TDefines.Create();
   FOptions := TPackageOptions.Create(nil);
@@ -423,7 +440,11 @@ var
   i: Integer;
 begin
   for i := 0 to FUnits.Count - 1 do
+  begin
     FUnits[i].Free;
+    // delete first explicit units from the list
+    fAllUnits.Delete(0);
+  end;
 
   FUnits.Clear;
 
@@ -433,6 +454,7 @@ begin
       LUnit.Free;
 
     fImplicitUnits.Clear;
+    fAllUnits.Clear;
     fSysUnit := nil;
   end;
 
@@ -452,7 +474,6 @@ begin
     begin
       var UN := TPascalUnit(FUnits[i]);
       Result := UN.Compile({ACompileIntfOnly:} False);
-      Inc(fTotalLinesParsed, UN.TotalLinesParsed);
       if Result = CompileFail then
         Exit;
     end;
@@ -460,14 +481,13 @@ begin
     // compile all units (compiling implementations)
     if fCompileAll then
     begin
-      for i := 0 to FUnits.Count - 1 do
+      // parse impementations for implicit units
+      for var LPair in fImplicitUnits do
       begin
-        var AUN := TPascalUnit(FUnits[i]);
-        if AUN.UnitState = UnitIntfCompiled then
+        var LUnit := LPair.Value as TPascalUnit;
+        if LUnit.UnitState = UnitIntfCompiled then
         begin
-          Dec(fTotalLinesParsed, AUN.TotalLinesParsed); // - intf lines
-          Result := AUN.Compile({ACompileIntfOnly:} False);
-          Inc(fTotalLinesParsed, AUN.TotalLinesParsed); // + all lines
+          Result := LUnit.Compile({ACompileIntfOnly:} False);
           if (Result = CompileFail) and fStopCompileIfError then
             Exit;
         end;
@@ -476,6 +496,9 @@ begin
   finally
     for i := 0 to FUnits.Count - 1 do
       Inc(fTotalLinesParsed, FUnits[i].TotalLinesParsed);
+
+    for var LPair in fImplicitUnits do
+      Inc(fTotalLinesParsed, LPair.Value.TotalLinesParsed);
   end;
 end;
 
@@ -483,6 +506,7 @@ destructor TPascalProject.Destroy;
 begin
   Clear({AClearImplicitUnits:} True);
   FUnits.Free;
+  fAllUnits.Free;
   FImplicitUnits.Free;
   FDefines.Free;
   FStrLiterals.Free;
@@ -506,8 +530,8 @@ end;
 
 procedure TPascalProject.EnumDeclarations(const AEnumProc: TEnumASTDeclProc; AUnitScope: TUnitScopeKind);
 begin
-  for var LIndex := 0 to FUnits.Count - 1 do
-    FUnits[LIndex].EnumDeclarations(AEnumProc, AUnitScope);
+  for var LIndex := 0 to fAllUnits.Count - 1 do
+    fAllUnits[LIndex].EnumDeclarations(AEnumProc, AUnitScope);
 end;
 
 function TPascalProject.OpenUnit(const UnitName: string): TASTModule;
