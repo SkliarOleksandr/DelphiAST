@@ -554,7 +554,7 @@ begin
   Lexer_MatchToken(Lexer_NextToken(Scope), token_of);
   Result := ParseTypeSpec(Scope, {out} LBaseType);
   CheckOrdinalType(LBaseType);
-  Decl.BaseType := TIDOrdinal(LBaseType);
+  Decl.BaseType := (LBaseType.ActualDataType as TIDOrdinal);
   Decl.BaseType.OverloadBinarOperator2(opIn, Decl, Sys._Boolean);
 end;
 
@@ -962,19 +962,15 @@ end;
 function TASTDelphiUnit.ParseTypeHelper(Scope, GenericScope: TScope; GDescriptor: IGenericDescriptor; const ID: TIdentifier;
   out Decl: TDlphHelper): TTokenID;
 var
-  TargetID: TIdentifier;
   TargetDecl: TIDType;
   Visibility: TVisibility;
 begin
   Lexer_ReadToken(Scope, token_for);
-  Lexer_ReadNextIdentifier(Scope, TargetID);
-  TargetDecl := TIDType(FindID(Scope, TargetID));
-  if TargetDecl.ItemType <> itType then
-    ERRORS.TYPE_REQUIRED(Lexer_PrevPosition);
+  // parse target type
+  Result := ParseTypeSpec(Scope, {out} TargetDecl);
 
   Decl := TDlphHelper.Create(Scope, ID);
   Decl.Target := TargetDecl;
-
   if Assigned(TargetDecl.Helper) then
     Warning('Helper for %s was reassigned from %s to %s',
       [TargetDecl.Name, TargetDecl.Helper.Name, ID.Name], ID.TextPosition);
@@ -983,7 +979,6 @@ begin
 
   Scope.AddType(Decl);
 
-  Result := Lexer_NextToken(Scope);
   while True do begin
     Result := ParseVisibilityModifiers(Scope, {var} Visibility, {AIsClass:} False);
     case Result of
@@ -4691,6 +4686,7 @@ var
 begin
   Lexer_ReadNextIdentifier(Scope, ID);
   Prop := TIDProperty.Create(Scope, ID);
+  Prop.Struct := Struct;
 
   Result := Lexer_NextReseredToken(Scope);
 
@@ -4847,7 +4843,7 @@ begin
     begin
       // overloading array property
       if not SameParams(Prop.Params.ExplicitParams,
-                        LExistingProp.Params.ExplicitParams) then
+                        LExistingProp.Params.ExplicitParams) or (LExistingProp.Struct <> Struct) then
       begin
         Prop.PrevOverload := LExistingProp;
         Exit;
@@ -5297,7 +5293,7 @@ function TASTDelphiUnit.ParseConstSection(Scope: TScope; AInlineConst: Boolean):
       if LArrayType.ElementDataType.IsOrdinal then
       begin
         Result := TIDSet.CreateAsAnonymous(LArrayType.Scope,
-                                                 TIDOrdinal(LArrayType.ElementDataType));
+                                           LArrayType.ElementDataType.ActualDataType as TIDOrdinal);
       end else
       begin
         ERRORS.ORDINAL_TYPE_REQUIRED(AExpr.TextPosition);

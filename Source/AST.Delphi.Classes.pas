@@ -1625,6 +1625,7 @@ type
     FIndexValue: TIDConstant;
     FDefaultIndexedProperty: Boolean;
     FPrevOverload: TIDProperty;
+    FStruct: TIDStructure;
     function GetParamsCount: Integer;
   public
     constructor Create(Scope: TScope; const Identifier: TIdentifier); override;
@@ -1639,6 +1640,7 @@ type
                                 AContext: TGenericInstantiateContext): TIDDeclaration; override;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
     property PrevOverload: TIDProperty read FPrevOverload write FPrevOverload;
+    property Struct: TIDStructure read FStruct write FStruct;
   end;
 
   TProcFlag = (

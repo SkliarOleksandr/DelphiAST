@@ -8,15 +8,15 @@ type
   TBaseList = class
   private
     function GetItem(AIndex: Integer): Integer; overload;
-  public  
-    property Items[AIndex: Integer]: Integer read GetItem; default;    
+  public
+    property Items[AIndex: Integer]: Integer read GetItem; default;
   end;
-  
+
   TList = class(TBaseList)
   private
     function GetItem(AIndex: string): Integer; overload;
-  public  
-    property Items[AIndex: string]: Integer read GetItem; default;    
+  public
+    property Items[AIndex: string]: Integer read GetItem; default;
   end;   
 
 implementation

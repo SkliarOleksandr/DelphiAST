@@ -190,6 +190,7 @@
         <DCCReference Include="..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload2.pas"/>
         <DCCReference Include="..\TestScripts\Classes\Constructors\TASTTest.Classes.Construct1.pas"/>
         <DCCReference Include="..\TestScripts\Classes\Constructors\TASTTest.Classes.Construct2.pas"/>
+        <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.HelperForNested1.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

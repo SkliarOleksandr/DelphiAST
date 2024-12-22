@@ -507,7 +507,7 @@ end;
 
 procedure TASTDelphiErrors.DEFAULT_PROP_ALREADY_EXIST(Prop: TIDProperty);
 begin
-  AbortWork(sDefaultPropertyAlreadyExistsFmt, [Prop.Name], Lexer.Position);
+  AbortWork(sDefaultPropertyAlreadyExistsFmt, [Prop.Name], Prop.TextPosition);
 end;
 
 procedure TASTDelphiErrors.DEFAULT_PROP_MUST_BE_ARRAY_PROP;
