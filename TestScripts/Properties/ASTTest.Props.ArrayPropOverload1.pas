@@ -1,4 +1,4 @@
-unit ASTTest.Props.ArrayPropOverload;
+unit ASTTest.Props.ArrayPropOverload1;
 
 interface
 
@@ -11,7 +11,7 @@ type
     function GetItem(AIndex: string): Integer; overload;   
   public  
     property Items[AIndex: Integer]: Integer read GetItem; default;    
-   // property Items[AIndex: string]: Integer read GetItem; default;
+    property Items[AIndex: string]: Integer read GetItem; default;
   end; 
 
 implementation
@@ -21,7 +21,7 @@ var
   LList: TList;
 begin
   var V1 := LList[0];
-  //var V2 := LList['index'];
+  var V2 := LList['index'];
 end;
 
 { TList }

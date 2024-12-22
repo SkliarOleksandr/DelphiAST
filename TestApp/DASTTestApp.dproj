@@ -186,7 +186,8 @@
         <DCCReference Include="..\TestScripts\Ordinals\ASTTest.Ordian.Enums.Init.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.External.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Arrays.pas"/>
-        <DCCReference Include="..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload.pas"/>
+        <DCCReference Include="..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload1.pas"/>
+        <DCCReference Include="..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload2.pas"/>
         <DCCReference Include="..\TestScripts\Classes\Constructors\TASTTest.Classes.Construct1.pas"/>
         <DCCReference Include="..\TestScripts\Classes\Constructors\TASTTest.Classes.Construct2.pas"/>
         <BuildConfiguration Include="Base">

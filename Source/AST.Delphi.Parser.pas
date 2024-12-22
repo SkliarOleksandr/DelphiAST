@@ -4561,9 +4561,9 @@ begin
     DimensionsCount := TIDArray(ArrType).AllDimensionsCount;
     DataType := TIDArray(ArrType).ElementDataType;
   end else
-  if (ArrType is TIDStructure) and (TIDStructure(ArrType).GetDefaultProperty <> nil) then
+  if (ArrType is TIDStructure) and (TIDStructure(ArrType).DefaultProperty <> nil) then
   begin
-    ArrDecl := TIDStructure(ArrType).GetDefaultProperty;
+    ArrDecl := TIDStructure(ArrType).DefaultProperty;
     DimensionsCount := TIDProperty(ArrDecl).ParamsCount;
     DataType := TIDProperty(ArrDecl).DataType;
     Expr := TIDExpression.Create(ArrDecl);
@@ -4686,7 +4686,6 @@ var
   Expr: TIDExpression;
   EContext: TEContext;
   DataType: TIDType;
-  IndexedPropParams: TIDParamArray;
   SContext: TSContext;
   ASTE: TASTExpression;
 begin
@@ -4706,7 +4705,6 @@ begin
       var LParamsScope := TParamsScope.Create(stLocal, Scope);
       Prop.Params := LParamsScope;
       Result := ParseParameters(Scope, LParamsScope);
-      IndexedPropParams := LParamsScope.ExplicitParams;
       Lexer_MatchToken(Result, token_closeblock);
       Result := Lexer_NextToken(Scope);
     end;
@@ -4835,14 +4833,27 @@ begin
   begin
     if Prop.ParamsCount = 0 then
       ERRORS.DEFAULT_PROP_MUST_BE_ARRAY_PROP;
-    if not Assigned(Struct.DefaultProperty) then
+
+    Lexer_ReadSemicolon(Scope);
+    Result := Lexer_NextToken(Scope);
+
+    // first default property
+    var LExistingProp := Struct.DefaultProperty;
+    if not Assigned(LExistingProp) then
     begin
       Struct.DefaultProperty := Prop;
       Prop.DefaultIndexedProperty := True;
     end else
-      ERRORS.DEFAULT_PROP_ALREADY_EXIST(Prop);
-    Lexer_ReadSemicolon(Scope);
-    Result := Lexer_NextToken(Scope);
+    begin
+      // overloading array property
+      if not SameParams(Prop.Params.ExplicitParams,
+                        LExistingProp.Params.ExplicitParams) then
+      begin
+        Prop.PrevOverload := LExistingProp;
+        Exit;
+      end else
+        ERRORS.DEFAULT_PROP_ALREADY_EXIST(Prop);
+    end;
   end;
 
   Scope.AddProperty(Prop);

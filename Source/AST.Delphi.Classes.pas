@@ -745,7 +745,9 @@ type
     function GetHasInitFiels: Boolean;
     function GetFieldsCount: Integer; inline;
     function GetMethodCount: Integer; inline;
+    function GetDefaultProperty: TIDProperty;
     procedure SetAncestorDecl(const Value: TIDType);
+    procedure SetDefaultProperty(const Value: TIDProperty);
   protected
     function GetDataSize: Integer; override;
     function GetDisplayName: string; override;
@@ -768,7 +770,7 @@ type
     property AncestorDecl: TIDType read fAncestorDecl write SetAncestorDecl;
     property MethodCount: Integer read GetMethodCount;
     property FieldsCount: Integer read GetFieldsCount;
-    property DefaultProperty: TIDProperty read FDefaultProperty write FDefaultProperty;
+    property DefaultProperty: TIDProperty read GetDefaultProperty write SetDefaultProperty;
     function IsInheritsForm(Ancestor: TIDStructure): Boolean;
     function FindVirtualProc(AProc: TIDProcedure): TIDProcedure;
     function FindVirtualProcInAncestor(Proc: TIDProcedure): TIDProcedure;
@@ -777,7 +779,6 @@ type
     function FindField(const Name: string): TIDField;
     function FindMethod(const Name: string): TIDProcedure;
     function FindProperty(const Name: string): TIDProperty;
-    function GetDefaultProperty: TIDProperty;
 
     procedure IncRefCount(RCPath: UInt32); override;
     procedure DecRefCount(RCPath: UInt32); override;
@@ -1623,6 +1624,7 @@ type
     FParams: TParamsScope;
     FIndexValue: TIDConstant;
     FDefaultIndexedProperty: Boolean;
+    FPrevOverload: TIDProperty;
     function GetParamsCount: Integer;
   public
     constructor Create(Scope: TScope; const Identifier: TIdentifier); override;
@@ -1636,6 +1638,7 @@ type
     function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                 AContext: TGenericInstantiateContext): TIDDeclaration; override;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
+    property PrevOverload: TIDProperty read FPrevOverload write FPrevOverload;
   end;
 
   TProcFlag = (
@@ -2067,6 +2070,7 @@ type
 
   function SameTypes(ASrcType, ADstType: TIDType): Boolean;
   function SameProcSignTypes(ASrcType, ADstType: TIDType): Boolean;
+  function SameParams(const AParams1, AParams2: TIDParamArray): Boolean;
   function IsGenericTypeThisStruct(Scope: TScope; Struct: TIDType): Boolean;
   function GenericNeedsInstantiate(AGenericArgs: TIDExpressions): Boolean;
 
@@ -5092,6 +5096,11 @@ begin
     fMembers.fAncestorScope := fAncestor.Members;
   end else
     fAncestor := nil;
+end;
+
+procedure TIDStructure.SetDefaultProperty(const Value: TIDProperty);
+begin
+  fDefaultProperty := Value;
 end;
 
 procedure TIDStructure.SetGenericDescriptor(const Value: IGenericDescriptor);
@@ -8583,6 +8592,15 @@ begin
                                     TIDArray(ADstType).ElementDataType);
     end;
   end;
+end;
+
+function SameParams(const AParams1, AParams2: TIDParamArray): Boolean;
+begin
+  Result := Length(AParams1) = Length(AParams2);
+  if Result then
+    for var LIndex := 0 to Length(AParams1) - 1 do
+      if not SameProcSignTypes(AParams1[LIndex].DataType, AParams2[LIndex].DataType) then
+        Exit(False);
 end;
 
 function IsGenericTypeThisStruct(Scope: TScope; Struct: TIDType): Boolean;

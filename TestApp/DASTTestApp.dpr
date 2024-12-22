@@ -59,7 +59,8 @@ uses
   ASTTest.Ordian.Enums.Init in '..\TestScripts\Ordinals\ASTTest.Ordian.Enums.Init.pas',
   ASTTest.Procs.External in '..\TestScripts\Procedures\ASTTest.Procs.External.pas',
   ASTTest.Generics.Arrays in '..\TestScripts\Generics\ASTTest.Generics.Arrays.pas',
-  ASTTest.Props.ArrayPropOverload in '..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload.pas',
+  ASTTest.Props.ArrayPropOverload1 in '..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload1.pas',
+  ASTTest.Props.ArrayPropOverload2 in '..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload2.pas',
   TASTTest.Classes.Construct1 in '..\TestScripts\Classes\Constructors\TASTTest.Classes.Construct1.pas',
   TASTTest.Classes.Construct2 in '..\TestScripts\Classes\Constructors\TASTTest.Classes.Construct2.pas';
 
