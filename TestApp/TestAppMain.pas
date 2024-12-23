@@ -9,7 +9,7 @@ uses
   Winapi.Messages, Vcl.Graphics, Vcl.ComCtrls, System.Types, Vcl.ExtCtrls, Vcl.CheckLst, System.Actions, Vcl.ActnList,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.Menus, System.ImageList, Vcl.ImgList, System.UITypes,
   SynEdit, SynEditMiscClasses, SynEditSearch, SynEditHighlighter, SynEditCodeFolding, SynHighlighterPas, SynHighlighterJSON,
-  VirtualTrees, VirtualTrees.Types, VirtualTrees.Classes,
+  VirtualTrees, VirtualTrees.Types, VirtualTrees.Classes, VirtualTrees.Colors,
   AST.Intf,
   AST.Classes,
   AST.Pascal.Project,
@@ -407,7 +407,7 @@ begin
 
   FLastProject := CreateProject({AParseSystemUnit:} True);
 
-  var LUsesUntis := '';
+  var LUsesUntis: string := '';
   AddDelphiUnits({var} LUsesUntis, 'rtl\sys');
 
   var RTLUsesSourceText :=
@@ -1208,6 +1208,7 @@ begin
   lbFiles.MultiSelect := True;
 
   ReportMemoryLeaksOnShutdown := ShowMemLeaksCheck.Checked;
+  BreakpointOnErrorCheck.Enabled := (System.DebugHook > 0);
 end;
 
 procedure TfrmTestAppMain.FormDestroy(Sender: TObject);

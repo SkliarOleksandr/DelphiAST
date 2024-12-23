@@ -250,7 +250,7 @@ type
     class procedure CheckReferenceType(Expression: TIDExpression); static; inline;
     class procedure CheckRecordType(Expression: TIDExpression); static; inline;
     class procedure CheckStructType(Expression: TIDExpression); overload; static; inline;
-    class procedure CheckStructType(Decl: TIDType); overload; static; inline;
+    class procedure CheckStructType(Decl: TIDDeclaration); overload; static; inline;
     class procedure CheckExprHasMembers(Expression: TIDExpression); static;
     class procedure CheckPropertyReadable(AExpr: TIDExpression); static;
     procedure CheckType(Expression: TIDExpression); inline;
@@ -4759,7 +4759,7 @@ begin
       if not Assigned(Prop.Params) then
         Prop.Params := TParamsScope.Create(stLocal, Scope);
       var LIndexParam := TIDParam.CreateAsSystem(Prop.Scope, 'Index');
-      LIndexParam.DataType := fSysDecls._Int32;
+      LIndexParam.DataType := LIndexValue.ActualDataType;
       Prop.Params.AddExplicitParam(LIndexParam);
     end;
 
@@ -7517,7 +7517,7 @@ begin
       // search overload
       var Decl := ForwardDecl;
       while True do begin
-        if Decl.SameDeclaration(ProcScope.ExplicitParams, ResultType, {ACheckNames:} True) then
+        if Decl.SameDeclaration(ProcScope.ExplicitParams, GenericParams, ResultType, {ACheckNames:} True) then
         begin
           if Decl.Scope = Scope then
             ERRORS.THE_SAME_METHOD_EXISTS(ID)
@@ -8098,7 +8098,6 @@ function TASTDelphiUnit.ParseProcName(AScope: TScope;
   end;
 
 var
-  Decl: TIDDeclaration;
   SearchScope: TScope;
 begin
   AProcScope := nil;
@@ -8128,15 +8127,29 @@ begin
       // there are two possible options here:
       // - this is a method implementation
       // - this is an interface method delegation
-      Decl := nil;
+      var LTypeDecl: TIDType := nil;
+      var LGenericParamsCnt := Length(AGenericParams);
       if AScope.ScopeClass <> scInterface then
       begin
-        // TODO: support generic overloads here
-        Decl := SearchScope.FindID(AID.Name);
-        if not Assigned(Decl) then
+        var LDecl := SearchScope.FindID(AID.Name);
+        CheckStructType(LDecl);
+        LTypeDecl := LDecl as TIDType;
+        // each generic types can have overloads, find proper one
+        while Assigned(LTypeDecl) do
+        begin
+          // searching proper generic declaration
+          if (Assigned(LTypeDecl.GenericDescriptor) and
+               (LTypeDecl.GenericDescriptor.ParamsCount = LGenericParamsCnt)
+             ) or (LGenericParamsCnt = 0) then
+           Break;
+
+          LTypeDecl := TIDType(LTypeDecl.NextGenericOverload);
+        end;
+
+        if not Assigned(LTypeDecl) then
         begin
           // for debug:
-          Decl := SearchScope.FindID(AID.Name);
+          SearchScope.FindID(AID.Name);
           ERRORS.UNDECLARED_ID(AID, AGenericParams);
         end;
       end else
@@ -8153,15 +8166,16 @@ begin
       end else
         ERRORS.UNDECLARED_ID(AID, AGenericParams);
 
-      if Decl is TIDStructure then
+      if LTypeDecl is TIDStructure then
       begin
-        AStruct := TIDStructure(Decl);
+        AStruct := TIDStructure(LTypeDecl);
         SearchScope := AStruct.Members;
-        {т.к это имплементация обобщенного метода, то очищаем дупликатные обобщенные параметры}
+        {clear generic params since it was for a struct's, and not a method's}
         if Assigned(AProcScope) then begin
           AProcScope.OuterScope := AScope;
           AProcScope.Parent := GetStructScope(AStruct, AProcType);
           AProcScope.Clear;
+          AGenericParams := [];
         end;
       end else
         ERRORS.STRUCT_TYPE_REQUIRED(AID.TextPosition);
@@ -9204,7 +9218,11 @@ function TASTDelphiUnit.ParseMember(Scope: TScope; var EContext: TEContext; cons
         Exit(TIDDynArray(ATypeDecl).GetHelperScope)
       else
       if ATypeDecl.ClassType = TIDGenericParam then
-        Exit((TIDGenericParam(ATypeDecl).ConstraintType as TIDStructure).Members);
+      begin
+        var LConstraint := TIDGenericParam(ATypeDecl).ConstraintType as TIDStructure;
+        if Assigned(LConstraint) then
+          Exit(LConstraint.Members);
+      end;
 
       if (ATypeDecl.DataTypeID = dtProcType) and Assigned(TIDProcType(ATypeDecl).ResultType) and ADereref then
       begin
@@ -10346,7 +10364,7 @@ begin
     AbortWork(sStringExpressionRequired, Expression.TextPosition);
 end;
 
-class procedure TASTDelphiUnit.CheckStructType(Decl: TIDType);
+class procedure TASTDelphiUnit.CheckStructType(Decl: TIDDeclaration);
 begin
   if not (Decl is TIDStructure) then
     AbortWork(sStructTypeRequired, Decl.TextPosition);

@@ -89,7 +89,7 @@ end;
 
 procedure AbortWork(const Message: string; const SourcePosition: TTextPosition);
 begin
-  if BreakpointOnError then
+  if (BreakpointOnError) and (System.DebugHook > 0) then
     asm int3 end;
   WriteLog('ERROR: ' + Message);
   raise ECompilerAbort.Create(Message, SourcePosition);

@@ -58,6 +58,8 @@ uses
   TASTTest.Classes.Inherited2 in '..\TestScripts\Classes\TASTTest.Classes.Inherited2.pas',
   ASTTest.Ordian.Enums.Init in '..\TestScripts\Ordinals\ASTTest.Ordian.Enums.Init.pas',
   ASTTest.Procs.External in '..\TestScripts\Procedures\ASTTest.Procs.External.pas',
+  ASTTest.Procs.Overloads.Generics1 in '..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.Generics1.pas',
+  ASTTest.Procs.Overloads.Generics2 in '..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.Generics2.pas',
   ASTTest.Generics.Arrays in '..\TestScripts\Generics\ASTTest.Generics.Arrays.pas',
   ASTTest.Props.ArrayPropOverload1 in '..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload1.pas',
   ASTTest.Props.ArrayPropOverload2 in '..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload2.pas',

@@ -1718,6 +1718,12 @@ type
     function SameDeclaration(const AParams: TIDParamArray;
                              AResultType: TIDType;
                              ACheckNames: Boolean = False): Boolean; overload;
+
+    function SameDeclaration(const AParams: TIDParamArray;
+                             const AGenericParams: TIDTypeArray;
+                             AResultType: TIDType;
+                             ACheckNames: Boolean = False): Boolean; overload;
+
     // Temporary variable alloc
     function GetTMPVar(DataType: TIDType; Reference: Boolean = False): TIDVariable; overload;
     function GetTMPVar(DataType: TIDType; VarFlags: TVariableFlags): TIDVariable; overload;
@@ -2939,6 +2945,23 @@ begin
     Result := False
   else
     Result := True;
+end;
+
+function TIDProcedure.SameDeclaration(const AParams: TIDParamArray;
+                                      const AGenericParams: TIDTypeArray;
+                                      AResultType: TIDType;
+                                      ACheckNames: Boolean): Boolean;
+begin
+  var LGenericParamsCnt := Length(AGenericParams);
+  if LGenericParamsCnt > 0 then
+  begin
+    if not Assigned(GenericDescriptor) or (GenericDescriptor.ParamsCount <> LGenericParamsCnt) then
+      Exit(False);
+  end else
+    if Assigned(GenericDescriptor) then
+      Exit(False);
+
+  Result := SameDeclaration(AParams, AResultType, ACheckNames);
 end;
 
 procedure TIDProcedure.SetEntryScope(const Value: TProcScope);
