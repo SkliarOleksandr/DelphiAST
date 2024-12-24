@@ -2,8 +2,6 @@
 
 interface
 
-{$I AST.Parser.Defines.inc}
-
 uses System.Classes,
      System.SysUtils,
      AST.Pascal.Parser,
@@ -1163,6 +1161,7 @@ begin
   fDecls._ResStringRecord := GetPublicType('PResStringRec');
   fDecls._TVarRec := GetPublicType('TVarRec');
   fDecls._TVarData := GetPublicType('TVarData');
+  fDecls._tagVARIANT := GetPublicType('tagVARIANT');
   fDecls._TTypeKind := GetPublicType('TTypeKind') as TIDEnum;
   fDecls._DateTimeType := GetPublicType('TDateTime');
   fDecls._DateType := GetPublicType('TDate');

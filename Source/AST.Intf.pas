@@ -16,7 +16,7 @@ type
     property TotalLinesParsed: Integer read GetTotalLinesParsed;
   end;
 
-  TASTProgressEvent = reference to procedure (const Module: IASTModule; Status: TASTProcessStatusClass);
+  TASTProgressEvent = reference to procedure (const Module: IASTModule; Status: TASTProcessStatusClass; AElapsedTime: Int64);
   TASTRrojectConsoleWriteEvent = reference to procedure (const Module: IASTModule; Line: Integer; const Message: string);
 
   IASTProject = interface

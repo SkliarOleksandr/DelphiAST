@@ -2,8 +2,6 @@
 
 interface
 
-{$I AST.Parser.Defines.inc}
-
 uses AST.Lexer, SysUtils, StrUtils, Types, Classes, AST.Parser.Errors;
 
 type

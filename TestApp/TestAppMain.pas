@@ -2,8 +2,6 @@ unit TestAppMain;
 
 interface
 
-{$I ../Source/AST.Parser.Defines.inc}
-
 uses
   System.SysUtils, System.Variants, System.Classes, System.JSON, System.Generics.Collections, Winapi.Windows,
   Winapi.Messages, Vcl.Graphics, Vcl.ComCtrls, System.Types, Vcl.ExtCtrls, Vcl.CheckLst, System.Actions, Vcl.ActnList,
@@ -188,13 +186,12 @@ type
     procedure ASTResultFormatComboBoxChange(Sender: TObject);
   private
     { Private declarations }
-    //fPKG: INPPackage;
     fSettings: IASTProjectSettings;
     FLockSaveSettings: Boolean;
     FAllTests: TDictionary<{Unit FileName} string, {Test Data} TTestData>;
     FSelectedTest: TTestData;
     FLastProject: IASTDelphiProject;
-    procedure OnProgress(const Module: IASTModule; Status: TASTProcessStatusClass);
+    procedure OnProgress(const Module: IASTModule; Status: TASTProcessStatusClass; AElapsedTime: Int64);
     procedure ShowASTResultAsCode(const Project: IASTDelphiProject; ASynEdit: TSynEdit); overload;
     procedure ShowASTResultAsCode(const AModule: TASTModule; ASynEdit: TSynEdit); overload;
     procedure ShowASTResultAsJSON(const Project: IASTDelphiProject; ASynEdit: TSynEdit); overload;
@@ -266,13 +263,13 @@ begin
       ErrMemo.Lines.AddStrings(Msg.AsString.Split([sLineBreak]));
       if Msg.MessageType >= cmtError then
       begin
-        if Msg.UnitName = FSelectedTest.Caption then
-        begin
-          edUnit.CaretX := Msg.Col;
-          edUnit.CaretY := Msg.Row;
-          if edUnit.CanFocus then
-            edUnit.SetFocus;
-        end;
+        if Msg.UnitName <> FSelectedTest.Caption then
+          edUnit.Text := Msg.UnitSource;
+
+        edUnit.CaretY := Msg.Row;
+        edUnit.CaretX := Msg.Col;
+        if edUnit.CanFocus then
+          edUnit.SetFocus;
       end;
     end;
   end;
@@ -430,10 +427,15 @@ begin
     ShowASTResults(FLastProject);
 end;
 
-procedure TfrmTestAppMain.OnProgress(const Module: IASTModule; Status: TASTProcessStatusClass);
+procedure TfrmTestAppMain.OnProgress(const Module: IASTModule; Status: TASTProcessStatusClass; AElapsedTime: Int64);
 begin
-  //if Status = TASTStatusParseSuccess then
-    ErrMemo.Lines.Add(Module.Name + ' : ' + Status.Name);
+  var LStr := Format('%s: %s', [Module.Name, Status.Name]);
+  if Status <> TASTStatusParseBegin then
+    LStr := LStr + ' in ' + GetElapsedStr(AElapsedTime);
+
+  ErrMemo.Lines.Add(LStr);
+  ErrMemo.SelStart := Length(ErrMemo.Text);
+  Application.ProcessMessages;
 end;
 
 const
@@ -486,7 +488,8 @@ end;
 
 procedure TfrmTestAppMain.SaveSourceActionUpdate(Sender: TObject);
 begin
-  TAction(Sender).Enabled := Assigned(FSelectedTest) and edUnit.Modified;
+  TAction(Sender).Enabled := (LeftPageControl.ActivePage = tsTestScripts) and
+    Assigned(FSelectedTest) and edUnit.Modified;
 end;
 
 function FileURLDecode(const AFileURL: string): string;
@@ -720,15 +723,11 @@ end;
 
 procedure TfrmTestAppMain.CreateNewTestActionExecute(Sender: TObject);
 const
-  CUnitTemplateFmt = '''
-    unit %s;
-
-    interface
-
-    implementation
-
-    end.
-    ''';
+  CUnitTemplateFmt =
+    'unit %s;' + sLineBreak + sLineBreak +
+    'interface'  + sLineBreak + sLineBreak +
+    'implementation' + sLineBreak + sLineBreak +
+    'end.';
 begin
   var LTestName: string;
   if InputQuery('Create New Test', 'Test Name', {var} LTestName) then
@@ -810,7 +809,7 @@ procedure TfrmTestAppMain.edUnitChange(Sender: TObject);
 begin
   if Assigned(FSelectedTest) then
   begin
-    FSelectedTest.Modified := edUnit.Modified;
+    FSelectedTest.Modified := edUnit.Modified and (LeftPageControl.ActivePage = tsTestScripts);
     VTTests.Invalidate;
   end;
 end;
@@ -971,7 +970,7 @@ begin
   var LRunCount := 0;
   var LFailCount := 0;
   var LProject := CreateProject({AParseSystemUnit:} ParseSystemCheck.Checked);
-  for var LTestData in FAllTests.Values do
+  for var LTestData: TTestData in FAllTests.Values do
   begin
     TASTParserLog.Instance.ResetNestedLevel;
     var LUnit := TASTDelphiUnit.Create(LProject, LTestData.FilePath);

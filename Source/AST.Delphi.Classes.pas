@@ -2,8 +2,6 @@
 
 interface
 
-{$I AST.Parser.Defines.inc}
-
 uses System.SysUtils, System.Classes, System.StrUtils, System.Math, System.Generics.Collections,
      System.Variants,
      AST.Delphi.DataTypes,
@@ -539,6 +537,7 @@ type
 
     function SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType; override;
     function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
+    function MatchExplicitFrom(ASrc: TIDType): Boolean; override;
 
     function SameConstraint(ADstParam: TIDGenericParam): Boolean;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
@@ -4831,7 +4830,8 @@ end;
 
 function TIDStructure.GetIsGeneric: Boolean;
 begin
-  Result := Assigned(fGenericDescriptor);
+  Result := Assigned(fGenericDescriptor) or
+    (fAncestorDecl is TIDGenericInstantiation);
 end;
 
 function TIDStructure.GetIsManaged: Boolean;
@@ -7527,6 +7527,12 @@ begin
     end;
   end;
   AbortWorkInternal('Unknonw arg type for %s', [AContext.DstID.Name], AContext.DstID.TextPosition);
+end;
+
+function TIDGenericParam.MatchExplicitFrom(ASrc: TIDType): Boolean;
+begin
+  // TODO: improve constraint checking
+  Result := fConstraintType = ASrc;
 end;
 
 function TIDGenericParam.SameConstraint(ADstParam: TIDGenericParam): Boolean;

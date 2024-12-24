@@ -5,6 +5,7 @@
 - Delphi 12 multiline string literals
 - Parsing .dpr, .dpk files
 - Keep parsing when errors found
+- OleVariant support
 
 // IMPROVE:
 

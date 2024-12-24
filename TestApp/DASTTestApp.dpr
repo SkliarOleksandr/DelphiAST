@@ -54,18 +54,23 @@ uses
   ASTTest.Generics.GenResult in '..\TestScripts\Generics\ASTTest.Generics.GenResult.pas',
   ASTTest.Generics.Methods in '..\TestScripts\Generics\ASTTest.Generics.Methods.pas',
   ASTTest.Generics.Mixed in '..\TestScripts\Generics\ASTTest.Generics.Mixed.pas',
+  ASTTest.Generics.Arrays in '..\TestScripts\Generics\ASTTest.Generics.Arrays.pas',
+  ASTTest.Generics.Nested in '..\TestScripts\Generics\ASTTest.Generics.Nested.pas',
+  ASTTest.Generics.Enumerator1 in '..\TestScripts\Generics\ASTTest.Generics.Enumerator1.pas',
+  ASTTest.Generics.Enumerator2 in '..\TestScripts\Generics\ASTTest.Generics.Enumerator2.pas',
   TASTTest.Classes.Inherited1 in '..\TestScripts\Classes\TASTTest.Classes.Inherited1.pas',
   TASTTest.Classes.Inherited2 in '..\TestScripts\Classes\TASTTest.Classes.Inherited2.pas',
   ASTTest.Ordian.Enums.Init in '..\TestScripts\Ordinals\ASTTest.Ordian.Enums.Init.pas',
   ASTTest.Procs.External in '..\TestScripts\Procedures\ASTTest.Procs.External.pas',
   ASTTest.Procs.Overloads.Generics1 in '..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.Generics1.pas',
   ASTTest.Procs.Overloads.Generics2 in '..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.Generics2.pas',
-  ASTTest.Generics.Arrays in '..\TestScripts\Generics\ASTTest.Generics.Arrays.pas',
   ASTTest.Props.ArrayPropOverload1 in '..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload1.pas',
   ASTTest.Props.ArrayPropOverload2 in '..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload2.pas',
   TASTTest.Classes.Construct1 in '..\TestScripts\Classes\Constructors\TASTTest.Classes.Construct1.pas',
   TASTTest.Classes.Construct2 in '..\TestScripts\Classes\Constructors\TASTTest.Classes.Construct2.pas',
-  ASTTest.Helpers.HelperForNested1 in '..\TestScripts\Helpers\ASTTest.Helpers.HelperForNested1.pas';
+  ASTTest.Helpers.HelperForNested1 in '..\TestScripts\Helpers\ASTTest.Helpers.HelperForNested1.pas',
+  ASTTest.Loops.For1 in '..\TestScripts\Loops\ASTTest.Loops.For1.pas',
+  ASTTest.Loops.ForIn1 in '..\TestScripts\Loops\ASTTest.Loops.ForIn1.pas';
 
 {$R *.res}
 

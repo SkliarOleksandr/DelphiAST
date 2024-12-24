@@ -116,7 +116,7 @@ type
     function GetModuleName: string; virtual;
     function GetSource: string; virtual; abstract;
     procedure SetFileName(const Value: string);
-    procedure Progress(StatusClass: TASTProcessStatusClass); virtual;
+    procedure Progress(StatusClass: TASTProcessStatusClass; AElapsedTime: Int64); virtual;
   public
     property Name: string read GetModuleName;
     property FileName: string read fFileName write SetFileName;
@@ -1259,13 +1259,13 @@ begin
   Result := fTotalLinesParsed;
 end;
 
-procedure TASTModule.Progress(StatusClass: TASTProcessStatusClass);
+procedure TASTModule.Progress(StatusClass: TASTProcessStatusClass; AElapsedTime: Int64);
 var
   Event: TASTProgressEvent;
 begin
   Event := fProject.OnProgress;
   if Assigned(Event) then
-    Event(Self, StatusClass);
+    Event(Self, StatusClass, AElapsedTime);
 end;
 
 procedure TASTModule.SetFileName(const Value: string);

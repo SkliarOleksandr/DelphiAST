@@ -89,6 +89,7 @@ end;
 
 procedure AbortWork(const Message: string; const SourcePosition: TTextPosition);
 begin
+  // stop if run under IDE only
   if (BreakpointOnError) and (System.DebugHook > 0) then
     asm int3 end;
   WriteLog('ERROR: ' + Message);

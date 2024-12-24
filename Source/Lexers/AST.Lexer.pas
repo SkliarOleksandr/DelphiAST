@@ -2,8 +2,6 @@
 
 interface
 
-{$I AST.Parser.Defines.inc}
-
 uses Classes, SysUtils;
 
 const

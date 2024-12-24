@@ -123,7 +123,9 @@ type
     function GetStringConstant(const Value: string): Integer; overload;
     function GetStringConstant(const StrConst: TIDStringConstant): Integer; overload;
     function FindUnitFile(const AUnitName: string; const AFileExt: string = ''): string;
+    function FindParsedUnit(const AUnitName: string): TASTModule;
     function UsesUnit(const UnitName: string; AfterUnit: TASTModule): TASTModule;
+    function FindType(const AUnitName, ATypeName: string): TASTDeclaration;
     function GetMessages: ICompilerMessages;
     function Compile: TCompilerResult; virtual;
     function CompileInterfacesOnly: TCompilerResult; virtual;
@@ -351,6 +353,19 @@ begin
   Result := Ord(Left.StrTypeID) - Ord(Right.StrTypeID);
   if Result = 0 then
     Result := AnsiCompareStr(Left.StrValue, Right.StrValue);
+end;
+
+function TPascalProject.FindParsedUnit(const AUnitName: string): TASTModule;
+begin
+  for var LIndex := 0 to FUnits.Count - 1 do
+  begin
+    var LUnitName := TPascalUnit(FUnits[LIndex]).Name;
+    if AnsiCompareText(LUnitName, AUnitName) = 0 then
+      Exit(FUnits[LIndex]);
+  end;
+
+  if not fImplicitUnits.TryGetValue(LowerCase(UnitName), {out} Result) then
+    raise Exception.CreateFmt('Unit ''%s'' not found', [AUnitName]);
 end;
 
 function TPascalProject.UsesUnit(const UnitName: string; AfterUnit: TASTModule): TASTModule;
@@ -582,6 +597,12 @@ end;
 function TPascalProject.RefCount: Integer;
 begin
   Result := FRefCount;
+end;
+
+function TPascalProject.FindType(const AUnitName, ATypeName: string): TASTDeclaration;
+begin
+  var LUnit := FindParsedUnit(AUnitName) as TPascalUnit;
+  Result := LUnit.GetPublicType(ATypeName);
 end;
 
 function TPascalProject.FindUnitFile(const AUnitName: string; const AFileExt: string): string;

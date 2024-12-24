@@ -5,8 +5,6 @@ unit AST.Pascal.Parser;
 
 interface
 
-{$I AST.Parser.Defines.inc}
-
 uses SysUtils, Math, Classes, StrUtils, Types, IOUtils, Generics.Collections,
      AST.Lexer.Delphi,
      AST.Delphi.Classes,
@@ -110,12 +108,12 @@ type
     fUnitName: TIdentifier;            // the Unit declaration name
     fProcMatches: TASTProcMachArray;
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
-    function FindPublicDecl(const Name: string): TIDDeclaration;
-    function GetPublicClass(const Name: string): TIDClass;
-    function GetPublicType(const Name: string): TIDType;
     function GetModuleName: string; override;
     procedure SetUnitName(const Name: string);
   public
+    function FindPublicDecl(const Name: string): TIDDeclaration;
+    function GetPublicClass(const Name: string): TIDClass;
+    function GetPublicType(const Name: string): TIDType;
     //======================================================================================================================================
     procedure AddType(const Decl: TIDType); inline;
     procedure AddConstant(const Decl: TIDConstant); inline;

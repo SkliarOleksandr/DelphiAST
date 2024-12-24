@@ -78,6 +78,7 @@ type
     _ResStringRecord: TIDType;
     _TVarRec: TIDType;
     _TVarData: TIDType;
+    _tagVARIANT: TIDType;
   private
     function Get_Int8: IASTDelphiType;
     function Get_Int16: IASTDelphiType;

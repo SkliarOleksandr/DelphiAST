@@ -2,8 +2,6 @@
 
 interface
 
-{$I AST.Parser.Defines.inc}
-
 uses SysUtils, Generics.Collections, AST.Lexer;
 
 type
@@ -26,8 +24,10 @@ type
     FSourcePosition: TTextPosition;
     function GetMessageTypeName: string;
     function GetAsString: string;
+  private
+    function GetUnitSource: string;
   public
-    //property DeclUnit: TObject read FUnit write FUnit;
+    property DeclUnit: TObject read FUnit write FUnit;
     property UnitName: string read FUnitName write FUnitName;
     property MessageType: TCompilerMessageType read FMessageType;
     property MessageTypeName: string read GetMessageTypeName;
@@ -35,6 +35,7 @@ type
     property Row: Integer read FSourcePosition.Row write FSourcePosition.Row;
     property Col: Integer read FSourcePosition.Col write FSourcePosition.Col;
     property AsString: string read GetAsString;
+    property UnitSource: string read GetUnitSource;
     constructor Create(DeclUnit: TObject; MessageType: TCompilerMessageType; const MessageText: string; const SourcePosition: TTextPosition);
     {$IFDEF FPC}
     class operator Equal(const Left, Right: TCompilerMessage): boolean;
@@ -112,6 +113,11 @@ begin
   end;
 end;
 
+
+function TCompilerMessage.GetUnitSource: string;
+begin
+  Result := (FUnit as TPascalUnit).Lexer.Source;
+end;
 
 { TCompilerMessages }
 

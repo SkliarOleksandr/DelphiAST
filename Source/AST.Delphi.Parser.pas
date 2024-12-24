@@ -206,7 +206,7 @@ type
                                             out BetterFactor: Integer): TIDDeclaration;
     function MatchBinarOperatorWithTuple(const SContext: TSContext; Op: TOperatorID; var CArray: TIDExpression;
       const SecondArg: TIDExpression): TIDDeclaration;
-    procedure Progress(StatusClass: TASTProcessStatusClass); override;
+    procedure Progress(StatusClass: TASTProcessStatusClass; AElapsedTime: Int64); override;
   public
     function MatchImplicit3(const SContext: TSContext; Source: TIDExpression; Dest: TIDType;
                             AAbortIfError: Boolean = True): TIDExpression;
@@ -440,7 +440,7 @@ type
     function ParseAnonymousProc(Scope: TScope; var EContext: TEContext; const SContext: TSContext; ProcType: TTokenID): TTokenID;
     function ParseInitSection: TTokenID;
     function ParseFinalSection: TTokenID;
-    function ParseUnknownID(Scope: TScope; const PrevExpr: TIDExpression; ID: TIdentifier; out Decl: TIDDeclaration): TTokenID;
+    function ParseUnknownID(Scope: TScope; const PrevExpr: TIDExpression; const AID: TIdentifier; out Decl: TIDDeclaration): TTokenID;
     function ParseDeprecated(Scope: TScope; out DeprecatedExpr: TIDExpression): TTokenID;
     function CheckAndMakeClosure(const SContext: TSContext; const ProcDecl: TIDProcedure): TIDClosure;
     function EmitCreateClosure(const SContext: TSContext; Closure: TIDClosure): TIDExpression;
@@ -2566,12 +2566,13 @@ var
   Token: TTokenID;
   Scope: TScope;
 begin
+  var LStartedAt := TTickCounter.GetTicks;
   try
     Scope := nil;
     if UnitState = UnitNotCompiled then
     begin
       fTotalLinesParsed := 0;
-      Progress(TASTStatusParseBegin);
+      Progress(TASTStatusParseBegin, 0);
       Result := inherited Compile(RunPostCompile);
       fSysDecls := TSYSTEMUnit(SysUnit).SystemDeclarations;
       fCCalc := TExpressionCalculator.Create(Self);
@@ -2593,24 +2594,29 @@ begin
 
     Result := DoParse(Scope, ACompileIntfOnly);
     if ACompileIntfOnly then
+    begin
+      Progress(TASTStatusParseIntfSucess, TTickCounter.GetTicks - LStartedAt);
       Exit;
+    end;
 
     PostCompileChecks;
     fUnitState := UnitAllCompiled;
     FCompiled := Result;
-    Progress(TASTStatusParseSuccess);
+    Progress(TASTStatusParseSuccess, TTickCounter.GetTicks - LStartedAt);
     Package.DoFinishCompileUnit(Self, {AIntfOnly:} False);
   except
     on e: ECompilerStop do Exit(CompileFail);
     on e: ECompilerSkip do Exit(CompileSkip);
     on e: ECompilerAbort do begin
-      PutMessage(ECompilerAbort(e).CompilerMessage^);
-      Progress(TASTStatusParseFail);
+      var LMsg := ECompilerAbort(e).CompilerMessage;
+      LMsg.DeclUnit := Self;
+      PutMessage(LMsg^);
+      Progress(TASTStatusParseFail, TTickCounter.GetTicks - LStartedAt);
       Result := CompileFail;
     end;
     on e: Exception do begin
       PutMessage(cmtInteranlError, e.Message, Lexer_Position);
-      Progress(TASTStatusParseFail);
+      Progress(TASTStatusParseFail, TTickCounter.GetTicks - LStartedAt);
       Result := CompileFail;
     end;
   end;
@@ -2705,7 +2711,6 @@ begin
         if ACompileIntfOnly then
         begin
           Package.DoFinishCompileUnit(Self, {AIntfOnly:} True);
-          Progress(TASTStatusParseIntfSucess);
           Exit;
         end;
         Scope := ImplScope;
@@ -6486,27 +6491,42 @@ var
   ASTExpr: TASTExpression;
   WriteIL: Boolean;
 begin
-  // цикловая переменная
   Result := Lexer_NextToken(Scope);
-  if Result = token_var then begin
+
+  // inline variable declaration
+  if Result = token_var then
+  begin
     Lexer_ReadNextIdentifier(Scope, ID);
     NewScope := TForScope.Create(stLocal, Scope);
     LoopVar := TIDVariable.Create(NewScope, ID);
     NewScope.AddVariable(TIDVariable(LoopVar));
     Scope := NewScope;
   end else begin
+    // existing variable
     Lexer_ReadCurrIdentifier(ID);
     LoopVar := FindID(Scope, ID);
+    NewScope := nil;
   end;
 
   InitEContext(EContext, SContext, ExprRValue);
-  // заталкиваем в стек левое выражение
   LExpr := TIDExpression.Create(LoopVar, ID.TextPosition);
   EContext.RPNPushExpression(LExpr);
 
   Result := Lexer_NextToken(Scope);
 
-  {если это цикл for ... in ...}
+  // explicit inline-variable type specification
+  if Result = token_colon then
+  begin
+    if Assigned(NewScope) then
+    begin
+      var LTypeDecl: TIDType;
+      Result := ParseTypeSpec(Scope, {out} LTypeDecl);
+      LoopVar.DataType := LTypeDecl;
+    end else
+      ERRORS.EXPECTED_TOKEN(token_assign, Result);
+  end;
+
+  // for..in loop
   if Result = token_in then
   begin
     Result := ParseForInStatement(Scope, SContext, LExpr);
@@ -8843,7 +8863,7 @@ begin
   Result := Lexer_NextToken(Scope);
 end;
 
-procedure TASTDelphiUnit.Progress(StatusClass: TASTProcessStatusClass);
+procedure TASTDelphiUnit.Progress(StatusClass: TASTProcessStatusClass; AElapsedTime: Int64);
 begin
   fTotalLinesParsed := Lexer_Line;
   inherited;
@@ -8984,30 +9004,33 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.ParseUnknownID(Scope: TScope; const PrevExpr: TIDExpression; ID: TIdentifier; out Decl: TIDDeclaration): TTokenID;
+function TASTDelphiUnit.ParseUnknownID(Scope: TScope; const PrevExpr: TIDExpression;
+  const AID: TIdentifier; out Decl: TIDDeclaration): TTokenID;
 var
   FullID: TIdentifier;
+  LID: TIdentifier;
 begin
+  LID := AID;
   if Assigned(PrevExpr) and (PrevExpr.ItemType = itUnit) then
     FullID := PrevExpr.Declaration.ID;
 
   Result := Lexer_CurTokenID;
   while True do begin
-    FullID := TIdentifier.Combine(FullID, ID);
+    FullID := TIdentifier.Combine(FullID, LID);
     Decl := FindIDNoAbort(Scope, FullID);
     if Assigned(Decl) then
       Exit;
 
     if Result = token_dot then
     begin
-      Lexer_ReadNextIdentifier(Scope, ID);
+      Lexer_ReadNextIdentifier(Scope, LID);
       Result := Lexer_NextToken(Scope);
       continue;
     end;
     Break;
   end;
 
-  ERRORS.UNDECLARED_ID(ID);
+  ERRORS.UNDECLARED_ID(AID);
 end;
 
 function ProcCanBeGeneric(AProc: TIDProcedure): Boolean;
