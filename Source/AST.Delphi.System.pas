@@ -119,9 +119,7 @@ type
     ExplicitRangeFromAny,
     ExplicitRecordToAny,
     ExplicitStaticArrayToAny,
-    ExplicitDynArrayToAny,
-    ExplicitVariantToAny,
-    ExplicitVariantFromAny: TIDOperator;
+    ExplicitDynArrayToAny: TIDOperator;
     // any cast
     IsOrdinal: TIDOperator;
     // in
@@ -432,9 +430,6 @@ begin
 
   _Variant.OverloadImplicitToAny(Operators.ImplicitVariantToAny);
   _Variant.OverloadImplicitFromAny(Operators.ImplicitVariantFromAny);
-  _Variant.OverloadExplicitToAny(Operators.ExplicitVariantToAny);
-  _Variant.OverloadExplicitFromAny(Operators.ExplicitVariantFromAny);
-
 
   // float32
   with _Float32 do begin
@@ -1021,6 +1016,7 @@ begin
   TIDString(_UnicodeString).ElementDataType := _WideChar;
   //===============================================================
   fDecls._Variant := RegisterType('Variant', TBuiltin_Variant, dtVariant);
+  fDecls._OleVariant := RegisterType('OleVariant', TBuiltin_OleVariant, dtVariant);
   //===============================================================
   fDecls._WideString := RegisterType('WideString', TIDString, dtWideString);
   TIDString(_WideString).ElementDataType := _WideChar;
@@ -1078,7 +1074,6 @@ begin
   RegisterTypeAlias('ByteBool', _Boolean);
   RegisterTypeAlias('WordBool', _Boolean);
   RegisterTypeAlias('LongBool', _Boolean);
-  RegisterTypeAlias('OleVariant', _Variant);
 
   // PAnsiChar
   fDecls._PAnsiChar := RegisterType('PAnsiChar', TBuiltin_PAnsiChar, dtPAnsiChar);
@@ -1313,7 +1308,7 @@ constructor TSYSTEMUnit.Create(const Project: IASTProject; const FileName: strin
 begin
   inherited Create(Project, FileName, Source);
 
-  fDecls := TDelphiBuiltinTypes.Create;
+  fDecls := TDelphiBuiltinTypes.Create(Self.Project);
 
   fSysDecls := fDecls;
 
@@ -1731,8 +1726,6 @@ begin
   ExplicitRecordToAny := TSysExplicitRecordToAny.CreateAsSystem(Scope);
   ExplicitStaticArrayToAny := TSysExplicitStaticArrayToAny.CreateAsSystem(Scope);
   ExplicitDynArrayToAny := TSysExplicitDynArrayToAny.CreateAsSystem(Scope);
-  ExplicitVariantToAny := TSysExplicitVariantToAny.CreateAsSystem(Scope);
-  ExplicitVariantFromAny := TSysExplicitVariantFromAny.CreateAsSystem(Scope);
   // any cast
   IsOrdinal := TSysTypeCast_IsOrdinal.CreateAsSystem(Scope);
 

@@ -188,7 +188,7 @@ type
     { Private declarations }
     fSettings: IASTProjectSettings;
     FLockSaveSettings: Boolean;
-    FAllTests: TDictionary<{Unit FileName} string, {Test Data} TTestData>;
+    FAllTests: TStrings;
     FSelectedTest: TTestData;
     FLastProject: IASTDelphiProject;
     procedure OnProgress(const Module: IASTModule; Status: TASTProcessStatusClass; AElapsedTime: Int64);
@@ -197,8 +197,8 @@ type
     procedure ShowASTResultAsJSON(const Project: IASTDelphiProject; ASynEdit: TSynEdit); overload;
     procedure ShowASTResultAsJSON(const AModule: TASTModule; ASynEdit: TSynEdit); overload;
     procedure ShowASTResults(const AProject: IASTDelphiProject);
-    function ParseProject(const Project: IASTDelphiProject; AClearOutput: Boolean = True): TCompilerResult;
-    procedure CompilerMessagesToStrings(const Project: IASTDelphiProject);
+    function ParseProject(const Project: IASTDelphiProject; AClearOutput, AShowResults: Boolean): TCompilerResult;
+    procedure CompilerMessagesToStrings(const Project: IASTDelphiProject; AShowFailUnit: Boolean);
     procedure SetDefines(const APrj: IASTDelphiProject);
     procedure SaveSettings;
     procedure LoadSettings;
@@ -248,7 +248,7 @@ type
     SynEdit: TSynEdit;
   end;
 
-procedure TfrmTestAppMain.CompilerMessagesToStrings(const Project: IASTDelphiProject);
+procedure TfrmTestAppMain.CompilerMessagesToStrings(const Project: IASTDelphiProject; AShowFailUnit: Boolean);
 var
   I: Integer;
   Msg: TCompilerMessage;
@@ -259,11 +259,10 @@ begin
     Msg := Project.Messages[i];
     if (Msg.MessageType >= cmtError) or ShowWarningsCheck.Checked then
     begin
-
       ErrMemo.Lines.AddStrings(Msg.AsString.Split([sLineBreak]));
-      if Msg.MessageType >= cmtError then
+      if (Msg.MessageType >= cmtError) and AShowFailUnit then
       begin
-        if Msg.UnitName <> FSelectedTest.Caption then
+        if not Assigned(FSelectedTest) or (Msg.UnitName <> FSelectedTest.Caption) then
           edUnit.Text := Msg.UnitSource;
 
         edUnit.CaretY := Msg.Row;
@@ -376,13 +375,23 @@ begin
 
   Prj := CreateProject({AParseSystemUnit:} ParseSystemCheck.Checked);
 
+  if Assigned(FSelectedTest) then
+    Prj.AddUnitSearchPath(ExtractFilePath(FSelectedTest.FilePath));
+
   UN := TASTDelphiUnit.Create(Prj, 'test', edUnit.Text);
   Prj.AddUnit(UN, nil);
 
-  ParseProject(Prj);
+  ParseProject(Prj, {AClearOutput:} True, {AShowResults:} True);
 end;
 
 procedure TfrmTestAppMain.ASTParseRTLButtonClick(Sender: TObject);
+
+  function IsExcluded(const AFileName: string): Boolean;
+  begin
+    Result :=
+      SameText(AFileName, 'System.Internal.MachExceptions')
+      ;
+  end;
 
   procedure AddDelphiUnits(var AUsesList: string; const APath: string);
   begin
@@ -391,9 +400,9 @@ procedure TfrmTestAppMain.ASTParseRTLButtonClick(Sender: TObject);
     begin
       var LUnitName := StringReplace(ExtractFileName(LPath), '.pas', '', [rfReplaceAll]);
       //todo: implement parsing .dpk files and use BuildWinRTL.dpk here
-      if LUnitName = 'System.Internal.MachExceptions' then
+      if IsExcluded(LUnitName) then
         continue;
-      AUsesList := AddStringSegment(AUsesList, LUnitName, ',')
+      AUsesList := AddStringSegment(AUsesList, LUnitName, ',');
     end;
   end;
 
@@ -418,7 +427,7 @@ begin
   UN := TASTDelphiUnit.Create(FLastProject, 'RTLParseTest', RTLUsesSourceText);
   FLastProject.AddUnit(UN, nil);
 
-  ParseProject(FLastProject);
+  ParseProject(FLastProject, {AClearOutput:} True, {AShowResults:} True);
 end;
 
 procedure TfrmTestAppMain.ASTResultFormatComboBoxChange(Sender: TObject);
@@ -605,7 +614,7 @@ begin
       begin
         var LTestData := TTestData.Create(LFileName, ntTest);
         LTestData.TestNode := VTTests.AddChild(ARootNode, LTestData);
-        FAllTests.Add(LTestData.Caption, LTestData);
+        FAllTests.AddObject(LTestData.Caption, LTestData);
       end;
     end;
   end;
@@ -621,8 +630,10 @@ begin
   if ALastTestName <> '' then
   begin
     var LTestData: TTestData;
-    if FAllTests.TryGetValue(ALastTestName, {out} LTestData) then
+    var LIndex := FAllTests.IndexOfName(ALastTestName);
+    if LIndex >= 0 then
     begin
+      LTestData := FAllTests.Objects[LIndex] as TTestData;
       SelectTest(LTestData);
 
       var LNodeToSelect := LTestData.TestNode;
@@ -845,6 +856,7 @@ begin
 //            LBuilder.Append(sLineBreak);
             Decl.Decl2Str(LBuilder, {ANestedLevel:} 0, {AAppendName:} True);
             LBuilder.Append(sLineBreak);
+            LBuilder.Append(sLineBreak);
           except
             on E: Exception do
               LBuilder.Append(E.Message);
@@ -876,6 +888,7 @@ begin
 
           try
             Decl.Decl2Str(LBuilder, {ANestedLevel:} 0, {AAppendName:} True);
+            LBuilder.Append(sLineBreak);
             LBuilder.Append(sLineBreak);
           except
             on E: Exception do
@@ -970,16 +983,26 @@ begin
   var LRunCount := 0;
   var LFailCount := 0;
   var LProject := CreateProject({AParseSystemUnit:} ParseSystemCheck.Checked);
-  for var LTestData: TTestData in FAllTests.Values do
+  // todo: AST parser fails without explicit type specification here
+  for var LIndex := 0 to FAllTests.Count - 1 do
   begin
+    var LTestData := FAllTests.Objects[LIndex] as TTestData;
     TASTParserLog.Instance.ResetNestedLevel;
     var LUnit := TASTDelphiUnit.Create(LProject, LTestData.FilePath);
     LProject.AddUnit(LUnit, nil);
-    if ParseProject(LProject, {AClearOutput:} False) <> CompileSuccess then
+
+    // add source path for AST tests
+    LProject.AddUnitSearchPath(ExtractFilePath(LTestData.FilePath));
+
+    if ParseProject(LProject, {AClearOutput:} False, {AShowResults:} False) <> CompileSuccess then
       Inc(LFailCount);
 
     // do not clear implict units (RTL) between tests
     LProject.Clear({AClearImplicitUnits:} False);
+
+    // remove source path for AST tests
+    LProject.RemoveUnitSearchPath(ExtractFilePath(LTestData.FilePath));
+
     Inc(LRunCount);
     TestRunProgressLabel.Caption := Format('Run Tests: %d from %d (Fail: %d)',
                                            [LRunCount, FAllTests.Count, LFailCount]);
@@ -1056,7 +1079,7 @@ begin
     SelectTest(LTestData);
 end;
 
-function TfrmTestAppMain.ParseProject(const Project: IASTDelphiProject; AClearOutput: Boolean): TCompilerResult;
+function TfrmTestAppMain.ParseProject(const Project: IASTDelphiProject; AClearOutput, AShowResults: Boolean): TCompilerResult;
 begin
   if AClearOutput then
   begin
@@ -1081,8 +1104,10 @@ begin
     Msg.Add(format('total lines parsed: %d in %s', [Project.TotalLinesParsed,
                                                     FormatDateTime('nn:ss.zzz', Now - LStartedAt)]));
 
-    ShowASTResults(Project);
-    CompilerMessagesToStrings(Project);
+    if AShowResults then
+      ShowASTResults(Project);
+
+    CompilerMessagesToStrings(Project, AShowResults);
 
     ErrMemo.Lines.AddStrings(Msg);
     ErrMemo.CaretY := ErrMemo.Lines.Count;
@@ -1106,7 +1131,7 @@ begin
     if lbFiles.Checked[LIndex] then
       Prj.AddUnit(lbFiles.Items[LIndex]);
 
-  ParseProject(Prj);
+  ParseProject(Prj, {AClearOutput:} True, {AShowResults:} True);
 
   Prj.Clear({AClearImplicitUnits:} True);
 end;
@@ -1160,7 +1185,7 @@ procedure TfrmTestAppMain.FilesParseFocusedActionExecute(Sender: TObject);
 begin
   var LProject := CreateProject({AParseSystemUnit:} True);
   LProject.AddUnit(lbFiles.Items[lbFiles.ItemIndex]);
-  ParseProject(LProject);
+  ParseProject(LProject, {AClearOutput:} True, {AShowResults:} True);
   LProject.Clear({AClearImplicitUnits:} True);
 end;
 
@@ -1190,7 +1215,7 @@ end;
 
 procedure TfrmTestAppMain.FormCreate(Sender: TObject);
 begin
-  FAllTests := TDictionary<string, TTestData>.Create;
+  FAllTests := TStringList.Create;
 
   MainPageControl.ActivePageIndex := 0;
   SrcPageControl.ActivePageIndex := 0;

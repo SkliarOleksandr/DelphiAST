@@ -55,9 +55,12 @@ uses
   ASTTest.Generics.Methods in '..\TestScripts\Generics\ASTTest.Generics.Methods.pas',
   ASTTest.Generics.Mixed in '..\TestScripts\Generics\ASTTest.Generics.Mixed.pas',
   ASTTest.Generics.Arrays in '..\TestScripts\Generics\ASTTest.Generics.Arrays.pas',
-  ASTTest.Generics.Nested in '..\TestScripts\Generics\ASTTest.Generics.Nested.pas',
+  ASTTest.Generics.Nested1 in '..\TestScripts\Generics\ASTTest.Generics.Nested1.pas',
+  ASTTest.Generics.Nested2 in '..\TestScripts\Generics\ASTTest.Generics.Nested2.pas',
+  ASTTest.Generics.Nested3 in '..\TestScripts\Generics\ASTTest.Generics.Nested3.pas',
   ASTTest.Generics.Enumerator1 in '..\TestScripts\Generics\ASTTest.Generics.Enumerator1.pas',
   ASTTest.Generics.Enumerator2 in '..\TestScripts\Generics\ASTTest.Generics.Enumerator2.pas',
+  ASTTest.Generics.Intf.Delegation in '..\TestScripts\Generics\ASTTest.Generics.Intf.Delegation.pas',
   TASTTest.Classes.Inherited1 in '..\TestScripts\Classes\TASTTest.Classes.Inherited1.pas',
   TASTTest.Classes.Inherited2 in '..\TestScripts\Classes\TASTTest.Classes.Inherited2.pas',
   ASTTest.Ordian.Enums.Init in '..\TestScripts\Ordinals\ASTTest.Ordian.Enums.Init.pas',
@@ -68,9 +71,14 @@ uses
   ASTTest.Props.ArrayPropOverload2 in '..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload2.pas',
   TASTTest.Classes.Construct1 in '..\TestScripts\Classes\Constructors\TASTTest.Classes.Construct1.pas',
   TASTTest.Classes.Construct2 in '..\TestScripts\Classes\Constructors\TASTTest.Classes.Construct2.pas',
+  ASTTest.Helpers.Helper1 in '..\TestScripts\Helpers\ASTTest.Helpers.Helper1.pas',
   ASTTest.Helpers.HelperForNested1 in '..\TestScripts\Helpers\ASTTest.Helpers.HelperForNested1.pas',
   ASTTest.Loops.For1 in '..\TestScripts\Loops\ASTTest.Loops.For1.pas',
-  ASTTest.Loops.ForIn1 in '..\TestScripts\Loops\ASTTest.Loops.ForIn1.pas';
+  ASTTest.Loops.ForIn1 in '..\TestScripts\Loops\ASTTest.Loops.ForIn1.pas',
+  ASTTest.Variants.Variant1 in '..\TestScripts\Variants\ASTTest.Variants.Variant1.pas',
+  ASTTest.Variants.TypeCast1 in '..\TestScripts\Variants\ASTTest.Variants.TypeCast1.pas',
+  ASTTest.Variants.TypeCast2 in '..\TestScripts\Variants\ASTTest.Variants.TypeCast2.pas',
+  ASTTest.RTL.TDictionaty1 in '..\TestScripts\RTL\ASTTest.RTL.TDictionaty1.pas';
 
 {$R *.res}
 

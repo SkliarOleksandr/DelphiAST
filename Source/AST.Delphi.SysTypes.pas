@@ -4,6 +4,7 @@ interface
 
 uses
   AST.Classes,
+  AST.Pascal.Intf,
   AST.Delphi.DataTypes,
   AST.Delphi.Operators,
   AST.Delphi.Declarations,
@@ -11,6 +12,9 @@ uses
 
 type
   TDelphiBuiltinTypes = class(TInterfacedObject, IDelphiBuiltInTypes)
+  private
+    FProject: IASTPascalProject;
+    F_TVariantArg: TIDType;
   public
     // integer types
     _Int8: TIDType;
@@ -40,6 +44,7 @@ type
     _ShortString: TIDType;
     _WideString: TIDType;
     _Variant: TIDType;
+    _OleVariant: TIDType;
     _NullPtrType: TIDType;
     _PointerType: TIDPointer;
     _UntypedReference: TIDUntypedRef;
@@ -127,9 +132,14 @@ type
     function Get_EmptySetType: IASTDelphiType;
     function Get_ResStringRecord: IASTDelphiType;
     function Get_TVarRec: IASTDelphiType;
+    function Get_TVariantArg: TIDType;
   public
+    constructor Create(const AProject: IASTPascalProject);
+
     function GetTypeByID(DataTypeID: TDataTypeID): TIDType;
     property DataTypes[DataTypeID: TDataTypeID]: TIDType read GetTypeByID;
+
+    property _TVariantArg: TIDType read Get_TVariantArg;
   end;
 
   PDelphiSystemDeclarations = TDelphiBuiltinTypes;
@@ -166,7 +176,13 @@ type
     function SysUnarOperator(AOpID: TOperatorID): TIDType; override;
     function SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType; override;
     function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
+    function MatchExplicitTo(ADst: TIDType): Boolean; override;
+    function MatchExplicitFrom(ASrc: TIDType): Boolean; override;
   end;
+
+  TBuiltin_OleVariant = class(TBuiltin_Variant)
+  end;
+
 
 //  TST_Byte = class(TSys_IntType)
 //  public
@@ -588,6 +604,14 @@ begin
   Result := _TTypeKind;
 end;
 
+function TDelphiBuiltinTypes.Get_TVariantArg: TIDType;
+begin
+  if not Assigned(F_TVariantArg) then
+    F_TVariantArg := (FProject.FindParsedUnit('Winapi.ActiveX') as TASTDelphiUnit).FindPublicDecl('TVariantArg') as TIDType;
+
+  Result := F_TVariantArg;
+end;
+
 function TDelphiBuiltinTypes.Get_TVarRec: IASTDelphiType;
 begin
   Result := _TVarRec;
@@ -646,6 +670,11 @@ end;
 function TDelphiBuiltinTypes.Get_WideString: IASTDelphiType;
 begin
   Result := _WideString;
+end;
+
+constructor TDelphiBuiltinTypes.Create(const AProject: IASTPascalProject);
+begin
+  FProject := AProject;
 end;
 
 function TDelphiBuiltinTypes.GetTypeByID(DataTypeID: TDataTypeID): TIDType;
@@ -755,6 +784,24 @@ begin
 end;
 
 { TBuiltin_Variant }
+
+function TBuiltin_Variant.MatchExplicitFrom(ASrc: TIDType): Boolean;
+begin
+  Result := (ASrc.DataTypeID in
+    [dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean,
+     dtFloat32, dtFloat64, dtNativeInt, dtNativeUInt, dtChar, dtAnsiChar,
+     dtString, dtAnsiString, dtWideString, dtVariant]) or
+     ((ASrc.DataTypeID = dtRecord) and (TIDRecord(ASrc).DataSize = Package.VariantSize));
+
+  if not Result then
+    Result := TIDRecord(ASrc).DataSize = Package.VariantSize;
+
+end;
+
+function TBuiltin_Variant.MatchExplicitTo(ADst: TIDType): Boolean;
+begin
+  Result := MatchExplicitFrom(ADst);
+end;
 
 function TBuiltin_Variant.SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType;
 begin

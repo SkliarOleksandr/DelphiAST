@@ -2,14 +2,16 @@
 
 // GENERAL:
 
+- Correct namespace searching
 - Delphi 12 multiline string literals
 - Parsing .dpr, .dpk files
 - Keep parsing when errors found
-- OleVariant support
+
 
 // IMPROVE:
 
 - Procedure overloading
 - AnsiString vs UnicodeString literals
 - Array default properties overloading 
-
+- OleVariant support
+- Helpers

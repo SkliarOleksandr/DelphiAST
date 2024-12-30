@@ -11,8 +11,10 @@ type
     procedure Add(Value: T); 
   end;
 
+  TIntList = TList<Integer>;
+ 
 var
-  List: TList<Integer>;
+  List: TIntList;
 
 implementation
 

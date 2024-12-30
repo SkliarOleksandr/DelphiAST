@@ -354,18 +354,6 @@ type
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
-  {explicit Variant -> Any}
-  TSysExplicitVariantToAny = class(TSysOpExplisit)
-  public
-    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
-  end;
-
-  {explicit Variant <- Any}
-  TSysExplicitVariantFromAny = class(TSysOpExplisit)
-  public
-    function Check(const SContext: TSContext; const ASrc: TIDType; const ADst: TIDType): Boolean; override;
-  end;
-
   {explicit Class -> Any}
   TSysExplicitClassToAny = class(TSysExplicitRefTypeToAny)
   public
@@ -623,7 +611,7 @@ function TSysImplicitVariantToAny.Check(const SContext: TSContext; const Src: TI
 begin
   if (Dst.DataTypeID in [dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean,
                          dtFloat32, dtFloat64, dtFloat80, dtCurrency, dtNativeInt, dtNativeUInt, dtChar, dtAnsiChar,
-                         dtString, dtAnsiString, dtWideString, dtVariant, dtInterface]) or (Dst = SYSUnit._TVarData) then
+                         dtString, dtAnsiString, dtWideString, dtVariant, dtInterface]) {or (Dst = SYSUnit._TVarData)} then
     Result := Self
   else
     Result := nil;
@@ -1208,28 +1196,6 @@ end;
 function TSysExplicitInterfaceFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
   Result := (Dst.DataTypeID in [dtInt32, dtPointer, dtClass]) or (Src = SysUnit._Untyped);
-end;
-
-{ TSysExplicitVariantToAny }
-
-function TSysExplicitVariantToAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
-begin
-  Result := (Dst.DataTypeID in [dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean,
-                                dtFloat32, dtFloat64, dtNativeInt, dtNativeUInt, dtChar, dtAnsiChar,
-                                dtString, dtAnsiString, dtWideString, dtVariant]) or (Dst = SYSUnit._TVarData);
-end;
-
-{ TSysExplicitVariantFromAny }
-
-function TSysExplicitVariantFromAny.Check(const SContext: TSContext; const ASrc, ADst: TIDType): Boolean;
-begin
-  var LRecordWithTheSameSize := (ASrc.DataTypeID in [dtRecord, dtStaticArray]) and
-                                (ASrc.DataSize = Package.VariantSize);
-
-  Result := LRecordWithTheSameSize or
-            ASrc.IsOrdinal or
-            ASrc.IsFloat or
-            (ASrc.DataTypeID in [dtString, dtAnsiString, dtWideString, dtDynArray]);
 end;
 
 { TSys_Equal_NullPtr }

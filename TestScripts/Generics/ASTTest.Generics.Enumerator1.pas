@@ -7,7 +7,7 @@ interface
 type
   TArray<T> = array of T;
 
-  TEnumerator<T> = class abstract
+  TEnumerator<T> = class
   protected
     function DoGetCurrent: T; virtual; abstract;
     function DoMoveNext: Boolean; virtual; abstract;
@@ -16,14 +16,9 @@ type
     function MoveNext: Boolean; inline;
   end;
 
-  TEnumerable<T> = class abstract
-  protected
-    //function ToArrayImpl(Count: NativeInt): TArray<T>; // used by descendants
+  TEnumerable<T> = class
     function DoGetEnumerator: TEnumerator<T>; virtual; abstract;
-  public
-    //destructor Destroy; override;
     function GetEnumerator: TEnumerator<T>; inline;
-    //function ToArray: TArray<T>; virtual;
   end;
 
   TList<T> = class

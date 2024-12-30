@@ -107,6 +107,7 @@ type
     procedure AddUnit(const AFileName: string); overload;
     procedure AddUnitSource(const Source: string);
     procedure AddUnitSearchPath(const APath: string; AIncludeSubDirs: Boolean);
+    procedure RemoveUnitSearchPath(const APath: string);
     procedure Clear(AClearImplicitUnits: Boolean); virtual;
     function GetTotalLinesParsed: Integer; override;
     function GetTotalUnitsParsed: Integer; override;
@@ -475,6 +476,8 @@ begin
 
   FStrLiterals.Free;
   FStrLiterals := TStrLiterals.Create(StrListCompare);
+
+  fMessages.Clear;
 end;
 
 function TPascalProject.Compile: TCompilerResult;
@@ -597,6 +600,13 @@ end;
 function TPascalProject.RefCount: Integer;
 begin
   Result := FRefCount;
+end;
+
+procedure TPascalProject.RemoveUnitSearchPath(const APath: string);
+begin
+  var LIndex := FUnitSearchPathes.IndexOf(APath);
+  if LIndex >= 0 then
+    FUnitSearchPathes.Delete(LIndex);
 end;
 
 function TPascalProject.FindType(const AUnitName, ATypeName: string): TASTDeclaration;

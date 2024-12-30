@@ -33,6 +33,7 @@ type
     function GetTarget: TASTTargetClass;
     function GetDefines: TDefines;
     function FindUnitFile(const AUnitName: string; const AFileExt: string = ''): string;
+    function FindParsedUnit(const AUnitName: string): TASTModule;
     function GetUnit(const UnitName: string): TObject; overload;
     function UsesUnit(const UnitName: string; AfterUnit: TASTModule): TASTModule;
     function GetSysUnit: TASTModule;
@@ -48,6 +49,7 @@ type
     procedure AddUnit(const FileName: string); overload;
     procedure AddUnitSource(const Source: string); overload;
     procedure AddUnitSearchPath(const APath: string; AIncludeSubDirs: Boolean = True);
+    procedure RemoveUnitSearchPath(const APath: string);
     procedure Clear(AClearImplicitUnits: Boolean);
     procedure EnumDeclarations(const AEnumProc: TEnumASTDeclProc; AUnitScope: TUnitScopeKind);
     procedure DoBeforeCompileUnit(AUnit: TASTModule);

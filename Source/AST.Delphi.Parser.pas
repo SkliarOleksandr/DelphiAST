@@ -335,8 +335,8 @@ type
     function ParseProcType(Scope: TScope; const ID: TIdentifier;
                            GDescriptor: IGenericDescriptor; out Decl: TIDProcType): TTokenID;
 
-    function ParseRecordType(Scope: TScope; Decl: TIDRecord): TTokenID;
-    function ParseCaseRecord(Scope: TScope; Decl: TIDRecord): TTokenID;
+    function ParseRecordType(Scope: TScope; ARecord: TIDRecord): TTokenID;
+    function ParseCaseRecord(Scope: TScope; ARecord: TIDRecord): TTokenID;
     function ParseClassAncestorType(Scope: TScope; ClassDecl: TIDClass): TTokenID;
     function ParseClassType(Scope: TScope; GDescriptor: IGenericDescriptor; const ID: TIdentifier; out Decl: TIDClass): TTokenID;
     function ParseVisibilityModifiers(Scope: TScope; var AVisibility: TVisibility; AIsClass: Boolean): TTokenID;
@@ -433,7 +433,7 @@ type
     function ParseConstSection(Scope: TScope; AInlineConst: Boolean = False): TTokenID;
     function ParseConstSectionInStruct(Scope: TScope): TTokenID;
     function ParseVarSection(Scope: TScope; Visibility: TVisibility): TTokenID;
-    function ParseFieldsSection(Scope: TScope; Visibility: TVisibility; Struct: TIDStructure; IsClass: Boolean): TTokenID;
+    function ParseFieldsSection(Scope: TScope; Visibility: TVisibility; AStruct: TIDStructure; AIsClassVar: Boolean): TTokenID;
     function ParseFieldsInCaseRecord(Scope: TScope; Visibility: TVisibility; ARecord: TIDRecord): TTokenID;
     function ParseParameters(EntryScope: TScope; ParamsScope: TParamsScope): TTokenID;
     function ParseParametersAndResult(EntryScope: TScope; ParamsScope: TParamsScope; out AResultType: TIDType): TTokenID;
@@ -2374,6 +2374,8 @@ var
 begin
   Dst := EContext.RPNPopExpression();
   Src := EContext.RPNPopExpression();
+  Src := CheckAndCallFuncImplicit(EContext, Src);
+
   CheckClassOrIntfType(Src.DataType, Src.TextPosition);
   CheckClassOrClassOfOrIntfType(Dst);
   Result := GetTMPVarExpr(EContext, Dst.AsType, Dst.TextPosition);
@@ -2474,12 +2476,16 @@ var
   Right, OperatorItem: TIDExpression;
   DataType: TIDType;
 begin
-  // Читаем операнд
+  // read the operand
   Right := EContext.RPNPopExpression();
 
   OperatorItem := MatchUnarOperator(EContext.SContext, opNot, Right);
   if not Assigned(OperatorItem) then
+  begin
+    // for debug
+    MatchUnarOperator(EContext.SContext, opNot, Right);
     ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Right.TextPosition);
+  end;
 
   if Right.ItemType = itConst then
     Result := fCCalc.ProcessConstOperation(EContext.Scope, Right, Right, opNot)
@@ -5410,7 +5416,7 @@ begin
     DeprecatedExpr := TIDExpression.Create(Sys._DeprecatedDefaultStr, Lexer_Position);
 end;
 
-function TASTDelphiUnit.ParseCaseRecord(Scope: TScope; Decl: TIDRecord): TTokenID;
+function TASTDelphiUnit.ParseCaseRecord(Scope: TScope; ARecord: TIDRecord): TTokenID;
 var
   Expr: TIDExpression;
   CaseTypeDecl: TIDDeclaration;
@@ -5447,12 +5453,12 @@ begin
     // parse fields first
     if (Result = token_identifier) {or (Result = token_id_or_keyword)} then
     begin
-      Result := ParseFieldsInCaseRecord(Scope, vPublic, Decl);
+      Result := ParseFieldsInCaseRecord(Scope, vPublic, ARecord);
     end;
     // parse nested case then
     if Result = token_case then
     begin
-      Result := ParseCaseRecord(Scope, Decl);
+      Result := ParseCaseRecord(Scope, ARecord);
       Lexer_MatchToken(Result, token_closeround);
     end;
     // parse close round at the end
@@ -6459,7 +6465,11 @@ begin
       begin
         // match loop var type to the enumerator element type
         if MatchImplicit(LoopVar.DataType, LCurrentProp.DataType) = nil then
+        begin
+          // for debug:
+          MatchImplicit(LoopVar.DataType, LCurrentProp.DataType);
           ERRORS.INCOMPATIBLE_TYPES(LoopVar, LCurrentProp.DataType);
+        end;
       end else begin
         LoopVar.Declaration.DataType := LCurrentProp.DataType;
       end;
@@ -8182,7 +8192,11 @@ begin
           SearchScope := LIntf.Members;
           Continue;
         end else
+        begin
+          // for debug:
+          TIDClass(AStruct).FindInterface(AID.Name, AGenericParams);
           ERRORS.UNDECLARED_ID(AID, AGenericParams);
+        end;
       end else
         ERRORS.UNDECLARED_ID(AID, AGenericParams);
 
@@ -8484,7 +8498,7 @@ begin
     Result := Lexer_NextToken(Scope);
 end;
 
-function TASTDelphiUnit.ParseRecordType(Scope: TScope; Decl: TIDRecord): TTokenID;
+function TASTDelphiUnit.ParseRecordType(Scope: TScope; ARecord: TIDRecord): TTokenID;
 var
   Visibility: TVisibility;
 begin
@@ -8494,42 +8508,42 @@ begin
     Result := ParseVisibilityModifiers(Scope, {var} Visibility, {AIsClass:} False);
     case Result of
       token_openblock: Result := ParseAttribute(Scope);
-      token_case: Result := ParseCaseRecord(Decl.Members, Decl);
+      token_case: Result := ParseCaseRecord(ARecord.Members, ARecord);
       token_class: begin
         Result := Lexer_NextReseredToken(scope);
         case Result of
-          token_procedure: Result := ParseProcedure(Decl.Members, ptClassProc, Decl);
-          token_function: Result := ParseProcedure(Decl.Members, ptClassFunc, Decl);
-          tokenD_operator: Result := ParseOperator(Decl.Operators, Decl);
-          token_property: Result := ParseProperty(Decl.Members, Decl);
-          token_constructor: Result := ParseProcedure(Decl.Members, ptClassConstructor, Decl);
-          token_destructor: Result := ParseProcedure(Decl.Members, ptClassDestructor, Decl);
+          token_procedure: Result := ParseProcedure(ARecord.Members, ptClassProc, ARecord);
+          token_function: Result := ParseProcedure(ARecord.Members, ptClassFunc, ARecord);
+          tokenD_operator: Result := ParseOperator(ARecord.Operators, ARecord);
+          token_property: Result := ParseProperty(ARecord.Members, ARecord);
+          token_constructor: Result := ParseProcedure(ARecord.Members, ptClassConstructor, ARecord);
+          token_destructor: Result := ParseProcedure(ARecord.Members, ptClassDestructor, ARecord);
           token_var: begin
              Lexer_NextToken(Scope);
-             Result := ParseFieldsSection(Decl.Members, Visibility, Decl, True);
+             Result := ParseFieldsSection(ARecord.Members, Visibility, ARecord, {IsClassVar:} True);
           end;
         else
           AbortWork('Class members can be: PROCEDURE, FUNCTION, OPERATOR, CONSTRUCTOR, DESTRUCTOR, PROPERTY, VAR', Lexer_Position);
         end;
       end;
-      token_procedure: Result := ParseProcedure(Decl.Members, ptProc, Decl);
-      token_function: Result := ParseProcedure(Decl.Members, ptFunc, Decl);
-      token_constructor: Result := ParseProcedure(Decl.Members, ptConstructor, Decl);
-      token_destructor: Result := ParseProcedure(Decl.Members, ptDestructor, Decl);
-      token_property: Result := ParseProperty(Decl.Members, Decl);
+      token_procedure: Result := ParseProcedure(ARecord.Members, ptProc, ARecord);
+      token_function: Result := ParseProcedure(ARecord.Members, ptFunc, ARecord);
+      token_constructor: Result := ParseProcedure(ARecord.Members, ptConstructor, ARecord);
+      token_destructor: Result := ParseProcedure(ARecord.Members, ptDestructor, ARecord);
+      token_property: Result := ParseProperty(ARecord.Members, ARecord);
       token_var: begin
         Lexer_NextToken(Scope);
-        Result := ParseFieldsSection(Decl.Members, Visibility, Decl, False);
+        Result := ParseFieldsSection(ARecord.Members, Visibility, ARecord, {IsClassVar:} False);
       end;
-      token_const: Result := ParseConstSectionInStruct(Decl.Members);
-      token_type: Result := ParseTypeSectionInStruct(Decl.Members);
-      token_identifier: Result := ParseFieldsSection(Decl.Members, Visibility, Decl, False);
+      token_const: Result := ParseConstSectionInStruct(ARecord.Members);
+      token_type: Result := ParseTypeSectionInStruct(ARecord.Members);
+      token_identifier: Result := ParseFieldsSection(ARecord.Members, Visibility, ARecord, False);
     else
       break;
     end;
   end;
-  CheckIncompleteType(Decl.Members);
-  Decl.StructFlags := Decl.StructFlags + [StructCompleted];
+  CheckIncompleteType(ARecord.Members);
+  ARecord.StructFlags := ARecord.StructFlags + [StructCompleted];
 
   Lexer_MatchToken(Result, token_end);
   Result := Lexer_NextToken(Scope);
@@ -9864,11 +9878,11 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.ParseFieldsSection(Scope: TScope; Visibility: TVisibility; Struct: TIDStructure; IsClass: Boolean): TTokenID;
+function TASTDelphiUnit.ParseFieldsSection(Scope: TScope; Visibility: TVisibility; AStruct: TIDStructure;
+  AIsClassVar: Boolean): TTokenID;
 var
   i, c: Integer;
   DataType: TIDType;
-  Field: TIDVariable;
   Names: TIdentifiersPool;
   VarFlags: TVariableFlags;
   //DeprecatedText: TIDExpression;
@@ -9898,13 +9912,11 @@ begin
     // deprecated
     Result := CheckAndParseDeprecated(Scope, Result);
 
-    for i := 0 to c do begin
-      Field := TIDField.Create(Struct, Names.Items[i]);
-      Field.DataType := DataType;
-      Field.Visibility := Visibility;
-      Field.DefaultValue := nil;
-      Field.Flags := Field.Flags + VarFlags;
-      Scope.AddVariable(Field);
+    for var LIndex := 0 to c do
+    begin
+      var LField := AStruct.AddField(Names.Items[LIndex], DataType, AIsClassVar);
+      LField.Visibility := Visibility;
+      LField.Flags := LField.Flags + VarFlags;
     end;
 
     if Result = token_semicolon then
