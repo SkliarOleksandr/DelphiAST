@@ -9,17 +9,20 @@ var
   V: Variant;
   I: Integer;
   D: Double;
-  S: string;    
+  S: string;
+  B: Boolean;
 begin
   V := 0; 
 
   I := V;
   D := V;
   S := V;
+  B := V;
 
   V := I;
   V := D;
-  V := S;   
+  V := S;
+  V := B;
 end;
 
 end.

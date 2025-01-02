@@ -349,6 +349,13 @@ type
     class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {Slice}
+  TSF_Slice = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
   {Round}
   TSF_Round = class(TIDSysRuntimeFunction)
   public
@@ -928,6 +935,7 @@ begin
   UN := GetUnit(EContext);
   // read the argument
   Expr := EContext.RPNPopExpression();
+  Expr := TASTDelphiUnit.CheckAndCallFuncImplicit(EContext, Expr);
   UN.CheckEmptyExpression(Expr);
   UN.CheckOrdinalExpression(Expr);
   if Expr.IsConstant then begin
@@ -1455,6 +1463,24 @@ begin
   // read arguments
   AValue := EContext.RPNPopExpression();
   Result := AValue;
+end;
+
+{ TSF_Slice }
+
+class function TSF_Slice.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Slice', SYSUnit._Pointer);
+  Result.AddParam('A', SYSUnit._UntypedReference, [VarInOut]);
+  Result.AddParam('Count', SYSUnit._Int32, [VarIn]);
+end;
+
+function TSF_Slice.Process(var EContext: TEContext): TIDExpression;
+begin
+  // TODO: https://docwiki.embarcadero.com/Libraries/Athens/en/System.Slice
+  // E2193 Slice standard function only allowed as open array argument
+  var LCount := EContext.RPNPopExpression();
+  var LArray := EContext.RPNPopExpression();
+  Result := LArray;
 end;
 
 { TSF_Include }

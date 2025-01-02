@@ -1249,6 +1249,7 @@ begin
   RegisterBuiltin(TSF_SetLength);
   RegisterBuiltin(TSF_SetString);
   RegisterBuiltin(TSF_Swap);
+  RegisterBuiltin(TSF_Slice);
   RegisterBuiltin(TSF_Trunc);
   RegisterBuiltin(TSF_Val);
   RegisterBuiltin(TSF_ReturnAddress);

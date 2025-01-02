@@ -2,6 +2,8 @@ unit ASTTest.Props.ArrayProp1;
 
 interface
 
+{$HINTS OFF}
+
 type
   TStrings = class
   private

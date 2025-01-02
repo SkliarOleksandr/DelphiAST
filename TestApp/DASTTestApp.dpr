@@ -79,6 +79,7 @@ uses
   ASTTest.Loops.For1 in '..\TestScripts\Loops\ASTTest.Loops.For1.pas',
   ASTTest.Loops.ForIn1 in '..\TestScripts\Loops\ASTTest.Loops.ForIn1.pas',
   ASTTest.Variants.Variant1 in '..\TestScripts\Variants\ASTTest.Variants.Variant1.pas',
+  ASTTest.Variants.Cmp in '..\TestScripts\Variants\ASTTest.Variants.Cmp.pas',
   ASTTest.Variants.TypeCast1 in '..\TestScripts\Variants\ASTTest.Variants.TypeCast1.pas',
   ASTTest.Variants.TypeCast2 in '..\TestScripts\Variants\ASTTest.Variants.TypeCast2.pas',
   ASTTest.RTL.TDictionaty1 in '..\TestScripts\RTL\ASTTest.RTL.TDictionaty1.pas',

@@ -244,7 +244,7 @@ type
     procedure CheckOrdinalExpression(Expression: TIDExpression); inline;
     procedure CheckOrdinalType(DataType: TIDType); inline;
     class procedure CheckNumericExpression(Expression: TIDExpression); static; inline;
-    procedure CheckBooleanExpression(Expression: TIDExpression); inline;
+    procedure CheckBooleanExpression(Expression: TIDExpression; AUseImplicitCast: Boolean = False); inline;
     procedure CheckVarExpression(Expression: TIDExpression; VarModifyPlace: TVarModifyPlace);
     class procedure CheckPointerType(Expression: TIDExpression); static; inline;
     class procedure CheckReferenceType(Expression: TIDExpression); static; inline;
@@ -6899,7 +6899,7 @@ begin
   CheckAndCallFuncImplicit(EContext);
   Expression := EContext.Result;
   CheckEmptyExpression(Expression);
-  CheckBooleanExpression(Expression);
+  CheckBooleanExpression(Expression, {AUseImplicitCast:} True);
 
   {then section}
   Lexer_MatchToken(Result, token_then);
@@ -10667,9 +10667,10 @@ begin
     ERRORS.ARRAY_EXPRESSION_REQUIRED(Expression);
 end;
 
-procedure TASTDelphiUnit.CheckBooleanExpression(Expression: TIDExpression);
+procedure TASTDelphiUnit.CheckBooleanExpression(Expression: TIDExpression; AUseImplicitCast: Boolean);
 begin
   if Expression.ActualDataType <> Sys._Boolean then
+    if not AUseImplicitCast or (CheckImplicit(fUnitSContext, Expression, Sys._Boolean) = nil) then
     ERRORS.BOOLEAN_EXPRESSION_REQUIRED(Expression);
 end;
 
