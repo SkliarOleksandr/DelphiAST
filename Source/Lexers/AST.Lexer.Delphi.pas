@@ -274,12 +274,16 @@ begin
   else
     fOriginalToken := CurrentToken;
   end;
-  if CurToken.TokenID = ord(token_quote) then
-    ParseChainedString()
-  else
-  if CurToken.TokenID = ord(token_numbersign) then
+
+  if Assigned(CurToken) then
   begin
-    ParseCharCodeSymbol();
+    if CurToken.TokenID = ord(token_quote) then
+      ParseChainedString()
+    else
+    if CurToken.TokenID = ord(token_numbersign) then
+    begin
+      ParseCharCodeSymbol();
+    end;
   end;
 end;
 

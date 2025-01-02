@@ -307,6 +307,13 @@ type
     class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {Finalize}
+  TSF_Finalize = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
   {Trunc}
   TSF_Trunc = class(TIDSysRuntimeFunction)
   public
@@ -969,6 +976,23 @@ begin
   EX := EContext.RPNPopExpression();
   ECount := EContext.RPNPopExpression();
   EValue := EContext.RPNPopExpression();
+  Result := nil;
+end;
+
+
+{ TSF_Finalize }
+
+class function TSF_Finalize.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Finalize', nil);
+  Result.AddParam('V', SYSUnit._UntypedReference, [VarInOut]);
+  Result.AddParam('Count', SYSUnit._Int32, [VarIn], SysUnit._ZeroIntExpression);
+end;
+
+function TSF_Finalize.Process(var EContext: TEContext): TIDExpression;
+begin
+  var LValue := EContext.RPNPopExpression();
+  var LCount := EContext.RPNPopExpression();
   Result := nil;
 end;
 

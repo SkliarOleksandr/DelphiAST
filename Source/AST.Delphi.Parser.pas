@@ -4533,6 +4533,7 @@ begin
   begin
     DimensionsCount := TIDProperty(ArrDecl).ParamsCount;
     DataType := TIDProperty(ArrDecl).DataType;
+    ArrType := nil; // this is an array property, not a regular array
   end else
   if ArrType.DataTypeID = dtPointer then
   begin
@@ -9327,31 +9328,51 @@ var
   CallExpr: TIDCallExpression;
 begin
   Expr := EContext.RPNPopExpression();
-
-  if Expr.ItemType = itProcedure then
-    CallExpr := TIDCallExpression.Create(Expr.Declaration, Expr.TextPosition)
-  else
-  if (Expr.ItemType = itVar) and (Expr.ActualDataType is TIDProcType) then
+  while True do
   begin
-    CallExpr := TIDCastedCallExpression.Create(Expr.Declaration, Expr.TextPosition);
-    TIDCastedCallExpression(CallExpr).DataType := Expr.DataType;
-  end else
-  if (Expr.ItemType = itProperty) and (Expr.ActualDataType is TIDProcType) then
-  begin
-    CheckPropertyReadable(Expr);
-    var LDecl := Expr.AsProperty.Getter;
-    if LDecl is TIDProcedure then
+    if Expr.ItemType = itProcedure then
+      CallExpr := TIDCallExpression.Create(Expr.Declaration, Expr.TextPosition)
+    else
+    if Expr.ItemType = itMacroFunction then
     begin
-      // todo: generate func call
-      LDecl := GetTMPVar(EContext, TIDProcedure(LDecl).ResultType);
+      // special workaround for https://embt.atlassian.net/servicedesk/customer/portal/1/RSS-2663
+      Result := ParseBuiltinCall(Scope, Expr, EContext);
+      Exit;
+    end else
+    if (Expr.ItemType = itVar) and (Expr.ActualDataType is TIDProcType) then
+    begin
+      CallExpr := TIDCastedCallExpression.Create(Expr.Declaration, Expr.TextPosition);
+      TIDCastedCallExpression(CallExpr).DataType := Expr.DataType;
+    end else
+    if (Expr.ItemType = itProperty) and (Expr.ActualDataType is TIDProcType) then
+    begin
+      CheckPropertyReadable(Expr);
+      var LDecl := Expr.AsProperty.Getter;
+      if LDecl is TIDProcedure then
+      begin
+        // todo: generate func call
+        LDecl := GetTMPVar(EContext, TIDProcedure(LDecl).ResultType);
+      end;
+      CallExpr := TIDCastedCallExpression.Create(LDecl, Expr.TextPosition);
+      TIDCastedCallExpression(CallExpr).DataType := LDecl.DataType;
+    end else
+    begin
+      // special workaround for https://embt.atlassian.net/servicedesk/customer/portal/1/RSS-2663
+      // if a declaration has been redefined, try to find the original
+      var LDecl := Expr.Declaration;
+      LDecl := FindIDNoAbort(LDecl.Scope.Parent, LDecl.Name);
+      if Assigned(LDecl) then
+      begin
+        Expr.Declaration := LDecl;
+        Continue;
+      end else
+        ERRORS.FEATURE_NOT_SUPPORTED;
+
+      CallExpr := nil;
     end;
-    CallExpr := TIDCastedCallExpression.Create(LDecl, Expr.TextPosition);
-    TIDCastedCallExpression(CallExpr).DataType := LDecl.DataType;
-  end else
-  begin
-    ERRORS.FEATURE_NOT_SUPPORTED;
-    CallExpr := nil;
+    Break;
   end;
+
   Result := ParseEntryCall(Scope, CallExpr, EContext, ASTE);
     (*// если это метод, подставляем self из пула
     if PMContext.Count > 0 then

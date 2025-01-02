@@ -67,6 +67,7 @@ uses
   ASTTest.Procs.External in '..\TestScripts\Procedures\ASTTest.Procs.External.pas',
   ASTTest.Procs.Overloads.Generics1 in '..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.Generics1.pas',
   ASTTest.Procs.Overloads.Generics2 in '..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.Generics2.pas',
+  ASTTest.Props.ArrayProp1 in '..\TestScripts\Properties\ASTTest.Props.ArrayProp1.pas',
   ASTTest.Props.ArrayPropOverload1 in '..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload1.pas',
   ASTTest.Props.ArrayPropOverload2 in '..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload2.pas',
   TASTTest.Classes.Construct1 in '..\TestScripts\Classes\Constructors\TASTTest.Classes.Construct1.pas',
@@ -78,7 +79,8 @@ uses
   ASTTest.Variants.Variant1 in '..\TestScripts\Variants\ASTTest.Variants.Variant1.pas',
   ASTTest.Variants.TypeCast1 in '..\TestScripts\Variants\ASTTest.Variants.TypeCast1.pas',
   ASTTest.Variants.TypeCast2 in '..\TestScripts\Variants\ASTTest.Variants.TypeCast2.pas',
-  ASTTest.RTL.TDictionaty1 in '..\TestScripts\RTL\ASTTest.RTL.TDictionaty1.pas';
+  ASTTest.RTL.TDictionaty1 in '..\TestScripts\RTL\ASTTest.RTL.TDictionaty1.pas',
+  ASTTest.NamesOverloading1 in '..\TestScripts\Names Overloading\ASTTest.NamesOverloading1.pas';
 
 {$R *.res}
 

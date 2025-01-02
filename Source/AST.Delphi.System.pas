@@ -1221,6 +1221,7 @@ begin
   RegisterBuiltin(TSF_Exclude);
   RegisterBuiltin(TSF_FreeMem);
   RegisterBuiltin(TSF_FillChar);
+  RegisterBuiltin(TSF_Finalize);
   RegisterBuiltin(TSF_GetMem);
   RegisterBuiltin(TSF_GetDir);
   RegisterBuiltin(TSF_Halt);

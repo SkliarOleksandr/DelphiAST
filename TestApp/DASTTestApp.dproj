@@ -206,6 +206,8 @@
         <DCCReference Include="..\TestScripts\Variants\ASTTest.Variants.TypeCast1.pas"/>
         <DCCReference Include="..\TestScripts\Variants\ASTTest.Variants.TypeCast2.pas"/>
         <DCCReference Include="..\TestScripts\RTL\ASTTest.RTL.TDictionaty1.pas"/>
+        <DCCReference Include="..\TestScripts\Names Overloading\ASTTest.NamesOverloading1.pas"/>
+        <DCCReference Include="..\TestScripts\Properties\ASTTest.Props.ArrayProp1.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

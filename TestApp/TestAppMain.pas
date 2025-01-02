@@ -413,6 +413,9 @@ begin
 
   FLastProject := CreateProject({AParseSystemUnit:} True);
 
+  FSelectedTest := nil;
+  VTTests.Repaint;
+
   var LUsesUntis: string := '';
   AddDelphiUnits({var} LUsesUntis, 'rtl\sys');
 
@@ -630,7 +633,7 @@ begin
   if ALastTestName <> '' then
   begin
     var LTestData: TTestData;
-    var LIndex := FAllTests.IndexOfName(ALastTestName);
+    var LIndex := FAllTests.IndexOf(ALastTestName);
     if LIndex >= 0 then
     begin
       LTestData := FAllTests.Objects[LIndex] as TTestData;

@@ -775,7 +775,7 @@ function TGenericLexer.GetNextTokenId: Integer;
 begin
   Result := MoveNextInternal();
   fAmbiguousTokenId := Result;
-  if CurToken.TokenClass = tcWeakKeyword then
+  if Assigned(CurToken) and (CurToken.TokenClass = tcWeakKeyword) then
   begin
     fCurrentTokenId := fIdentifireId;
     fIdentifireType := itIdentifier;
