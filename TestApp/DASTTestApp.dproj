@@ -194,12 +194,15 @@
         <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.External.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.Generics1.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.Generics2.pas"/>
+        <DCCReference Include="..\TestScripts\Properties\ASTTest.Props.ArrayProp1.pas"/>
         <DCCReference Include="..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload1.pas"/>
         <DCCReference Include="..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload2.pas"/>
         <DCCReference Include="..\TestScripts\Classes\Constructors\TASTTest.Classes.Construct1.pas"/>
         <DCCReference Include="..\TestScripts\Classes\Constructors\TASTTest.Classes.Construct2.pas"/>
         <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.Helper1.pas"/>
         <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.HelperForNested1.pas"/>
+        <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.HelperForAliases1.pas"/>
+        <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.HelperForAliases2.pas"/>
         <DCCReference Include="..\TestScripts\Loops\ASTTest.Loops.For1.pas"/>
         <DCCReference Include="..\TestScripts\Loops\ASTTest.Loops.ForIn1.pas"/>
         <DCCReference Include="..\TestScripts\Variants\ASTTest.Variants.Variant1.pas"/>
@@ -207,7 +210,6 @@
         <DCCReference Include="..\TestScripts\Variants\ASTTest.Variants.TypeCast2.pas"/>
         <DCCReference Include="..\TestScripts\RTL\ASTTest.RTL.TDictionaty1.pas"/>
         <DCCReference Include="..\TestScripts\Names Overloading\ASTTest.NamesOverloading1.pas"/>
-        <DCCReference Include="..\TestScripts\Properties\ASTTest.Props.ArrayProp1.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -74,6 +74,8 @@ uses
   TASTTest.Classes.Construct2 in '..\TestScripts\Classes\Constructors\TASTTest.Classes.Construct2.pas',
   ASTTest.Helpers.Helper1 in '..\TestScripts\Helpers\ASTTest.Helpers.Helper1.pas',
   ASTTest.Helpers.HelperForNested1 in '..\TestScripts\Helpers\ASTTest.Helpers.HelperForNested1.pas',
+  ASTTest.Helpers.HelperForAliases1 in '..\TestScripts\Helpers\ASTTest.Helpers.HelperForAliases1.pas',
+  ASTTest.Helpers.HelperForAliases2 in '..\TestScripts\Helpers\ASTTest.Helpers.HelperForAliases2.pas',
   ASTTest.Loops.For1 in '..\TestScripts\Loops\ASTTest.Loops.For1.pas',
   ASTTest.Loops.ForIn1 in '..\TestScripts\Loops\ASTTest.Loops.ForIn1.pas',
   ASTTest.Variants.Variant1 in '..\TestScripts\Variants\ASTTest.Variants.Variant1.pas',

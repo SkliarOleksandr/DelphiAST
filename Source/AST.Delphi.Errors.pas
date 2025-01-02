@@ -288,12 +288,14 @@ type
 
     procedure GENERIC_INVALID_CONSTRAINT(ActualToken: TTokenID);
 
+    class procedure E2018_RECORD_OBJECT_OR_CLASS_TYPE_REQUIRED(const ATextPosition: TTextPosition);
     class procedure E2037_DECLARATION_OF_DIFFERS_FROM_PREVIOUS_DECLARATION(const AID: TIdentifier);
     class procedure E2185_CANNOT_SPECIFY_DISPID(const AMethodID: TIdentifier);
     class procedure E2232_INTERFACE_HAS_NO_INTERFACE_IDENTIFICATION(ADecl: TIDDeclaration);
-    class procedure E2436_TYPE_NOT_ALLOWED_IN_ANONYMOUS_OR_LOCAL_RECORD_TYPE(ATextPosition: TTextPosition);
-    class procedure E2529_TYPE_PARAMETERS_NOT_ALLOWED_ON_OPERATOR(ATextPosition: TTextPosition);
-    class procedure E2530_TYPE_PARAMETERS_NOT_ALLOWED_ON_GLOBAL_PROCEDURE_OR_FUNCTION(ATextPosition: TTextPosition);
+    class procedure E2436_TYPE_NOT_ALLOWED_IN_ANONYMOUS_OR_LOCAL_RECORD_TYPE(const ATextPosition: TTextPosition);
+    class procedure E2529_TYPE_PARAMETERS_NOT_ALLOWED_ON_OPERATOR(const ATextPosition: TTextPosition);
+    class procedure E2530_TYPE_PARAMETERS_NOT_ALLOWED_ON_GLOBAL_PROCEDURE_OR_FUNCTION(const ATextPosition: TTextPosition);
+
 
 
     procedure PROCEDURE_CANNOT_HAVE_RESULT;
@@ -579,6 +581,11 @@ begin
   AbortWork('E2015 Operator not applicable to this operand type', TextPosition);
 end;
 
+class procedure TASTDelphiErrors.E2018_RECORD_OBJECT_OR_CLASS_TYPE_REQUIRED(const ATextPosition: TTextPosition);
+begin
+  AbortWork('E2018 Record, object or class type required', ATextPosition);
+end;
+
 class procedure TASTDelphiErrors.E2037_DECLARATION_OF_DIFFERS_FROM_PREVIOUS_DECLARATION(const AID: TIdentifier);
 begin
   AbortWork('E2037 Declaration of ''%s'' differs from previous declaration', [AID.Name], AID.TextPosition);
@@ -595,18 +602,18 @@ begin
   AbortWork('E2232 Interface ''%s'' has no interface identification', [ADecl.Name], ADecl.TextPosition);
 end;
 
-class procedure TASTDelphiErrors.E2436_TYPE_NOT_ALLOWED_IN_ANONYMOUS_OR_LOCAL_RECORD_TYPE(ATextPosition: TTextPosition);
+class procedure TASTDelphiErrors.E2436_TYPE_NOT_ALLOWED_IN_ANONYMOUS_OR_LOCAL_RECORD_TYPE(const ATextPosition: TTextPosition);
 begin
   AbortWork('E2436 Type declarations not allowed in anonymous record or local record type', ATextPosition);
 end;
 
-class procedure TASTDelphiErrors.E2529_TYPE_PARAMETERS_NOT_ALLOWED_ON_OPERATOR(ATextPosition: TTextPosition);
+class procedure TASTDelphiErrors.E2529_TYPE_PARAMETERS_NOT_ALLOWED_ON_OPERATOR(const ATextPosition: TTextPosition);
 begin
   AbortWork('E2529 Type parameters not allowed on operator', ATextPosition);
 end;
 
 class procedure TASTDelphiErrors.E2530_TYPE_PARAMETERS_NOT_ALLOWED_ON_GLOBAL_PROCEDURE_OR_FUNCTION(
-  ATextPosition: TTextPosition);
+  const ATextPosition: TTextPosition);
 begin
   AbortWork('E2530 Type parameters not allowed on global procedure or function', ATextPosition);
 end;

@@ -961,6 +961,18 @@ end;
 
 function TASTDelphiUnit.ParseTypeHelper(Scope, GenericScope: TScope; GDescriptor: IGenericDescriptor; const ID: TIdentifier;
   out Decl: TDlphHelper): TTokenID;
+
+  procedure SetHelperForOriginalTypes(ATarget: TIDType; AHelper: TDlphHelper);
+  begin
+    // A helper must be assigned for all parent aliased types (until a new type)
+    // TODO: rework helper association method
+    while (ATarget is TIDAliasType) and not TIDAliasType(ATarget).NewType do
+    begin
+      TIDAliasType(ATarget).LinkedType.Helper := AHelper;
+      ATarget := TIDAliasType(ATarget).LinkedType;
+    end;
+  end;
+
 var
   TargetDecl: TIDType;
   Visibility: TVisibility;
@@ -976,6 +988,9 @@ begin
       [TargetDecl.Name, TargetDecl.Helper.Name, ID.Name], ID.TextPosition);
 
   TargetDecl.Helper := Decl;
+
+  // in case this is an alias, set helper for the original type
+  SetHelperForOriginalTypes(TargetDecl, Decl);
 
   Scope.AddType(Decl);
 
@@ -9312,7 +9327,7 @@ begin
   end;
 
   if not Assigned(SearchScope) then
-    ERRORS.IDENTIFIER_HAS_NO_MEMBERS(Decl);
+    ERRORS.E2018_RECORD_OBJECT_OR_CLASS_TYPE_REQUIRED(Lexer_Position);
 
   ASTE.AddOperation<TASTOpMemberAccess>;
 
