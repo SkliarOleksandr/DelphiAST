@@ -253,7 +253,7 @@ var
   I: Integer;
   Msg: TCompilerMessage;
 begin
-  ErrMemo.Lines.Add('===================================================================');
+  ErrMemo.Lines.Add('-----------------------------------------------');
   for i := 0 to Project.Messages.Count - 1 do
   begin
     Msg := Project.Messages[i];
@@ -1009,6 +1009,10 @@ begin
     Inc(LRunCount);
     TestRunProgressLabel.Caption := Format('Run Tests: %d from %d (Fail: %d)',
                                            [LRunCount, FAllTests.Count, LFailCount]);
+
+     if LIndex < FAllTests.Count then
+       ErrMemo.Lines.Add('===================================================================');
+
     Application.ProcessMessages;
   end;
   LProject.Clear({AClearImplicitUnits:} True);
@@ -1093,31 +1097,32 @@ begin
   BreakpointOnError := BreakpointOnErrorCheck.Checked;
 
   Screen.Cursor := crHourGlass;
-  var Msg := TStringList.Create;
   try
+    ErrMemo.Lines.Add('Parsing project: ' + Project.Name + ' ...');
+
     var LStartedAt := Now;
     Result := Project.Compile;
-    if Result = CompileSuccess then
-      Msg.Add('compile success')
-    else
-      Msg.Add('compile fail');
-
-    Msg.Add(format('total units parsed: %d (interface only: %d)',
-      [Project.TotalUnitsParsed, Project.TotalUnitsIntfOnlyParsed]));
-    Msg.Add(format('total lines parsed: %d in %s', [Project.TotalLinesParsed,
-                                                    FormatDateTime('nn:ss.zzz', Now - LStartedAt)]));
 
     if AShowResults then
       ShowASTResults(Project);
 
     CompilerMessagesToStrings(Project, AShowResults);
 
-    ErrMemo.Lines.AddStrings(Msg);
+    if Result = CompileSuccess then
+      ErrMemo.Lines.Add('compile success')
+    else
+      ErrMemo.Lines.Add('compile fail');
+
+    ErrMemo.Lines.Add(format('total units parsed: %d (interface only: %d)',
+      [Project.TotalUnitsParsed, Project.TotalUnitsIntfOnlyParsed]));
+
+    ErrMemo.Lines.Add(format('total lines parsed: %d in %s', [Project.TotalLinesParsed,
+                                                    FormatDateTime('nn:ss.zzz', Now - LStartedAt)]));
+
     ErrMemo.CaretY := ErrMemo.Lines.Count;
     ErrMemo.CaretX := 1;
   finally
     Screen.Cursor := crDefault;
-    Msg.Free;
   end;
 end;
 
@@ -1129,12 +1134,21 @@ begin
 
   Prj := CreateProject({AParseSystemUnit:} True);
 
+  ErrMemo.Clear;
+  LogMemo.Clear;
+
   // add selected files to the project
   for var LIndex := 0 to lbFiles.Count - 1 do
+  begin
+    var LFilePath := lbFiles.Items[LIndex];
     if lbFiles.Checked[LIndex] then
-      Prj.AddUnit(lbFiles.Items[LIndex]);
+      if FileExists(LFilePath) then
+        Prj.AddUnit(LFilePath)
+      else
+        ErrMemo.Lines.Add(Format('Warning: File ''%s'' is not found', [LFilePath]));
+  end;
 
-  ParseProject(Prj, {AClearOutput:} True, {AShowResults:} True);
+  ParseProject(Prj, {AClearOutput:} False, {AShowResults:} True);
 
   Prj.Clear({AClearImplicitUnits:} True);
 end;

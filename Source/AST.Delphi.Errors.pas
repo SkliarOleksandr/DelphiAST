@@ -291,12 +291,14 @@ type
     class procedure E2018_RECORD_OBJECT_OR_CLASS_TYPE_REQUIRED(const ATextPosition: TTextPosition);
     class procedure E2037_DECLARATION_OF_DIFFERS_FROM_PREVIOUS_DECLARATION(const AID: TIdentifier);
     class procedure E2185_CANNOT_SPECIFY_DISPID(const AMethodID: TIdentifier);
+    class procedure E2250_THERE_IS_NO_OVERLOADED_VERSION_THAT_CAN_BE_CALLED_WITH_THESE_ARGUMENTS(AExpression: TIDExpression);
+    class procedure E2251_AMBIGUOUS_OVERLOADED_CALL(AExpression: TIDExpression);
     class procedure E2232_INTERFACE_HAS_NO_INTERFACE_IDENTIFICATION(ADecl: TIDDeclaration);
+    class procedure E2430_FOR_IN_STATEMENT_CANNOT_OPERATE_ON_COLLECTION_TYPE(const ATypeName: string; const ATextPosition: TTextPosition);
     class procedure E2436_TYPE_NOT_ALLOWED_IN_ANONYMOUS_OR_LOCAL_RECORD_TYPE(const ATextPosition: TTextPosition);
     class procedure E2529_TYPE_PARAMETERS_NOT_ALLOWED_ON_OPERATOR(const ATextPosition: TTextPosition);
     class procedure E2530_TYPE_PARAMETERS_NOT_ALLOWED_ON_GLOBAL_PROCEDURE_OR_FUNCTION(const ATextPosition: TTextPosition);
-
-
+    class procedure E2535_INTERFACE_METHODS_MUST_NOT_HAVE_PARAMETERIZED_METHODS(const ATextPosition: TTextPosition);
 
     procedure PROCEDURE_CANNOT_HAVE_RESULT;
     procedure BREAK_OR_CONTINUE_ALLOWED_ONLY_IN_LOOPS;
@@ -602,6 +604,25 @@ begin
   AbortWork('E2232 Interface ''%s'' has no interface identification', [ADecl.Name], ADecl.TextPosition);
 end;
 
+class procedure TASTDelphiErrors.E2250_THERE_IS_NO_OVERLOADED_VERSION_THAT_CAN_BE_CALLED_WITH_THESE_ARGUMENTS(
+  AExpression: TIDExpression);
+begin
+  AbortWork('E2250 There is no overloaded version of ''%s'' that can be called with these arguments',
+    [AExpression.Declaration.Name], AExpression.TextPosition);
+end;
+
+class procedure TASTDelphiErrors.E2251_AMBIGUOUS_OVERLOADED_CALL(AExpression: TIDExpression);
+begin
+  AbortWork('E2251 Ambiguous overloaded call to ''%s''', [AExpression.Declaration.Name], AExpression.TextPosition);
+end;
+
+class procedure TASTDelphiErrors.E2430_FOR_IN_STATEMENT_CANNOT_OPERATE_ON_COLLECTION_TYPE(const ATypeName: string;
+  const ATextPosition: TTextPosition);
+begin
+  AbortWork('E2430 for-in statement cannot operate on collection type ''%s''',
+    [ATypeName], ATextPosition);
+end;
+
 class procedure TASTDelphiErrors.E2436_TYPE_NOT_ALLOWED_IN_ANONYMOUS_OR_LOCAL_RECORD_TYPE(const ATextPosition: TTextPosition);
 begin
   AbortWork('E2436 Type declarations not allowed in anonymous record or local record type', ATextPosition);
@@ -616,6 +637,12 @@ class procedure TASTDelphiErrors.E2530_TYPE_PARAMETERS_NOT_ALLOWED_ON_GLOBAL_PRO
   const ATextPosition: TTextPosition);
 begin
   AbortWork('E2530 Type parameters not allowed on global procedure or function', ATextPosition);
+end;
+
+class procedure TASTDelphiErrors.E2535_INTERFACE_METHODS_MUST_NOT_HAVE_PARAMETERIZED_METHODS(
+  const ATextPosition: TTextPosition);
+begin
+  AbortWork('E2535 Interface methods must not have parameterized methods', ATextPosition);
 end;
 
 procedure TASTDelphiErrors.EMPTY_EXPRESSION;

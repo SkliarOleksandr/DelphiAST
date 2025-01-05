@@ -1,4 +1,4 @@
-unit TASTTest.Classes.Construct2;
+unit ASTTest.Classes.Construct2;
 
 interface
 

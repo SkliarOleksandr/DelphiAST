@@ -498,6 +498,8 @@ type
 
     function MatchExplicitTo(ADst: TIDType): Boolean; virtual;
     function MatchExplicitFrom(ASrc: TIDType): Boolean; virtual;
+
+    function TryGetEnumerator(out AItemDataType: TIDType): Boolean; virtual;
   end;
 
   {special system internal type to describe several possible types in one}
@@ -795,7 +797,7 @@ type
     property ClassConstructor: TIDProcedure read fClassConstructor write fClassConstructor;
     property ClassDestructor: TIDProcedure read FClassDestructor write FClassDestructor;
 
-    function GetEnumeratorSupported(out ACurrentProp: TIDProperty): Boolean;
+    function TryGetEnumerator(out AItemDataType: TIDType): Boolean; override;
 
     procedure InstantiateGenericAncestors(ADstScope: TScope; ADstStruct: TIDStructure;
                                           AContext: TGenericInstantiateContext); virtual;
@@ -978,6 +980,8 @@ type
 
     function SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType; override;
     function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
+
+    function TryGetEnumerator(out AItemDataType: TIDType): Boolean; override;
   end;
 
   {set}
@@ -1001,6 +1005,9 @@ type
 
     function MatchImplicitFrom(ASrc: TIDType): Boolean; override;
     function MatchExplicitFrom(ASrc: TIDType): Boolean; override;
+    function MatchExplicitTo(ADst: TIDType): Boolean; override;
+
+    function TryGetEnumerator(out AItemDataType: TIDType): Boolean; override;
   end;
 
   {static array}
@@ -1782,6 +1789,7 @@ type
     property IsGeneric: Boolean read GetIsGeneric;
     property IsConstructor: Boolean read GetIsConstructor;
     property IsDestructor: Boolean read GetIsDestructor;
+    function CanBeCalledImpicitly(const AGenericArgs: TIDExpressions): Boolean;
 
     property FirstBodyLine: Integer read FFirstBodyLine write FFirstBodyLine;
     property LastBodyLine: Integer read FLastBodyLine write FLastBodyLine;
@@ -1798,6 +1806,8 @@ type
 
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
   end;
+
+  TIDProcArray = array of TIDProcedure;
 
   TASTDelphiProc = class(TIDProcedure)
   private
@@ -2877,6 +2887,21 @@ begin
   AddParam(Result);
 end;
 
+function TIDProcedure.CanBeCalledImpicitly(const AGenericArgs: TIDExpressions): Boolean;
+begin
+  for var LIndex := 0 to Length(FExplicitParams) - 1 do
+    if not Assigned(FExplicitParams[LIndex].DefaultValue) then
+      Exit(False);
+
+  var LGenericParamsCount := 0;
+  if Assigned(GenericDescriptor) then
+    LGenericParamsCount := GenericDescriptor.ParamsCount;
+
+
+  // simple check for generic params match
+  Result := LGenericParamsCount = Length(AGenericArgs);
+end;
+
 constructor TIDProcedure.Create(Scope: TScope; const ID: TIdentifier);
 begin
   inherited Create(Scope, ID);
@@ -3837,6 +3862,11 @@ end;
 function TIDType.SysUnarOperator(AOpID: TOperatorID): TIDType;
 begin
   Result := nil;
+end;
+
+function TIDType.TryGetEnumerator(out AItemDataType: TIDType): Boolean;
+begin
+  Result := False;
 end;
 
 procedure TIDType.OverloadBinarOperator(AOpID: TOperatorID; ALeft, ARight: TIDType; AOperator: TIDOperator);
@@ -5072,7 +5102,7 @@ begin
   Result := False;
 end;
 
-function TIDStructure.GetEnumeratorSupported(out ACurrentProp: TIDProperty): Boolean;
+function TIDStructure.TryGetEnumerator(out AItemDataType: TIDType): Boolean;
 begin
   var LGetEnumeratorFunc := FindMethod('GetEnumerator');
   if Assigned(LGetEnumeratorFunc) then
@@ -5087,7 +5117,7 @@ begin
       if Result then
       begin
         // todo: return all needed declarations to the caller
-        ACurrentProp := LCurrent;
+        AItemDataType := LCurrent.DataType;
         Exit;
       end;
     end;
@@ -5579,6 +5609,12 @@ begin
   end;
 end;
 
+function TIDArray.TryGetEnumerator(out AItemDataType: TIDType): Boolean;
+begin
+  Result := True;
+  AItemDataType := ElementDataType;
+end;
+
 procedure TIDArray.DecRefCount(RCPath: UInt32);
 var
   i: Integer;
@@ -5639,7 +5675,7 @@ end;
 
 function TIDOrdinal.MatchExplicitFrom(ASrc: TIDType): Boolean;
 begin
-  Result := ASrc.IsOrdinal or (ASrc.DataSize <= DataSize);
+  Result := ASrc.IsOrdinal or ((ASrc.DataSize <= DataSize) and (ASrc.DataTypeID <> dtSet));
 end;
 
 { TIDRefType }
@@ -6202,10 +6238,21 @@ begin
             );
 end;
 
+function TIDSet.MatchExplicitTo(ADst: TIDType): Boolean;
+begin
+  Result := (ADst.DataSize = DataSize);
+end;
+
 function TIDSet.MatchImplicitFrom(ASrc: TIDType): Boolean;
 begin
   Result := (ASrc.DataTypeID = dtSet) and
             (BaseType.DataTypeID = TIDSet(ASrc).BaseType.DataTypeID);
+end;
+
+function TIDSet.TryGetEnumerator(out AItemDataType: TIDType): Boolean;
+begin
+  Result := True;
+  AItemDataType := fBaseType;
 end;
 
 { TIDArrayConstant }

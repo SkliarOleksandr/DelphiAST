@@ -79,7 +79,6 @@
         <DCC_UNIT_PLATFORM>false</DCC_UNIT_PLATFORM>
         <DCC_SYMBOL_PLATFORM>false</DCC_SYMBOL_PLATFORM>
         <DCC_NO_RETVAL>error</DCC_NO_RETVAL>
-        <DCC_HIDDEN_VIRTUAL>error</DCC_HIDDEN_VIRTUAL>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win32)'!=''">
         <DCC_UsePackage>DBXSqliteDriver;IndyIPCommon;bindcompdbx;DBXInterBaseDriver;vcl;IndyIPServer;vclactnband;vclFireDAC;IndySystem;tethering;svnui;dsnapcon;FireDACADSDriver;FireDACMSAccDriver;fmxFireDAC;vclimg;DCAExpert;TeeDB;SPR_Components;vcltouch;vcldb;bindcompfmx;svn;cxPageControlVCLD7;FireDACPgDriver;DragDropDR102T;inetdb;cxExtEditorsVCLD7;FMXTee;cxDataD7;DbxCommonDriver;FmxTeeUI;fmx;fmxdae;xmlrtl;Tee;fmxobj;vclwinx;rtl;DbxClientDriver;CustomIPTransport;vcldsnap;dbexpress;IndyCore;vclx;bindcomp;appanalytics;dsnap;IndyIPClient;cxEditorsVCLD7;bindcompvcl;dxThemeD7;SynEdit_R;cxGridVCLD7;TeeUI;VCLRESTComponents;dbxcds;VclSmp;cxTreeListVCLD7;adortl;vclie;bindengine;DBXMySQLDriver;dsnapxml;FireDACMySQLDriver;dbrtl;IndyProtocols;inetdbxpress;FireDACCommonODBC;cxLibraryVCLD7;fmxase;$(DCC_UsePackage)</DCC_UsePackage>
@@ -188,17 +187,22 @@
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Enumerator1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Enumerator2.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Intf.Delegation.pas"/>
-        <DCCReference Include="..\TestScripts\Classes\TASTTest.Classes.Inherited1.pas"/>
-        <DCCReference Include="..\TestScripts\Classes\TASTTest.Classes.Inherited2.pas"/>
         <DCCReference Include="..\TestScripts\Ordinals\ASTTest.Ordian.Enums.Init.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.External.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.Generics1.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.Generics2.pas"/>
+        <DCCReference Include="..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.ImplicitCall1.pas"/>
+        <DCCReference Include="..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.ImplicitCall2.pas"/>
         <DCCReference Include="..\TestScripts\Properties\ASTTest.Props.ArrayProp1.pas"/>
         <DCCReference Include="..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload1.pas"/>
         <DCCReference Include="..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload2.pas"/>
-        <DCCReference Include="..\TestScripts\Classes\Constructors\TASTTest.Classes.Construct1.pas"/>
-        <DCCReference Include="..\TestScripts\Classes\Constructors\TASTTest.Classes.Construct2.pas"/>
+        <DCCReference Include="..\TestScripts\Classes\Constructors\ASTTest.Classes.Construct1.pas"/>
+        <DCCReference Include="..\TestScripts\Classes\Constructors\ASTTest.Classes.Construct2.pas"/>
+        <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.Inherited1.pas"/>
+        <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.Inherited2.pas"/>
+        <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.MethodsRedefine1.pas"/>
+        <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.MethodsRedefine2.pas"/>
+        <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.VirtualsOverlod1.pas"/>
         <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.Helper1.pas"/>
         <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.HelperForNested1.pas"/>
         <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.HelperForAliases1.pas"/>
@@ -206,11 +210,18 @@
         <DCCReference Include="..\TestScripts\Loops\ASTTest.Loops.For1.pas"/>
         <DCCReference Include="..\TestScripts\Loops\ASTTest.Loops.ForIn1.pas"/>
         <DCCReference Include="..\TestScripts\Variants\ASTTest.Variants.Variant1.pas"/>
+        <DCCReference Include="..\TestScripts\Variants\ASTTest.Variants.Cmp.pas"/>
         <DCCReference Include="..\TestScripts\Variants\ASTTest.Variants.TypeCast1.pas"/>
         <DCCReference Include="..\TestScripts\Variants\ASTTest.Variants.TypeCast2.pas"/>
         <DCCReference Include="..\TestScripts\RTL\ASTTest.RTL.TDictionaty1.pas"/>
+        <DCCReference Include="..\TestScripts\RTL\ASTTest.RTL.IEnumerable1.pas"/>
         <DCCReference Include="..\TestScripts\Names Overloading\ASTTest.NamesOverloading1.pas"/>
-        <DCCReference Include="..\TestScripts\Variants\ASTTest.Variants.Cmp.pas"/>
+        <DCCReference Include="..\TestScripts\Sets\ASTTest.Sets.ForInSet1.pas"/>
+        <DCCReference Include="..\TestScripts\Sets\ASTTest.Sets.ForInSet2.pas"/>
+        <DCCReference Include="..\TestScripts\Sets\ASTTest.Sets.ExplicitCast1.pas"/>
+        <DCCReference Include="..\TestScripts\Sets\ASTTest.Sets.ExplicitCast2.pas"/>
+        <DCCReference Include="..\TestScripts\Interfaces\ASTTest.Intf.MethodRedeclaration.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.ImplicitCall.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
@@ -232,6 +243,7 @@
                     <Source Name="MainSource">DASTTestApp.dpr</Source>
                 </Source>
                 <Excluded_Packages>
+                    <Excluded_Packages Name="C:\Users\Public\Documents\Embarcadero\Studio\23.0\Bpl\AVImarkD29.bpl">AVImark Components</Excluded_Packages>
                     <Excluded_Packages Name="$(BDSBIN)\dcloffice2k290.bpl">Microsoft Office 2000 Sample Automation Server Wrapper Components</Excluded_Packages>
                     <Excluded_Packages Name="$(BDSBIN)\dclofficexp290.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
                 </Excluded_Packages>

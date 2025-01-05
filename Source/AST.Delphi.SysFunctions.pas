@@ -519,6 +519,8 @@ uses
   AST.Classes,
   AST.Delphi.Errors;
 
+{$HINTS OFF}
+
 { TSF_Now }
 
 function TSF_Now.Process(var EContext: TEContext): TIDExpression;

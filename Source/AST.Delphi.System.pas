@@ -44,7 +44,6 @@ type
     function Process(var EContext: TEContext): TIDExpression; virtual;
   end;
 
-
   TSysFunctionContext = record
     UN: TASTDelphiUnit;
     Scope: TScope;

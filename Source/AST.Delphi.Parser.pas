@@ -41,6 +41,7 @@ uses
 // system.Threading
 // system.UITypes
 // System.Contnrs
+// System.Character
 // System.SyncObjs
 // System.Math
 // System.Messaging
@@ -166,6 +167,7 @@ type
     class function GetTMPRefExpr(const SContext: TSContext; DataType: TIDType): TIDExpression; overload; inline; static;
     class function GetTMPRefExpr(const SContext: TSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline; static;
     class function GetStaticTMPVar(DataType: TIDType; VarFlags: TVariableFlags = []): TIDVariable; static;
+    class function GetOverloadProcForImplicitCall(ACallExpr: TIDCallExpression): TIDProcedure; static;
     function GetBuiltins: IDelphiBuiltInTypes;
     property Builtins: IDelphiBuiltInTypes read GetBuiltins;
   protected
@@ -395,6 +397,7 @@ type
     function ParseBuiltinCall(Scope: TScope; CallExpr: TIDExpression; var EContext: TEContext): TTokenID;
     function ParseExplicitCast(Scope: TScope; const SContext: TSContext; var DstExpression: TIDExpression): TTokenID;
     function ParseProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure = nil): TTokenID;
+    function ParseIntfProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure): TTokenID;
     function ParseGlobalProc(Scope: TScope; ProcType: TProcType; const ID: TIdentifier; ProcScope: TProcScope): TTokenID;
     function ParseNestedProc(Scope: TScope; ProcType: TProcType; const ID: TIdentifier; ProcScope: TProcScope): TTokenID;
     function ParseIntfMethodDelegation(Scope: TScope; AClass: TIDClass; const ID: TIdentifier): TTokenID;
@@ -4244,12 +4247,50 @@ begin
   AProcScope.ParamsScope.SelfParam := SelfParam;
 end;
 
+class function TASTDelphiUnit.GetOverloadProcForImplicitCall(ACallExpr: TIDCallExpression): TIDProcedure;
+
+  function InArray(const AArray: TIDProcArray; AProc: TIDProcedure): Boolean;
+  begin
+    for var LIndex := 0 to Length(AArray) - 1 do
+      if AArray[LIndex] = AProc then
+        Exit(True);
+    Result := False;
+  end;
+
+begin
+  Result := nil;
+  var LProc := ACallExpr.AsProcedure;
+  var LMatchedCount := 0;
+  var LSkipArray: TIDProcArray;
+  repeat
+    // iterate all overload proc versions to the one we need to call, skip overridden ones
+    if LProc.CanBeCalledImpicitly(ACallExpr.GenericArgs) and not InArray(LSkipArray, LProc) then
+    begin
+      Result := LProc;
+      Inc(LMatchedCount);
+      // if a procedure is overridden, add the inherited to skip-list
+      if Assigned(LProc.InheritedProc) then
+        LSkipArray := LSkipArray + [LProc.InheritedProc];
+    end;
+    LProc := LProc.PrevOverload;
+  until not Assigned(LProc);
+
+  if Assigned(Result) and (LMatchedCount = 1) then
+    Exit;
+
+  if LMatchedCount > 1 then
+    TASTDelphiErrors.E2251_AMBIGUOUS_OVERLOADED_CALL(ACallExpr)
+  else
+    TASTDelphiErrors.E2250_THERE_IS_NO_OVERLOADED_VERSION_THAT_CAN_BE_CALLED_WITH_THESE_ARGUMENTS(ACallExpr);
+end;
+
 class function TASTDelphiUnit.CheckAndCallFuncImplicit(const SContext: TSContext; Expr: TIDExpression; out WasCall: Boolean): TIDExpression;
 begin
   WasCall := False;
   if Expr.ItemType = itProcedure then
   begin
-    var LProc := Expr.AsProcedure;
+    // the procedure can be overloaded, we need to take the one that can be called without arguments
+    var LProc := GetOverloadProcForImplicitCall(Expr as TIDCallExpression);
     var LResultType := LProc.ResultType;
     if Assigned(LResultType) or (pfConstructor in LProc.Flags) then
     begin
@@ -4704,12 +4745,7 @@ var
   ID: TIdentifier;
   Prop: TIDProperty;
   PropDataType: TIDType;
-  Proc: TIDProcedure;
-  Expr: TIDExpression;
-  EContext: TEContext;
-  DataType: TIDType;
   SContext: TSContext;
-  ASTE: TASTExpression;
 begin
   Lexer_ReadNextIdentifier(Scope, ID);
   Prop := TIDProperty.Create(Scope, ID);
@@ -5871,6 +5907,17 @@ end;
 
 function TASTDelphiUnit.ParseClassType(Scope: TScope; GDescriptor: IGenericDescriptor; const ID: TIdentifier;
   out Decl: TIDClass): TTokenID;
+
+//  function GetFirstOverloadInStruct(AProc: TIDProcedure): TIDProcedure;
+//  begin
+//    Result := AProc;
+//    while Assigned(Result.PrevOverload) do
+//      if Result.PrevOverload.Struct = AProc.Struct then
+//        Result := Result.PrevOverload
+//      else
+//        Exit;
+//  end;
+
 var
   Visibility: TVisibility;
   //Ancestor: TIDClass;
@@ -6295,8 +6342,6 @@ begin
 end;
 
 constructor TASTDelphiUnit.Create(const Project: IASTProject; const FileName: string; const Source: string);
-var
-  Scope: TProcScope;
 begin
   inherited Create(Project, FileName, Source);
 
@@ -6436,7 +6481,7 @@ var
   EContext: TEContext;
   LExpr: TIDExpression;
   LExprDataType: TIDType;
-  LoopArrayDT: TIDType;
+  LItemDataType: TIDType;
   ASTExpr: TASTExpression;
   KW: TASTKWForIn;
   BodySContext: TSContext;
@@ -6456,43 +6501,23 @@ begin
   LExpr := CheckAndCallFuncImplicit(SContext, LExpr, {out} AWasCall);
   LExprDataType := LExpr.ActualDataType;
 
-  // expression is array:
-  if (LExprDataType is TIDArray) then
+  if LExprDataType.TryGetEnumerator({out} LItemDataType) then
   begin
-    LoopArrayDT := (LExprDataType as TIDArray).ElementDataType;
+    // to do: check enumerator
     if Assigned(LoopVar.DataType) then
     begin
-      // match loop var type to the array element type
-      if MatchImplicit(LoopVar.DataType, LoopArrayDT) = nil then
-        ERRORS.INCOMPATIBLE_TYPES(LoopVar, LoopArrayDT);
+      // match loop var type to the enumerator element type
+      if MatchImplicit(LoopVar.DataType, LItemDataType) = nil then
+      begin
+        // for debug:
+        MatchImplicit(LoopVar.DataType, LItemDataType);
+        ERRORS.INCOMPATIBLE_TYPES(LoopVar, LItemDataType);
+      end;
     end else begin
-      LoopVar.Declaration.DataType := LoopArrayDT;
+      LoopVar.Declaration.DataType := LItemDataType;
     end;
   end else
-  // expression has enumerator:
-  if LExprDataType is TIDStructure then
-  begin
-    var LStruct := TIDStructure(LExprDataType);
-    var LCurrentProp: TIDProperty;
-    if LStruct.GetEnumeratorSupported({out} LCurrentProp) then
-    begin
-      // to do: check enumerator
-      if Assigned(LoopVar.DataType) then
-      begin
-        // match loop var type to the enumerator element type
-        if MatchImplicit(LoopVar.DataType, LCurrentProp.DataType) = nil then
-        begin
-          // for debug:
-          MatchImplicit(LoopVar.DataType, LCurrentProp.DataType);
-          ERRORS.INCOMPATIBLE_TYPES(LoopVar, LCurrentProp.DataType);
-        end;
-      end else begin
-        LoopVar.Declaration.DataType := LCurrentProp.DataType;
-      end;
-    end else
-      ERRORS.ARRAY_EXPRESSION_REQUIRED(LExpr);
-  end else
-    ERRORS.ARRAY_EXPRESSION_REQUIRED(LExpr);
+    ERRORS.E2430_FOR_IN_STATEMENT_CANNOT_OPERATE_ON_COLLECTION_TYPE(LExprDataType.Name, LExpr.TextPosition);
 
   Lexer_MatchToken(Result, token_do);
   Lexer_NextToken(Scope);
@@ -7406,6 +7431,146 @@ begin
   Result := Lexer_NextToken(Scope);
 end;
 
+function TASTDelphiUnit.ParseIntfProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure): TTokenID;
+type
+  TFwdDeclState = (dsNew, dsDifferent, dsSame);
+var
+  ID: TIdentifier;
+  ProcScope: TProcScope;
+  ResultType: TIDType;
+  Proc, ForwardDecl: TASTDelphiProc;
+  ForwardDeclNode: TIDList.PAVLNode;
+  FwdDeclState: TFwdDeclState;
+  CallConv: TCallConvention;
+  ProcFlags: TProcFlags;
+  ImportLib, ImportName: TIDDeclaration;
+begin
+  Lexer_ReadNextIdentifier(Scope, {out} ID);
+  Result := Lexer_NextToken(Scope);
+  if Result = token_less then
+    ERRORS.E2535_INTERFACE_METHODS_MUST_NOT_HAVE_PARAMETERIZED_METHODS(Lexer_Position);
+
+  ProcScope := TMethodScope.CreateInDecl(Scope, Struct.Members, {AProc} nil);
+
+  AddSelfParameter(ProcScope, Struct, {ClassMethod:} False);
+
+  // parse parameters
+  if Result = token_openround then
+  begin
+    ParseParameters(ProcScope, ProcScope.ParamsScope);
+    Result := Lexer_NextToken(Scope);
+  end;
+
+  // parse result type
+  if ProcType = ptFunc then
+  begin
+    Lexer_MatchToken(Result, token_colon);
+    Result := ParseTypeSpec(ProcScope, ResultType);
+    AddResultParameter(ProcScope.ParamsScope, ResultType);
+  end else
+    ResultType := nil;
+
+  if Result = token_semicolon then
+    Result := Lexer_NextToken(Scope)
+  {else
+  if not (Result in [token_overload, token_stdcall, token_cdecl]) then
+    ERRORS.SEMICOLON_EXPECTED};
+
+  ProcFlags := [];
+
+  CallConv := TCallConvention.ConvNative;
+
+  // parse proc specifiers
+  while True do begin
+    case Lexer_TreatTokenAsToken(Result) of
+      tokenD_overload: Result := ProcSpec_Overload(Scope, ProcFlags);
+      tokenD_stdcall: Result := ProcSpec_StdCall(Scope, CallConv);
+      tokenD_safecall: Result := ProcSpec_SafeCall(Scope, CallConv);
+      tokenD_cdecl: Result := ProcSpec_CDecl(Scope, CallConv);
+      tokenD_dispid: Result := ProcSpec_DispId(Scope, Struct, ID);
+      token_deprecated: begin
+        CheckAndParseDeprecated(Scope, token_deprecated);
+        Result := Lexer_NextToken(Scope);
+      end;
+      tokenD_platform: begin
+        CheckAndParsePlatform(Scope);
+        Result := Lexer_NextToken(Scope);
+      end;
+    else
+      break;
+    end;
+  end;
+
+  ForwardDeclNode := nil;
+  // search the procedure forward declaration
+  // first, search the decl in the current members only
+  ForwardDecl := SearchInstanceMethodDecl(Struct, ID, {out} ForwardDeclNode);
+
+  if Assigned(ForwardDeclNode) and not Assigned(ForwardDecl) then
+    ForwardDecl := TASTDelphiProc(ForwardDeclNode.Data);
+
+  FwdDeclState := dsDifferent;
+
+  {if found forward declaration, process overload}
+  if Assigned(ForwardDecl) then
+  begin
+    // check redeclaration
+    if ForwardDecl.ItemType <> itProcedure then
+      ERRORS.ID_REDECLARATED(ID);
+
+    // search overload
+    var Decl := ForwardDecl;
+    while True do begin
+      if Decl.SameDeclaration(ProcScope.ExplicitParams, ResultType, {ACheckNames:} True) then
+      begin
+        if Decl.Scope = Scope then
+          ERRORS.THE_SAME_METHOD_EXISTS(ID)
+        else begin
+          ForwardDecl := nil; // method reintroduce
+          FwdDeclState := dsNew;
+        end;
+        Break;
+      end;
+      if not Assigned(Decl.PrevOverload) then
+        Break;
+      Decl := TASTDelphiProc(Decl.PrevOverload);
+    end;
+  end else
+    FwdDeclState := dsNew;
+
+  // check overload/override
+  if Assigned(ForwardDecl) and (Struct = ForwardDecl.Struct) and
+     not ((pfOveload in ForwardDecl.Flags) or (pfOveload in ProcFlags)) then
+    ERRORS.OVERLOADED_MUST_BE_MARKED(ID);
+
+  {create a new declaration}
+  Proc := TASTDelphiProc.Create(Scope, ID);
+  Proc.ParamsScope := ProcScope;
+  Proc.EntryScope := ProcScope;
+  Proc.ResultType := ResultType;
+  Proc.ExplicitParams := ProcScope.ExplicitParams;
+  Proc.Struct := Struct;
+  Proc.CallConvention := CallConv;
+  Proc.Flags := Proc.Flags + ProcFlags;
+
+  ProcScope.Proc := Proc;
+
+  if not Assigned(ForwardDecl) then
+  begin
+    // add a new method declaration to the interface type
+    Scope.AddProcedure(Proc);
+  end else begin
+    // add a new method overloading to the existing one
+    Proc.PrevOverload := ForwardDecl;
+
+    // override the declaration if the scope the same
+    if (ForwardDecl.Scope = Scope) then
+      ForwardDeclNode.Data := Proc
+    else
+      Scope.AddProcedure(Proc);
+  end;
+end;
+
 function TASTDelphiUnit.ParseProcedure(Scope: TScope; ProcType: TProcType; Struct: TIDStructure): TTokenID;
 type
   TFwdDeclState = (dsNew, dsDifferent, dsSame);
@@ -7610,7 +7775,30 @@ begin
 
     Proc.ExplicitParams := ProcScope.ExplicitParams;
 
-    // добовляем новую декларацию в структуру или глобольный список или к списку перегруженных процедур
+    CallConv := ConvNative;
+    Proc.Flags := Proc.Flags + ProcFlags;
+    Proc.CallConvention := CallConv;
+
+    // check overload/override
+    if Scope.ScopeClass = scInterface then
+    begin
+      if pfOverride in ProcFlags then
+      begin
+        Proc.InheritedProc := Struct.FindVirtualProcInAncestor(Proc);
+        if not Assigned(Proc.InheritedProc) then
+        begin
+          // todo: for debug
+          Proc.InheritedProc := Struct.FindVirtualProcInAncestor(Proc);
+          ERRORS.NO_METHOD_IN_BASE_CLASS(Proc);
+        end;
+      end;
+
+      if Assigned(ForwardDecl) and (Struct = ForwardDecl.Struct) and
+         not ((pfOveload in ForwardDecl.Flags) or (pfOveload in ProcFlags)) and
+         not Assigned(Proc.InheritedProc) then
+        ERRORS.OVERLOADED_MUST_BE_MARKED(ID);
+    end;
+
     if not Assigned(ForwardDecl) then
     begin
       Proc.Struct := Struct;
@@ -7634,8 +7822,9 @@ begin
         Scope.AddProcedure(Proc);
       end;
     end else begin
-      // доавляем в список следующую перегруженную процедуру
-      Proc.PrevOverload := ForwardDecl;
+      // add to the overloads linked-list (if marked overload or override an overload proc)
+      if (pfOveload in ProcFlags) or (Assigned(Proc.InheritedProc) {and (pfOveload in ForwardDecl.Flags)}) then
+        Proc.PrevOverload := ForwardDecl;
 
       // override the declaration if the scope the same
       if (ForwardDecl.Scope = Scope) then
@@ -7654,30 +7843,6 @@ begin
       end;
       Proc.Struct := Struct;
     end;
-  end;
-
-  CallConv := ConvNative;
-  Proc.Flags := Proc.Flags + ProcFlags;
-  Proc.CallConvention := CallConv;
-
-  // check overload/override
-  if Scope.ScopeClass = scInterface then
-  begin
-    if pfOverride in ProcFlags then
-    begin
-      Proc.InheritedProc := Struct.FindVirtualProcInAncestor(Proc);
-      if not Assigned(Proc.InheritedProc) then
-      begin
-        // todo: for debug
-        Proc.InheritedProc := Struct.FindVirtualProcInAncestor(Proc);
-        ERRORS.NO_METHOD_IN_BASE_CLASS(Proc);
-      end;
-    end;
-
-    if Assigned(ForwardDecl) and (Struct = ForwardDecl.Struct) and
-       not ((pfOveload in ForwardDecl.Flags) or (pfOveload in ProcFlags)) and
-       not Assigned(Proc.InheritedProc) then
-      ERRORS.OVERLOADED_MUST_BE_MARKED(ID);
   end;
 
   if (Scope.ScopeClass <> scInterface) and not (pfImport in ProcFlags)
@@ -9304,7 +9469,6 @@ var
   Left, Right: TIDExpression;
   Decl: TIDDeclaration;
   SearchScope: TScope;
-  DataType: TIDType;
 begin
   Left := EContext.RPNPopExpression();
   Decl := Left.Declaration;
@@ -9611,7 +9775,6 @@ function TASTDelphiUnit.ParseInterfaceType(Scope, GenericScope: TScope; GDescrip
   ADispInterface: Boolean; const ID: TIdentifier; out Decl: TIDInterface): TTokenID;
 var
   Expr: TIDExpression;
-  SearchName: string;
 begin
   Decl := TIDInterface(ParseGenericTypeDecl(Scope, GDescriptor, ID, TIDInterface));
   Decl.IsDisp := ADispInterface;
@@ -9648,8 +9811,8 @@ begin
   while True do begin
     case Result of
       token_openblock: Result := ParseAttribute(Scope);
-      token_procedure: Result := ParseProcedure(Decl.Members, ptProc, Decl);
-      token_function: Result := ParseProcedure(Decl.Members, ptFunc, Decl);
+      token_procedure: Result := ParseIntfProcedure(Decl.Members, ptProc, Decl);
+      token_function: Result := ParseIntfProcedure(Decl.Members, ptFunc, Decl);
       token_property: Result := ParseProperty(Decl.Members, Decl);
     else
       break;
@@ -9853,7 +10016,6 @@ var
   DataType: TIDType;
   DefaultValue: TIDExpression;
   DeclAbsolute: TIDDeclaration;
-  ID: TIdentifier;
   Variable: TIDVariable;
   Names: TIdentifiersPool;
   VarFlags: TVariableFlags;
@@ -9917,7 +10079,7 @@ end;
 function TASTDelphiUnit.ParseFieldsSection(Scope: TScope; Visibility: TVisibility; AStruct: TIDStructure;
   AIsClassVar: Boolean): TTokenID;
 var
-  i, c: Integer;
+  c: Integer;
   DataType: TIDType;
   Names: TIdentifiersPool;
   VarFlags: TVariableFlags;
