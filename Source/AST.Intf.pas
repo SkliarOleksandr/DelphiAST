@@ -3,10 +3,32 @@ unit AST.Intf;
 interface
 
 uses
+  System.SysUtils,
   AST.Lexer,
   AST.Parser.ProcessStatuses;
 
 type
+
+  TCompilerResult = (
+    CompileNone,
+    CompileInProgress,
+    CompileSuccess,
+    CompileFail,
+    CompileSkip
+  );
+
+  TUnitScopeKind = (
+    scopeBoth,
+    scopeInterface,
+    scopeImplementation
+  );
+
+  IASTModule = interface;
+  IASTProject = interface;
+  IASTDeclaration = interface;
+
+
+  TEnumASTDeclProc = reference to procedure (const Module: IASTModule; const Decl: IASTDeclaration);
 
   IASTModule = interface
     ['{1E3A5748-1671-41E8-BAAD-4BBB2B363BF4}']
@@ -14,15 +36,49 @@ type
     function GetTotalLinesParsed: Integer;
     property Name: string read GetModuleName;
     property TotalLinesParsed: Integer read GetTotalLinesParsed;
+
+    procedure PutError(const AMessage: string; const ATextPosition: TTextPosition; ACritical: Boolean = False); overload;
+    procedure PutError(const AMessage: string; const AParams: array of const; const ATextPosition: TTextPosition; ACritical: Boolean = False); overload;
+
+    procedure EnumDeclarations(const AEnumProc: TEnumASTDeclProc; AUnitScope: TUnitScopeKind);
+
+    function Compile(ACompileIntfOnly: Boolean; RunPostCompile: Boolean = True): TCompilerResult;
   end;
+
+  TCompilerMessageType = (cmtHint, cmtWarning, cmtError, cmtInteranlError);
 
   TASTProgressEvent = reference to procedure (const Module: IASTModule; Status: TASTProcessStatusClass; AElapsedTime: Int64);
   TASTRrojectConsoleWriteEvent = reference to procedure (const Module: IASTModule; Line: Integer; const Message: string);
+
+  IASTParserMessage = interface
+    ['{50649C47-C46C-45B6-B87D-D9779484E227}']
+    function GetModuleSource: string;
+    function GetModuleName: string;
+    function GetModule: IASTModule;
+    procedure SetModule(const Value: IASTModule);
+    procedure SetModuleName(const Value: string);
+    function GetMessageType: TCompilerMessageType;
+    function GetMessageTypeName: string;
+    function GetMessageText: string;
+    function GetCol: Integer;
+    function GetRow: Integer;
+
+    property Module: IASTModule read GetModule write SetModule;
+    property ModuleName: string read GetModuleName write SetModuleName;
+    property ModuleSource: string read GetModuleSource;
+    property MessageType: TCompilerMessageType read GetMessageType;
+    property MessageTypeName: string read GetMessageTypeName;
+    property MessageText: string read GetMessageText;
+    property Row: Integer read GetRow;
+    property Col: Integer read GetCol;
+    function AsString: string;
+  end;
 
   IASTProject = interface
     ['{AE77D75A-4F7F-445B-ADF9-47CF5C2F0A14}']
     procedure SetOnProgress(const Value: TASTProgressEvent);
     procedure SetOnConsoleWrite(const Value: TASTRrojectConsoleWriteEvent);
+    procedure SetStopCompileIfError(const Value: Boolean);
     function GetOnProgress: TASTProgressEvent;
     function GetOnConsoleWrite: TASTRrojectConsoleWriteEvent;
     property OnProgress: TASTProgressEvent read GetOnProgress write SetOnProgress;
@@ -34,6 +90,7 @@ type
     function GetTotalLinesParsed: Integer;
     function GetTotalUnitsParsed: Integer;
     function GetTotalUnitsIntfOnlyParsed: Integer;
+    function GetStopCompileIfError: Boolean;
 
     property Name: string read GetName;
     property PointerSize: Integer read GetPointerSize;
@@ -41,8 +98,13 @@ type
     property TotalLinesParsed: Integer read GetTotalLinesParsed;
     property TotalUnitsParsed: Integer read GetTotalUnitsParsed;
     property TotalUnitsIntfOnlyParsed: Integer read GetTotalUnitsIntfOnlyParsed;
+    property StopCompileIfError: Boolean read GetStopCompileIfError write SetStopCompileIfError;
 
     procedure CosoleWrite(const Module: IASTModule; Line: Integer; const Message: string);
+
+    procedure PutMessage(const AMessage: IASTParserMessage); overload;
+    procedure PutMessage(const AModule: IASTModule; AMsgType: TCompilerMessageType; const AMessage: string;
+                         const ATextPostition: TTextPosition); overload;
   end;
 
   IASTProjectSettings = interface
@@ -68,9 +130,12 @@ type
     property Module: IASTModule read GetModule;
     property DisplayName: string read GetDisplayName;
     property _Obj: TObject read Get_Obj;
+
+    function Decl2Str(AFullName: Boolean = False): string; overload;
+    procedure Decl2Str(ABuilder: TStringBuilder;
+                       ANestedLevel: Integer = 0;
+                       AAppendName: Boolean = True); overload;
   end;
-
-
 
 implementation
 

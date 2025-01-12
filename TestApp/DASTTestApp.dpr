@@ -71,6 +71,7 @@ uses
   ASTTest.Props.ArrayProp1 in '..\TestScripts\Properties\ASTTest.Props.ArrayProp1.pas',
   ASTTest.Props.ArrayPropOverload1 in '..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload1.pas',
   ASTTest.Props.ArrayPropOverload2 in '..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload2.pas',
+  ASTTest.Props.InheritedProp1 in '..\TestScripts\Properties\ASTTest.Props.InheritedProp1.pas',
   ASTTest.Classes.Construct1 in '..\TestScripts\Classes\Constructors\ASTTest.Classes.Construct1.pas',
   ASTTest.Classes.Construct2 in '..\TestScripts\Classes\Constructors\ASTTest.Classes.Construct2.pas',
   ASTTest.Classes.Inherited1 in '..\TestScripts\Classes\ASTTest.Classes.Inherited1.pas',
@@ -91,11 +92,14 @@ uses
   ASTTest.RTL.TDictionaty1 in '..\TestScripts\RTL\ASTTest.RTL.TDictionaty1.pas',
   ASTTest.RTL.IEnumerable1 in '..\TestScripts\RTL\ASTTest.RTL.IEnumerable1.pas',
   ASTTest.NamesOverloading1 in '..\TestScripts\Names Overloading\ASTTest.NamesOverloading1.pas',
+  ASTTest.NamesOverloading2 in '..\TestScripts\Names Overloading\ASTTest.NamesOverloading2.pas',
   ASTTest.Sets.ForInSet1 in '..\TestScripts\Sets\ASTTest.Sets.ForInSet1.pas',
   ASTTest.Sets.ForInSet2 in '..\TestScripts\Sets\ASTTest.Sets.ForInSet2.pas',
   ASTTest.Sets.ExplicitCast1 in '..\TestScripts\Sets\ASTTest.Sets.ExplicitCast1.pas',
   ASTTest.Sets.ExplicitCast2 in '..\TestScripts\Sets\ASTTest.Sets.ExplicitCast2.pas',
-  ASTTest.Intf.MethodRedeclaration in '..\TestScripts\Interfaces\ASTTest.Intf.MethodRedeclaration.pas';
+  ASTTest.Intf.MethodRedeclaration in '..\TestScripts\Interfaces\ASTTest.Intf.MethodRedeclaration.pas',
+  ASTTest.Records.CaseRecord2 in '..\TestScripts\Records\ASTTest.Records.CaseRecord2.pas',
+  ASTTest.Records.CaseRecord1 in '..\TestScripts\Records\ASTTest.Records.CaseRecord1.pas';
 
 {$R *.res}
 

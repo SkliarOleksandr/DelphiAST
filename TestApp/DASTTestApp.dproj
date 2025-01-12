@@ -187,6 +187,7 @@
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Enumerator1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Enumerator2.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Intf.Delegation.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.ImplicitCall.pas"/>
         <DCCReference Include="..\TestScripts\Ordinals\ASTTest.Ordian.Enums.Init.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.External.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.Generics1.pas"/>
@@ -196,6 +197,7 @@
         <DCCReference Include="..\TestScripts\Properties\ASTTest.Props.ArrayProp1.pas"/>
         <DCCReference Include="..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload1.pas"/>
         <DCCReference Include="..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload2.pas"/>
+        <DCCReference Include="..\TestScripts\Properties\ASTTest.Props.InheritedProp1.pas"/>
         <DCCReference Include="..\TestScripts\Classes\Constructors\ASTTest.Classes.Construct1.pas"/>
         <DCCReference Include="..\TestScripts\Classes\Constructors\ASTTest.Classes.Construct2.pas"/>
         <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.Inherited1.pas"/>
@@ -221,7 +223,9 @@
         <DCCReference Include="..\TestScripts\Sets\ASTTest.Sets.ExplicitCast1.pas"/>
         <DCCReference Include="..\TestScripts\Sets\ASTTest.Sets.ExplicitCast2.pas"/>
         <DCCReference Include="..\TestScripts\Interfaces\ASTTest.Intf.MethodRedeclaration.pas"/>
-        <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.ImplicitCall.pas"/>
+        <DCCReference Include="..\TestScripts\Records\ASTTest.Records.CaseRecord2.pas"/>
+        <DCCReference Include="..\TestScripts\Records\ASTTest.Records.CaseRecord1.pas"/>
+        <DCCReference Include="..\TestScripts\Names Overloading\ASTTest.NamesOverloading2.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

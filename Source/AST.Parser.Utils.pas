@@ -715,7 +715,16 @@ begin
   if Value > MaxInt32 then
     Result := dtUInt32
   else
-    Result := dtInt32;
+  if Value > MaxUInt16 then
+    Result := dtInt32
+  else
+  if Value > MaxInt16 then
+    Result := dtUInt16
+  else
+  if Value > MaxUInt8 then
+    Result := dtInt16
+  else
+    Result := dtUInt8;
 end;
 
 function GetValueDataType(const Value: Extended): TDataTypeID;

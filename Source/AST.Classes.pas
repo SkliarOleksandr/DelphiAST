@@ -25,20 +25,6 @@ type
 
   TASTUnitClass = class of TASTModule;
 
-  TCompilerResult = (
-    CompileNone,
-    CompileInProgress,
-    CompileSuccess,
-    CompileFail,
-    CompileSkip
-  );
-
-  TUnitScopeKind = (
-    scopeBoth,
-    scopeInterface,
-    scopeImplementation
-  );
-
   TASTItem = class(TPooledObject)
   private
     fParent: TASTItem;
@@ -65,8 +51,10 @@ type
     fName: string;
     fOnProgress: TASTProgressEvent;
     fOnConsoleProc: TASTRrojectConsoleWriteEvent;
+    fStopIfErrors: Boolean;
     procedure SetOnProgress(const Value: TASTProgressEvent);
     procedure SetOnConsoleWrite(const Value: TASTRrojectConsoleWriteEvent);
+    procedure SetStopCompileIfError(const Value: Boolean);
     function GetOnProgress: TASTProgressEvent;
     function GetOnConsoleWrite: TASTRrojectConsoleWriteEvent;
   protected
@@ -78,9 +66,14 @@ type
     function GetTotalLinesParsed: Integer; virtual;
     function GetTotalUnitsParsed: Integer; virtual;
     function GetTotalUnitsIntfOnlyParsed: Integer; virtual;
+    function GetStopCompileIfError: Boolean;
+    procedure PutMessage(const AMessage: IASTParserMessage); overload; virtual;
+    procedure PutMessage(const AModule: IASTModule; AMsgType: TCompilerMessageType; const AMessage: string;
+                         const ATextPostition: TTextPosition); overload; virtual;
   public
     constructor Create(const AName: string); virtual;
     property OnProgress: TASTProgressEvent read GetOnProgress write SetOnProgress;
+    property StopCompileIfError: Boolean read GetStopCompileIfError write SetStopCompileIfError;
     procedure CosoleWrite(const Module: IASTModule; Line: Integer; const Message: string);
   end;
 
@@ -105,8 +98,6 @@ type
     property IsTryBlock: Boolean read GetIsTryBlock;
   end;
 
-  TEnumASTDeclProc = reference to procedure (const Module: TASTModule; const Decl: TASTDeclaration);
-
   TASTModule = class(TInterfacedObject, IASTModule)
   private
     fFileName: string;
@@ -117,6 +108,8 @@ type
     function GetSource: string; virtual; abstract;
     procedure SetFileName(const Value: string);
     procedure Progress(StatusClass: TASTProcessStatusClass; AElapsedTime: Int64); virtual;
+    procedure PutError(const AMessage: string; const ATextPosition: TTextPosition; ACritical: Boolean = False); overload;
+    procedure PutError(const AMessage: string; const AParams: array of const; const ATextPosition: TTextPosition; ACritical: Boolean = False); overload;
   public
     property Name: string read GetModuleName;
     property FileName: string read fFileName write SetFileName;
@@ -607,7 +600,9 @@ type
 
 implementation
 
-uses System.StrUtils;
+uses
+  System.StrUtils,
+  AST.Parser.Errors;
 
 procedure TASTParentItem.AddChild(Item: TASTItem);
 begin
@@ -1268,6 +1263,23 @@ begin
     Event(Self, StatusClass, AElapsedTime);
 end;
 
+procedure TASTModule.PutError(const AMessage: string; const AParams: array of const;
+  const ATextPosition: TTextPosition; ACritical: Boolean);
+begin
+  if Project.StopCompileIfError or ACritical then
+    AbortWork(AMessage, AParams, ATextPosition)
+  else
+    Project.PutMessage(Self, cmtError, Format(AMessage, AParams), ATextPosition);
+end;
+
+procedure TASTModule.PutError(const AMessage: string; const ATextPosition: TTextPosition; ACritical: Boolean);
+begin
+  if Project.StopCompileIfError or ACritical then
+    AbortWork(AMessage, ATextPosition)
+  else
+    Project.PutMessage(Self, cmtError, AMessage, ATextPosition);
+end;
+
 procedure TASTModule.SetFileName(const Value: string);
 begin
   fFileName := Value;
@@ -1301,6 +1313,11 @@ begin
   Result := fOnProgress;
 end;
 
+function TASTProject.GetStopCompileIfError: Boolean;
+begin
+  Result := fStopIfErrors;
+end;
+
 function TASTProject.GetTotalLinesParsed: Integer;
 begin
   Result := 0;
@@ -1316,6 +1333,17 @@ begin
   Result := 0;
 end;
 
+procedure TASTProject.PutMessage(const AMessage: IASTParserMessage);
+begin
+  // do nothing
+end;
+
+procedure TASTProject.PutMessage(const AModule: IASTModule; AMsgType: TCompilerMessageType;
+  const AMessage: string; const ATextPostition: TTextPosition);
+begin
+  // do nothing
+end;
+
 procedure TASTProject.SetOnConsoleWrite(const Value: TASTRrojectConsoleWriteEvent);
 begin
   fOnConsoleProc := Value;
@@ -1324,6 +1352,11 @@ end;
 procedure TASTProject.SetOnProgress(const Value: TASTProgressEvent);
 begin
   fOnProgress := Value;
+end;
+
+procedure TASTProject.SetStopCompileIfError(const Value: Boolean);
+begin
+ fStopIfErrors := Value;
 end;
 
 { TASTIDList }

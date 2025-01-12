@@ -85,7 +85,7 @@ type
 
   TASTProcMachArray = array of TASTProcMatchItem;
 
-  TPascalUnit = class(TASTModule)
+  TPascalUnit = class(TASTModule, IASTPascalUnit)
   type
     TVarModifyPlace = (vmpAssignment, vmpPassArgument);
     TIdentifiersPool = TPool<TIdentifier>;
@@ -101,7 +101,7 @@ type
     fConsts: TConstSpace;              // список нетривиальных констант (массивы, структуры)
     function GetMessagesText: string;
     function GetProject: IASTPascalProject;
-    function GetSysUnit: TASTModule; inline;
+    function GetSysUnit: IASTPascalUnit; inline;
   protected
     fCompiled: TCompilerResult;
     fUnitState: TUnitState;
@@ -118,7 +118,7 @@ type
     procedure AddType(const Decl: TIDType); inline;
     procedure AddConstant(const Decl: TIDConstant); inline;
     property Lexer: TDelphiLexer read fLexer;
-    property SysUnit: TASTModule read GetSysUnit;
+    property SysUnit: IASTPascalUnit read GetSysUnit;
     ////////////////////////////////////////////////////////////////////////////
     constructor Create(const AProject: IASTProject; const AFileName: string; const ASource: string = ''); override;
     constructor CreateFromFile(const AProject: IASTProject; const AFileName: string); override;
@@ -134,7 +134,7 @@ type
 
     function CompileIntfOnly: TCompilerResult; virtual;
 
-    function UsedUnit(const UnitName: string): Boolean;
+    function UsedUnit(const AUnitName: string): Boolean;
     function GetDefinesAsString: string;
     property _ID: TIdentifier read FUnitName;
     property UnitID: Integer read FID write FID;
@@ -173,9 +173,9 @@ begin
   FCompiled := Result;
 
   // add system unit implicitly
-  if Assigned(SysUnit) and (Self <> SysUnit) then
+  if Assigned(SysUnit) and (Self <> TObject(SysUnit)) then
   begin
-    fIntfImportedUnits.AddObject('system', SysUnit);
+    fIntfImportedUnits.AddObject('system', TObject(SysUnit));
     // add system unit scope as joint
     fIntfScope.AddScope(TPascalUnit(SysUnit).IntfScope);
   end;
@@ -247,15 +247,15 @@ begin
   Result := fIntfScope.FindID(Name);
 end;
 
-function TPascalUnit.UsedUnit(const UnitName: string): Boolean;
+function TPascalUnit.UsedUnit(const AUnitName: string): Boolean;
 var
   i: Integer;
 begin
-  i := FIntfImportedUnits.IndexOf(UnitName);
+  i := FIntfImportedUnits.IndexOf(AUnitName);
   if i > 0 then
     Exit(True);
 
-  i := FImplImportedUnits.IndexOf(UnitName);
+  i := FImplImportedUnits.IndexOf(AUnitName);
   if i > 0 then
     Exit(True)
   else
@@ -320,7 +320,7 @@ begin
   Result := Res as TIDType;
 end;
 
-function TPascalUnit.GetSysUnit: TASTModule;
+function TPascalUnit.GetSysUnit: IASTPascalUnit;
 begin
   Result := Project.SysUnit;
 end;

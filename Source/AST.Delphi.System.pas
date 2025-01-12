@@ -240,6 +240,8 @@ type
     function Get_DateTimeType: TIDType;
     function Get_DateType: TIDType;
     function Get_TimeType: TIDType;
+    function Get_UnknownType: TIDUnknown;
+    function Get_UnknownVariable: TIDVariable;
   protected
     function GetSystemDeclarations: PDelphiSystemDeclarations; override;
   public
@@ -310,6 +312,8 @@ type
     property _Void: TIDType read Get_Void;
     property _ResStringRecord: TIDType read Get_ResStringRecord;
     property _EmptySetType: TIDSet read Get_EmptySetType;
+    property _UnknownType: TIDUnknown read Get_UnknownType;
+    property _UnknownVariable: TIDVariable read Get_UnknownVariable;
     property Operators: TSystemOperatos read fOperators;
   end;
 
@@ -1060,6 +1064,9 @@ begin
   IntfScope.InsertID(fDecls._Untyped);
   fDecls._Untyped.OverloadExplicitToAny(Operators.ExplicitUntypedToAny);
 
+  // special "unknown" type
+  fDecls._UnknownType := TIDUnknown.CreateAsSystem(IntfScope, '<unknown>');
+  fDecls._UnknownVariable := TIDVariable.CreateAsSystem(IntfScope, '<unknown>');
 
   // Delphi system aliases
   RegisterTypeAlias('LongInt', _Int32);
@@ -1300,7 +1307,7 @@ begin
   except
     on e: ECompilerStop do Exit;
     on e: ECompilerSkip do Exit(CompileSkip);
-    on e: ECompilerAbort do PutMessage(ECompilerAbort(e).CompilerMessage^);
+    on e: ECompilerAbort do PutMessage(ECompilerAbort(e).CompilerMessage);
     on e: Exception do PutMessage(cmtInteranlError, e.Message);
   end;
 end;
@@ -1578,6 +1585,16 @@ end;
 function TSYSTEMUnit.Get_UnicodeString: TIDType;
 begin
   Result := fDecls._UnicodeString;
+end;
+
+function TSYSTEMUnit.Get_UnknownType: TIDUnknown;
+begin
+  Result := fDecls._UnknownType;
+end;
+
+function TSYSTEMUnit.Get_UnknownVariable: TIDVariable;
+begin
+  Result := fDecls._UnknownVariable;
 end;
 
 function TSYSTEMUnit.Get_Untyped: TIDType;

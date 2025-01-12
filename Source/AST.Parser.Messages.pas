@@ -2,76 +2,75 @@
 
 interface
 
-uses SysUtils, Generics.Collections, AST.Lexer;
+uses SysUtils, Generics.Collections,
+  AST.Lexer, AST.Intf;
 
 type
 
-
-  IUnit = interface
-    ['{80A26C85-754B-4D35-BFA4-5FFFBA78322B}']
-  end;
-
-  TCompilerMessageType = (cmtHint, cmtWarning, cmtError, cmtInteranlError);
-
   { TCompilerMessage }
 
-  TCompilerMessage = record
+  TCompilerMessage = class(TInterfacedObject, IASTParserMessage)
   strict private
-    FUnit: TObject;
-    FUnitName: string;
+    FModule: IASTModule;
+    FModuleName: string; // can differs from FModule.Nam, bacuse of .inc files
     FMessageType: TCompilerMessageType;
     FMessageText: string;
     FSourcePosition: TTextPosition;
-    function GetMessageTypeName: string;
-    function GetAsString: string;
   private
-    function GetUnitSource: string;
+    function GetModuleSource: string;
+    function GetModuleName: string;
+    function GetModule: IASTModule;
+    procedure SetModule(const Value: IASTModule);
+    procedure SetModuleName(const Value: string);
+    function GetMessageType: TCompilerMessageType;
+    function GetMessageTypeName: string;
+    function GetMessageText: string;
+    function GetCol: Integer;
+    function GetRow: Integer;
   public
-    property DeclUnit: TObject read FUnit write FUnit;
-    property UnitName: string read FUnitName write FUnitName;
-    property MessageType: TCompilerMessageType read FMessageType;
+    property Module: IASTModule read GetModule write SetModule;
+    property ModuleName: string read GetModuleName write SetModuleName;
+    property ModuleSource: string read GetModuleSource;
+    property MessageType: TCompilerMessageType read GetMessageType;
     property MessageTypeName: string read GetMessageTypeName;
-    property MessageText: string read FMessageText;
-    property Row: Integer read FSourcePosition.Row write FSourcePosition.Row;
-    property Col: Integer read FSourcePosition.Col write FSourcePosition.Col;
-    property AsString: string read GetAsString;
-    property UnitSource: string read GetUnitSource;
-    constructor Create(DeclUnit: TObject; MessageType: TCompilerMessageType; const MessageText: string; const SourcePosition: TTextPosition);
-    {$IFDEF FPC}
-    class operator Equal(const Left, Right: TCompilerMessage): boolean;
-    {$ENDIF}
+    property MessageText: string read GetMessageText;
+    property Row: Integer read GetRow;
+    property Col: Integer read GetCol;
+    function AsString: string;
+    constructor Create(const AModule: IASTModule; AMessageType: TCompilerMessageType;
+                       const AMessageText: string; const APosition: TTextPosition);
   end;
-  PCompilerMessage = ^TCompilerMessage;
+  //PCompilerMessage = ^TCompilerMessage;
 
   ICompilerMessages = interface
     ['{0F47607D-E9F5-41F2-BB05-B539743EC65A}']
-    procedure Add(const Message: TCompilerMessage);
+    procedure Add(const Message: IASTParserMessage);
     procedure Clear;
     procedure CopyFrom(const Messages: ICompilerMessages);
     function GetHasErrors: Boolean;
     function GetAsString: string;
     function GetCount: Integer;
-    function GetItem(Index: Integer): TCompilerMessage;
+    function GetItem(Index: Integer): IASTParserMessage;
     property Count: Integer read GetCount;
-    property Items[Index: Integer]: TCompilerMessage read GetItem; default;
+    property Items[Index: Integer]: IASTParserMessage read GetItem; default;
     property Text: string read GetAsString;
     property HasErrors: Boolean read GetHasErrors;
   end;
 
   TCompilerMessages = class(TInterfacedObject, ICompilerMessages)
   private
-    FMessages: TList<TCompilerMessage>;
+    FMessages: TList<IASTParserMessage>;
     function GetCount: Integer;
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Add(const Message: TCompilerMessage);
+    procedure Add(const Message: IASTParserMessage);
     procedure CopyFrom(const Messages: ICompilerMessages);
     procedure Clear;
     property Count: Integer read GetCount;
     function GetHasErrors: Boolean;
     function GetAsString: string;
-    function GetItem(Index: Integer): TCompilerMessage;
+    function GetItem(Index: Integer): IASTParserMessage;
   end;
 
 implementation
@@ -82,25 +81,33 @@ uses AST.Pascal.Parser,
 
 { TCompilerMessage }
 
-constructor TCompilerMessage.Create(DeclUnit: TObject; MessageType: TCompilerMessageType; const MessageText: string;
-                                    const SourcePosition: TTextPosition);
+constructor TCompilerMessage.Create(const AModule: IASTModule; AMessageType: TCompilerMessageType;
+  const AMessageText: string; const APosition: TTextPosition);
 begin
-  FUnit := DeclUnit;
-  FMessageType := MessageType;
-  FMessageText := MessageText;
-  FSourcePosition := SourcePosition;
+  FModule := AModule;
+  FMessageType := AMessageType;
+  FMessageText := AMessageText;
+  FSourcePosition := APosition;
 end;
 
-{$IFDEF FPC}
-class operator TCompilerMessage.Equal(const Left, Right: TCompilerMessage): boolean;
+function TCompilerMessage.AsString: string;
 begin
-
+  Result := Format('%s [%s(%d, %d)]: %s', [GetMessageTypeName, ModuleName, Row, Col, MessageText]);
 end;
-{$ENDIF}
 
-function TCompilerMessage.GetAsString: string;
+function TCompilerMessage.GetCol: Integer;
 begin
-  Result := Format('%s [%s(%d, %d)]: %s', [GetMessageTypeName, Self.UnitName, Row, Col, MessageText]);
+  Result := FSourcePosition.Col;
+end;
+
+function TCompilerMessage.GetMessageText: string;
+begin
+  Result := FMessageText;
+end;
+
+function TCompilerMessage.GetMessageType: TCompilerMessageType;
+begin
+  Result := FMessageType;
 end;
 
 function TCompilerMessage.GetMessageTypeName: string;
@@ -113,15 +120,45 @@ begin
   end;
 end;
 
-
-function TCompilerMessage.GetUnitSource: string;
+function TCompilerMessage.GetModule: IASTModule;
 begin
-  Result := (FUnit as TPascalUnit).Lexer.Source;
+  Result := FModule;
+end;
+
+function TCompilerMessage.GetRow: Integer;
+begin
+  Result := FSourcePosition.Row;
+end;
+
+function TCompilerMessage.GetModuleName: string;
+begin
+  if FModuleName <> '' then
+    Result := FModuleName
+  else
+    Result := FModule.Name;
+end;
+
+function TCompilerMessage.GetModuleSource: string;
+begin
+  if Assigned(FModule) then
+    Result := (FModule as TPascalUnit).Lexer.Source
+  else
+    Result := '';
+end;
+
+procedure TCompilerMessage.SetModule(const Value: IASTModule);
+begin
+  FModule := Value;
+end;
+
+procedure TCompilerMessage.SetModuleName(const Value: string);
+begin
+  FModuleName := Value;
 end;
 
 { TCompilerMessages }
 
-procedure TCompilerMessages.Add(const Message: TCompilerMessage);
+procedure TCompilerMessages.Add(const Message: IASTParserMessage);
 begin
   FMessages.Add(Message);
 end;
@@ -141,7 +178,7 @@ end;
 
 constructor TCompilerMessages.Create;
 begin
-  FMessages := TList<TCompilerMessage>.Create;
+  FMessages := TList<IASTParserMessage>.Create;
 end;
 
 destructor TCompilerMessages.Destroy;
@@ -151,19 +188,19 @@ end;
 
 function TCompilerMessages.GetAsString: string;
 var
-  i: Integer;
-  SrcCoords: string;
+  LSrcPosStr: string;
 begin
-  for i := 0 to FMessages.Count - 1 do
-  with FMessages[i] do begin
-    if Row <> -1 then
+  for var LMessage in FMessages do
+  begin
+    if LMessage.Row <> -1 then
     begin
-      if Col <> -1 then
-        SrcCoords := format('(%d,%d)', [Row, Col])
+      if LMessage.Col <> -1 then
+        LSrcPosStr := format('(%d,%d)', [LMessage.Row, LMessage.Col])
       else
-        SrcCoords := format('(%d)', [Row]);
+        LSrcPosStr := format('(%d)', [LMessage.Row]);
     end;
-    Result := AddStringSegment(Result, Format('[%s] %s%s: %s', [MessageTypeName, UnitName, SrcCoords, MessageText]), #13#10);
+    Result := AddStringSegment(Result, Format('[%s] %s%s: %s',
+      [LMessage.MessageTypeName, LMessage.ModuleName, LSrcPosStr, LMessage.MessageText]), #13#10);
   end;
 end;
 
@@ -182,7 +219,7 @@ begin
   Result := False;
 end;
 
-function TCompilerMessages.GetItem(Index: Integer): TCompilerMessage;
+function TCompilerMessages.GetItem(Index: Integer): IASTParserMessage;
 begin
   Result := FMessages[Index];
 end;

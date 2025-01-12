@@ -13,6 +13,7 @@ uses
   AST.Pascal.Project,
   AST.Delphi.Project,
   AST.Delphi.Classes,
+  AST.Pascal.Intf,
   AST.Pascal.Parser,
   AST.Parser.Messages,
   AST.Parser.ProcessStatuses;   // system
@@ -193,9 +194,9 @@ type
     FLastProject: IASTDelphiProject;
     procedure OnProgress(const Module: IASTModule; Status: TASTProcessStatusClass; AElapsedTime: Int64);
     procedure ShowASTResultAsCode(const Project: IASTDelphiProject; ASynEdit: TSynEdit); overload;
-    procedure ShowASTResultAsCode(const AModule: TASTModule; ASynEdit: TSynEdit); overload;
+    procedure ShowASTResultAsCode(const AModule: IASTModule; ASynEdit: TSynEdit); overload;
     procedure ShowASTResultAsJSON(const Project: IASTDelphiProject; ASynEdit: TSynEdit); overload;
-    procedure ShowASTResultAsJSON(const AModule: TASTModule; ASynEdit: TSynEdit); overload;
+    procedure ShowASTResultAsJSON(const AModule: IASTModule; ASynEdit: TSynEdit); overload;
     procedure ShowASTResults(const AProject: IASTDelphiProject);
     function ParseProject(const Project: IASTDelphiProject; AClearOutput, AShowResults: Boolean): TCompilerResult;
     procedure CompilerMessagesToStrings(const Project: IASTDelphiProject; AShowFailUnit: Boolean);
@@ -249,29 +250,38 @@ type
   end;
 
 procedure TfrmTestAppMain.CompilerMessagesToStrings(const Project: IASTDelphiProject; AShowFailUnit: Boolean);
-var
-  I: Integer;
-  Msg: TCompilerMessage;
 begin
-  ErrMemo.Lines.Add('-----------------------------------------------');
-  for i := 0 to Project.Messages.Count - 1 do
-  begin
-    Msg := Project.Messages[i];
-    if (Msg.MessageType >= cmtError) or ShowWarningsCheck.Checked then
-    begin
-      ErrMemo.Lines.AddStrings(Msg.AsString.Split([sLineBreak]));
-      if (Msg.MessageType >= cmtError) and AShowFailUnit then
-      begin
-        if not Assigned(FSelectedTest) or (Msg.UnitName <> FSelectedTest.Caption) then
-          edUnit.Text := Msg.UnitSource;
+  var LSourceToShow := '';
+  var LSourceToShowRow := 0;
+  var LSourceToShowCol := 0;
 
-        edUnit.CaretY := Msg.Row;
-        edUnit.CaretX := Msg.Col;
-        if edUnit.CanFocus then
-          edUnit.SetFocus;
+  ErrMemo.Lines.Add('-----------------------------------------------');
+  for var LIndex := 0 to Project.Messages.Count - 1 do
+  begin
+    var LMessage := Project.Messages[LIndex];
+    if (LMessage.MessageType >= cmtError) or ShowWarningsCheck.Checked then
+    begin
+      ErrMemo.Lines.AddStrings(LMessage.AsString.Split([sLineBreak]));
+      if (LMessage.MessageType >= cmtError) and AShowFailUnit then
+      begin
+        LSourceToShow := LMessage.ModuleSource;
+        LSourceToShowRow := LMessage.Row;
+        LSourceToShowCol := LMessage.Col;
       end;
     end;
   end;
+
+  if LSourceToShow <> '' then
+  begin
+    if (edUnit.Text <> LSourceToShow) then
+     edUnit.Text := LSourceToShow;
+
+    edUnit.CaretY := LSourceToShowRow;
+    edUnit.CaretX := LSourceToShowCol;
+  end;
+
+  if edUnit.CanFocus then
+    edUnit.SetFocus;
 end;
 
 procedure ASTToTreeView2(ASTUnit: TASTDelphiUnit; TreeView: TTreeView);
@@ -844,7 +854,7 @@ begin
     var LBuilder := TStringBuilder.Create;
     try
       Project.EnumDeclarations(
-        procedure(const Module: TASTModule; const Decl: TASTDeclaration)
+        procedure(const Module: IASTModule; const Decl: IASTDeclaration)
         begin
           if not chkbShowAnonymous.Checked and (Decl.ID.Name = '') then
             Exit;
@@ -874,14 +884,14 @@ begin
   end;
 end;
 
-procedure TfrmTestAppMain.ShowASTResultAsCode(const AModule: TASTModule; ASynEdit: TSynEdit);
+procedure TfrmTestAppMain.ShowASTResultAsCode(const AModule: IASTModule; ASynEdit: TSynEdit);
 begin
   ASynEdit.BeginUpdate;
   try
     var LBuilder := TStringBuilder.Create;
     try
       AModule.EnumDeclarations(
-        procedure(const Module: TASTModule; const Decl: TASTDeclaration)
+        procedure(const Module: IASTModule; const Decl: IASTDeclaration)
         begin
           if not chkbShowAnonymous.Checked and (Decl.ID.Name = '') then
             Exit;
@@ -907,7 +917,7 @@ begin
   end;
 end;
 
-procedure TfrmTestAppMain.ShowASTResultAsJSON(const AModule: TASTModule; ASynEdit: TSynEdit);
+procedure TfrmTestAppMain.ShowASTResultAsJSON(const AModule: IASTModule; ASynEdit: TSynEdit);
 begin
   //todo:
 end;

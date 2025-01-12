@@ -49,6 +49,8 @@ type
     _PointerType: TIDPointer;
     _UntypedReference: TIDUntypedRef;
     _Untyped: TIDType;
+    _UnknownType: TIDUnknown;
+    _UnknownVariable: TIDVariable;
     _MetaType: TIDType;
     _Void: TIDType;
     _GuidType: TIDStructure;

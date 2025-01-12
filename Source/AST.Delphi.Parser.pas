@@ -32,6 +32,7 @@ uses
 // GETMEM.INC
 // System.SysUtils
 // system.Classes
+// System.DateUtils
 // System.IOUtils
 // system.Rtti
 // System.JSON
@@ -39,6 +40,7 @@ uses
 // system.TypInfo
 // System.TimeSpan
 // system.Threading
+// System.Hash
 // system.UITypes
 // System.Contnrs
 // System.Character
@@ -111,7 +113,7 @@ type
     property Sys: PDelphiSystemDeclarations read fSysDecls;
     procedure CheckLeftOperand(const Status: TRPNStatus);
     class procedure CheckAndCallFuncImplicit(const EContext: TEContext); overload; static;
-    class function CheckAndCallFuncImplicit(const SContext: TSContext; Expr: TIDExpression; out WasCall: Boolean): TIDExpression; overload; static;
+    function CheckAndCallFuncImplicit(const SContext: TSContext; Expr: TIDExpression; out WasCall: Boolean): TIDExpression; overload;
     class function CheckAndCallFuncImplicit(const EContext: TEContext; Expr: TIDExpression): TIDExpression; overload; static;
 
     function CreateAnonymousConstant(Scope: TScope; var EContext: TEContext;
@@ -119,7 +121,7 @@ type
     procedure InitEContext(out EContext: TEContext; const SContext: TSContext; EPosition: TExpessionPosition); overload; inline;
     procedure AddType(const Decl: TIDType);
     class function CheckExplicit(const SContext: TSContext; const Source, Destination: TIDType; out ExplicitOp: TIDDeclaration): Boolean; overload; static;
-    class function MatchExplicit(const SContext: TSContext; const Source: TIDExpression; Destination: TIDType; out Explicit: TIDDeclaration): TIDExpression; overload; static;
+    function MatchExplicit(const SContext: TSContext; const Source: TIDExpression; Destination: TIDType; out Explicit: TIDDeclaration): TIDExpression; overload;
 
     //class function MatchArrayImplicitToRecord(const SContext: TSContext; Source: TIDExpression; Destination: TIDStructure): TIDExpression; static;
 
@@ -167,7 +169,7 @@ type
     class function GetTMPRefExpr(const SContext: TSContext; DataType: TIDType): TIDExpression; overload; inline; static;
     class function GetTMPRefExpr(const SContext: TSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline; static;
     class function GetStaticTMPVar(DataType: TIDType; VarFlags: TVariableFlags = []): TIDVariable; static;
-    class function GetOverloadProcForImplicitCall(ACallExpr: TIDCallExpression): TIDProcedure; static;
+    function GetOverloadProcForImplicitCall(ACallExpr: TIDCallExpression): TIDProcedure;
     function GetBuiltins: IDelphiBuiltInTypes;
     property Builtins: IDelphiBuiltInTypes read GetBuiltins;
   protected
@@ -198,7 +200,7 @@ type
     function MatchBinarOperatorWithImplicit(const SContext: TSContext; Op: TOperatorID; var Left, Right: TIDexpression): TIDDeclaration;
     function FindBinaryOperator(const SContext: TSContext; OpID: TOperatorID; var Left, Right: TIDExpression): TIDDeclaration;
     class function FindUnarOperator(Op: TOperatorID; Right: TIDExpression): TIDType; overload; static; inline;
-    class function MatchUnarOperator(const SContext: TSContext; Op: TOperatorID; Source: TIDExpression): TIDExpression; overload; static;
+    function MatchUnarOperator(const SContext: TSContext; Op: TOperatorID; Source: TIDExpression): TIDExpression; overload;
     function DoMatchBinarOperator(const SContext: TSContext; OpID: TOperatorID; var Left, Right: TIDExpression): TIDDeclaration;
     procedure MatchProc(const SContext: TSContext; CallExpr: TIDExpression; const ProcParams: TIDParamArray; var CallArgs: TIDExpressions);
     function FindImplicitFormBinarOperators(const Operators: TBinaryOperatorsArray;
@@ -283,6 +285,7 @@ type
     procedure Lexer_ReadNextIFDEFLiteral(Scope: TScope; out Identifier: TIdentifier); inline;
     procedure Lexer_MatchParamNameIdentifier(ActualToken: TTokenID); inline;
     function Lexer_CurTokenID: TTokenID; inline;
+    function Lexer_CurTokenAsID: TIdentifier; inline;
     function Lexer_AmbiguousId: TTokenID; inline;
     function Lexer_ReadSemicolonAndToken(Scope: TScope): TTokenID; inline;
     function Lexer_NextToken(Scope: TScope): TTokenID; overload; inline;
@@ -302,7 +305,7 @@ type
 
     function ReadNewOrExistingID(Scope: TScope; out ID: TIDentifier; out Decl: TIDDeclaration): TTokenID;
 
-    procedure PutMessage(Message: TCompilerMessage); overload;
+    procedure PutMessage(const AMessage: IASTParserMessage); overload;
     procedure PutMessage(MessageType: TCompilerMessageType; const MessageText: string); overload;
     procedure PutMessage(MessageType: TCompilerMessageType; const MessageText: string; const SourcePosition: TTextPosition); overload;
     procedure Error(const Message: string; const Params: array of const; const TextPosition: TTextPosition);
@@ -338,7 +341,7 @@ type
                            GDescriptor: IGenericDescriptor; out Decl: TIDProcType): TTokenID;
 
     function ParseRecordType(Scope: TScope; ARecord: TIDRecord): TTokenID;
-    function ParseCaseRecord(Scope: TScope; ARecord: TIDRecord): TTokenID;
+    function ParseCaseRecord(Scope: TScope; ARecord: TIDRecord; Visibility: TVisibility): TTokenID;
     function ParseClassAncestorType(Scope: TScope; ClassDecl: TIDClass): TTokenID;
     function ParseClassType(Scope: TScope; GDescriptor: IGenericDescriptor; const ID: TIdentifier; out Decl: TIDClass): TTokenID;
     function ParseVisibilityModifiers(Scope: TScope; var AVisibility: TVisibility; AIsClass: Boolean): TTokenID;
@@ -470,6 +473,8 @@ type
     function ParseCondOptSet(Scope: TScope): TTokenID;
     procedure ParseCondDefine(Scope: TScope; add_define: Boolean);
     function ParseCondOptions(Scope: TScope): TTokenID;
+
+    function CreateUnknownExpr(const ATextPosition: TTextPosition): TIDExpression;
 
     procedure EnumDeclarations(const AEnumProc: TEnumASTDeclProc; AUnitScope: TUnitScopeKind); override;
     procedure PostCompileChecks;
@@ -611,11 +616,6 @@ begin
       token_goto: Result := ParseGoTOStatement(Scope, SContext);
       {ASM}
       token_asm: Result := ParseASMStatement(Scope, SContext);
-      {INHERITED}
-      token_inherited: begin
-        InitEContext({out} LEContext, SContext, ExprLValue);
-        Result := ParseInheritedStatement(Scope, LEContext);
-      end;
       {TRY}
       token_try: Result := ParseTrySection(Scope, SContext);
       {EXCEPT/FINALLY}
@@ -642,7 +642,7 @@ begin
         Continue;
       end;
       {IDENTIFIER, OPEN ROUND}
-      token_identifier, {token_id_or_keyword, }token_openround:
+      token_identifier, token_inherited, token_openround:
       begin
         InitEContext({out} LEContext, SContext, ExprLValue);
         begin
@@ -1248,11 +1248,11 @@ begin
       ERRORS.UNIT_RECURSIVELY_USES_ITSELF(ID);
 
     // find the unit file
-    LUnit := Package.UsesUnit(ID.Name, nil) as TPascalUnit;
+    LUnit := Package.UsesUnit(ID.Name) as TPascalUnit;
     if not Assigned(LUnit) then
     begin
       // for debug
-      Package.UsesUnit(ID.Name, nil);
+      Package.UsesUnit(ID.Name);
       ERRORS.UNIT_NOT_FOUND(ID);
     end;
 
@@ -1706,7 +1706,7 @@ begin
     WNextScope := TWithScope.Create(Scope, Expression);
     Scope.AddScope(WNextScope);
     WNextScope.OuterScope := WPrevScope;
-    WNextScope.InnerScope := TIDStructure(Expression.DataType).Members;
+    WNextScope.InnerScope := TIDStructure(Expression.ActualDataType).Members;
 
     case Result of
       token_coma: begin
@@ -2216,7 +2216,7 @@ begin
       // for debug:
       DoMatchBinarOperator(SContext, OpID, Left, Right);
 
-      ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Left.TextPosition);
+      ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Self, Left.TextPosition);
     end;
   end;
 end;
@@ -2294,7 +2294,7 @@ begin
         begin
           Result := TSysOpBinary(Op).Match(EContext.SContext, Left, Right);
           if Result = nil then
-            ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Left.TextPosition);
+            ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Self, Left.TextPosition);
 
         end else begin
           TmpVar := GetTMPVar(EContext, TIDType(Op));
@@ -2426,7 +2426,7 @@ begin
     begin
       // for debug
       MatchImplicit3(EContext.SContext, Source, Dest.DataType, {AAbortIfError:} False);
-      ERRORS.INCOMPATIBLE_TYPES(Source, Dest);
+      ERRORS.E2010_INCOMPATIBLE_TYPES(Self, Dest.DataType, Source.DataType, Source.TextPosition);
     end;
   end else
     CheckVarExpression(Dest, vmpAssignment);
@@ -2480,7 +2480,7 @@ begin
 
   OperatorItem := MatchUnarOperator(EContext.SContext, opNegative, Right);
   if not Assigned(OperatorItem) then
-   ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Right.TextPosition);
+   ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Self, Right.TextPosition);
 
   if Right.ItemType = itConst then
     Result := fCCalc.ProcessConstOperation(EContext.Scope, Right, Right, opNegative)
@@ -2502,7 +2502,7 @@ begin
   begin
     // for debug
     MatchUnarOperator(EContext.SContext, opNot, Right);
-    ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Right.TextPosition);
+    ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Self, Right.TextPosition);
   end;
 
   if Right.ItemType = itConst then
@@ -2615,7 +2615,6 @@ begin
     end else
       AbortWorkInternal('Invalid unit state');
 
-
     Result := DoParse(Scope, ACompileIntfOnly);
     if ACompileIntfOnly then
     begin
@@ -2633,8 +2632,8 @@ begin
     on e: ECompilerSkip do Exit(CompileSkip);
     on e: ECompilerAbort do begin
       var LMsg := ECompilerAbort(e).CompilerMessage;
-      LMsg.DeclUnit := Self;
-      PutMessage(LMsg^);
+      LMsg.Module := Self;
+      PutMessage(LMsg);
       Progress(TASTStatusParseFail, TTickCounter.GetTicks - LStartedAt);
       Result := CompileFail;
     end;
@@ -3133,6 +3132,12 @@ begin
   Result := TTokenID(Lexer.AmbiguousTokenID);
 end;
 
+function TASTDelphiUnit.Lexer_CurTokenAsID: TIdentifier;
+begin
+  Result.Name := Lexer_Original;
+  Result.TextPosition := Lexer_Position;
+end;
+
 function TASTDelphiUnit.Lexer_CurTokenID: TTokenID;
 begin
   Result := TTokenID(Lexer.CurrentTokenID);
@@ -3215,37 +3220,28 @@ end;
 
 procedure TASTDelphiUnit.PutMessage(MessageType: TCompilerMessageType; const MessageText: string);
 var
-  SourcePosition: TTextPosition;
-  Msg: TCompilerMessage;
+  LMessage: TCompilerMessage;
 begin
-  SourcePosition.Row := -1;
-  SourcePosition.Col := -1;
-  Msg := TCompilerMessage.Create(Self, MessageType, MessageText, SourcePosition);
-  Msg.UnitName := _ID.Name;
-  Messages.Add(Msg);
-  fPackage.PutMessage(Msg);
+  LMessage := TCompilerMessage.Create(Self, MessageType, MessageText, Lexer_Position);
+  Messages.Add(LMessage);
+  fPackage.PutMessage(LMessage);
 end;
 
 procedure TASTDelphiUnit.PutMessage(MessageType: TCompilerMessageType; const MessageText: string; const SourcePosition: TTextPosition);
 var
-  Msg: TCompilerMessage;
+  LMessage: TCompilerMessage;
 begin
-  Msg := TCompilerMessage.Create(Self, MessageType, MessageText, SourcePosition);
-  Msg.UnitName := GetCurrentParsedFileName(True);
-  Messages.Add(Msg);
-  fPackage.PutMessage(Msg);
+  LMessage := TCompilerMessage.Create(Self, MessageType, MessageText, SourcePosition);
+  LMessage.ModuleName := GetCurrentParsedFileName({OnlyFileName:} True);
+  Messages.Add(LMessage);
+  fPackage.PutMessage(LMessage);
 end;
 
-procedure TASTDelphiUnit.PutMessage(Message: TCompilerMessage);
+procedure TASTDelphiUnit.PutMessage(const AMessage: IASTParserMessage);
 begin
-  Message.UnitName := Self.Name;
-  if Message.Row <=0 then
-  begin
-    Message.Row := Lexer_Position.Row;
-    Message.Col := Lexer_Position.Col;
-  end;
-  Messages.Add(Message);
-  fPackage.PutMessage(Message);
+  AMessage.ModuleName := Name;
+  Messages.Add(AMessage);
+  fPackage.PutMessage(AMessage);
 end;
 
 procedure TASTDelphiUnit.Error(const Message: string; const Params: array of const; const TextPosition: TTextPosition);
@@ -3293,7 +3289,11 @@ end;
 
 function TASTDelphiUnit.FindIDNoAbort(Scope: TScope; const ID: string): TIDDeclaration;
 begin
-  Result := Scope.FindIDRecurcive(ID);
+  // Scope must be assigned
+  if Assigned(Scope) then
+    Result := Scope.FindIDRecurcive(ID)
+  else
+    Result := nil;
 end;
 
 function TASTDelphiUnit.FindIDNoAbort(Scope: TScope; const ID: TIdentifier): TIDDeclaration;
@@ -3539,7 +3539,7 @@ begin
   end;
 end;
 
-class function TASTDelphiUnit.MatchUnarOperator(const SContext: TSContext; Op: TOperatorID; Source: TIDExpression): TIDExpression;
+function TASTDelphiUnit.MatchUnarOperator(const SContext: TSContext; Op: TOperatorID; Source: TIDExpression): TIDExpression;
 var
   OpDecl: TIDType;
   WasCall: Boolean;
@@ -4174,7 +4174,7 @@ begin
   end;
 end;
 
-class function TASTDelphiUnit.MatchExplicit(const SContext: TSContext; const Source: TIDExpression; Destination: TIDType; out Explicit: TIDDeclaration): TIDExpression;
+function TASTDelphiUnit.MatchExplicit(const SContext: TSContext; const Source: TIDExpression; Destination: TIDType; out Explicit: TIDDeclaration): TIDExpression;
 var
   SrcDataType: TIDType;
   DstDataType: TIDType;
@@ -4247,7 +4247,7 @@ begin
   AProcScope.ParamsScope.SelfParam := SelfParam;
 end;
 
-class function TASTDelphiUnit.GetOverloadProcForImplicitCall(ACallExpr: TIDCallExpression): TIDProcedure;
+function TASTDelphiUnit.GetOverloadProcForImplicitCall(ACallExpr: TIDCallExpression): TIDProcedure;
 
   function InArray(const AArray: TIDProcArray; AProc: TIDProcedure): Boolean;
   begin
@@ -4279,12 +4279,12 @@ begin
     Exit;
 
   if LMatchedCount > 1 then
-    TASTDelphiErrors.E2251_AMBIGUOUS_OVERLOADED_CALL(ACallExpr)
+    TASTDelphiErrors.E2251_AMBIGUOUS_OVERLOADED_CALL(Self, ACallExpr)
   else
-    TASTDelphiErrors.E2250_THERE_IS_NO_OVERLOADED_VERSION_THAT_CAN_BE_CALLED_WITH_THESE_ARGUMENTS(ACallExpr);
+    TASTDelphiErrors.E2250_THERE_IS_NO_OVERLOADED_VERSION_THAT_CAN_BE_CALLED_WITH_THESE_ARGUMENTS(Self, ACallExpr);
 end;
 
-class function TASTDelphiUnit.CheckAndCallFuncImplicit(const SContext: TSContext; Expr: TIDExpression; out WasCall: Boolean): TIDExpression;
+function TASTDelphiUnit.CheckAndCallFuncImplicit(const SContext: TSContext; Expr: TIDExpression; out WasCall: Boolean): TIDExpression;
 begin
   WasCall := False;
   if Expr.ItemType = itProcedure then
@@ -5408,7 +5408,7 @@ begin
         var LIntfDecl := LExpr.AsType.Original as TIDInterface;
         LConst := LIntfDecl.GuidDecl;
         if not Assigned(LConst) then
-          ERRORS.E2232_INTERFACE_HAS_NO_INTERFACE_IDENTIFICATION(LIntfDecl);
+          ERRORS.E2232_INTERFACE_HAS_NO_INTERFACE_IDENTIFICATION(Self, LIntfDecl);
       end else
         ERRORS.CONST_EXPRESSION_REQUIRED(LExpr);
     end else
@@ -5468,19 +5468,30 @@ begin
     DeprecatedExpr := TIDExpression.Create(Sys._DeprecatedDefaultStr, Lexer_Position);
 end;
 
-function TASTDelphiUnit.ParseCaseRecord(Scope: TScope; ARecord: TIDRecord): TTokenID;
+function TASTDelphiUnit.ParseCaseRecord(Scope: TScope; ARecord: TIDRecord; Visibility: TVisibility): TTokenID;
 var
   Expr: TIDExpression;
-  CaseTypeDecl: TIDDeclaration;
-  ID: TIdentifier;
+  CaseTypeDecl: TIDType;
+  LVarID, LTypeID: TIdentifier;
 begin
-  Lexer_ReadNextIdentifier(Scope, ID);
-  CaseTypeDecl := FindIDNoAbort(Scope, ID);
-  if not Assigned(CaseTypeDecl) then
+  Lexer_ReadNextIdentifier(Scope, LVarID);
+
+  Result := Lexer_NextToken(Scope);
+  if Result = token_colon then
   begin
-    Result := Lexer_NextToken(Scope);
-    Lexer_MatchToken(Result, token_colon);
+    Lexer_ReadNextIdentifier(Scope, LTypeID);
     Lexer_NextToken(Scope);
+  end else begin
+    LTypeID := LVarID;
+    LVarID.Name := '';
+  end;
+
+  CaseTypeDecl := FindIDNoAbort(Scope, LTypeID) as TIDType;
+
+  if LVarID.Name <> '' then
+  begin
+    var LField := ARecord.AddField(LVarID, CaseTypeDecl, {AIsClassVar:} False);
+    LField.Visibility := Visibility;
   end;
 
   Result := ParseConstExpression(Scope, Expr, ExprNested);
@@ -5510,7 +5521,7 @@ begin
     // parse nested case then
     if Result = token_case then
     begin
-      Result := ParseCaseRecord(Scope, ARecord);
+      Result := ParseCaseRecord(Scope, ARecord, Visibility);
       Lexer_MatchToken(Result, token_closeround);
     end;
     // parse close round at the end
@@ -5935,7 +5946,7 @@ begin
 
   Decl := TIDClass(ParseGenericTypeDecl(Scope, GDescriptor, ID, TIDClass));
 
-  if (Self = SYSUnit) and (ID.Name = 'TObject') then
+  if (Self = TObject(SYSUnit)) and (ID.Name = 'TObject') then
     Sys._TObject := Decl;
 
 
@@ -5966,7 +5977,7 @@ begin
   begin
     Result := ParseClassAncestorType(Decl.Members, Decl);
   end else begin
-    if Self <> SYSUnit then
+    if Self <> TObject(SYSUnit) then
       Decl.AncestorDecl := Sys._TObject;
   end;
 
@@ -6072,9 +6083,11 @@ begin
     end;
   end else
   begin
-    // for debug  
+    // for debug
     MatchExplicit(SContext, SrcExpr, TargetType, OperatorDecl);
-    ERRORS.INVALID_EXPLICIT_TYPECAST(SrcExpr, TargetType);
+    ERRORS.E2089_INVALID_TYPECAST(Self, SrcExpr.TextPosition);
+    // return unknown value
+    DstExpression := TIDCastExpression.Create(SrcExpr.Declaration, TIDType(DstExpression.Declaration), SrcExpr.TextPosition);
   end;
 end;
 
@@ -6517,7 +6530,7 @@ begin
       LoopVar.Declaration.DataType := LItemDataType;
     end;
   end else
-    ERRORS.E2430_FOR_IN_STATEMENT_CANNOT_OPERATE_ON_COLLECTION_TYPE(LExprDataType.Name, LExpr.TextPosition);
+    ERRORS.E2430_FOR_IN_STATEMENT_CANNOT_OPERATE_ON_COLLECTION_TYPE(Self, LExprDataType.Name, LExpr.TextPosition);
 
   Lexer_MatchToken(Result, token_do);
   Lexer_NextToken(Scope);
@@ -7448,7 +7461,7 @@ begin
   Lexer_ReadNextIdentifier(Scope, {out} ID);
   Result := Lexer_NextToken(Scope);
   if Result = token_less then
-    ERRORS.E2535_INTERFACE_METHODS_MUST_NOT_HAVE_PARAMETERIZED_METHODS(Lexer_Position);
+    ERRORS.E2535_INTERFACE_METHODS_MUST_NOT_HAVE_PARAMETERIZED_METHODS(Self, Lexer_Position);
 
   ProcScope := TMethodScope.CreateInDecl(Scope, Struct.Members, {AProc} nil);
 
@@ -8320,7 +8333,7 @@ begin
     if Result = token_less then
     begin
       if AProcType = ptOperator then
-        ERRORS.E2529_TYPE_PARAMETERS_NOT_ALLOWED_ON_OPERATOR(Lexer_Position);
+        ERRORS.E2529_TYPE_PARAMETERS_NOT_ALLOWED_ON_OPERATOR(Self, Lexer_Position);
 // todo:
 //      else
 //      if not Assigned(AStruct) then
@@ -8689,7 +8702,7 @@ begin
     Result := ParseVisibilityModifiers(Scope, {var} Visibility, {AIsClass:} False);
     case Result of
       token_openblock: Result := ParseAttribute(Scope);
-      token_case: Result := ParseCaseRecord(ARecord.Members, ARecord);
+      token_case: Result := ParseCaseRecord(ARecord.Members, ARecord, Visibility);
       token_class: begin
         Result := Lexer_NextReseredToken(scope);
         case Result of
@@ -9033,7 +9046,7 @@ begin
   Lexer_NextToken(AScope);
 
   if not Assigned(AStruct) or (AStruct.DataTypeID <> dtInterface) then
-    ERRORS.E2185_CANNOT_SPECIFY_DISPID(AMethodID);
+    ERRORS.E2185_CANNOT_SPECIFY_DISPID(Self, AMethodID);
 
   Result := ParseConstExpression(AScope, {out} LDispIdExpr, ExprRValue);
 
@@ -9491,7 +9504,7 @@ begin
   end;
 
   if not Assigned(SearchScope) then
-    ERRORS.E2018_RECORD_OBJECT_OR_CLASS_TYPE_REQUIRED(Lexer_Position);
+    ERRORS.E2018_RECORD_OBJECT_OR_CLASS_TYPE_REQUIRED(Self, Lexer_Position);
 
   ASTE.AddOperation<TASTOpMemberAccess>;
 
@@ -9539,10 +9552,10 @@ begin
       // special workaround for https://embt.atlassian.net/servicedesk/customer/portal/1/RSS-2663
       // if a declaration has been redefined, try to find the original
       var LDecl := Expr.Declaration;
-      LDecl := FindIDNoAbort(LDecl.Scope.Parent, LDecl.Name);
-      if Assigned(LDecl) then
+      var LMemberDecl := FindIDNoAbort(LDecl.Scope.Parent, LDecl.Name);
+      if Assigned(LMemberDecl) then
       begin
-        Expr.Declaration := LDecl;
+        Expr.Declaration := LMemberDecl;
         Continue;
       end else
         ERRORS.FEATURE_NOT_SUPPORTED;
@@ -9878,11 +9891,11 @@ begin
     dtStaticArray: Result := ParseVarStaticArrayDefaultValue(Scope, DataType as TIDArray, DefaultValue);
     dtGuid, dtRecord: begin
       Result := Lexer_NextToken(Scope);
-      if (DataType.Module = SYSUnit) and (DataType.Name = 'TGUID') and (Result <> token_openround) then
+      if (DataType.Module = TObject(SYSUnit)) and (DataType.Name = 'TGUID') and (Result <> token_openround) then
       begin
         Result := ParseConstExpression(Scope, DefaultValue, ExprRValue);
       end else
-        Result := ParseVarRecordDefaultValue(Scope, DataType as TIDStructure, DefaultValue);
+        Result := ParseVarRecordDefaultValue(Scope, DataType as TIDStructure, DefaultValue)
     end
   else
     SContext := fUnitSContext;
@@ -10048,7 +10061,7 @@ begin
     Result := CheckAndParseAbsolute(Scope, {out} DeclAbsolute);
 
     if Result = token_equal then
-      Result := ParseVarDefaultValue(Scope, DataType, {out} DefaultValue);
+      Result := ParseVarDefaultValue(Scope, DataType.ActualDataType, {out} DefaultValue);
 
     // deprecated
     if Result = token_deprecated then
@@ -10444,6 +10457,11 @@ begin
   Result.HighBound := HiBound;
 end;
 
+function TASTDelphiUnit.CreateUnknownExpr(const ATextPosition: TTextPosition): TIDExpression;
+begin
+  Result := TIDExpression.Create(Sys._UnknownVariable, ATextPosition);
+end;
+
 procedure TASTDelphiUnit.CheckIntfSectionMissing(Scope: TScope);
 begin
   if not Assigned(Scope) then
@@ -10720,7 +10738,7 @@ end;
 procedure TASTDelphiUnit.CheckIncompleteFwdTypes;
 begin
   EnumDeclarations(
-    procedure (const AModule: TASTModule; const ADecl: TASTDeclaration)
+    procedure (const AModule: IASTModule; const ADecl: IASTDeclaration)
     begin
       if ADecl is TIDPointer then
       begin
@@ -10734,7 +10752,7 @@ end;
 procedure TASTDelphiUnit.CheckIncompleteType(Fields: TScope);
 begin
   EnumDeclarations(
-    procedure (const AModule: TASTModule; const ADecl: TASTDeclaration)
+    procedure (const AModule: IASTModule; const ADecl: IASTDeclaration)
     begin
       if ADecl is TIDVariable then
       begin

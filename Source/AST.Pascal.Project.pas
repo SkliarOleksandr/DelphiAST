@@ -13,11 +13,12 @@ uses System.SysUtils, System.Classes, System.Types, Generics.Collections, System
      AST.Parser.Messages,
      AST.Parser.Utils,
      AST.Pascal.Intf,
-     AST.Classes, AST.Lexer;
+     AST.Classes,
+     AST.Lexer;
 
 type
-  TUnits = TList<TASTModule>;
-  TUnitsDict = TDictionary<{name} string, {module} TASTModule>;
+  TUnits = TList<IASTPascalUnit>;
+  TUnitsDict = TDictionary<{name} string, {module} IASTPascalUnit>;
   TTypes = TList<TIDType>;
   TEnumDeclProc = procedure (Module: TASTModule; Decl: TASTDeclaration);
 
@@ -51,31 +52,28 @@ type
     fTotalLinesParsed: Integer;
     fTotalUnitsParsed: Integer;
     fTotalUnitsIntfOnlyParsed: Integer;
-    fStopCompileIfError: Boolean;
     fCompileAll: Boolean;
     fUnitScopeNames: TStrings;
     fParseSystemUnit: Boolean;
     FProjectFileName: string;
     function GetIncludeDebugInfo: Boolean;
-    function OpenUnit(const UnitName: string): TASTModule;
+    function OpenUnit(const AUnitName: string): IASTPascalUnit;
     function RefCount: Integer;
     function GetRTTICharset: TRTTICharset;
     function GetUnitsCount: Integer;
-    function GetUnit(Index: Integer): TASTModule; overload;
-    function GetUnit(const UnitName: string): TObject; overload;
+    function GetUnit(Index: Integer): IASTPascalUnit; overload;
+    function GetUnit(const AUnitName: string): TObject; overload;
     function GetAllUnitsCount: Integer;
-    function GetAllUnit(AIndex: Integer): TASTModule;
+    function GetAllUnit(AIndex: Integer): IASTPascalUnit;
     function GetSearchPathes: TStrings;
     function GetOptions: TPackageOptions;
     function GetTarget: TASTTargetClass;
     function GetDefines: TDefines;
-    function GetSysUnit: TASTModule;
-    function GetStopCompileIfError: Boolean;
+    function GetSysUnit: IASTPascalUnit;
     function GetCompileAll: Boolean;
     function GetUnitScopeNames: string;
     function GetParseSystemUnit: Boolean;
     function GetRootPath: string;
-    procedure SetStopCompileIfError(const Value: Boolean);
     procedure SetIncludeDebugInfo(const Value: Boolean);
     procedure SetRTTICharset(const Value: TRTTICharset);
     procedure SetTarget(const Value: TASTTargetClass);
@@ -86,7 +84,7 @@ type
     class function StrListCompare(const Left, Right: TStrConstKey): NativeInt; static;
     function GetProjectFileName: string;
   protected
-    fSysUnit: TASTModule;
+    fSysUnit: IASTPascalUnit;
     function GetUnitClass: TASTUnitClass; override;
     function GetSystemUnitClass: TASTUnitClass; virtual; abstract;
     function GetSystemUnitFileName: string; virtual;
@@ -103,7 +101,7 @@ type
     procedure SaveToStream(Stream: TStream);
     procedure PrepareStrLiterals;
     procedure SaveStrLiterals(Stream: TStream);
-    procedure AddUnit(aUnit, BeforeUnit: TASTModule); overload;
+    procedure AddUnit(const aUnit, BeforeUnit: IASTPascalUnit); overload;
     procedure AddUnit(const AFileName: string); overload;
     procedure AddUnitSource(const Source: string);
     procedure AddUnitSearchPath(const APath: string; AIncludeSubDirs: Boolean);
@@ -115,7 +113,7 @@ type
     property IncludeDebugInfo: Boolean read GetIncludeDebugInfo write SetIncludeDebugInfo;
     property RTTICharset: TRTTICharset read GetRTTICharset write SetRTTICharset;
     property Units: TUnits read FUnits;
-    property SysUnit: TASTModule read fSysUnit;
+    property SysUnit: IASTPascalUnit read fSysUnit;
     property Options: TPackageOptions read GetOptions;
     property TotalLinesParsed: Integer read fTotalLinesParsed;
     property TotalUnitsParsed: Integer read fTotalUnitsParsed;
@@ -124,16 +122,16 @@ type
     function GetStringConstant(const Value: string): Integer; overload;
     function GetStringConstant(const StrConst: TIDStringConstant): Integer; overload;
     function FindUnitFile(const AUnitName: string; const AFileExt: string = ''): string;
-    function FindParsedUnit(const AUnitName: string): TASTModule;
-    function UsesUnit(const UnitName: string; AfterUnit: TASTModule): TASTModule;
+    function FindParsedUnit(const AUnitName: string): IASTPascalUnit;
+    function UsesUnit(const AUnitName: string): IASTPascalUnit;
     function FindType(const AUnitName, ATypeName: string): TASTDeclaration;
     function GetMessages: ICompilerMessages;
     function Compile: TCompilerResult; virtual;
     function CompileInterfacesOnly: TCompilerResult; virtual;
     procedure EnumDeclarations(const AEnumProc: TEnumASTDeclProc; AUnitScope: TUnitScopeKind);
-    procedure PutMessage(const Message: TCompilerMessage); overload;
-    procedure PutMessage(MessageType: TCompilerMessageType; const MessageText: string); overload;
-    procedure PutMessage(MessageType: TCompilerMessageType; const MessageText: string; const SourcePosition: TTextPosition); overload;
+    procedure PutMessage(const AMessage: IASTParserMessage); override;
+    procedure PutMessage(const AModule: IASTModule; AMsgType: TCompilerMessageType; const AMessage: string;
+                         const ATextPostition: TTextPosition); override;
     property UnitScopeNames: string read GetUnitScopeNames write SetUnitScopeNames; // semicolon delimited
   end;
 
@@ -154,7 +152,7 @@ begin
   Result := fAllUnits.Count;
 end;
 
-function TPascalProject.GetAllUnit(AIndex: Integer): TASTModule;
+function TPascalProject.GetAllUnit(AIndex: Integer): IASTPascalUnit;
 begin
   Result := fAllUnits[AIndex];
 end;
@@ -218,11 +216,6 @@ begin
   end;
 end;
 
-function TPascalProject.GetStopCompileIfError: Boolean;
-begin
-  Result := fStopCompileIfError;
-end;
-
 function TPascalProject.GetStringConstant(const StrConst: TIDStringConstant): Integer;
 var
   Node: TStrLiterals.PAVLNode;
@@ -247,13 +240,13 @@ begin
   Result := 'System.pas';
 end;
 
-function TPascalProject.GetSysUnit: TASTModule;
+function TPascalProject.GetSysUnit: IASTPascalUnit;
 begin
   if not Assigned(fSysUnit) then
   begin
     var LSystemName := GetSystemUnitFileName;
     var LSystemUnitFileName := FindUnitFile(LSystemName);
-    fSysUnit := GetSystemUnitClass.Create(Self, LSystemUnitFileName);
+    fSysUnit := GetSystemUnitClass.Create(Self, LSystemUnitFileName) as IASTPascalUnit;
     if FileExists(LSystemUnitFileName) and fParseSystemUnit then
       fSysUnit.Compile(not fCompileAll);
 
@@ -282,19 +275,19 @@ begin
   Result := fTotalUnitsParsed;
 end;
 
-function TPascalProject.GetUnit(Index: Integer): TASTModule;
+function TPascalProject.GetUnit(Index: Integer): IASTPascalUnit;
 begin
   Result := FUnits[Index];
 end;
 
-function TPascalProject.GetUnit(const UnitName: string): TObject;
+function TPascalProject.GetUnit(const AUnitName: string): TObject;
 var
   i: Integer;
 begin
   for i := 0 to FUnits.Count - 1 do
   begin
-    Result := FUnits[i];
-    if TPascalUnit(Result).Name = UnitName then
+    Result := TObject(FUnits[i]);
+    if TPascalUnit(Result).Name = AUnitName then
       Exit;
   end;
   Result := nil;
@@ -328,7 +321,7 @@ begin
   end;
 end;
 
-procedure TPascalProject.AddUnit(aUnit, BeforeUnit: TASTModule);
+procedure TPascalProject.AddUnit(const aUnit, BeforeUnit: IASTPascalUnit);
 var
   i: Integer;
 begin
@@ -356,7 +349,7 @@ begin
     Result := AnsiCompareStr(Left.StrValue, Right.StrValue);
 end;
 
-function TPascalProject.FindParsedUnit(const AUnitName: string): TASTModule;
+function TPascalProject.FindParsedUnit(const AUnitName: string): IASTPascalUnit;
 begin
   for var LIndex := 0 to FUnits.Count - 1 do
   begin
@@ -365,11 +358,11 @@ begin
       Exit(FUnits[LIndex]);
   end;
 
-  if not fImplicitUnits.TryGetValue(LowerCase(UnitName), {out} Result) then
+  if not fImplicitUnits.TryGetValue(LowerCase(AUnitName), {out} Result) then
     raise Exception.CreateFmt('Unit ''%s'' not found', [AUnitName]);
 end;
 
-function TPascalProject.UsesUnit(const UnitName: string; AfterUnit: TASTModule): TASTModule;
+function TPascalProject.UsesUnit(const AUnitName: string): IASTPascalUnit;
 var
   i: Integer;
   SUnitName: string;
@@ -378,21 +371,21 @@ begin
   for i := 0 to FUnits.Count - 1 do
   begin
     SUnitName := TPascalUnit(FUnits[i]).Name;
-    if AnsiCompareText(SUnitName, UnitName) = 0 then
+    if AnsiCompareText(SUnitName, AUnitName) = 0 then
       Exit(FUnits[i]);
   end;
 
-  if fImplicitUnits.TryGetValue(LowerCase(UnitName), {out} Result) then
+  if fImplicitUnits.TryGetValue(LowerCase(AUnitName), {out} Result) then
     Exit;
 
   // ищем на файловой системе
-  SUnitName := FindUnitFile(UnitName, '.pas');
+  SUnitName := FindUnitFile(AUnitName, '.pas');
   if SUnitName <> '' then
   begin
     Result := OpenUnit(SUnitName);
     // add a unit to implicit unit list
-    if not fImplicitUnits.TryAdd(LowerCase(UnitName), Result) then
-      raise ECompilerInternalError.CreateFmt(sUnitAlreadyExistFmt, [UnitName]);
+    if not fImplicitUnits.TryAdd(LowerCase(AUnitName), Result) then
+      raise ECompilerInternalError.CreateFmt(sUnitAlreadyExistFmt, [AUnitName]);
 
     fAllUnits.Add(Result);
   end else
@@ -433,7 +426,7 @@ procedure TPascalProject.AddUnit(const AFileName: string);
 begin
   var LFullFileName := FindUnitFile(AFileName);
   if LFullFileName <> '' then
-    AddUnit(GetUnitClass().CreateFromFile(Self, LFullFileName), nil)
+    AddUnit(GetUnitClass().CreateFromFile(Self, LFullFileName) as IASTPascalUnit, nil)
   else
     raise Exception.CreateFmt('%s file cannot be found at the specified paths', [AFileName]);
 end;
@@ -457,7 +450,6 @@ var
 begin
   for i := 0 to FUnits.Count - 1 do
   begin
-    FUnits[i].Free;
     // delete first explicit units from the list
     fAllUnits.Delete(0);
   end;
@@ -466,9 +458,6 @@ begin
 
   if AClearImplicitUnits then
   begin
-    for var LUnit in fImplicitUnits.Values do
-      LUnit.Free;
-
     fImplicitUnits.Clear;
     fAllUnits.Clear;
     fSysUnit := nil;
@@ -506,7 +495,7 @@ begin
         if LUnit.UnitState = UnitIntfCompiled then
         begin
           Result := LUnit.Compile({ACompileIntfOnly:} False);
-          if (Result = CompileFail) and fStopCompileIfError then
+          if (Result = CompileFail) and StopCompileIfError then
             Exit;
         end;
       end;
@@ -552,13 +541,13 @@ begin
     fAllUnits[LIndex].EnumDeclarations(AEnumProc, AUnitScope);
 end;
 
-function TPascalProject.OpenUnit(const UnitName: string): TASTModule;
+function TPascalProject.OpenUnit(const AUnitName: string): IASTPascalUnit;
 begin
   var LStrings := TStringList.Create();
   try
-    LStrings.LoadFromFile(UnitName);
+    LStrings.LoadFromFile(AUnitName);
     var LUnitClass := GetUnitClass();
-    Result := LUnitClass.Create(Self, UnitName, LStrings.Text);
+    Result := LUnitClass.Create(Self, AUnitName, LStrings.Text) as IASTPascalUnit;
   finally
     LStrings.Free;
   end;
@@ -581,20 +570,15 @@ begin
   end;
 end;
 
-procedure TPascalProject.PutMessage(const Message: TCompilerMessage);
+procedure TPascalProject.PutMessage(const AMessage: IASTParserMessage);
 begin
-  fMessages.Add(Message);
+  fMessages.Add(AMessage);
 end;
 
-procedure TPascalProject.PutMessage(MessageType: TCompilerMessageType; const MessageText: string);
+procedure TPascalProject.PutMessage(const AModule: IASTModule; AMsgType: TCompilerMessageType; const AMessage: string;
+                         const ATextPostition: TTextPosition);
 begin
-  fMessages.Add(TCompilerMessage.Create(Self, MessageType, MessageText, TTextPosition.Empty));
-end;
-
-procedure TPascalProject.PutMessage(MessageType: TCompilerMessageType; const MessageText: string;
-  const SourcePosition: TTextPosition);
-begin
-  fMessages.Add(TCompilerMessage.Create(Self, MessageType, MessageText, SourcePosition));
+  fMessages.Add(TCompilerMessage.Create(AModule, AMsgType, AMessage, ATextPostition));
 end;
 
 function TPascalProject.RefCount: Integer;
@@ -712,11 +696,6 @@ end;
 procedure TPascalProject.SetRTTICharset(const Value: TRTTICharset);
 begin
   FRTTICharset := Value;
-end;
-
-procedure TPascalProject.SetStopCompileIfError(const Value: Boolean);
-begin
-  fStopCompileIfError := Value;
 end;
 
 procedure TPascalProject.SetTarget(const Value: TASTTargetClass);

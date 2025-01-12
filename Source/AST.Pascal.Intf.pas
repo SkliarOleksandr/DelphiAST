@@ -12,12 +12,12 @@ uses
   AST.Parser.Options;
 
 type
-  TUnits = TList<TASTModule>;
-  TEnumDeclProc = procedure (Module: TASTModule; Decl: TASTDeclaration);
-
+  IASTPascalUnit = interface(IASTModule)
+    ['{C846B6A1-A57A-42B3-8BA0-8DD0931F3D35}']
+  end;
 
   IPascalProjectSettings = interface(IASTProjectSettings)
-
+    ['{354555F9-A1EE-408C-B6A3-2BE412D07077}']
   end;
 
   IASTPascalProject = interface(IASTProject)
@@ -25,27 +25,25 @@ type
     function GetStringConstant(const Value: string): Integer; overload;
     function GetIncludeDebugInfo: Boolean;
     function GetUnitsCount: Integer;
-    function GetUnit(Index: Integer): TASTModule; overload;
+    function GetUnit(Index: Integer): IASTPascalUnit; overload;
     function GetAllUnitsCount: Integer;
-    function GetAllUnit(AIndex: Integer): TASTModule;
+    function GetAllUnit(AIndex: Integer): IASTPascalUnit;
     function GetSearchPathes: TStrings;
     function GetOptions: TPackageOptions;
     function GetTarget: TASTTargetClass;
     function GetDefines: TDefines;
     function FindUnitFile(const AUnitName: string; const AFileExt: string = ''): string;
-    function FindParsedUnit(const AUnitName: string): TASTModule;
-    function GetUnit(const UnitName: string): TObject; overload;
-    function UsesUnit(const UnitName: string; AfterUnit: TASTModule): TASTModule;
-    function GetSysUnit: TASTModule;
-    function GetStopCompileIfError: Boolean;
+    function FindParsedUnit(const AUnitName: string): IASTPascalUnit;
+    function GetUnit(const AUnitName: string): TObject; overload;
+    function UsesUnit(const AUnitName: string): IASTPascalUnit;
+    function GetSysUnit: IASTPascalUnit;
     function GetCompileAll: Boolean;
-    procedure SetStopCompileIfError(const Value: Boolean);
     procedure SetCompileAll(const Value: Boolean);
     procedure SetIncludeDebugInfo(const Value: Boolean);
     procedure SetRTTICharset(const Value: TRTTICharset);
     procedure SetTarget(const Value: TASTTargetClass);
     procedure SaveToStream(Stream: TStream);
-    procedure AddUnit(aUnit, AfterUnit: TASTModule); overload;
+    procedure AddUnit(const AUnit, BeforeUnit: IASTPascalUnit); overload;
     procedure AddUnit(const FileName: string); overload;
     procedure AddUnitSource(const Source: string); overload;
     procedure AddUnitSearchPath(const APath: string; AIncludeSubDirs: Boolean = True);
@@ -54,7 +52,6 @@ type
     procedure EnumDeclarations(const AEnumProc: TEnumASTDeclProc; AUnitScope: TUnitScopeKind);
     procedure DoBeforeCompileUnit(AUnit: TASTModule);
     procedure DoFinishCompileUnit(AUnit: TASTModule; AIntfOnly: Boolean);
-    procedure PutMessage(const Message: TCompilerMessage); overload;
     procedure SetUnitScopeNames(const Value: string);
     procedure SetParseSystemUnit(AValue: Boolean);
     function GetMessages: ICompilerMessages;
@@ -70,12 +67,11 @@ type
     property Messages: ICompilerMessages read GetMessages;
     property RTTICharset: TRTTICharset read GetRTTICharset write SetRTTICharset;
     property IncludeDebugInfo: Boolean read GetIncludeDebugInfo write SetIncludeDebugInfo;
-    property StopCompileIfError: Boolean read GetStopCompileIfError write SetStopCompileIfError;
     property CompileAll: Boolean read GetCompileAll write SetCompileAll;
     property UnitsCount: Integer read GetUnitsCount;
-    property Units[Index: Integer]: TASTModule read GetUnit;
+    property Units[Index: Integer]: IASTPascalUnit read GetUnit;
     property AllUnitsCount: Integer read GetAllUnitsCount;
-    property AllUnits[AIndex: Integer]: TASTModule read GetAllUnit;
+    property AllUnits[AIndex: Integer]: IASTPascalUnit read GetAllUnit;
     property SearchPathes: TStrings read GetSearchPathes;
     property Options: TPackageOptions read GetOptions;
     property Target: TASTTargetClass read GetTarget write SetTarget;
@@ -83,7 +79,7 @@ type
     property PointerSize: Integer read GetPointerSize;
     property NativeIntSize: Integer read GetNativeIntSize;
     property VariantSize: Integer read GetVariantSize;
-    property SysUnit: TASTModule read GetSysUnit;
+    property SysUnit: IASTPascalUnit read GetSysUnit;
     property UnitScopeNames: string read GetUnitScopeNames write SetUnitScopeNames;
     property ParseSystemUnit: Boolean read GetParseSystemUnit write SetParseSystemUnit;
   end;

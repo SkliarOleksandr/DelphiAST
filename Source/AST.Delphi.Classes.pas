@@ -502,6 +502,19 @@ type
     function TryGetEnumerator(out AItemDataType: TIDType): Boolean; virtual;
   end;
 
+  {Unknown (error) type that is needed for bypassing compiler errors}
+  TIDUnknown = class(TIDType)
+  public
+    function MatchImplicitTo(ADst: TIDType): Boolean; override;
+    function MatchImplicitFrom(ASrc: TIDType): Boolean; override;
+
+    function MatchExplicitTo(ADst: TIDType): Boolean; override;
+    function MatchExplicitFrom(ASrc: TIDType): Boolean; override;
+
+    function SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType; override;
+    function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
+  end;
+
   {special system internal type to describe several possible types in one}
   TIDSysVariativeType = class(TIDType)
   private
@@ -7460,6 +7473,16 @@ begin
   if Assigned(Result) then
     Exit;
 
+  // serach in ancestor scopes
+  var AStructScope := FParent as TStructScope;
+  while Assigned(AStructScope) and (AStructScope.ScopeType = stStruct) do
+  begin
+    Result := AStructScope.FindID(ID);
+    if Assigned(Result) then
+      Exit;
+    AStructScope := AStructScope.AncestorScope;
+  end;
+
   // serach in local parent scopes
   var ALocalScope := FParent;  // TODO: rework
   while Assigned(ALocalScope) {and (ALocalScope.ScopeType <> stStruct)} do
@@ -7468,25 +7491,6 @@ begin
     if Assigned(Result) then
       Exit;
     ALocalScope := ALocalScope.Parent;
-  end;
-
-  // search in the impl scope (without uses)
-  var AOuterDecl := fOuterScope.FindID(ID);
-
-  // serach in local parent scopes
-  var AStructScope := FParent as TStructScope;
-  while Assigned(AStructScope) and (AStructScope.ScopeType = stStruct) do
-  begin
-    var AStructDecl := AStructScope.FindID(ID);
-    if Assigned(AStructDecl) then
-    begin
-      if Assigned(AOuterDecl) and (AOuterDecl.ID.TextPosition.Col > AStructDecl.ID.TextPosition.Col) then
-        Result := AOuterDecl
-      else
-        Result := AStructDecl;
-      Exit;
-    end;
-    AStructScope := AStructScope.AncestorScope;
   end;
 
   // search in the all impl uses scopes
@@ -8922,6 +8926,58 @@ begin
     ConvSafeCall: Result := 'safecall';
   else
     Result := '';
+  end;
+end;
+
+{ TIDUnknown }
+
+function TIDUnknown.MatchExplicitFrom(ASrc: TIDType): Boolean;
+begin
+  Result := True;
+end;
+
+function TIDUnknown.MatchExplicitTo(ADst: TIDType): Boolean;
+begin
+  Result := True;
+end;
+
+function TIDUnknown.MatchImplicitFrom(ASrc: TIDType): Boolean;
+begin
+  Result := True;
+end;
+
+function TIDUnknown.MatchImplicitTo(ADst: TIDType): Boolean;
+begin
+  Result := True;
+end;
+
+function TIDUnknown.SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType;
+begin
+  case AOpID of
+    opIn,
+    opEqual,
+    opNotEqual,
+    opGreater,
+    opGreaterOrEqual,
+    opLess,
+    opLessOrEqual: Result := SYSUnit._Boolean;
+  else
+    Result := Self;
+  end;
+end;
+
+function TIDUnknown.SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType;
+begin
+  case AOpID of
+    opIn,
+    opEqual,
+    opNotEqual,
+    opGreater,
+    opGreaterOrEqual,
+    opLess,
+    opLessOrEqual: Result := SYSUnit._Boolean;
+  else
+    Result := Self;
   end;
 end;
 

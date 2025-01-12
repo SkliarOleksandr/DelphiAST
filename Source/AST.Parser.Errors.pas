@@ -2,19 +2,18 @@ unit AST.Parser.Errors;
 
 interface
 
-uses SysUtils, AST.Parser.Messages, AST.Lexer;
+uses SysUtils, AST.Intf, AST.Lexer;
 
 type
 
   ECompilerAbort = class(EAbort)
   private
-    FCompilerMessage: TCompilerMessage;
-    function GetCompilerMessage: PCompilerMessage;
+    FCompilerMessage: IASTParserMessage;
   public
     constructor Create(const MessageText: string); overload;
     constructor Create(const MessageText: string; const SourcePosition: TTextPosition); overload;
     constructor CreateAsInteranl(const MessageText: string; const SourcePosition: TTextPosition);
-    property CompilerMessage: PCompilerMessage read GetCompilerMessage;
+    property CompilerMessage: IASTParserMessage read FCompilerMessage;
   end;
 
   ECompilerInternalError = class(ECompilerAbort);
@@ -48,6 +47,7 @@ implementation
 
 uses
   Winapi.Windows,
+  AST.Parser.Messages,
   AST.Parser.Log;
 
 constructor ECompilerAbort.Create(const MessageText: string);
@@ -66,11 +66,6 @@ constructor ECompilerAbort.CreateAsInteranl(const MessageText: string; const Sou
 begin
   inherited Create(MessageText);
   FCompilerMessage := TCompilerMessage.Create(nil, cmtInteranlError, MessageText, SourcePosition);
-end;
-
-function ECompilerAbort.GetCompilerMessage: PCompilerMessage;
-begin
-  Result := addr(FCompilerMessage);
 end;
 
 { EComplilerStop }
