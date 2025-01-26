@@ -113,6 +113,7 @@ type
     property IncludeDebugInfo: Boolean read GetIncludeDebugInfo write SetIncludeDebugInfo;
     property RTTICharset: TRTTICharset read GetRTTICharset write SetRTTICharset;
     property Units: TUnits read FUnits;
+    property AllUnits: TUnits read fAllUnits;
     property SysUnit: IASTPascalUnit read fSysUnit;
     property Options: TPackageOptions read GetOptions;
     property TotalLinesParsed: Integer read fTotalLinesParsed;
@@ -649,7 +650,7 @@ begin
   begin
     var LPath := IncludeTrailingPathDelimiter(FUnitSearchPathes[LIndex]);
     if IsRelativePath(LPath) then
-      LPath := TPath.Combine(RootPath, LPath);
+      LPath := TPath.GetFullPath(TPath.Combine(RootPath, LPath));
 
     Result := DoFindFile(LPath, LFileName);
     // if not found search in the subdirs (if specified)
@@ -691,6 +692,7 @@ end;
 procedure TPascalProject.SetProjectFileName(const Value: string);
 begin
   FProjectFileName := Value;
+  Name := ExtractFileName(Value);
 end;
 
 procedure TPascalProject.SetRTTICharset(const Value: TRTTICharset);

@@ -54,6 +54,7 @@ type
     procedure DoFinishCompileUnit(AUnit: TASTModule; AIntfOnly: Boolean);
     procedure SetUnitScopeNames(const Value: string);
     procedure SetParseSystemUnit(AValue: Boolean);
+    procedure SetProjectFileName(const Value: string);
     function GetMessages: ICompilerMessages;
     function GetRTTICharset: TRTTICharset;
     function RefCount: Integer;
@@ -64,6 +65,7 @@ type
     function GetVariantSize: Integer;
     function GetUnitScopeNames: string;
     function GetParseSystemUnit: Boolean;
+    function GetProjectFileName: string;
     property Messages: ICompilerMessages read GetMessages;
     property RTTICharset: TRTTICharset read GetRTTICharset write SetRTTICharset;
     property IncludeDebugInfo: Boolean read GetIncludeDebugInfo write SetIncludeDebugInfo;
@@ -82,6 +84,7 @@ type
     property SysUnit: IASTPascalUnit read GetSysUnit;
     property UnitScopeNames: string read GetUnitScopeNames write SetUnitScopeNames;
     property ParseSystemUnit: Boolean read GetParseSystemUnit write SetParseSystemUnit;
+    property ProjectFileName: string read GetProjectFileName write SetProjectFileName;
   end;
 
 

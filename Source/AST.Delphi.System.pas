@@ -855,6 +855,7 @@ procedure TSYSTEMUnit.AddBitwiseOperators;
       AddUnarOperator(Op, DataTypes[i], DataTypes[i]);
     AddUnarOperator(Op, _Variant, _Variant);
   end;
+
   procedure BitwiseOp(Op: TOperatorID);
   var
     i, j: TDataTypeID;
@@ -865,11 +866,12 @@ procedure TSYSTEMUnit.AddBitwiseOperators;
 
     AddBinarOperator(Op, _Variant, _Variant, _Variant);
   end;
+
 begin
   UnarOp(opNot);
-  BitwiseOp(opAnd);
-  BitwiseOp(opOr);
-  BitwiseOp(opXor);
+//  BitwiseOp(opAnd);
+//  BitwiseOp(opOr);
+//  BitwiseOp(opXor);
   BitwiseOp(opShiftLeft);
   BitwiseOp(opShiftRight);
 end;
@@ -1067,6 +1069,7 @@ begin
   // special "unknown" type
   fDecls._UnknownType := TIDUnknown.CreateAsSystem(IntfScope, '<unknown>');
   fDecls._UnknownVariable := TIDVariable.CreateAsSystem(IntfScope, '<unknown>');
+  fDecls._UnknownVariable.DataType := fDecls._UnknownType;
 
   // Delphi system aliases
   RegisterTypeAlias('LongInt', _Int32);
@@ -1220,6 +1223,7 @@ begin
   RegisterBuiltin(TSCTF_GetTypeKind);
   RegisterBuiltin(TSCTF_HasWeakRef);
   RegisterBuiltin(TSCTF_Declared);
+  RegisterBuiltin(TSCTF_StaticAssert);
   RegisterBuiltin(TCT_Break);
   RegisterBuiltin(TCT_Continue);
   RegisterBuiltin(TSF_Delete);
@@ -1296,7 +1300,6 @@ function TSYSTEMUnit.Compile(ACompileIntfOnly: Boolean; RunPostCompile: Boolean 
 begin
   Result := CompileInProgress;
   try
-    RegisterBuiltinFunctions;
     SystemFixup;
     Result := inherited Compile(ACompileIntfOnly, {RunPostCompile:} False);
     if Result = CompileSuccess then
@@ -1335,6 +1338,7 @@ begin
   fDecls._OrdinalType := TIDOrdinal.CreateAsSystem(IntfScope, 'ordinal');
 
   RegisterTypes;
+  RegisterBuiltinFunctions;
 //  fDecls._PointerType.CreateStandardOperators;
 //  fDecls._PAnsiChar.CreateStandardOperators;
 //  fDecls._PChar.CreateStandardOperators;

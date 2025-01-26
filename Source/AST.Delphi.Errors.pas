@@ -292,6 +292,8 @@ type
     class procedure E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(const AModule: IASTModule; const TextPosition: TTextPosition);
     class procedure E2018_RECORD_OBJECT_OR_CLASS_TYPE_REQUIRED(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2029_SEMICOLON_EXPECTED_BUT_ID_FOUND(const AModule: IASTModule; const AID: TIdentifier);
+    class procedure E2034_TOO_MANY_ACTUAL_PARAMETERS(const AModule: IASTModule; const ATextPosition: TTextPosition);
+    class procedure E2035_NOT_ENOUGH_ACTUAL_PARAMETERS(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2037_DECLARATION_OF_DIFFERS_FROM_PREVIOUS_DECLARATION(const AModule: IASTModule; const AID: TIdentifier);
     class procedure E2066_MISSING_OPERATOR_OR_SEMICOLON(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2089_INVALID_TYPECAST(const AModule: IASTModule;  const ATextPosition: TTextPosition);
@@ -355,6 +357,8 @@ type
     //procedure HINT_TYPE_DELETE_UNUSED(Decl: TIDDeclaration);
     //procedure HINT_PROC_DELETE_UNUSED(Decl: TIDDeclaration);
   end;
+
+  procedure STATIC_ASSERT_ERROR(const AModule: IASTModule; const ATextPosition: TTextPosition; const AMessage: string);
 
 implementation
 
@@ -602,6 +606,17 @@ end;
 class procedure TASTDelphiErrors.E2029_SEMICOLON_EXPECTED_BUT_ID_FOUND(const AModule: IASTModule; const AID: TIdentifier);
 begin
   AModule.PutError('E2029 '';'' expected but ''%s'' found', [AID.Name], AID.TextPosition);
+end;
+
+class procedure TASTDelphiErrors.E2034_TOO_MANY_ACTUAL_PARAMETERS(const AModule: IASTModule;
+  const ATextPosition: TTextPosition);
+begin
+  AModule.PutError('E2034 Too many actual parameters', ATextPosition);
+end;
+
+class procedure TASTDelphiErrors.E2035_NOT_ENOUGH_ACTUAL_PARAMETERS(const AModule: IASTModule; const ATextPosition: TTextPosition);
+begin
+  AModule.PutError('E2035 Not enough actual parameters', ATextPosition);
 end;
 
 class procedure TASTDelphiErrors.E2037_DECLARATION_OF_DIFFERS_FROM_PREVIOUS_DECLARATION(const AModule: IASTModule; const AID: TIdentifier);
@@ -1109,5 +1124,9 @@ end;
 //    PutMessage(cmtHint, 'Expression result is not used', Expr.TextPosition);
 //end;
 
+procedure STATIC_ASSERT_ERROR(const AModule: IASTModule; const ATextPosition: TTextPosition; const AMessage: string);
+begin
+  AModule.PutError(AMessage, ATextPosition);
+end;
 
 end.

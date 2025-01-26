@@ -5,7 +5,8 @@ interface
 uses
   System.SysUtils,
   AST.Lexer,
-  AST.Parser.ProcessStatuses;
+  AST.Parser.ProcessStatuses,
+  AST.JsonSchema;
 
 type
 
@@ -43,6 +44,10 @@ type
     procedure EnumDeclarations(const AEnumProc: TEnumASTDeclProc; AUnitScope: TUnitScopeKind);
 
     function Compile(ACompileIntfOnly: Boolean; RunPostCompile: Boolean = True): TCompilerResult;
+
+    function Lexer_Line: Integer;
+
+    function ToJson: TJsonASTDeclaration;
   end;
 
   TCompilerMessageType = (cmtHint, cmtWarning, cmtError, cmtInteranlError);
@@ -76,13 +81,12 @@ type
 
   IASTProject = interface
     ['{AE77D75A-4F7F-445B-ADF9-47CF5C2F0A14}']
+    procedure SetName(const Value: string);
     procedure SetOnProgress(const Value: TASTProgressEvent);
     procedure SetOnConsoleWrite(const Value: TASTRrojectConsoleWriteEvent);
     procedure SetStopCompileIfError(const Value: Boolean);
     function GetOnProgress: TASTProgressEvent;
     function GetOnConsoleWrite: TASTRrojectConsoleWriteEvent;
-    property OnProgress: TASTProgressEvent read GetOnProgress write SetOnProgress;
-    property OnConsoleWrite: TASTRrojectConsoleWriteEvent read GetOnConsoleWrite write SetOnConsoleWrite;
 
     function GetName: string;
     function GetPointerSize: Integer;
@@ -92,19 +96,23 @@ type
     function GetTotalUnitsIntfOnlyParsed: Integer;
     function GetStopCompileIfError: Boolean;
 
-    property Name: string read GetName;
+    property Name: string read GetName write SetName;
     property PointerSize: Integer read GetPointerSize;
     property NativeIntSize: Integer read GetNativeIntSize;
     property TotalLinesParsed: Integer read GetTotalLinesParsed;
     property TotalUnitsParsed: Integer read GetTotalUnitsParsed;
     property TotalUnitsIntfOnlyParsed: Integer read GetTotalUnitsIntfOnlyParsed;
     property StopCompileIfError: Boolean read GetStopCompileIfError write SetStopCompileIfError;
+    property OnProgress: TASTProgressEvent read GetOnProgress write SetOnProgress;
+    property OnConsoleWrite: TASTRrojectConsoleWriteEvent read GetOnConsoleWrite write SetOnConsoleWrite;
 
     procedure CosoleWrite(const Module: IASTModule; Line: Integer; const Message: string);
 
     procedure PutMessage(const AMessage: IASTParserMessage); overload;
     procedure PutMessage(const AModule: IASTModule; AMsgType: TCompilerMessageType; const AMessage: string;
                          const ATextPostition: TTextPosition); overload;
+
+    function ToJson: TJsonASTDeclaration;
   end;
 
   IASTProjectSettings = interface
@@ -135,6 +143,8 @@ type
     procedure Decl2Str(ABuilder: TStringBuilder;
                        ANestedLevel: Integer = 0;
                        AAppendName: Boolean = True); overload;
+
+    function ToJson: TJsonASTDeclaration;
   end;
 
 implementation

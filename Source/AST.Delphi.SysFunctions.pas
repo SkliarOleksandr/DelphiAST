@@ -27,6 +27,13 @@ type
     class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {StaticAssert - not Delphi standard}
+  TSCTF_StaticAssert = class(TIDSysCompileFunction)
+  public
+    function Process(const Ctx: TSysFunctionContext): TIDExpression; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
   {Now}
   TSF_Now = class(TIDSysRuntimeFunction)
   public
@@ -515,6 +522,7 @@ type
 implementation
 
 uses
+  System.SysUtils,
   AST.Lexer,
   AST.Classes,
   AST.Delphi.Errors;
@@ -1401,6 +1409,27 @@ begin
   // read arguments
   AMessage := EContext.RPNPopExpression();
   ACondition := EContext.RPNPopExpression();
+  Result := nil;
+end;
+
+{ TSCTF_StaticAssert }
+
+class function TSCTF_StaticAssert.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'StaticAssert', SYSUnit._Void);
+  Result.AddParam('Condition', SYSUnit._Boolean, [VarConst]);
+end;
+
+function TSCTF_StaticAssert.Process(const Ctx: TSysFunctionContext): TIDExpression;
+begin
+  // read arguments
+  var LCondition := Ctx.EContext.RPNPopExpression();
+  Ctx.UN.CheckConstExpression(LCondition);
+
+  var LMessageStr := Format('[STATIC ASSERT] Condition ''%s'' is not true', [Ctx.ParamsStr]);
+  if not LCondition.AsBoolConst.Value then
+   STATIC_ASSERT_ERROR(Ctx.UN, LCondition.TextPosition, LMessageStr);
+
   Result := nil;
 end;
 

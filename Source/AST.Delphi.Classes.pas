@@ -6,6 +6,7 @@ uses System.SysUtils, System.Classes, System.StrUtils, System.Math, System.Gener
      System.Variants,
      AST.Delphi.DataTypes,
      AST.Lexer,
+     AST.JsonSchema,
      AST.Delphi.Operators,
      AST.Delphi.Declarations,
      AVL,
@@ -260,6 +261,7 @@ type
                                 AContext: TGenericInstantiateContext): TIDDeclaration; virtual;
 
     function DoesGenericUseParams(const AParams: TIDTypeArray): Boolean; virtual;
+    function ToJson: TJsonASTDeclaration; override;
   end;
 
   {common ancestor for language entities that support generic parameterization}
@@ -320,10 +322,13 @@ type
   {unit}
   TIDUnit = class(TIDNameSpace)
   private
-    fModule: TASTModule;
-  public
+    fUseModule: TASTModule;
+   protected
+     function GetASTKind: string; override;
+   public
     constructor Create(Scope: TScope; AUnit: TASTModule);
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
+    property UseModule: TASTModule read fUseModule;
   end;
 
   TBinaryOperator = record
@@ -379,6 +384,7 @@ type
     function GetIsUntypedPointer: Boolean; inline;
     function GetIsClass: Boolean; inline;
     function GetIsInterface: Boolean; inline;
+    function GetIsChar: Boolean;
   protected
     function GetDataSize: Integer; virtual;
     function GetIsOrdinal: Boolean; virtual;
@@ -390,6 +396,7 @@ type
     function GetActualDataType: TIDType; virtual;
     function GetParent: TIDType;
     function GetIsGeneric: Boolean; override;
+    function GetASTKind: string; override;
   public
     constructor CreateAsAnonymous(Scope: TScope); override;
     constructor CreateAsBuiltin(AScope: TScope; const AName: string; ADataTypeID: TDataTypeID);
@@ -406,6 +413,7 @@ type
     property IsOrdinal: Boolean read GetIsOrdinal;
     property IsInteger: Boolean read GetIsInteger;
     property IsFloat: Boolean read GetIsFloat;
+    property IsChar: Boolean read GetIsChar;
     property IsPointer: Boolean read GetIsPointer;
     property IsUntypedPointer: Boolean read GetIsUntypedPointer;
     property IsPacked: Boolean read FPacked write FPacked;
@@ -500,6 +508,9 @@ type
     function MatchExplicitFrom(ASrc: TIDType): Boolean; virtual;
 
     function TryGetEnumerator(out AItemDataType: TIDType): Boolean; virtual;
+    function ToJson: TJsonASTDeclaration; override;
+    function GetASTTypeKind: string; virtual;
+    function ASTJsonDeclClass: TASTJsonDeclClass; override;
   end;
 
   {Unknown (error) type that is needed for bypassing compiler errors}
@@ -582,6 +593,9 @@ type
     function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                 AContext: TGenericInstantiateContext): TIDDeclaration; override;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
+    function ASTJsonDeclClass: TASTJsonDeclClass; override;
+    function GetASTTypeKind: string; override;
+    function ToJson: TJsonASTDeclaration; override;
   end;
 
   {special type for describing using a generic type that uses generic arguments, example:
@@ -730,6 +744,8 @@ type
     property BaseType: TIDOrdinal read fBaseType write fBaseType;
     property LoDecl: TIDConstant read fLoDecl write SetLoDecl;
     property HiDecl: TIDConstant read fHiDecl write SetHiDecl;
+    function ASTJsonDeclClass: TASTJsonDeclClass; override;
+    function ToJson: TJsonASTDeclaration; override;
   end;
 
   {enum type}
@@ -748,6 +764,8 @@ type
     function SysUnarOperator(AOpID: TOperatorID): TIDType; override;
     property Items: TScope read FItems write FItems;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
+    function ToJson: TJsonASTDeclaration; override;
+    function ASTJsonDeclClass: TASTJsonDeclClass; override;
   end;
 
   TStructFlags = set of (StructCompleted);
@@ -1021,6 +1039,8 @@ type
     function MatchExplicitTo(ADst: TIDType): Boolean; override;
 
     function TryGetEnumerator(out AItemDataType: TIDType): Boolean; override;
+    function ASTJsonDeclClass: TASTJsonDeclClass; override;
+    function ToJson: TJsonASTDeclaration; override;
   end;
 
   {static array}
@@ -1139,6 +1159,7 @@ type
   protected
     function GetDisplayName: string; override;
     function GetCValue: TIDConstant; override;
+    function GetASTKind: string; override;
     procedure SetCValue(const Value: TIDConstant); override;
   public
     constructor Create(Scope: TScope; const Identifier: TIdentifier); override;
@@ -1185,6 +1206,13 @@ type
     function AsString: string; override;
     function AsVariant: Variant; override;
     function CompareTo(Constant: TIDConstant): Integer; override;
+  end;
+
+  TIDEnumItemConstant = class(TIDIntConstant)
+  private
+    FIsExplicit: Boolean;
+  public
+    property IsExplicit: Boolean read FIsExplicit write FIsExplicit;
   end;
 
   {float constant}
@@ -1588,6 +1616,7 @@ type
     function GetDisplayName: string; override;
     function GetCValue: TIDConstant; override;
     function GetIsGeneric: Boolean; override;
+    function GetASTKind: string; override;
     procedure SetCValue(const Value: TIDConstant); override;
   public
     constructor Create(Scope: TScope; const Identifier: TIdentifier); override;
@@ -1637,6 +1666,7 @@ type
     function GetFieldIndex: Integer;
   protected
     function GetIndex: Integer; override;
+    function GetASTKind: string; override;
   public
     constructor Create(Struct: TIDStructure; const Identifier: TIdentifier); reintroduce;
     property Struct: TIDStructure read fStruct;
@@ -1656,6 +1686,8 @@ type
     FPrevOverload: TIDProperty;
     FStruct: TIDStructure;
     function GetParamsCount: Integer;
+  protected
+    function GetASTKind: string; override;
   public
     constructor Create(Scope: TScope; const Identifier: TIdentifier); override;
     property Getter: TIDDeclaration read FGetter write FGetter;
@@ -1735,6 +1767,7 @@ type
     function GetIndex: Integer; override;
     function GetParamsCount: Integer; virtual;
     function GetIsGeneric: Boolean; override;
+    function GetASTKind: string; override;
   public
     constructor Create(Scope: TScope; const ID: TIdentifier); override;
     constructor CreateAsAnonymous(Scope: TScope); override;
@@ -2144,7 +2177,8 @@ uses AST.Delphi.System,
      AST.Delphi.Parser,
      AST.Delphi.SysFunctions,
      AST.Delphi.SysOperators,
-     AST.Parser.Log;
+     AST.Parser.Log,
+     AST.Delphi.JsonSchema;
 
 procedure TypeNameToString(AType: TIDType; ABuilder: TStringBuilder);
 begin
@@ -2844,6 +2878,17 @@ begin
   FIndex := Value;
 end;
 
+function TIDDeclaration.ToJson: TJsonASTDeclaration;
+begin
+  var LObject := ASTJsonDeclClass().Create;
+  LObject.kind := ASTKind;
+  LObject.name := DisplayName;
+  LObject.srcRow := ID.TextPosition.Row;
+  LObject.srcCol := ID.TextPosition.Col - Length(ID.Name);
+  LObject.handle := ASTHandle;
+  Result := LObject;
+end;
+
 { TIDDeclarationGeneric }
 
 procedure TIDDeclarationGeneric.AddGenecricOverload(ADecl: TIDDeclarationGeneric);
@@ -3046,6 +3091,11 @@ begin
     Result := Result + LineSeparator + Decl.DisplayName;
     Decl := Decl.PrevOverload;
   end;
+end;
+
+function TIDProcedure.GetASTKind: string;
+begin
+  Result := 'function';
 end;
 
 function TIDProcedure.GetDebugVariables: string;
@@ -3420,6 +3470,11 @@ end;
 
 { TIDType }
 
+function TIDType.ASTJsonDeclClass: TASTJsonDeclClass;
+begin
+  Result := TASTJsonType;
+end;
+
 constructor TIDType.Create(Scope: TScope; const ID: TIdentifier);
 begin
   inherited Create(Scope, ID);
@@ -3680,6 +3735,30 @@ begin
   Result := Self;
 end;
 
+function TIDType.GetASTKind: string;
+begin
+  Result := 'type';
+end;
+
+function TIDType.GetASTTypeKind: string;
+begin
+  case DataTypeID of
+    dtPointer: Result := 'pointer';
+    dtRange: Result := 'range';
+    dtEnum: Result := 'enum';
+    dtSet: Result := 'set';
+    dtStaticArray: Result := 'static-array';
+    dtDynArray: Result := 'dynamic-array';
+    dtProcType: Result := 'proctype';
+    dtRecord: Result := 'record';
+    dtClass: Result := 'class';
+    dtClassOf: Result := 'classof';
+    dtInterface: Result := 'interface';
+  else
+    Result := '<unknown>';
+  end;
+end;
+
 function TIDType.GetDataSize: Integer;
 begin
   case DataTypeID of
@@ -3750,6 +3829,11 @@ end;
 function TIDType.GetIsInterface: Boolean;
 begin
   Result := DataTypeID = dtInterface;
+end;
+
+function TIDType.GetIsChar: Boolean;
+begin
+  Result := DataTypeID in [dtChar, dtAnsiChar];
 end;
 
 function TIDType.GetIsClass: Boolean;
@@ -3875,6 +3959,13 @@ end;
 function TIDType.SysUnarOperator(AOpID: TOperatorID): TIDType;
 begin
   Result := nil;
+end;
+
+function TIDType.ToJson: TJsonASTDeclaration;
+begin
+  Result := inherited;
+  var LObject := Result as TASTJsonType;
+  LObject.typeKind := GetASTTypeKind;
 end;
 
 function TIDType.TryGetEnumerator(out AItemDataType: TIDType): Boolean;
@@ -4106,6 +4197,11 @@ begin
   Result := FDataType.DataSize;
 end;
 
+function TIDConstant.GetASTKind: string;
+begin
+  Result := 'constant';
+end;
+
 function TIDConstant.GetCValue: TIDConstant;
 begin
   Result := Self;
@@ -4287,6 +4383,11 @@ begin
   Dec(FRefCount);
   if Assigned(FDataType) then
     FDataType.DecRefCount(RCPath);
+end;
+
+function TIDVariable.GetASTKind: string;
+begin
+  Result := 'variable';
 end;
 
 function TIDVariable.GetCValue: TIDConstant;
@@ -5992,6 +6093,11 @@ begin
   CreateStandardOperators;
 end;
 
+function TIDEnum.ASTJsonDeclClass: TASTJsonDeclClass;
+begin
+  Result := TASTJsonDelphiEnum;
+end;
+
 { TIDEnumType }
 
 constructor TIDEnum.Create(Scope: TScope; const ID: TIdentifier);
@@ -6030,8 +6136,13 @@ begin
   ABuilder.Append(' = (');
   for var AIndex := 0 to FItems.Count - 1 do
   begin
-    var LItem := FItems.Items[AIndex];
+    var LItem := FItems.Items[AIndex] as TIDEnumItemConstant;
     ABuilder.Append(LItem.Name);
+    if LItem.IsExplicit then
+    begin
+      ABuilder.Append(' = ');
+      ABuilder.Append(LItem.AsString);
+    end;
     if AIndex < FItems.Count - 1 then
       ABuilder.Append(', ');
   end;
@@ -6085,6 +6196,23 @@ function TIDEnum.SysUnarOperator(AOpID: TOperatorID): TIDType;
 begin
   // TODO: Delphi allows some arithmetic operation in enum declaration only
   Result := Self;
+end;
+
+function TIDEnum.ToJson: TJsonASTDeclaration;
+begin
+  Result := inherited;
+  var LResult := TASTJsonDelphiEnum(Result);
+  // fill enum items
+  SetLength(LResult.items, FItems.Count);
+  for var LIndex := 0 to FItems.Count - 1 do
+  begin
+    var LItemDecl := FItems.Items[LIndex] as TIDEnumItemConstant;
+    var LJsonItem := TASTJsonDelphiEnum.TItem.Create;
+    LJsonItem.name := LItemDecl.Name;
+    LJsonItem.value := LItemDecl.Value;
+    LJsonItem.explicitValue := LItemDecl.IsExplicit;
+    LResult.items[LIndex] := LJsonItem;
+  end;
 end;
 
 { TIDDynArray }
@@ -6150,6 +6278,11 @@ begin
     FMembersScope.InsertID(ACreateDecl);
   end;
   Result := FMembersScope;
+end;
+
+function TIDSet.ASTJsonDeclClass: TASTJsonDeclClass;
+begin
+  Result := TASTJsonDelphiSet;
 end;
 
 { TIDSetType }
@@ -6260,6 +6393,13 @@ function TIDSet.MatchImplicitFrom(ASrc: TIDType): Boolean;
 begin
   Result := (ASrc.DataTypeID = dtSet) and
             (BaseType.DataTypeID = TIDSet(ASrc).BaseType.DataTypeID);
+end;
+
+function TIDSet.ToJson: TJsonASTDeclaration;
+begin
+  Result := inherited;
+  var LResult := TASTJsonDelphiSet(Result);
+  LResult.baseTypeSpec := fBaseType.Name;
 end;
 
 function TIDSet.TryGetEnumerator(out AItemDataType: TIDType): Boolean;
@@ -6526,6 +6666,11 @@ end;
 
 { TIDAliasType }
 
+function TIDAliasType.ASTJsonDeclClass: TASTJsonDeclClass;
+begin
+  Result := TASTJsonDelphiAlias;
+end;
+
 constructor TIDAliasType.CreateAlias(Scope: TScope;
                                      const ID: TIdentifier;
                                      OriginalType: TIDType;
@@ -6553,6 +6698,11 @@ end;
 function TIDAliasType.GetActualDataType: TIDType;
 begin
   Result := FOriginalType.ActualDataType;
+end;
+
+function TIDAliasType.GetASTTypeKind: string;
+begin
+  Result := 'alias';
 end;
 
 function TIDAliasType.GetDisplayName: string;
@@ -6592,6 +6742,14 @@ begin
   LogBegin('inst [type: %s, src: %s]', [ClassName, DisplayName]);
   Result := fOriginalType.InstantiateGeneric(ADstScope, nil, AContext);
   LogEnd('inst [type: %s, dst: %s]', [ClassName, Result.DisplayName]);
+end;
+
+function TIDAliasType.ToJson: TJsonASTDeclaration;
+begin
+  Result := inherited;
+  var LResult := TASTJsonDelphiAlias(Result);
+  LResult.sourceTypeSpec := LinkedType.Name;
+  LResult.newType := NewType;
 end;
 
 procedure TIDAliasType.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
@@ -6874,6 +7032,11 @@ end;
 
 { TIDRangeType }
 
+function TIDRangeType.ASTJsonDeclClass: TASTJsonDeclClass;
+begin
+  Result := TASTJsonDelphiRange;
+end;
+
 constructor TIDRangeType.Create(Scope: TScope; const Identifier: TIdentifier);
 begin
   inherited;
@@ -6935,6 +7098,15 @@ procedure TIDRangeType.SetLoDecl(const Value: TIDConstant);
 begin
   fLoDecl := Value;
   LowBound := Value.AsInt64;
+end;
+
+function TIDRangeType.ToJson: TJsonASTDeclaration;
+begin
+  Result := inherited;
+  var LResult := TASTJsonDelphiRange(Result);
+  LResult.baseTypeName := BaseType.Name;
+  LResult.lowValue := LoDecl.AsString;
+  LResult.lowValue := HiDecl.AsString;
 end;
 
 { TIDProcedureType }
@@ -7410,6 +7582,11 @@ begin
   ABuilder.Append(';');
 end;
 
+function TIDProperty.GetASTKind: string;
+begin
+  Result := 'property';
+end;
+
 function TIDProperty.GetParamsCount: Integer;
 begin
   if Assigned(FParams) then
@@ -7535,6 +7712,11 @@ begin
   ABuilder.Append(': ');
   TypeNameToString(DataType, ABuilder);
   ABuilder.Append(';');
+end;
+
+function TIDField.GetASTKind: string;
+begin
+  Result := 'field';
 end;
 
 function TIDField.GetFieldIndex: Integer;
@@ -7859,7 +8041,7 @@ begin
   CreateFromPool;
   FScope := Scope;
   FID := TPascalUnit(AUnit)._ID;
-  fModule := AUnit;
+  fUseModule := AUnit;
   FMembers := TPascalUnit(AUnit).IntfScope;
   ItemType := itUnit;
 end;
@@ -7868,6 +8050,11 @@ procedure TIDUnit.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AApp
 begin
   ABuilder.Append('unit ');
   ABuilder.Append(Name);
+end;
+
+function TIDUnit.GetASTKind: string;
+begin
+  Result := 'uses';
 end;
 
 { TIDClassOf }

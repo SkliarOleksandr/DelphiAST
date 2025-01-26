@@ -10,6 +10,7 @@ uses SysUtils, Math, Classes, StrUtils, Types, IOUtils, Generics.Collections,
      AST.Delphi.Classes,
      AST.Delphi.DataTypes,
      AST.Lexer,
+     AST.JsonSchema,
      AST.Delphi.Operators,
      AST.Parser.Utils,
      AST.Parser.Messages,
@@ -107,6 +108,7 @@ type
     fUnitState: TUnitState;
     fUnitName: TIdentifier;            // the Unit declaration name
     fProcMatches: TASTProcMachArray;
+    FMaxHandle: Integer;
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
     function GetModuleName: string; override;
     procedure SetUnitName(const Name: string);
@@ -131,11 +133,11 @@ type
     procedure SaveTypesToStream(Stream: TStream);  // сохраняет все типы модуля
 
     function Compile(ACompileIntfOnly: Boolean; RunPostCompile: Boolean = True): TCompilerResult; override;
-
     function CompileIntfOnly: TCompilerResult; virtual;
-
     function UsedUnit(const AUnitName: string): Boolean;
     function GetDefinesAsString: string;
+    function ToJson: TJsonASTDeclaration; override;
+
     property _ID: TIdentifier read FUnitName;
     property UnitID: Integer read FID write FID;
     property Messages: ICompilerMessages read FMessages;
@@ -147,7 +149,6 @@ type
 
     property Compiled: TCompilerResult read FCompiled;
     property UnitState: TUnitState read fUnitState;
-
     property Project: IASTPascalProject read GetProject;
   end;
 
@@ -164,6 +165,35 @@ uses AST.Delphi.System,
 procedure TPascalUnit.SetUnitName(const Name: string);
 begin
   FUnitName.Name := Name;
+end;
+
+function TPascalUnit.ToJson: TJsonASTDeclaration;
+begin
+  var LObject := TJsonASTUnit.Create;
+  LObject.name := Name;
+  LObject.kind := 'unit';
+  LObject.fileName := FileName;
+
+  SetLength(LObject.intfDecls, IntfScope.Count);
+  for var LIndex := 0 to IntfScope.Count - 1 do
+  begin
+    var LDecl := IntfScope.Items[LIndex];
+    if not (LDecl is TIDUnit) or (TIDUnit(LDecl).UseModule <> Self) then
+    begin
+      var LJson := LDecl.ToJson;
+      LObject.intfDecls[LIndex] := LJson;
+    end;
+  end;
+
+  SetLength(LObject.implDecls, ImplScope.Count);
+  for var LIndex := 0 to ImplScope.Count - 1 do
+  begin
+    var LDecl := ImplScope.Items[LIndex];
+    var LJson := LDecl.ToJson;
+    LObject.implDecls[LIndex] := LJson;
+  end;
+
+  Result := LObject;
 end;
 
 function TPascalUnit.Compile(ACompileIntfOnly: Boolean; RunPostCompile: Boolean = True): TCompilerResult;

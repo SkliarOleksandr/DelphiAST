@@ -72,7 +72,7 @@
         <UWP_DelphiLogo44>$(BDS)\bin\Artwork\Windows\UWP\delphi_UwpDefault_44.png</UWP_DelphiLogo44>
         <UWP_DelphiLogo150>$(BDS)\bin\Artwork\Windows\UWP\delphi_UwpDefault_150.png</UWP_DelphiLogo150>
         <SanitizedProjectName>DASTTestApp</SanitizedProjectName>
-        <DCC_UnitSearchPath>..\Source\;..\Source\Lexers;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_UnitSearchPath>..\Source\;..\Source\Lexers;..\RTLOverride;..\TestScripts;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
         <DCC_DUPLICATE_CTOR_DTOR>false</DCC_DUPLICATE_CTOR_DTOR>
@@ -168,14 +168,15 @@
         <DCCReference Include="..\Source\AST.Parser.Log.pas"/>
         <DCCReference Include="..\Source\AST.Delphi.SysTypes.pas"/>
         <DCCReference Include="..\Source\AST.Delphi.Declarations.pas"/>
+        <DCCReference Include="AST.Utils.CmdLineParser.pas"/>
         <DCCReference Include="..\TestScripts\Implict\ASTTest.Implicit.Pointers.pas"/>
+        <DCCReference Include="..\TestScripts\Implict\ASTTest.Implicit.Integer.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Compare\ASTTest.Cmp.Strings.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Compare\ASTTest.Cmp.PChars.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Substruct\ASTTest.Sub.Integer.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Add\ASTTest.Add.Pointers.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Compare\ASTTest.Cmp.Pointers.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadWithImplicitCast.pas"/>
-        <DCCReference Include="AST.Utils.CmdLineParser.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Class1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenResult.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Methods.pas"/>
@@ -218,6 +219,7 @@
         <DCCReference Include="..\TestScripts\RTL\ASTTest.RTL.TDictionaty1.pas"/>
         <DCCReference Include="..\TestScripts\RTL\ASTTest.RTL.IEnumerable1.pas"/>
         <DCCReference Include="..\TestScripts\Names Overloading\ASTTest.NamesOverloading1.pas"/>
+        <DCCReference Include="..\TestScripts\Names Overloading\ASTTest.NamesOverloading2.pas"/>
         <DCCReference Include="..\TestScripts\Sets\ASTTest.Sets.ForInSet1.pas"/>
         <DCCReference Include="..\TestScripts\Sets\ASTTest.Sets.ForInSet2.pas"/>
         <DCCReference Include="..\TestScripts\Sets\ASTTest.Sets.ExplicitCast1.pas"/>
@@ -225,7 +227,8 @@
         <DCCReference Include="..\TestScripts\Interfaces\ASTTest.Intf.MethodRedeclaration.pas"/>
         <DCCReference Include="..\TestScripts\Records\ASTTest.Records.CaseRecord2.pas"/>
         <DCCReference Include="..\TestScripts\Records\ASTTest.Records.CaseRecord1.pas"/>
-        <DCCReference Include="..\TestScripts\Names Overloading\ASTTest.NamesOverloading2.pas"/>
+        <DCCReference Include="..\Source\AST.JsonSchema.pas"/>
+        <DCCReference Include="..\Source\AST.Delphi.JsonSchema.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

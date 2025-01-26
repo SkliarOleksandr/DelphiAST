@@ -42,14 +42,15 @@ uses
   AST.Parser.Log in '..\Source\AST.Parser.Log.pas',
   AST.Delphi.SysTypes in '..\Source\AST.Delphi.SysTypes.pas',
   AST.Delphi.Declarations in '..\Source\AST.Delphi.Declarations.pas',
+  AST.Utils.CmdLineParser in 'AST.Utils.CmdLineParser.pas',
   ASTTest.Implicit.Pointers in '..\TestScripts\Implict\ASTTest.Implicit.Pointers.pas',
+  ASTTest.Implicit.Integer in '..\TestScripts\Implict\ASTTest.Implicit.Integer.pas',
   ASTTest.Cmp.Strings in '..\TestScripts\Operators\Compare\ASTTest.Cmp.Strings.pas',
   ASTTest.Cmp.PChars in '..\TestScripts\Operators\Compare\ASTTest.Cmp.PChars.pas',
   ASTTest.Sub.Integer in '..\TestScripts\Operators\Substruct\ASTTest.Sub.Integer.pas',
   ASTTest.Add.Pointers in '..\TestScripts\Operators\Add\ASTTest.Add.Pointers.pas',
   ASTTest.Cmp.Pointers in '..\TestScripts\Operators\Compare\ASTTest.Cmp.Pointers.pas',
   ASTTest.Ops.OverloadWithImplicitCast in '..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadWithImplicitCast.pas',
-  AST.Utils.CmdLineParser in 'AST.Utils.CmdLineParser.pas',
   ASTTest.Generics.Class1 in '..\TestScripts\Generics\ASTTest.Generics.Class1.pas',
   ASTTest.Generics.GenResult in '..\TestScripts\Generics\ASTTest.Generics.GenResult.pas',
   ASTTest.Generics.Methods in '..\TestScripts\Generics\ASTTest.Generics.Methods.pas',
@@ -99,7 +100,9 @@ uses
   ASTTest.Sets.ExplicitCast2 in '..\TestScripts\Sets\ASTTest.Sets.ExplicitCast2.pas',
   ASTTest.Intf.MethodRedeclaration in '..\TestScripts\Interfaces\ASTTest.Intf.MethodRedeclaration.pas',
   ASTTest.Records.CaseRecord2 in '..\TestScripts\Records\ASTTest.Records.CaseRecord2.pas',
-  ASTTest.Records.CaseRecord1 in '..\TestScripts\Records\ASTTest.Records.CaseRecord1.pas';
+  ASTTest.Records.CaseRecord1 in '..\TestScripts\Records\ASTTest.Records.CaseRecord1.pas',
+  AST.JsonSchema in '..\Source\AST.JsonSchema.pas',
+  AST.Delphi.JsonSchema in '..\Source\AST.Delphi.JsonSchema.pas';
 
 {$R *.res}
 

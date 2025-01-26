@@ -7,6 +7,7 @@ uses
   AVL,
   AST.Lexer,
   AST.Intf,
+  AST.JsonSchema,
   AST.Parser.Utils,
   AST.Parser.ProcessStatuses;
 
@@ -52,6 +53,7 @@ type
     fOnProgress: TASTProgressEvent;
     fOnConsoleProc: TASTRrojectConsoleWriteEvent;
     fStopIfErrors: Boolean;
+    procedure SetName(const Value: string);
     procedure SetOnProgress(const Value: TASTProgressEvent);
     procedure SetOnConsoleWrite(const Value: TASTRrojectConsoleWriteEvent);
     procedure SetStopCompileIfError(const Value: Boolean);
@@ -72,9 +74,11 @@ type
                          const ATextPostition: TTextPosition); overload; virtual;
   public
     constructor Create(const AName: string); virtual;
+    property Name: string read GetName write SetName;
     property OnProgress: TASTProgressEvent read GetOnProgress write SetOnProgress;
     property StopCompileIfError: Boolean read GetStopCompileIfError write SetStopCompileIfError;
     procedure CosoleWrite(const Module: IASTModule; Line: Integer; const Message: string);
+    function ToJson: TJsonASTDeclaration; virtual;
   end;
 
   TASTParentItem = class(TASTItem)
@@ -110,6 +114,7 @@ type
     procedure Progress(StatusClass: TASTProcessStatusClass; AElapsedTime: Int64); virtual;
     procedure PutError(const AMessage: string; const ATextPosition: TTextPosition; ACritical: Boolean = False); overload;
     procedure PutError(const AMessage: string; const AParams: array of const; const ATextPosition: TTextPosition; ACritical: Boolean = False); overload;
+    function Lexer_Line: Integer; virtual; abstract;
   public
     property Name: string read GetModuleName;
     property FileName: string read fFileName write SetFileName;
@@ -119,7 +124,7 @@ type
     constructor CreateFromFile(const Project: IASTProject; const FileName: string); virtual;
     procedure EnumDeclarations(const AEnumProc: TEnumASTDeclProc; AUnitScope: TUnitScopeKind); virtual; abstract;
     property TotalLinesParsed: Integer read GetTotalLinesParsed;
-
+    function ToJson: TJsonASTDeclaration; virtual;
     function Compile(ACompileIntfOnly: Boolean; RunPostCompile: Boolean = True): TCompilerResult; virtual; abstract;
   end;
 
@@ -127,13 +132,15 @@ type
   protected
     fID: TIdentifier;
     fModule: TASTModule;
-
+    fHandle: Integer;
     function GetID: TIdentifier;
     function GetName: string;
     function GetSrcPos: TTextPosition;
     function GetModule: IASTModule;
     function GetDisplayName: string; override;
     function Get_Obj: TObject;
+    function GetASTKind: string; virtual;
+    function GetASTHandle: TASTHandle; virtual;
 
     procedure SetID(const AValue: TIdentifier);
     procedure SetName(const AValue: string);
@@ -145,12 +152,16 @@ type
     property SourcePosition: TTextPosition read FID.TextPosition;
     property Module: TASTModule read fModule;
     property DisplayName: string read GetDisplayName;
-
+    function ToJson: TJsonASTDeclaration; virtual;
     function Decl2Str(AFullName: Boolean = False): string; overload;
 
     procedure Decl2Str(ABuilder: TStringBuilder;
                        ANestedLevel: Integer = 0;
                        AAppendName: Boolean = True); overload; virtual;
+
+    property ASTKind: string read GetASTKind;
+    property ASTHandle: TASTHandle read GetASTHandle;
+    function ASTJsonDeclClass: TASTJsonDeclClass; virtual;
   end;
 
   TASTIDList = class(TAVLTree<string, TASTDeclaration>)
@@ -801,6 +812,11 @@ end;
 
 { TASTDeclaration }
 
+function TASTDeclaration.ASTJsonDeclClass: TASTJsonDeclClass;
+begin
+  Result := TJsonASTDeclaration;
+end;
+
 procedure TASTDeclaration.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
   ABuilder.Append(format('<unknown %s>', [ClassName]));
@@ -817,6 +833,16 @@ begin
   finally
     LBuilder.Free;
   end;
+end;
+
+function TASTDeclaration.GetASTKind: string;
+begin
+  Result := '<unknown>';
+end;
+
+function TASTDeclaration.GetASTHandle: TASTHandle;
+begin
+  Result := TASTHandle(Self);
 end;
 
 function TASTDeclaration.GetDisplayName: string;
@@ -862,6 +888,11 @@ end;
 procedure TASTDeclaration.SetSrcPos(const AValue: TTextPosition);
 begin
   fID.TextPosition := AValue;
+end;
+
+function TASTDeclaration.ToJson: TJsonASTDeclaration;
+begin
+  Result := nil;
 end;
 
 { TASTKWAssign }
@@ -1285,6 +1316,11 @@ begin
   fFileName := Value;
 end;
 
+function TASTModule.ToJson: TJsonASTDeclaration;
+begin
+  Result := nil;
+end;
+
 { TASTProject }
 
 procedure TASTProject.CosoleWrite(const Module: IASTModule; Line: Integer; const Message: string);
@@ -1344,6 +1380,11 @@ begin
   // do nothing
 end;
 
+procedure TASTProject.SetName(const Value: string);
+begin
+  fName := Value;
+end;
+
 procedure TASTProject.SetOnConsoleWrite(const Value: TASTRrojectConsoleWriteEvent);
 begin
   fOnConsoleProc := Value;
@@ -1357,6 +1398,11 @@ end;
 procedure TASTProject.SetStopCompileIfError(const Value: Boolean);
 begin
  fStopIfErrors := Value;
+end;
+
+function TASTProject.ToJson: TJsonASTDeclaration;
+begin
+  Result := nil;
 end;
 
 { TASTIDList }

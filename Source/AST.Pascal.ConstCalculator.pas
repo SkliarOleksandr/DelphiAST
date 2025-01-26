@@ -15,6 +15,7 @@ uses System.SysUtils,
 type
   TExpressionCalculator = record
   private
+    fModule: IASTDelphiUnit;
     fErrors: TASTDelphiErrors;
     fSysDecls: PDelphiSystemDeclarations;
     function CalcSets(AScope: TScope; const Left, Right: TIDConstant; Operation: TOperatorID): TIDConstant;
@@ -532,9 +533,9 @@ begin
   if Operation = opIn then
     Constant := CalcIn(AScope, L, R)
   else
-  if LeftType = TIDIntConstant then
+  if LeftType.InheritsFrom(TIDIntConstant) then
   begin
-    if RightType = TIDIntConstant then
+    if RightType.InheritsFrom(TIDIntConstant) then
       Constant := CalcInteger(AScope, TIDIntConstant(L).Value, TIDIntConstant(R).Value, Operation)
     else
       Constant := CalcFloat(AScope, TIDIntConstant(L).Value, TIDFloatConstant(R).Value, Right, Operation)
@@ -556,7 +557,10 @@ begin
     if RightType = TIDCharConstant then
       Constant := CalcChar(AScope, TIDCharConstant(L).Value, TIDCharConstant(R).Value, Operation)
     else
+    if RightType = TIDStringConstant then
       Constant := CalcString(AScope, TIDCharConstant(L).Value, TIDStringConstant(R).Value, Operation)
+    else
+      AbortWorkInternal('Const Calc: invalid arguments', L.SourcePosition);
   end else
   if LeftType = TIDBooleanConstant then
     Constant := CalcBoolean(AScope, TIDBooleanConstant(L).Value, TIDBooleanConstant(R).Value, Operation)
@@ -579,14 +583,15 @@ begin
 
   if not Assigned(Constant) then
     AbortWork('Operation %s not supported for constants', [OperatorFullName(Operation)], L.SourcePosition);
-  Result := TIDExpression.Create(Constant, Right.TextPosition);
 
+  Result := TIDExpression.Create(Constant, Right.TextPosition);
 end;
 
 { TExpressionCalculator }
 
 constructor TExpressionCalculator.Create(const Module: IASTDelphiUnit);
 begin
+  fModule := Module;
   fSysDecls := Module.SystemDeclarations;
   fErrors := Module.Errors;
 end;

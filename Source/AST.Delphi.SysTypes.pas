@@ -151,6 +151,7 @@ type
     function GetIsInteger: Boolean; override;
   public
     procedure SetupOperators(ADecls: PDelphiSystemDeclarations); virtual; abstract;
+    function SysBinOperator(ALeft, ARight: TIDType): TIDType;
     function SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType; override;
     function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
   end;
@@ -363,6 +364,7 @@ begin
       opGreaterOrEqual,
       opLess,
       opLessOrEqual: Result := SYSUnit._Boolean;
+      opAnd, opOr, opXor: Result := SysBinOperator(Self, ARight);
     else
       Result := Self;
     end;
@@ -381,11 +383,20 @@ begin
       opGreaterOrEqual,
       opLess,
       opLessOrEqual: Result := SYSUnit._Boolean;
+      opAnd, opOr, opXor: Result := SysBinOperator(ALeft, Self);
     else
       Result := Self;
     end;
   end else
     Result := nil;
+end;
+
+function TBuiltin_IntType.SysBinOperator(ALeft, ARight: TIDType): TIDType;
+begin
+  if ALeft.DataSize >= ARight.DataSize then
+    Result := ARight
+  else
+    Result := ALeft;
 end;
 
 { TBuiltin_FltType }

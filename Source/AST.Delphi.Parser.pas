@@ -294,7 +294,7 @@ type
     function Lexer_PrevPosition: TTextPosition; inline;
     function Lexer_IdentifireType: TIdentifierType; inline;
     function Lexer_TokenLexem(const TokenID: TTokenID): string; inline;
-    function Lexer_Line: Integer; inline;
+    function Lexer_Line: Integer; override;
     function Lexer_Original: string; inline;
     function Lexer_SkipBlock(StopToken: TTokenID): TTokenID;
     function Lexer_SkipTo(Scope: TScope; StopToken: TTokenID): TTokenID;
@@ -1355,7 +1355,7 @@ procedure TASTDelphiUnit.ParseEnumType(Scope: TScope; Decl: TIDEnum);
 var
   ID: TIdentifier;
   Token: TTokenID;
-  Item: TIDIntConstant;
+  Item: TIDEnumItemConstant;
   Expr: TIDExpression;
   LB, HB, LCValue: Int64;
 begin
@@ -1367,7 +1367,7 @@ begin
   while True do begin
     Lexer_MatchIdentifier(Token);
     Lexer_ReadCurrIdentifier(ID);
-    Item := TIDIntConstant.Create(Decl.Items, ID);
+    Item := TIDEnumItemConstant.Create(Decl.Items, ID);
     Item.DataType := Decl;
     Decl.Items.AddConstant(Item);
 
@@ -1387,6 +1387,7 @@ begin
       CheckEmptyExpression(Expr);
       CheckConstExpression(Expr);
       LCValue := TIDIntConstant(Expr.Declaration).Value;
+      Item.IsExplicit := True;
     end;
     Item.Value := LCValue;
     LB := Min(LB, LCValue);
@@ -1911,7 +1912,10 @@ begin
       else begin
         AExpr := Param.DefaultValue;
         if not Assigned(AExpr) then
-          ERRORS.NOT_ENOUGH_ACTUAL_PARAMS(PExpr);
+        begin
+          ERRORS.E2035_NOT_ENOUGH_ACTUAL_PARAMETERS(Self, PExpr.TextPosition);
+          AExpr := CreateUnknownExpr(Lexer_Position);
+        end;
         CallArguments[PIndex] := AExpr;
       end;
 
@@ -4026,7 +4030,12 @@ begin
     Declaration := Declaration.PrevOverload;
   until Declaration = nil;
 
-  if MatchedCount > 0 then
+  if MatchedCount = 1 then
+  begin
+    Result := fProcMatches[0].Decl;
+    Exit;
+  end else
+  if MatchedCount > 1 then
   begin
     // calculating total rates for each match
     for i := 0 to MatchedCount - 1 do
@@ -6049,6 +6058,23 @@ begin
 
   if Assigned(ResExpr) then
   begin
+    // to avoid issue with Int/Char casting, recreate a constant with required type
+    if SrcExpr.IsConstant then
+    begin
+      var LSrcConst := SrcExpr.AsConst;
+      if SrcExpr.DataType.IsInteger and TargetType.IsChar then
+      begin
+        var LNewConst := TIDCharConstant.Create(Scope, LSrcConst.ID, TargetType, Char(LSrcConst.AsInt64));
+        DstExpression := TIDExpression.Create(LNewConst, Lexer_Position);
+        Exit;
+      end else
+      if SrcExpr.DataType.IsChar and TargetType.IsInteger then
+      begin
+        var LNewConst := TIDIntConstant.Create(Scope, LSrcConst.ID, TargetType, LSrcConst.AsInt64);
+        DstExpression := TIDExpression.Create(LNewConst, Lexer_Position);
+        Exit;
+      end;
+    end;
     DstExpression := ResExpr;
     Exit;
   end;
@@ -10756,9 +10782,9 @@ begin
     begin
       if ADecl is TIDVariable then
       begin
-        var LFieldType := TIDVariable(ADecl).DataType;
+        var LFieldType := TIDVariable(ADecl).DataType.ActualDataType;
         if (TIDVariable(ADecl).DataTypeID = dtRecord) and
-           (not (StructCompleted in TIDStructure(LFieldType).StructFlags)) then
+           (not (StructCompleted in (LFieldType as TIDStructure).StructFlags)) then
           AbortWork(sRecurciveTypeLinkIsNotAllowed, ADecl.ID.TextPosition);
       end;
     end, {AUnitScope} scopeBoth);

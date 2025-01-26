@@ -4,6 +4,7 @@ interface
 
 uses AST.Intf,
      AST.Classes,
+     AST.JsonSchema,
      AST.Pascal.Intf,
      AST.Pascal.Project,
      AST.Parser.Utils;
@@ -25,6 +26,7 @@ type
     function GetSysInitUnit: TASTModule;
     procedure DoBeforeCompileUnit(AUnit: TASTModule); override;
     procedure DoFinishCompileUnit(AUnit: TASTModule; AIntfOnly: Boolean); override;
+    function ToJson: TJsonASTDeclaration; override;
   public
     procedure Clear(AClearImplicitUnits: Boolean); override;
   end;
@@ -70,6 +72,18 @@ end;
 function TASTDelphiProject.GetUnitClass: TASTUnitClass;
 begin
   Result := TASTDelphiUnit;
+end;
+
+function TASTDelphiProject.ToJson: TJsonASTDeclaration;
+begin
+  var LObject := TJsonASTProject.Create;
+  LObject.name := Name;
+  LObject.kind := 'project';
+  LObject.fileName := ProjectFileName;
+  SetLength(LObject.modules, AllUnits.Count);
+  for var LIndex := 0 to AllUnits.Count - 1 do
+    LObject.modules[LIndex] := AllUnits[LIndex].ToJson;
+  Result := LObject;
 end;
 
 end.

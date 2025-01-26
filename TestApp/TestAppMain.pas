@@ -206,7 +206,7 @@ type
     procedure LoadTestScripts(const ALastTestName: string);
     procedure LoadLSPConfigDccCmdLine(const ACMDLine: string);
     procedure LoadLSPConfigFiles(const AJSONArray: TJSONArray);
-    function CreateProject(AParseSystemUnit: Boolean): IASTDelphiProject;
+    function CreateProject(const AProjectFileName: string; AParseSystemUnit: Boolean): IASTDelphiProject;
     function FocusedTestData: TTestData;
     function GetTestSriptsPath: string;
     procedure LoadTests(ARootNode: PVirtualNode; const ARootPath: string);
@@ -228,6 +228,7 @@ uses
   System.StrUtils,
   System.IniFiles,
   System.NetEncoding,
+  REST.Json,
   AST.Delphi.System,
   AST.Delphi.Parser,
   AST.Delphi.Declarations,
@@ -237,7 +238,8 @@ uses
   AST.Parser.Errors,
   AST.Parser.Utils,
   AST.Parser.Log,
-  AST.Utils.CmdLineParser;
+  AST.Utils.CmdLineParser,
+  AST.JsonSchema;
 
 {$R *.dfm}
 
@@ -383,10 +385,13 @@ var
 begin
   TASTParserLog.Instance.ResetNestedLevel;
 
-  Prj := CreateProject({AParseSystemUnit:} ParseSystemCheck.Checked);
-
   if Assigned(FSelectedTest) then
+  begin
+    Prj := CreateProject(FSelectedTest.FilePath, {AParseSystemUnit:} ParseSystemCheck.Checked);
+    Prj.AddUnitSearchPath(GetTestSriptsPath);
     Prj.AddUnitSearchPath(ExtractFilePath(FSelectedTest.FilePath));
+  end else
+    Prj := CreateProject('', {AParseSystemUnit:} ParseSystemCheck.Checked);
 
   UN := TASTDelphiUnit.Create(Prj, 'test', edUnit.Text);
   Prj.AddUnit(UN, nil);
@@ -421,7 +426,7 @@ var
 begin
   TASTParserLog.Instance.ResetNestedLevel;
 
-  FLastProject := CreateProject({AParseSystemUnit:} True);
+  FLastProject := CreateProject('RTL', {AParseSystemUnit:} True);
 
   FSelectedTest := nil;
   VTTests.Repaint;
@@ -804,14 +809,11 @@ begin
   end;
 end;
 
-function TfrmTestAppMain.CreateProject(AParseSystemUnit: Boolean): IASTDelphiProject;
+function TfrmTestAppMain.CreateProject(const AProjectFileName: string; AParseSystemUnit: Boolean): IASTDelphiProject;
 begin
-  if FileExists(ProjectNameEdit.Text) then
-    Result := TASTDelphiProject.CreateExisting(ProjectNameEdit.Text)
-  else
-    Result := TASTDelphiProject.Create(ProjectNameEdit.Text);
-
+  Result := TASTDelphiProject.Create(ExtractFileName(AProjectFileName));
   Result.ParseSystemUnit := AParseSystemUnit;
+  Result.ProjectFileName := AProjectFileName;
   Result.AddUnitSearchPath(DelphiSrcPathEdit.Text, DelphiPathIncludeSubDirCheck.Checked);
   Result.AddUnitSearchPath(UnitSearchPathEdit.Text, UnitSearchPathIncludeSubDirCheck.Checked);
   Result.AddUnitSearchPath(ExtractFilePath(Application.ExeName), {AIncludeSubDirs:} True);
@@ -924,7 +926,17 @@ end;
 
 procedure TfrmTestAppMain.ShowASTResultAsJSON(const Project: IASTDelphiProject; ASynEdit: TSynEdit);
 begin
-  //todo:
+  var LJSONProject := Project.ToJson;
+  try
+    var LJSON := TJson.ObjectToJsonObject(LJSONProject);
+    try
+      ASynEdit.Text := LJSON.Format();
+    finally
+      LJSON.Free;
+    end;
+  finally
+    LJSONProject.Free;
+  end;
 end;
 
 procedure TfrmTestAppMain.ShowASTResults(const AProject: IASTDelphiProject);
@@ -995,15 +1007,16 @@ begin
   LogMemo.Clear;
   var LRunCount := 0;
   var LFailCount := 0;
-  var LProject := CreateProject({AParseSystemUnit:} ParseSystemCheck.Checked);
+  var LProject := CreateProject('', {AParseSystemUnit:} ParseSystemCheck.Checked);
+  LProject.AddUnitSearchPath(GetTestSriptsPath);
   // todo: AST parser fails without explicit type specification here
   for var LIndex := 0 to FAllTests.Count - 1 do
   begin
     var LTestData := FAllTests.Objects[LIndex] as TTestData;
     TASTParserLog.Instance.ResetNestedLevel;
     var LUnit := TASTDelphiUnit.Create(LProject, LTestData.FilePath);
+    LProject.ProjectFileName := LTestData.FilePath;
     LProject.AddUnit(LUnit, nil);
-
     // add source path for AST tests
     LProject.AddUnitSearchPath(ExtractFilePath(LTestData.FilePath));
 
@@ -1142,7 +1155,7 @@ var
 begin
   SaveSettings;
 
-  Prj := CreateProject({AParseSystemUnit:} True);
+  Prj := CreateProject(ProjectNameEdit.Text, {AParseSystemUnit:} True);
 
   ErrMemo.Clear;
   LogMemo.Clear;
@@ -1210,7 +1223,7 @@ end;
 
 procedure TfrmTestAppMain.FilesParseFocusedActionExecute(Sender: TObject);
 begin
-  var LProject := CreateProject({AParseSystemUnit:} True);
+  var LProject := CreateProject(ProjectNameEdit.Text, {AParseSystemUnit:} True);
   LProject.AddUnit(lbFiles.Items[lbFiles.ItemIndex]);
   ParseProject(LProject, {AClearOutput:} True, {AShowResults:} True);
   LProject.Clear({AClearImplicitUnits:} True);
@@ -1271,7 +1284,7 @@ function TfrmTestAppMain.GetTestSriptsPath: string;
 begin
   Result := TestScriptsPathEdit.Text;
   if IsRelativePath(Result) then
-    Result := TPath.Combine(ExtractFilePath(Application.ExeName), Result);
+    Result := TPath.GetFullPath(TPath.Combine(ExtractFilePath(Application.ExeName), Result));
 end;
 
 //procedure TestSetImplicit;
