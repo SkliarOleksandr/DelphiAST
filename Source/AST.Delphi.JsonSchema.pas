@@ -11,7 +11,7 @@ type
   type
     TItem = class
       name: string;
-      value: Integer;
+      value: Int64;
       explicitValue: Boolean;
     end;
   var

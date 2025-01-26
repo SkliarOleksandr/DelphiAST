@@ -921,7 +921,17 @@ end;
 
 procedure TfrmTestAppMain.ShowASTResultAsJSON(const AModule: IASTModule; ASynEdit: TSynEdit);
 begin
-  //todo:
+  var LJSONProject := AModule.ToJson;
+  try
+    var LJSON := TJson.ObjectToJsonObject(LJSONProject);
+    try
+      ASynEdit.Text := LJSON.Format();
+    finally
+      LJSON.Free;
+    end;
+  finally
+    LJSONProject.Free;
+  end;
 end;
 
 procedure TfrmTestAppMain.ShowASTResultAsJSON(const Project: IASTDelphiProject; ASynEdit: TSynEdit);
