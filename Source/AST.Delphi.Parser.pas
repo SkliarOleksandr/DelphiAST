@@ -31,6 +31,7 @@ uses
 // sysinit
 // GETMEM.INC
 // System.SysUtils
+// System.SysConst
 // system.Classes
 // System.DateUtils
 // System.IOUtils
@@ -251,7 +252,6 @@ type
     procedure CheckBooleanExpression(Expression: TIDExpression; AUseImplicitCast: Boolean = False); inline;
     procedure CheckVarExpression(Expression: TIDExpression; VarModifyPlace: TVarModifyPlace);
     class procedure CheckPointerType(Expression: TIDExpression); static; inline;
-    class procedure CheckReferenceType(Expression: TIDExpression); static; inline;
     class procedure CheckRecordType(Expression: TIDExpression); static; inline;
     class procedure CheckStructType(Expression: TIDExpression); overload; static; inline;
     class procedure CheckStructType(Decl: TIDDeclaration); overload; static; inline;
@@ -2221,6 +2221,8 @@ begin
       DoMatchBinarOperator(SContext, OpID, Left, Right);
 
       ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Self, Left.TextPosition);
+      // return "unknown" to keep parsing
+      Result := Sys._UnknownVariable;
     end;
   end;
 end;
@@ -2285,6 +2287,13 @@ begin
       Left := EContext.RPNPopExpression();
 
       Op := FindBinaryOperator(EContext.SContext, OpID, Left, Right);
+
+      if Op = Sys._UnknownVariable then
+      begin
+        // return "unknown" to keep parsing
+        Result := CreateUnknownExpr(Right.TextPosition);
+        Exit;
+      end;
 
       TmpVar := nil;
 
@@ -3943,6 +3952,11 @@ begin
   Result := nil;
   MatchedCount := 0;
   Declaration := TIDProcedure(Item.Declaration);
+
+  {$IFDEF DEBUG}
+  FillChar(fProcMatches[0], SizeOf(TASTProcMatchItem)*Length(fProcMatches), #0);
+  {$ENDIF}
+
   repeat
     if (Declaration.ParamsCount = 0) and (CallArgsCount = 0) then
       Exit(Declaration);
@@ -4615,7 +4629,11 @@ begin
       DimensionsCount := 1;
       DataType := ARefType;
     end else
-      ERRORS.ARRAY_TYPE_REQUIRED(ArrExpr.Declaration.ID, Lexer_PrevPosition);
+    begin
+      ERRORS.E2016_ARRAY_TYPE_REQUIRED(Self, ArrExpr.TextPosition);
+      DataType := Sys._UnknownType;
+      ArrType := Sys._UnknownType;
+    end;
   end else
   if ArrType.DataTypeID in [dtPAnsiChar, dtPWideChar] then
   begin
@@ -4652,7 +4670,9 @@ begin
     EContext.RPNPushExpression(Expr);
     Exit;
   end else begin
-    ERRORS.ARRAY_TYPE_REQUIRED(ArrDecl.ID, ArrExpr.TextPosition);
+    ERRORS.E2016_ARRAY_TYPE_REQUIRED(Self, ArrExpr.TextPosition);
+    ArrType := Sys._UnknownType;
+    DataType := Sys._UnknownType;
     DimensionsCount := 0;
   end;
 
@@ -4702,7 +4722,7 @@ begin
     Break;
   end;
   // Variant type can have variable dimensions count, so no sense to check it in compile time
-  if (IdxCount > DimensionsCount) and (ArrType.DataTypeID <> dtVariant) then
+  if (IdxCount > DimensionsCount) and ((ArrType.DataTypeID <> dtVariant) and (ArrType <> Sys._UnknownType)) then
     ERRORS.NEED_SPECIFY_NINDEXES(ArrDecl);
 
   var ATmpVar := GetTMPVar(EContext, DataType);
@@ -8689,6 +8709,7 @@ begin
     AbortWork(sConstRangeRequired, Lexer_Position);
 
   BoundExpr := CRange.Value.LBExpression;
+  CheckEmptyExpression(BoundExpr);
   CheckConstExpression(BoundExpr);
   LB := TIDConstant(BoundExpr.Declaration).AsInt64;
 
@@ -9264,7 +9285,11 @@ begin
     Break;
   end;
 
-  ERRORS.UNDECLARED_ID(AID);
+  ERRORS.E2003_UNDECLARED_IDENTIFIER(Self, AID);
+
+  // return "unknown" to keep parsing
+  Decl := TIDConstant.Create(Scope, AID);
+  Decl.DataType := Sys._UnknownType;
 end;
 
 function ProcCanBeGeneric(AProc: TIDProcedure): Boolean;
@@ -9820,7 +9845,7 @@ begin
 
   Result := Lexer_NextToken(Scope);
 
-  // parse the ancestor
+  // parse the explicit ancestor
   if Result = token_openround then
   begin
     Lexer_NextToken(Scope);
@@ -9832,7 +9857,8 @@ begin
     Lexer_MatchToken(Result, token_closeround);
     Decl.AncestorDecl := Expr.AsType;
     Result := Lexer_NextToken(Scope);
-  end;
+  end else
+    Decl.AncestorDecl := Sys._IInterface;
 
   // semicolon means this is forward declaration
   if Result = token_semicolon then
@@ -10611,12 +10637,6 @@ begin
   if (Decl.ItemType <> itType) or
      (TIDType(Decl).DataTypeID <> dtRecord) then
     AbortWork(sRecordTypeRequired, Expression.TextPosition);
-end;
-
-class procedure TASTDelphiUnit.CheckReferenceType(Expression: TIDExpression);
-begin
-  if not Expression.DataType.IsReferenced then
-    AbortWork(sReferenceTypeRequired, Expression.TextPosition);
 end;
 
 class procedure TASTDelphiUnit.CheckSetType(Expression: TIDExpression);

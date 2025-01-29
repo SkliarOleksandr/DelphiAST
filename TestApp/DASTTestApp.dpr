@@ -43,6 +43,8 @@ uses
   AST.Delphi.SysTypes in '..\Source\AST.Delphi.SysTypes.pas',
   AST.Delphi.Declarations in '..\Source\AST.Delphi.Declarations.pas',
   AST.Utils.CmdLineParser in 'AST.Utils.CmdLineParser.pas',
+  AST.JsonSchema in '..\Source\AST.JsonSchema.pas',
+  AST.Delphi.JsonSchema in '..\Source\AST.Delphi.JsonSchema.pas',
   ASTTest.Implicit.Pointers in '..\TestScripts\Implict\ASTTest.Implicit.Pointers.pas',
   ASTTest.Implicit.Integer in '..\TestScripts\Implict\ASTTest.Implicit.Integer.pas',
   ASTTest.Cmp.Strings in '..\TestScripts\Operators\Compare\ASTTest.Cmp.Strings.pas',
@@ -101,8 +103,7 @@ uses
   ASTTest.Intf.MethodRedeclaration in '..\TestScripts\Interfaces\ASTTest.Intf.MethodRedeclaration.pas',
   ASTTest.Records.CaseRecord2 in '..\TestScripts\Records\ASTTest.Records.CaseRecord2.pas',
   ASTTest.Records.CaseRecord1 in '..\TestScripts\Records\ASTTest.Records.CaseRecord1.pas',
-  AST.JsonSchema in '..\Source\AST.JsonSchema.pas',
-  AST.Delphi.JsonSchema in '..\Source\AST.Delphi.JsonSchema.pas';
+  ASTTest.Builtins.High1 in '..\TestScripts\Built-ins\ASTTest.Builtins.High1.pas';
 
 {$R *.res}
 

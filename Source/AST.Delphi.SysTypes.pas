@@ -58,6 +58,7 @@ type
     _PWideChar: TIDType;
     _OrdinalType: TIDType;
     _TObject: TIDClass;
+    _IInterface: TIDInterface;
     _Exception: TIDClass;
     _EAssertClass: TIDClass;
     _TTypeKind: TIDEnum;

@@ -1162,6 +1162,7 @@ procedure TSYSTEMUnit.SearchSystemTypes;
 begin
   // todo: use forward declaration instead
   fDecls._TObject := GetPublicClass('TObject');
+  fDecls._IInterface := GetPublicInterface('IInterface');
   fDecls._ResStringRecord := GetPublicType('PResStringRec');
   fDecls._TVarRec := GetPublicType('TVarRec');
   fDecls._TVarData := GetPublicType('TVarData');

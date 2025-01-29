@@ -731,7 +731,10 @@ begin
   if DataType.DataTypeID = dtStaticArray then
   begin
     DataType := (DataType as TIDArray).Dimensions[0];
-    Decl := TIDIntConstant.CreateAsAnonymous(UN.IntfScope, SYSUnit._Int32, (DataType as TIDOrdinal).LowBound);
+    if DataType.DataTypeID <> dtRange then
+      Decl := TIDIntConstant.CreateAsAnonymous(UN.IntfScope, DataType, (DataType as TIDOrdinal).LowBound)
+    else
+      Decl := TIDIntConstant.CreateAsAnonymous(UN.IntfScope, TIDRangeType(DataType).BaseType, (DataType as TIDOrdinal).LowBound);
   end else
   if DataType.DataTypeID in [dtString, dtShortString, dtAnsiString] then
     Exit(SYSUnit._OneExpression)
@@ -783,8 +786,11 @@ begin
   end else
   if DataType.DataTypeID = dtStaticArray then
   begin
-    DataType := (DataType as TIDArray).Dimensions[0];
-    Decl := TIDIntConstant.CreateAsAnonymous(UN.IntfScope, SYSUnit._Int32, (DataType as TIDOrdinal).HighBound);
+    DataType := (DataType as TIDArray).Dimensions[0].ActualDataType;
+    if DataType.DataTypeID <> dtRange then
+      Decl := TIDIntConstant.CreateAsAnonymous(UN.IntfScope, DataType, (DataType as TIDOrdinal).HighBound)
+    else
+      Decl := TIDIntConstant.CreateAsAnonymous(UN.IntfScope, TIDRangeType(DataType).BaseType, (DataType as TIDOrdinal).HighBound);
   end else
   if DataType.DataTypeID in [dtDynArray, dtOpenArray, dtString, dtShortString, dtAnsiString] then
   begin
@@ -997,7 +1003,6 @@ begin
   Result := nil;
 end;
 
-
 { TSF_Finalize }
 
 class function TSF_Finalize.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
@@ -1027,7 +1032,8 @@ var
   Expr: TIDExpression;
 begin
   Expr := EContext.RPNPopExpression();
-  TASTDelphiUnit.CheckReferenceType(Expr);
+  if not Expr.DataType.IsReferenced then
+    TASTDelphiErrors.E2008_INCOMPATIBLE_TYPES(EContext.SContext.Module, Expr.TextPosition);
   Result := GetBoolResultExpr(EContext.SContext);
 end;
 

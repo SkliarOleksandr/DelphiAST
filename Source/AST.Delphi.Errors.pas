@@ -288,8 +288,11 @@ type
 
     procedure GENERIC_INVALID_CONSTRAINT(ActualToken: TTokenID);
 
+    class procedure E2003_UNDECLARED_IDENTIFIER(const AModule: IASTModule; const AID: TIdentifier);
+    class procedure E2008_INCOMPATIBLE_TYPES(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2010_INCOMPATIBLE_TYPES(const AModule: IASTModule; ALeft, ARight: TIDType; const TextPosition: TTextPosition);
     class procedure E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(const AModule: IASTModule; const TextPosition: TTextPosition);
+    class procedure E2016_ARRAY_TYPE_REQUIRED(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2018_RECORD_OBJECT_OR_CLASS_TYPE_REQUIRED(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2029_SEMICOLON_EXPECTED_BUT_ID_FOUND(const AModule: IASTModule; const AID: TIdentifier);
     class procedure E2034_TOO_MANY_ACTUAL_PARAMETERS(const AModule: IASTModule; const ATextPosition: TTextPosition);
@@ -298,6 +301,7 @@ type
     class procedure E2066_MISSING_OPERATOR_OR_SEMICOLON(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2089_INVALID_TYPECAST(const AModule: IASTModule;  const ATextPosition: TTextPosition);
     class procedure E2185_CANNOT_SPECIFY_DISPID(const AModule: IASTModule; const AMethodID: TIdentifier);
+    class procedure E2197_CONSTANT_OBJECT_CANNOT_BE_PASSED_AS_VAR_PARAMETER(const AModule: IASTModule; const AID: TIdentifier);
     class procedure E2250_THERE_IS_NO_OVERLOADED_VERSION_THAT_CAN_BE_CALLED_WITH_THESE_ARGUMENTS(const AModule: IASTModule; AExpression: TIDExpression);
     class procedure E2251_AMBIGUOUS_OVERLOADED_CALL(const AModule: IASTModule; AExpression: TIDExpression);
     class procedure E2232_INTERFACE_HAS_NO_INTERFACE_IDENTIFICATION(const AModule: IASTModule; ADecl: TIDDeclaration);
@@ -587,6 +591,16 @@ begin
   AbortWork(sIdentifierExpected, Lexer.PrevPosition);
 end;
 
+class procedure TASTDelphiErrors.E2003_UNDECLARED_IDENTIFIER(const AModule: IASTModule; const AID: TIdentifier);
+begin
+  AModule.PutError('E2003 Undeclared identifier: ''%s''', [AID.Name], AID.TextPosition);
+end;
+
+class procedure TASTDelphiErrors.E2008_INCOMPATIBLE_TYPES(const AModule: IASTModule; const ATextPosition: TTextPosition);
+begin
+  AModule.PutError('E2008 Incompatible types', ATextPosition);
+end;
+
 class procedure TASTDelphiErrors.E2010_INCOMPATIBLE_TYPES(const AModule: IASTModule; ALeft, ARight: TIDType;
   const TextPosition: TTextPosition);
 begin
@@ -596,6 +610,11 @@ end;
 class procedure TASTDelphiErrors.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(const AModule: IASTModule; const TextPosition: TTextPosition);
 begin
   AModule.PutError('E2015 Operator not applicable to this operand type', TextPosition);
+end;
+
+class procedure TASTDelphiErrors.E2016_ARRAY_TYPE_REQUIRED(const AModule: IASTModule; const ATextPosition: TTextPosition);
+begin
+  AModule.PutError('E2016 Array type required', ATextPosition);
 end;
 
 class procedure TASTDelphiErrors.E2018_RECORD_OBJECT_OR_CLASS_TYPE_REQUIRED(const AModule: IASTModule; const ATextPosition: TTextPosition);
@@ -638,6 +657,12 @@ class procedure TASTDelphiErrors.E2185_CANNOT_SPECIFY_DISPID(const AModule: IAST
 begin
   AModule.PutError('E2185 Overriding automated virtual method ''%s'' cannot specify a dispid',
     [AMethodID.Name], AMethodID.TextPosition);
+end;
+
+class procedure TASTDelphiErrors.E2197_CONSTANT_OBJECT_CANNOT_BE_PASSED_AS_VAR_PARAMETER(const AModule: IASTModule;
+  const AID: TIdentifier);
+begin
+  AModule.PutError('E2197 Constant object cannot be passed as var parameter', AID.TextPosition);
 end;
 
 class procedure TASTDelphiErrors.E2232_INTERFACE_HAS_NO_INTERFACE_IDENTIFICATION(const AModule: IASTModule; ADecl: TIDDeclaration);

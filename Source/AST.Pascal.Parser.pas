@@ -115,6 +115,7 @@ type
   public
     function FindPublicDecl(const Name: string): TIDDeclaration;
     function GetPublicClass(const Name: string): TIDClass;
+    function GetPublicInterface(const AName: string): TIDInterface;
     function GetPublicType(const Name: string): TIDType;
     //======================================================================================================================================
     procedure AddType(const Decl: TIDType); inline;
@@ -340,6 +341,11 @@ var
 begin
   Res := FindPublicDecl(Name);
   Result := Res as TIDClass;
+end;
+
+function TPascalUnit.GetPublicInterface(const AName: string): TIDInterface;
+begin
+  Result := FindPublicDecl(AName) as TIDInterface;
 end;
 
 function TPascalUnit.GetPublicType(const Name: string): TIDType;
