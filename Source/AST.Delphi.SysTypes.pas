@@ -51,6 +51,7 @@ type
     _Untyped: TIDType;
     _UnknownType: TIDUnknown;
     _UnknownVariable: TIDVariable;
+    _UnknownConstant: TIDConstant;
     _MetaType: TIDType;
     _Void: TIDType;
     _GuidType: TIDStructure;

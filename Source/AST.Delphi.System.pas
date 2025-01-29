@@ -1070,6 +1070,7 @@ begin
   fDecls._UnknownType := TIDUnknown.CreateAsSystem(IntfScope, '<unknown>');
   fDecls._UnknownVariable := TIDVariable.CreateAsSystem(IntfScope, '<unknown>');
   fDecls._UnknownVariable.DataType := fDecls._UnknownType;
+  fDecls._UnknownConstant := TIDIntConstant.CreateAsSystem(IntfScope, '<unknown>', fDecls._UnknownType);
 
   // Delphi system aliases
   RegisterTypeAlias('LongInt', _Int32);

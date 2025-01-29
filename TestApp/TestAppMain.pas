@@ -1146,6 +1146,8 @@ begin
     else
       ErrMemo.Lines.Add('compile fail');
 
+    ErrMemo.Lines.Add(Format('errors\warnings\hints: %d\%d\%d',
+      [Project.Messages.ErrorCount, Project.Messages.WarningCount, Project.Messages.HintCount]));
     ErrMemo.Lines.Add(format('total units parsed: %d (interface only: %d)',
       [Project.TotalUnitsParsed, Project.TotalUnitsIntfOnlyParsed]));
 

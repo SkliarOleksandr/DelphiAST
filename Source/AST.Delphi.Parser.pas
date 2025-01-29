@@ -5096,7 +5096,7 @@ begin
       // use TStringList since it proper handles any file encodings
       LStrings.LoadFromFile(LFullFileName);
       var LMessages := CompileSource(Scope, LFileName, LStrings.Text);
-      if LMessages.HasErrors then
+      if LMessages.ErrorCount > 0 then
         AbortWork('The included file: %s has errors', [LFileName], Lexer_Position);
     finally
       LStrings.Free;
@@ -6124,7 +6124,9 @@ begin
       begin
         // for debug
         TSysTypeCast(OperatorDecl).Match(SContext, SrcExpr, TargetType);
-        ERRORS.INVALID_EXPLICIT_TYPECAST(SrcExpr, TargetType);
+        ERRORS.E2089_INVALID_TYPECAST(Self, SrcExpr.TextPosition);
+        // return unknown value
+        DstExpression := TIDCastExpression.Create(SrcExpr.Declaration, TIDType(DstExpression.Declaration), SrcExpr.TextPosition);
       end;
     end;
   end else
@@ -7777,7 +7779,8 @@ begin
       ERRORS.ID_REDECLARATED(ID);
 
     // The case when proc impl doesn't have params at all insted of decl
-    if (Scope.ScopeClass = scImplementation) and (ProcScope.ExplicitParamsCount = 0) and (ForwardDecl.PrevOverload = nil) then
+    if (Scope.ScopeClass = scImplementation) and (ProcScope.ExplicitParamsCount = 0) and
+       not (pfOveload in ForwardDecl.Flags) then
     begin
       FwdDeclState := dsSame;
       Proc := ForwardDecl;
@@ -7848,7 +7851,7 @@ begin
         begin
           // todo: for debug
           Proc.InheritedProc := Struct.FindVirtualProcInAncestor(Proc);
-          ERRORS.NO_METHOD_IN_BASE_CLASS(Proc);
+          ERRORS.E2170_CANNOT_OVERRIDE_A_NON_VIRTUAL_METHOD(Self, ID.TextPosition);
         end;
       end;
 
@@ -7911,12 +7914,14 @@ begin
     // just set Implementation scope as outer scope for the Entry
     Proc.EntryScope.OuterScope := ProcScope.OuterScope;
 
-    if (FwdDeclState = dsDifferent) and not (pfOveload in ProcFlags) then
+    if (FwdDeclState = dsDifferent) and
+       (ForwardDecl.DeclUnit = Self) and
+       not (pfOveload in ProcFlags) then
     begin
       if Proc.IsCompleted then
         ERRORS.OVERLOADED_MUST_BE_MARKED(ID)
       else
-        ERRORS.DECL_DIFF_WITH_PREV_DECL(ID, ForwardDecl.DisplayName, Proc.DisplayName);
+        ERRORS.E2037_DECLARATION_OF_DIFFERS_FROM_PREVIOUS_DECLARATION(Self, ID);
     end;
 
     Result := ParseProcBody(Proc);
@@ -8054,7 +8059,8 @@ begin
       ERRORS.ID_REDECLARATED(ID);
 
     // The case when proc impl doesn't have params at all insted of decl
-    if (Scope.ScopeClass = scImplementation) and (ProcScope.ExplicitParamsCount = 0) and (ForwardDecl.PrevOverload = nil) then
+    if (Scope.ScopeClass = scImplementation) and (ProcScope.ExplicitParamsCount = 0) and
+       not (pfOveload in ForwardDecl.Flags) then
     begin
       FwdDeclState := dsSame;
       Proc := ForwardDecl;
@@ -8121,14 +8127,14 @@ begin
     Proc.EntryScope := ProcScope;
 
     if Assigned(ForwardDecl) and
-       (ForwardDecl.Scope = Scope) and
        (FwdDeclState = dsDifferent) and
+       (ForwardDecl.DeclUnit = Self) and
        not (pfOveload in ProcFlags) then
     begin
       if ForwardDecl.IsCompleted then
         ERRORS.OVERLOADED_MUST_BE_MARKED(ID)
       else
-        ERRORS.DECL_DIFF_WITH_PREV_DECL(ID, ForwardDecl.DisplayName, Proc.DisplayName);
+        ERRORS.E2037_DECLARATION_OF_DIFFERS_FROM_PREVIOUS_DECLARATION(Self, ID);
     end;
     // parse proc body
     Result := ParseProcBody(Proc);
@@ -8338,7 +8344,7 @@ begin
       if ForwardDecl.IsCompleted then
         ERRORS.OVERLOADED_MUST_BE_MARKED(ID)
       else
-        ERRORS.DECL_DIFF_WITH_PREV_DECL(ID, ForwardDecl.DisplayName, Proc.DisplayName);
+        ERRORS.E2037_DECLARATION_OF_DIFFERS_FROM_PREVIOUS_DECLARATION(Self, ID);
     end;
     // parse proc body
     Result := ParseProcBody(Proc);
@@ -8652,7 +8658,7 @@ begin
       if (FwdDeclState = dsDifferent) then
       begin
         if not Proc.IsCompleted then
-          ERRORS.DECL_DIFF_WITH_PREV_DECL(ID, ForwardDecl.DisplayName, Proc.DisplayName);
+          ERRORS.E2037_DECLARATION_OF_DIFFERS_FROM_PREVIOUS_DECLARATION(Self, ID);
       end;
       Result := ParseProcBody(Proc);
       Lexer_MatchSemicolon(Result);

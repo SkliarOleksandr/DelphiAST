@@ -530,6 +530,10 @@ begin
 
   // todo: full refactor
 
+  // result unknown to "keep parsing"
+  if Left.IsUnknown or Right.IsUnknown then
+    Constant := Sys._UnknownConstant
+  else
   if Operation = opIn then
     Constant := CalcIn(AScope, L, R)
   else

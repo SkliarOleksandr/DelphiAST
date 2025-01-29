@@ -231,7 +231,6 @@ type
     class procedure NOT_ENOUGH_ACTUAL_PARAMS(CallExpr: TIDExpression); static;
     class procedure TOO_MANY_ACTUAL_PARAMS(CallExpr: TIDExpression; Expected, Actual: Integer); static;
     class procedure OVERLOADED_MUST_BE_MARKED(const ID: TIdentifier); static;
-    class procedure DECL_DIFF_WITH_PREV_DECL(const ID: TIdentifier; const ADeclSing, AImplSign: string); static;
 
     class procedure TYPE_REQUIRED(const TextPosition: TTextPosition); static;
     class procedure STRUCT_TYPE_REQUIRED(const TextPosition: TTextPosition); static;
@@ -290,8 +289,8 @@ type
 
     class procedure E2003_UNDECLARED_IDENTIFIER(const AModule: IASTModule; const AID: TIdentifier);
     class procedure E2008_INCOMPATIBLE_TYPES(const AModule: IASTModule; const ATextPosition: TTextPosition);
-    class procedure E2010_INCOMPATIBLE_TYPES(const AModule: IASTModule; ALeft, ARight: TIDType; const TextPosition: TTextPosition);
-    class procedure E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(const AModule: IASTModule; const TextPosition: TTextPosition);
+    class procedure E2010_INCOMPATIBLE_TYPES(const AModule: IASTModule; ALeft, ARight: TIDType; const ATextPosition: TTextPosition);
+    class procedure E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2016_ARRAY_TYPE_REQUIRED(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2018_RECORD_OBJECT_OR_CLASS_TYPE_REQUIRED(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2029_SEMICOLON_EXPECTED_BUT_ID_FOUND(const AModule: IASTModule; const AID: TIdentifier);
@@ -299,7 +298,8 @@ type
     class procedure E2035_NOT_ENOUGH_ACTUAL_PARAMETERS(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2037_DECLARATION_OF_DIFFERS_FROM_PREVIOUS_DECLARATION(const AModule: IASTModule; const AID: TIdentifier);
     class procedure E2066_MISSING_OPERATOR_OR_SEMICOLON(const AModule: IASTModule; const APosition: TTextPosition);
-    class procedure E2089_INVALID_TYPECAST(const AModule: IASTModule;  const ATextPosition: TTextPosition);
+    class procedure E2089_INVALID_TYPECAST(const AModule: IASTModule; const ATextPosition: TTextPosition);
+    class procedure E2170_CANNOT_OVERRIDE_A_NON_VIRTUAL_METHOD(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2185_CANNOT_SPECIFY_DISPID(const AModule: IASTModule; const AMethodID: TIdentifier);
     class procedure E2197_CONSTANT_OBJECT_CANNOT_BE_PASSED_AS_VAR_PARAMETER(const AModule: IASTModule; const AID: TIdentifier);
     class procedure E2250_THERE_IS_NO_OVERLOADED_VERSION_THAT_CAN_BE_CALLED_WITH_THESE_ARGUMENTS(const AModule: IASTModule; AExpression: TIDExpression);
@@ -516,12 +516,6 @@ begin
   AbortWork(sOverloadedMustBeMarked, [ID.Name], ID.TextPosition);
 end;
 
-class procedure TASTDelphiErrors.DECL_DIFF_WITH_PREV_DECL(const ID: TIdentifier;
-                                                          const ADeclSing, AImplSign: string);
-begin
-  AbortWork(sDeclDifWithPrevDecl, [ID.Name, ADeclSing, AImplSign], ID.TextPosition);
-end;
-
 procedure TASTDelphiErrors.DEFAULT_PROP_ALREADY_EXIST(Prop: TIDProperty);
 begin
   AbortWork(sDefaultPropertyAlreadyExistsFmt, [Prop.Name], Prop.TextPosition);
@@ -602,14 +596,14 @@ begin
 end;
 
 class procedure TASTDelphiErrors.E2010_INCOMPATIBLE_TYPES(const AModule: IASTModule; ALeft, ARight: TIDType;
-  const TextPosition: TTextPosition);
+  const ATextPosition: TTextPosition);
 begin
-  AModule.PutError('E2010 Incompatible types: ''%s'' and ''%s''', [ALeft.DisplayName, ARight.DisplayName], TextPosition);
+  AModule.PutError('E2010 Incompatible types: ''%s'' and ''%s''', [ALeft.DisplayName, ARight.DisplayName], ATextPosition);
 end;
 
-class procedure TASTDelphiErrors.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(const AModule: IASTModule; const TextPosition: TTextPosition);
+class procedure TASTDelphiErrors.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(const AModule: IASTModule; const ATextPosition: TTextPosition);
 begin
-  AModule.PutError('E2015 Operator not applicable to this operand type', TextPosition);
+  AModule.PutError('E2015 Operator not applicable to this operand type', ATextPosition);
 end;
 
 class procedure TASTDelphiErrors.E2016_ARRAY_TYPE_REQUIRED(const AModule: IASTModule; const ATextPosition: TTextPosition);
@@ -651,6 +645,12 @@ end;
 class procedure TASTDelphiErrors.E2089_INVALID_TYPECAST(const AModule: IASTModule;const ATextPosition: TTextPosition);
 begin
   AModule.PutError('E2089 Invalid typecast', ATextPosition);
+end;
+
+class procedure TASTDelphiErrors.E2170_CANNOT_OVERRIDE_A_NON_VIRTUAL_METHOD(const AModule: IASTModule;
+  const ATextPosition: TTextPosition);
+begin
+  AModule.PutError('E2170 Cannot override a non-virtual method', ATextPosition);
 end;
 
 class procedure TASTDelphiErrors.E2185_CANNOT_SPECIFY_DISPID(const AModule: IASTModule; const AMethodID: TIdentifier);

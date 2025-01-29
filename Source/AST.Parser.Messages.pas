@@ -47,20 +47,27 @@ type
     procedure Add(const Message: IASTParserMessage);
     procedure Clear;
     procedure CopyFrom(const Messages: ICompilerMessages);
-    function GetHasErrors: Boolean;
     function GetAsString: string;
     function GetCount: Integer;
     function GetItem(Index: Integer): IASTParserMessage;
+    function GetErrorCount: Integer;
+    function GetHintCount: Integer;
+    function GetWarningCount: Integer;
     property Count: Integer read GetCount;
     property Items[Index: Integer]: IASTParserMessage read GetItem; default;
     property Text: string read GetAsString;
-    property HasErrors: Boolean read GetHasErrors;
+    property ErrorCount: Integer read GetErrorCount;
+    property WarningCount: Integer read GetWarningCount;
+    property HintCount: Integer read GetHintCount;
   end;
 
   TCompilerMessages = class(TInterfacedObject, ICompilerMessages)
   private
     FMessages: TList<IASTParserMessage>;
     function GetCount: Integer;
+    function GetErrorCount: Integer;
+    function GetHintCount: Integer;
+    function GetWarningCount: Integer;
   public
     constructor Create;
     destructor Destroy; override;
@@ -68,9 +75,11 @@ type
     procedure CopyFrom(const Messages: ICompilerMessages);
     procedure Clear;
     property Count: Integer read GetCount;
-    function GetHasErrors: Boolean;
     function GetAsString: string;
     function GetItem(Index: Integer): IASTParserMessage;
+    property ErrorCount: Integer read GetErrorCount;
+    property WarningCount: Integer read GetWarningCount;
+    property HintCount: Integer read GetHintCount;
   end;
 
 implementation
@@ -209,19 +218,33 @@ begin
   Result := FMessages.Count;
 end;
 
-function TCompilerMessages.GetHasErrors: Boolean;
-var
-  i: Integer;
+function TCompilerMessages.GetErrorCount: Integer;
 begin
-  for i := 0 to FMessages.Count - 1 do
-    if FMessages[i].MessageType in [cmtError, cmtInteranlError] then
-      Exit(True);
-  Result := False;
+  Result := 0;
+  for var LIndex := 0 to FMessages.Count - 1 do
+    if FMessages[LIndex].MessageType in [cmtError, cmtInteranlError] then
+      Inc(Result);
+end;
+
+function TCompilerMessages.GetHintCount: Integer;
+begin
+  Result := 0;
+  for var LIndex := 0 to FMessages.Count - 1 do
+    if FMessages[LIndex].MessageType = cmtHint then
+      Inc(Result);
 end;
 
 function TCompilerMessages.GetItem(Index: Integer): IASTParserMessage;
 begin
   Result := FMessages[Index];
+end;
+
+function TCompilerMessages.GetWarningCount: Integer;
+begin
+  Result := 0;
+  for var LIndex := 0 to FMessages.Count - 1 do
+    if FMessages[LIndex].MessageType = cmtWarning then
+      Inc(Result);
 end;
 
 end.

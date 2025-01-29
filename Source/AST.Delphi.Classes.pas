@@ -562,6 +562,7 @@ type
 
     function SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType; override;
     function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
+    function MatchExplicitTo(ADst: TIDType): Boolean; override;
     function MatchExplicitFrom(ASrc: TIDType): Boolean; override;
     function SameConstraint(ADstParam: TIDGenericParam): Boolean;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
@@ -1425,6 +1426,7 @@ type
     function GetDeclClass: TIDDeclarationClass;
     function GetIsRangeConst: Boolean;
     function GetActualDataType: TIDType;
+    function GetIsUnknown: Boolean;
   protected
     function GetDataType: TIDType; virtual;
   public
@@ -1459,6 +1461,7 @@ type
     property IsRangeConst: Boolean read GetIsRangeConst;
     property IsParam: Boolean read GetIsParam;
     property IsNonAnonimousVariable: Boolean read GetIsNonAnonimousVariable;
+    property IsUnknown: Boolean read GetIsUnknown;
     //property IsNullableVariable: Boolean read GetIsNullableVariable;
     property AsType: TIDType read GetAsType;
     property AsConst: TIDConstant read GetAsConst;
@@ -4735,6 +4738,11 @@ begin
   Result := (FDeclaration.ItemType = itVar) and (TIDVariable(FDeclaration).IsTemporary);
 end;
 
+function TIDExpression.GetIsUnknown: Boolean;
+begin
+  Result := DataType is TIDUnknown;
+end;
+
 function TIDExpression.GetIsVariable: Boolean;
 begin
   Result := FDeclaration.ItemType = itVar;
@@ -7782,6 +7790,16 @@ function TIDGenericParam.MatchExplicitFrom(ASrc: TIDType): Boolean;
 begin
   // TODO: improve constraint checking
   Result := fConstraintType = ASrc;
+end;
+
+function TIDGenericParam.MatchExplicitTo(ADst: TIDType): Boolean;
+begin
+  case ADst.DataTypeID of
+    dtClass: Result := (Constraint = gsClass) or
+                       ((Constraint = gsType) and ConstraintType.IsClass);
+  else
+    Result := False;
+  end;
 end;
 
 function TIDGenericParam.SameConstraint(ADstParam: TIDGenericParam): Boolean;
