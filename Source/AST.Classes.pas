@@ -69,6 +69,7 @@ type
     function GetTotalUnitsParsed: Integer; virtual;
     function GetTotalUnitsIntfOnlyParsed: Integer; virtual;
     function GetStopCompileIfError: Boolean;
+    function InPogress: Boolean; virtual; abstract;
     procedure PutMessage(const AMessage: IASTParserMessage); overload; virtual;
     procedure PutMessage(const AModule: IASTModule; AMsgType: TCompilerMessageType; const AMessage: string;
                          const ATextPostition: TTextPosition); overload; virtual;
@@ -115,6 +116,7 @@ type
     procedure PutError(const AMessage: string; const ATextPosition: TTextPosition; ACritical: Boolean = False); overload;
     procedure PutError(const AMessage: string; const AParams: array of const; const ATextPosition: TTextPosition; ACritical: Boolean = False); overload;
     function Lexer_Line: Integer; virtual; abstract;
+    function Lexer_Position: TTextPosition; virtual; abstract;
   public
     property Name: string read GetModuleName;
     property FileName: string read fFileName write SetFileName;

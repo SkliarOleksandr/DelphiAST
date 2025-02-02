@@ -2,14 +2,15 @@
 
 interface
 
-uses AST.Pascal.Parser,
-     AST.Delphi.Classes,
-     AST.Delphi.Declarations,
-     AST.Delphi.DataTypes,
-     AST.Delphi.System,
-     AST.Parser.Errors,
-     AST.Delphi.Parser,
-     AST.Delphi.Contexts;
+uses
+  AST.Intf,
+  AST.Pascal.Parser,
+  AST.Delphi.Classes,
+  AST.Delphi.Declarations,
+  AST.Delphi.DataTypes,
+  AST.Delphi.System,
+  AST.Parser.Errors,
+  AST.Delphi.Contexts;
 
 type
 
@@ -525,7 +526,14 @@ uses
   System.SysUtils,
   AST.Lexer,
   AST.Classes,
+  AST.Delphi.Parser,
   AST.Delphi.Errors;
+
+procedure CheckType(const Ctx: TSysFunctionContext; AExpression: TIDExpression);
+begin
+  if AExpression.ItemType <> itType then
+    TASTDelphiErrors.E2005_ID_IS_NOT_A_TYPE_IDENTIFIER(Ctx.Module, AExpression);
+end;
 
 {$HINTS OFF}
 
@@ -557,7 +565,7 @@ begin
   if Expr.DataTypeID <> dtString then
     AbortWork('DEFINE String expected', Expr.TextPosition);
 
-  if Ctx.UN.Defined(Expr.AsStrConst.Value) then
+  if Ctx.Module.Defined(Expr.AsStrConst.Value) then
     Result := SYSUnit._TrueExpression
   else
     Result := SYSUnit._FalseExpression;
@@ -1284,7 +1292,8 @@ begin
     if not Assigned(LProc.ResultType) then
       Ctx.ERRORS.PROCEDURE_CANNOT_HAVE_RESULT;
 
-    Ctx.UN.MatchImplicit3(Ctx.SContext^, LResultExpr, LProc.ResultType);
+    var LUnit := Ctx.Module as TASTDelphiUnit;
+    LUnit.MatchImplicit3(Ctx.SContext^, LResultExpr, LProc.ResultType);
   end;
   Result := nil;
 end;
@@ -1430,11 +1439,12 @@ function TSCTF_StaticAssert.Process(const Ctx: TSysFunctionContext): TIDExpressi
 begin
   // read arguments
   var LCondition := Ctx.EContext.RPNPopExpression();
-  Ctx.UN.CheckConstExpression(LCondition);
+  var LUnit := Ctx.Module as TASTDelphiUnit;
+  LUnit.CheckConstExpression(LCondition);
 
   var LMessageStr := Format('[STATIC ASSERT] Condition ''%s'' is not true', [Ctx.ParamsStr]);
   if not LCondition.AsBoolConst.Value then
-   STATIC_ASSERT_ERROR(Ctx.UN, LCondition.TextPosition, LMessageStr);
+   STATIC_ASSERT_ERROR(Ctx.Module, LCondition.TextPosition, LMessageStr);
 
   Result := nil;
 end;
@@ -1626,9 +1636,9 @@ end;
 function TSCTF_Default.Process(const Ctx: TSysFunctionContext): TIDExpression;
 begin
   var ATypeExpr := Ctx.EContext.RPNPopExpression();
-  Ctx.UN.CheckType(ATypeExpr);
+  CheckType(Ctx, ATypeExpr);
   var ResVar := Ctx.EContext.SContext.Proc.GetTMPVar(ATypeExpr.AsType);
-  Result := TIDExpression.Create(ResVar, Ctx.UN.Lexer_Position);
+  Result := TIDExpression.Create(ResVar, Ctx.Module.Lexer_Position);
 end;
 
 { TSCTF_Console }
@@ -1641,10 +1651,11 @@ end;
 
 function TSCTF_Console.Process(const Ctx: TSysFunctionContext): TIDExpression;
 begin
+  var LUnit := Ctx.Module as TASTDelphiUnit;
   var MsgArg := Ctx.EContext.RPNPopExpression();
-  Ctx.UN.CheckConstExpression(MsgArg);
+  LUnit.CheckConstExpression(MsgArg);
   var StrMessage := MsgArg.AsConst.AsString;
-  Ctx.UN.Package.CosoleWrite(Ctx.UN, Ctx.UN.Lexer_Line, StrMessage);
+  LUnit.Package.CosoleWrite(LUnit, LUnit.Lexer_Line, StrMessage);
   Result := nil;
 end;
 
@@ -1657,7 +1668,8 @@ end;
 
 function TSCTF_Scope.Process(const Ctx: TSysFunctionContext): TIDExpression;
 begin
-  Ctx.UN.Package.CosoleWrite(Ctx.UN, Ctx.UN.Lexer_Line, Ctx.Scope.GetParentNames);
+  var LUnit := Ctx.Module as TASTDelphiUnit;
+  LUnit.Package.CosoleWrite(LUnit, LUnit.Lexer_Line, Ctx.Scope.GetParentNames);
   Result := nil;
 end;
 
@@ -1690,7 +1702,7 @@ begin
   end;
 
   var StrConst := TIDStringConstant.CreateAsAnonymous(Ctx.Scope, SYSUnit._UnicodeString, ATypeName);
-  Result := TIDExpression.Create(StrConst, Ctx.UN.Lexer_Position);
+  Result := TIDExpression.Create(StrConst, Ctx.Module.Lexer_Position);
 end;
 
 { TSF_Insert }
@@ -1732,7 +1744,7 @@ begin
   end;
 
   var AArray := Ctx.SContext.Proc.GetTMPVar(ResultType);
-  Result := TIDExpression.Create(AArray, Ctx.UN.Lexer_Position);
+  Result := TIDExpression.Create(AArray, Ctx.Module.Lexer_Position);
 end;
 
 { TSF_HiByte }
@@ -1808,9 +1820,9 @@ end;
 function TSCTF_IsManagedType.Process(const Ctx: TSysFunctionContext): TIDExpression;
 begin
   var ATypeExpr := Ctx.EContext.RPNPopExpression();
-  Ctx.UN.CheckType(ATypeExpr);
+  CheckType(Ctx, ATypeExpr);
   var ResVar := Ctx.EContext.SContext.Proc.GetTMPVar(SYSUnit._Boolean);
-  Result := TIDExpression.Create(ResVar, Ctx.UN.Lexer_Position);
+  Result := TIDExpression.Create(ResVar, Ctx.Module.Lexer_Position);
 end;
 
 { TSCTF_IsConstValue }
@@ -1825,7 +1837,7 @@ function TSCTF_IsConstValue.Process(const Ctx: TSysFunctionContext): TIDExpressi
 begin
   var AValeExpr := Ctx.EContext.RPNPopExpression();
   var ResVar := Ctx.EContext.SContext.Proc.GetTMPVar(SYSUnit._Boolean);
-  Result := TIDExpression.Create(ResVar, Ctx.UN.Lexer_Position);
+  Result := TIDExpression.Create(ResVar, Ctx.Module.Lexer_Position);
 end;
 
 { TSCTF_TypeInfo }
@@ -1839,9 +1851,9 @@ end;
 function TSCTF_TypeInfo.Process(const Ctx: TSysFunctionContext): TIDExpression;
 begin
   var ATypeExpr := Ctx.EContext.RPNPopExpression();
-  Ctx.UN.CheckType(ATypeExpr);
+  CheckType(Ctx, ATypeExpr);
   var ResVar := Ctx.EContext.SContext.Proc.GetTMPVar(SYSUnit._Pointer);
-  Result := TIDExpression.Create(ResVar, Ctx.UN.Lexer_Position);
+  Result := TIDExpression.Create(ResVar, Ctx.Module.Lexer_Position);
 end;
 
 { TSCTF_GetTypeKind }
@@ -1855,9 +1867,9 @@ end;
 function TSCTF_GetTypeKind.Process(const Ctx: TSysFunctionContext): TIDExpression;
 begin
   var ATypeExpr := Ctx.EContext.RPNPopExpression();
-  Ctx.UN.CheckType(ATypeExpr);
+  CheckType(Ctx, ATypeExpr);
   var ResVar := Ctx.EContext.SContext.Proc.GetTMPVar(SYSUnit._TTypeKind);
-  Result := TIDExpression.Create(ResVar, Ctx.UN.Lexer_Position);
+  Result := TIDExpression.Create(ResVar, Ctx.Module.Lexer_Position);
 end;
 
 { TSCTF_HasWeakRef }
@@ -1872,7 +1884,7 @@ function TSCTF_HasWeakRef.Process(const Ctx: TSysFunctionContext): TIDExpression
 begin
   var AValeExpr := Ctx.EContext.RPNPopExpression();
   var ResVar := Ctx.EContext.SContext.Proc.GetTMPVar(SYSUnit._Boolean);
-  Result := TIDExpression.Create(ResVar, Ctx.UN.Lexer_Position);
+  Result := TIDExpression.Create(ResVar, Ctx.Module.Lexer_Position);
 end;
 
 { TCT_Break }

@@ -191,6 +191,9 @@ type
 
 implementation
 
+uses
+  System.StrUtils;
+
 { TStringParser }
 
 function TGenericLexer.GetNextChar: Char;
@@ -450,9 +453,11 @@ var
   SPos2, ReadedChars: integer;
   Ch: Char;
   NumberSymbols: TNumberSymbols;
+  LSepCount: Integer;
 begin
   NumberSymbols := [];
   ReadedChars := 0;
+  LSepCount := 0;
   Inc(SPos);
   Inc(ReadedChars);
   while SPos <= fLength do begin
@@ -470,12 +475,20 @@ begin
       if nsSign in NumberSymbols then Break;
       Include(NumberSymbols, nsSign);
     end else
+    if Ch = '_' then
+    begin
+      Inc(LSepCount);
+    end else
     if (Tokens[Ch].TokenType <> ttDigit) then Break;
     Inc(SPos);
     Inc(ReadedChars);
   end;
   // read identifier:
   fCurrentToken := Copy(fSource, SPos - ReadedChars, ReadedChars);
+
+  if LSepCount > 0 then
+    fCurrentToken := fCurrentToken.Replace('_', '' );
+
   if (nsPoint in NumberSymbols) or (nsExponent in NumberSymbols) then
     fIdentifireType := itFloat
   else

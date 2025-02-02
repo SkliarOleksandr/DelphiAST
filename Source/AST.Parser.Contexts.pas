@@ -2,29 +2,31 @@
 
 interface
 
-uses System.SysUtils,
-     AST.Delphi.Operators,
-     AST.Delphi.Classes,
-     AST.Classes;
+uses
+  System.SysUtils,
+  AST.Intf,
+  AST.Delphi.Operators,
+  AST.Delphi.Classes,
+  AST.Classes;
 
 type
 
   TASTSContext<TProcType> = record
   private
-    fModule: TASTModule;
+    fModule: IASTModule;
     fScope: TScope;
     fBlock: TASTBlock;
     fProc: TProcType;
     function GetIsLoopBody: Boolean; inline;
     function GetIsTryBlock: Boolean; inline;
   public
-    constructor Create(const Module: TASTModule; Scope: TScope; Proc: TProcType; Block: TASTBlock); overload;
-    constructor Create(const Module: TASTModule; Scope: TScope); overload;
+    constructor Create(const Module: IASTModule; Scope: TScope; Proc: TProcType; Block: TASTBlock); overload;
+    constructor Create(const Module: IASTModule; Scope: TScope); overload;
     function MakeChild(Scope: TScope; Block: TASTBlock): TASTSContext<TProcType>; //inline;
     function Add<T: TASTItem>: T; overload; // do not use due to compiler erros
     function Add(T: TASTItemClass): TASTItem; overload;
     procedure AddItem(const Item: TASTItem);
-    property Module: TASTModule read fModule;
+    property Module: IASTModule read fModule;
     property Proc: TProcType read fProc;
     property Block: TASTBlock read fBlock;
     property Scope: TScope read fScope;
@@ -240,7 +242,7 @@ begin
     if Assigned(Result) then
       Exit;
   end;
-  AbortWorkInternal('Empty Expression');
+  AbortWorkInternal('Empty Expression', SContext.Module.Lexer_Position);
   Result := nil; // for prevent compiler warning
 end;
 
@@ -318,7 +320,7 @@ begin
   fBlock.AddChild(Item)
 end;
 
-constructor TASTSContext<TProcType>.Create(const Module: TASTModule; Scope: TScope; Proc: TProcType; Block: TASTBlock);
+constructor TASTSContext<TProcType>.Create(const Module: IASTModule; Scope: TScope; Proc: TProcType; Block: TASTBlock);
 begin
   fModule := Module;
   fScope := Scope;
@@ -326,7 +328,7 @@ begin
   fBlock := Block;
 end;
 
-constructor TASTSContext<TProcType>.Create(const Module: TASTModule; Scope: TScope);
+constructor TASTSContext<TProcType>.Create(const Module: IASTModule; Scope: TScope);
 begin
   fModule := Module;
   fScope := Scope;

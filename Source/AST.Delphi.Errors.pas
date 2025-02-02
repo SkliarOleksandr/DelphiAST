@@ -217,7 +217,6 @@ type
     class procedure INVALID_EXPLICIT_TYPECAST(const Src: TIDExpression; Dst: TIDType); static;
     class procedure VAR_EXPRESSION_REQUIRED(Expr: TIDExpression); static;
     class procedure VAR_OR_PROC_EXPRESSION_REQUIRED(Expr: TIDExpression); static;
-    class procedure CANNOT_INIT_MULTIPLE_VARS(AVarID: TIdentifier); static;
     class procedure CANNOT_MODIFY_FOR_LOOP_VARIABLE(Expr: TIDExpression); static;
     class procedure CANNOT_MODIFY_CONSTANT(Expr: TIDExpression); static;
     class procedure BOOLEAN_EXPRESSION_REQUIRED(Expr: TIDExpression); static;
@@ -288,6 +287,7 @@ type
     procedure GENERIC_INVALID_CONSTRAINT(ActualToken: TTokenID);
 
     class procedure E2003_UNDECLARED_IDENTIFIER(const AModule: IASTModule; const AID: TIdentifier);
+    class procedure E2005_ID_IS_NOT_A_TYPE_IDENTIFIER(const AModule: IASTModule; const AExpr: TIDExpression);
     class procedure E2008_INCOMPATIBLE_TYPES(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2010_INCOMPATIBLE_TYPES(const AModule: IASTModule; ALeft, ARight: TIDType; const ATextPosition: TTextPosition);
     class procedure E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(const AModule: IASTModule; const ATextPosition: TTextPosition);
@@ -301,6 +301,7 @@ type
     class procedure E2089_INVALID_TYPECAST(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2170_CANNOT_OVERRIDE_A_NON_VIRTUAL_METHOD(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2185_CANNOT_SPECIFY_DISPID(const AModule: IASTModule; const AMethodID: TIdentifier);
+    class procedure E2196_CANNOT_INIT_MULTIPLE_VARS(const ATextPosition: TTextPosition); static;
     class procedure E2197_CONSTANT_OBJECT_CANNOT_BE_PASSED_AS_VAR_PARAMETER(const AModule: IASTModule; const AID: TIdentifier);
     class procedure E2250_THERE_IS_NO_OVERLOADED_VERSION_THAT_CAN_BE_CALLED_WITH_THESE_ARGUMENTS(const AModule: IASTModule; AExpression: TIDExpression);
     class procedure E2251_AMBIGUOUS_OVERLOADED_CALL(const AModule: IASTModule; AExpression: TIDExpression);
@@ -328,7 +329,7 @@ type
     procedure EMPTY_EXPRESSION;
     procedure END_OF_FILE;
     procedure EXPRESSION_EXPECTED;
-    procedure FEATURE_NOT_SUPPORTED(const UnsupportedKeyword: string = '');
+    procedure FEATURE_NOT_SUPPORTED(const AModule: IASTModule; const UnsupportedKeyword: string = '');
     procedure INTF_SECTION_MISSING;
     procedure KEYWORD_EXPECTED;
     procedure BEGIN_KEYWORD_EXPECTED;
@@ -590,6 +591,11 @@ begin
   AModule.PutError('E2003 Undeclared identifier: ''%s''', [AID.Name], AID.TextPosition);
 end;
 
+class procedure TASTDelphiErrors.E2005_ID_IS_NOT_A_TYPE_IDENTIFIER(const AModule: IASTModule; const AExpr: TIDExpression);
+begin
+  AModule.PutError('E2005 ''%s'' is not a type identifier', [AExpr.DisplayName], AExpr.TextPosition);
+end;
+
 class procedure TASTDelphiErrors.E2008_INCOMPATIBLE_TYPES(const AModule: IASTModule; const ATextPosition: TTextPosition);
 begin
   AModule.PutError('E2008 Incompatible types', ATextPosition);
@@ -657,6 +663,11 @@ class procedure TASTDelphiErrors.E2185_CANNOT_SPECIFY_DISPID(const AModule: IAST
 begin
   AModule.PutError('E2185 Overriding automated virtual method ''%s'' cannot specify a dispid',
     [AMethodID.Name], AMethodID.TextPosition);
+end;
+
+class procedure TASTDelphiErrors.E2196_CANNOT_INIT_MULTIPLE_VARS(const ATextPosition: TTextPosition);
+begin
+  AbortWork('E2196 Cannot initialize multiple variables', ATextPosition);
 end;
 
 class procedure TASTDelphiErrors.E2197_CONSTANT_OBJECT_CANNOT_BE_PASSED_AS_VAR_PARAMETER(const AModule: IASTModule;
@@ -728,12 +739,12 @@ begin
   AbortWork(sUnexpectedEndOfFile, Lexer.PrevPosition);
 end;
 
-procedure TASTDelphiErrors.FEATURE_NOT_SUPPORTED(const UnsupportedKeyword: string);
+procedure TASTDelphiErrors.FEATURE_NOT_SUPPORTED(const AModule: IASTModule; const UnsupportedKeyword: string);
 begin
   if UnsupportedKeyword <> '' then
-    AbortWork(sFeatureNotSupported + ': ' + UnsupportedKeyword, Lexer.Position)
+    AModule.PutError(sFeatureNotSupported + ': ' + UnsupportedKeyword, Lexer.Position)
   else
-    AbortWork(sFeatureNotSupported + UnsupportedKeyword, Lexer.Position);
+    AModule.PutError(sFeatureNotSupported, Lexer.Position);
 end;
 
 procedure TASTDelphiErrors.FINAL_SECTION_ALREADY_DEFINED;
@@ -1084,11 +1095,6 @@ end;
 class procedure TASTDelphiErrors.CANNOT_ASSIGN_TEMPORARRY_OBJECT(Expr: TIDExpression);
 begin
   AbortWork('Cannot modify a temporary object', Expr.TextPosition);
-end;
-
-class procedure TASTDelphiErrors.CANNOT_INIT_MULTIPLE_VARS(AVarID: TIdentifier);
-begin
-  AbortWork('Cannot initialize multiple variables', AVarID.TextPosition);
 end;
 
 procedure TASTDelphiErrors.NEED_SPECIFY_NINDEXES(const Decl: TIDDeclaration);

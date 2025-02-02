@@ -4,6 +4,7 @@ interface
 
 uses System.Classes,
      System.SysUtils,
+     AST.Pascal.Intf,
      AST.Pascal.Parser,
      AST.Delphi.Classes,
      AST.Delphi.Declarations,
@@ -45,7 +46,7 @@ type
   end;
 
   TSysFunctionContext = record
-    UN: TASTDelphiUnit;
+    Module: IASTPascalUnit;
     Scope: TScope;
     ParamsStr: string;
     ArgsCount: Integer;
@@ -1071,6 +1072,8 @@ begin
   fDecls._UnknownVariable := TIDVariable.CreateAsSystem(IntfScope, '<unknown>');
   fDecls._UnknownVariable.DataType := fDecls._UnknownType;
   fDecls._UnknownConstant := TIDIntConstant.CreateAsSystem(IntfScope, '<unknown>', fDecls._UnknownType);
+  fDecls._UnknownProcedure := TIDProcedure.CreateAsSystem(IntfScope, '<unknown>');
+  fDecls._UnknownProcedure.DataType := _UnknownType;
 
   // Delphi system aliases
   RegisterTypeAlias('LongInt', _Int32);

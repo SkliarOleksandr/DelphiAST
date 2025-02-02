@@ -14,6 +14,7 @@ uses
 type
   IASTPascalUnit = interface(IASTModule)
     ['{C846B6A1-A57A-42B3-8BA0-8DD0931F3D35}']
+    function Defined(const ADefine: string): Boolean;
   end;
 
   IPascalProjectSettings = interface(IASTProjectSettings)

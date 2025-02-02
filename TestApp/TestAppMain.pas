@@ -185,6 +185,7 @@ type
     procedure FilesParseFocusedActionExecute(Sender: TObject);
     procedure FilesRemoveAllActionExecute(Sender: TObject);
     procedure ASTResultFormatComboBoxChange(Sender: TObject);
+    procedure ASTParseActionUpdate(Sender: TObject);
   private
     { Private declarations }
     fSettings: IASTProjectSettings;
@@ -397,6 +398,11 @@ begin
   Prj.AddUnit(UN, nil);
 
   ParseProject(Prj, {AClearOutput:} True, {AShowResults:} True);
+end;
+
+procedure TfrmTestAppMain.ASTParseActionUpdate(Sender: TObject);
+begin
+  TAction(Sender).Enabled := not Assigned(FLastProject) or not FLastProject.InPogress;
 end;
 
 procedure TfrmTestAppMain.ASTParseRTLButtonClick(Sender: TObject);

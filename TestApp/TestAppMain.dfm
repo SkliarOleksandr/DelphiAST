@@ -141,8 +141,6 @@ object frmTestAppMain: TfrmTestAppMain
               Align = alLeft
               Caption = 'Total Tests: 0'
               Layout = tlCenter
-              ExplicitLeft = 8
-              ExplicitTop = 6
               ExplicitHeight = 13
             end
             object TestRunProgressLabel: TLabel
@@ -844,6 +842,7 @@ object frmTestAppMain: TfrmTestAppMain
       Caption = 'Parse (F9)'
       ShortCut = 120
       OnExecute = ASTParseActionExecute
+      OnUpdate = ASTParseActionUpdate
     end
     object CreateNewDirAction: TAction
       Caption = 'Create New Directory'

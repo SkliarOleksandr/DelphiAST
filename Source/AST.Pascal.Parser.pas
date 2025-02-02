@@ -109,6 +109,7 @@ type
     fUnitName: TIdentifier;            // the Unit declaration name
     fProcMatches: TASTProcMachArray;
     FMaxHandle: Integer;
+    fDefines: TDefines;                // unit conditional defines
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
     function GetModuleName: string; override;
     procedure SetUnitName(const Name: string);
@@ -137,6 +138,7 @@ type
     function CompileIntfOnly: TCompilerResult; virtual;
     function UsedUnit(const AUnitName: string): Boolean;
     function GetDefinesAsString: string;
+    function Defined(const ADefine: string): Boolean;
     function ToJson: TJsonASTDeclaration; override;
 
     property _ID: TIdentifier read FUnitName;
@@ -263,8 +265,18 @@ begin
   end;
 end;
 
+function TPascalUnit.Defined(const ADefine: string): Boolean;
+begin
+  // 1. search in the module itself
+  Result := FDefines.IndexOf(ADefine) > -1;
+  // 2. serach in the project
+  if not Result then
+    Result := Project.Defines.IndexOf(ADefine) > -1;
+end;
+
 destructor TPascalUnit.Destroy;
 begin
+  fDefines.Free;
   FIntfScope.Free;
   FImplScope.Free;
   fLexer.Free;

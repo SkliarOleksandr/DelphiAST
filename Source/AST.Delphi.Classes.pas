@@ -5251,12 +5251,13 @@ function TIDStructure.IsInheritsForm(Ancestor: TIDStructure): Boolean;
 var
   AC: TIDStructure;
 begin
-  Result := (Self = Ancestor);
+  // treat an instance of generic type as a successor
+  Result := (Self = Ancestor) or (Self.GenericOrigin = Ancestor);
   if not Result then
   begin
     AC := FAncestor;
     while Assigned(AC) do begin
-      if AC = Ancestor then
+      if (AC = Ancestor) or (AC.GenericOrigin = Ancestor) then
         Exit(True);
       AC := AC.Ancestor;
     end;

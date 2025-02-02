@@ -46,6 +46,7 @@ type
     function Compile(ACompileIntfOnly: Boolean; RunPostCompile: Boolean = True): TCompilerResult;
 
     function Lexer_Line: Integer;
+    function Lexer_Position: TTextPosition;
 
     function ToJson: TJsonASTDeclaration;
   end;
@@ -95,6 +96,7 @@ type
     function GetTotalUnitsParsed: Integer;
     function GetTotalUnitsIntfOnlyParsed: Integer;
     function GetStopCompileIfError: Boolean;
+    function InPogress: Boolean;
 
     property Name: string read GetName write SetName;
     property PointerSize: Integer read GetPointerSize;

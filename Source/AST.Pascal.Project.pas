@@ -56,6 +56,7 @@ type
     fUnitScopeNames: TStrings;
     fParseSystemUnit: Boolean;
     FProjectFileName: string;
+    FInProgress: Boolean;
     function GetIncludeDebugInfo: Boolean;
     function OpenUnit(const AUnitName: string): IASTPascalUnit;
     function RefCount: Integer;
@@ -127,6 +128,7 @@ type
     function UsesUnit(const AUnitName: string): IASTPascalUnit;
     function FindType(const AUnitName, ATypeName: string): TASTDeclaration;
     function GetMessages: ICompilerMessages;
+    function InPogress: Boolean; override;
     function Compile: TCompilerResult; virtual;
     function CompileInterfacesOnly: TCompilerResult; virtual;
     procedure EnumDeclarations(const AEnumProc: TEnumASTDeclProc; AUnitScope: TUnitScopeKind);
@@ -474,6 +476,7 @@ function TPascalProject.Compile: TCompilerResult;
 var
   i: Integer;
 begin
+  FInProgress := True;
   Result := CompileInProgress;
   fTotalLinesParsed := 0;
   try
@@ -507,6 +510,8 @@ begin
 
     for var LPair in fImplicitUnits do
       Inc(fTotalLinesParsed, LPair.Value.TotalLinesParsed);
+
+    FInProgress := False;
   end;
 end;
 
@@ -747,6 +752,11 @@ end;
 function TPascalProject.GetVariantSize: Integer;
 begin
   Result := FTarget.VariantSize;
+end;
+
+function TPascalProject.InPogress: Boolean;
+begin
+  Result := FInProgress;
 end;
 
 end.
