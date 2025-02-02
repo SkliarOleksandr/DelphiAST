@@ -4305,34 +4305,38 @@ end;
 function TASTDelphiUnit.CheckAndCallFuncImplicit(const SContext: TSContext; Expr: TIDExpression; out WasCall: Boolean): TIDExpression;
 begin
   WasCall := False;
-  if Expr.ItemType = itProcedure then
+  if Expr is TIDCallExpression then
   begin
-    // the procedure can be overloaded, we need to take the one that can be called without arguments
-    var LProc := GetOverloadProcForImplicitCall(Expr as TIDCallExpression);
-    var LResultType := LProc.ResultType;
-    if Assigned(LResultType) or (pfConstructor in LProc.Flags) then
+    if Expr.ItemType = itProcedure then
     begin
-      WasCall := True;
-      if (pfConstructor in LProc.Flags) then
-        LResultType := (Expr as TIDCallExpression).Instance.AsType;
-
-      Result := GetTMPVarExpr(SContext, LResultType, Expr.TextPosition);
-    end else
-      Result := Expr;
-  end else
-  begin
-    if Expr.DataTypeID = dtProcType then
-    begin
-      var LProcType := (Expr.ActualDataType as TIDProcType);
-      if Assigned(LProcType.ResultType) then
+      // the procedure can be overloaded, we need to take the one that can be called without arguments
+      var LProc := GetOverloadProcForImplicitCall(Expr as TIDCallExpression);
+      var LResultType := LProc.ResultType;
+      if Assigned(LResultType) or (pfConstructor in LProc.Flags) then
       begin
         WasCall := True;
-        Result := GetTMPVarExpr(SContext, LProcType.ResultType, Expr.TextPosition);
+        if (pfConstructor in LProc.Flags) then
+          LResultType := (Expr as TIDCallExpression).Instance.AsType;
+
+        Result := GetTMPVarExpr(SContext, LResultType, Expr.TextPosition);
       end else
         Result := Expr;
     end else
-      Result := Expr;
-  end;
+    begin
+      if Expr.DataTypeID = dtProcType then
+      begin
+        var LProcType := (Expr.ActualDataType as TIDProcType);
+        if Assigned(LProcType.ResultType) then
+        begin
+          WasCall := True;
+          Result := GetTMPVarExpr(SContext, LProcType.ResultType, Expr.TextPosition);
+        end else
+          Result := Expr;
+      end else
+        Result := Expr;
+    end;
+  end else
+    Result := Expr;
 end;
 
 class function TASTDelphiUnit.CheckAndCallFuncImplicit(const EContext: TEContext; Expr: TIDExpression): TIDExpression;
@@ -9534,12 +9538,10 @@ var
   Left, Right: TIDExpression;
   Decl: TIDDeclaration;
   SearchScope: TScope;
+  LWasCall: Boolean;
 begin
   Left := EContext.RPNPopExpression();
-
-  // check and call implicit procedure call
-  if Left is TIDCallExpression then
-    Left := Process_CALL_direct(EContext.SContext, TIDCallExpression(Left), TIDCallExpression(Left).Arguments);
+  Left := CheckAndCallFuncImplicit(EContext.SContext, Left, {out} LWasCall);
 
   // todo: system fail if decl is not assigned
   Decl := Left.Declaration;
