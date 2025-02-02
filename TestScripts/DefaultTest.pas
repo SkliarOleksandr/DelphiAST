@@ -2,6 +2,9 @@ unit DefaultTest;
 
 interface
 
+//uses System.Classes;
+uses System.Json;
+
 type
   TStruct<T> = record
   type

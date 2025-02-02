@@ -4305,10 +4305,8 @@ end;
 function TASTDelphiUnit.CheckAndCallFuncImplicit(const SContext: TSContext; Expr: TIDExpression; out WasCall: Boolean): TIDExpression;
 begin
   WasCall := False;
-  if Expr is TIDCallExpression then
-  begin
-    if Expr.ItemType = itProcedure then
-    begin
+  case Expr.ItemType of
+    itProcedure: begin
       // the procedure can be overloaded, we need to take the one that can be called without arguments
       var LProc := GetOverloadProcForImplicitCall(Expr as TIDCallExpression);
       var LResultType := LProc.ResultType;
@@ -4319,10 +4317,10 @@ begin
           LResultType := (Expr as TIDCallExpression).Instance.AsType;
 
         Result := GetTMPVarExpr(SContext, LResultType, Expr.TextPosition);
-      end else
-        Result := Expr;
-    end else
-    begin
+        Exit;
+      end;
+    end;
+    itVar, itConst: begin
       if Expr.DataTypeID = dtProcType then
       begin
         var LProcType := (Expr.ActualDataType as TIDProcType);
@@ -4330,13 +4328,12 @@ begin
         begin
           WasCall := True;
           Result := GetTMPVarExpr(SContext, LProcType.ResultType, Expr.TextPosition);
-        end else
-          Result := Expr;
-      end else
-        Result := Expr;
+          Exit;
+        end;
+      end;
     end;
-  end else
-    Result := Expr;
+  end;
+  Result := Expr;
 end;
 
 class function TASTDelphiUnit.CheckAndCallFuncImplicit(const EContext: TEContext; Expr: TIDExpression): TIDExpression;
