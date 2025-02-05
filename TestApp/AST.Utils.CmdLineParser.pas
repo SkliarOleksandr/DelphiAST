@@ -362,6 +362,11 @@ function TDcc32CompDirOpt.TryParse(const ACMDLine: string; var APos: Integer): B
 begin
   inherited;
   var LValueLen := Length(FValue);
+
+  // workaround for D0 that doesn't have + or -
+  if GetValue = 'D0' then
+    Exit(True);
+
   Result := (LValueLen >= 2) and CharInSet(FValue[LValueLen], ['-', '+']);
   if Result then
   begin

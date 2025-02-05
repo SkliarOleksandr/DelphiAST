@@ -1,7 +1,7 @@
 object frmTestAppMain: TfrmTestAppMain
   Left = 0
   Top = 0
-  Caption = 'Delphi AST'
+  Caption = 'Delphi AST Parser'
   ClientHeight = 774
   ClientWidth = 1266
   Color = clBtnFace
@@ -786,7 +786,7 @@ object frmTestAppMain: TfrmTestAppMain
         Height = 21
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 8
-        Text = '..\..\..\TestScripts'
+        Text = '..\..\TestScripts'
       end
       object LoadLSPConfigButton: TButton
         Left = 994

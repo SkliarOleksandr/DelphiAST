@@ -59,8 +59,8 @@
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
-        <DCC_DcuOutput>.\$(Platform)\$(Config)</DCC_DcuOutput>
-        <DCC_ExeOutput>.\$(Platform)\$(Config)</DCC_ExeOutput>
+        <DCC_DcuOutput>.\Bin\Dcu\$(Platform)\$(Config)</DCC_DcuOutput>
+        <DCC_ExeOutput>.\Bin</DCC_ExeOutput>
         <DCC_E>false</DCC_E>
         <DCC_N>false</DCC_N>
         <DCC_S>false</DCC_S>
@@ -93,7 +93,7 @@
         <BT_BuildType>Debug</BT_BuildType>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>
-        <AppEnableRuntimeThemes>true</AppEnableRuntimeThemes>
+        <AppDPIAwarenessMode>none</AppDPIAwarenessMode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
         <DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
@@ -112,8 +112,8 @@
         <DCC_LargeAddressAware>true</DCC_LargeAddressAware>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Win64)'!=''">
-        <AppEnableRuntimeThemes>true</AppEnableRuntimeThemes>
         <AppDPIAwarenessMode>PerMonitorV2</AppDPIAwarenessMode>
+        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>
@@ -125,8 +125,8 @@
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2_Win64)'!=''">
-        <AppEnableRuntimeThemes>true</AppEnableRuntimeThemes>
         <AppDPIAwarenessMode>PerMonitorV2</AppDPIAwarenessMode>
+        <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
     </PropertyGroup>
     <ItemGroup>
         <DelphiCompile Include="$(MainSource)">
@@ -207,9 +207,11 @@
         <DCCReference Include="..\TestScripts\Classes\Constructors\ASTTest.Classes.Construct2.pas"/>
         <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.Inherited1.pas"/>
         <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.Inherited2.pas"/>
+        <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.Inherited3.pas"/>
         <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.MethodsRedefine1.pas"/>
         <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.MethodsRedefine2.pas"/>
         <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.VirtualsOverlod1.pas"/>
+        <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.DiffSigns1.pas"/>
         <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.Helper1.pas"/>
         <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.HelperForNested1.pas"/>
         <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.HelperForAliases1.pas"/>
@@ -232,7 +234,6 @@
         <DCCReference Include="..\TestScripts\Records\ASTTest.Records.CaseRecord2.pas"/>
         <DCCReference Include="..\TestScripts\Records\ASTTest.Records.CaseRecord1.pas"/>
         <DCCReference Include="..\TestScripts\Built-ins\ASTTest.Builtins.High1.pas"/>
-        <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.DiffSigns1.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
@@ -261,12 +262,6 @@
             </Delphi.Personality>
             <Deployment Version="5">
                 <DeployFile LocalName="Win32\Debug\DASTTestApp.exe" Configuration="Debug" Class="ProjectOutput"/>
-                <DeployFile LocalName="Win32\Debug\DASTTestApp.exe" Configuration="Debug" Class="ProjectOutput">
-                    <Platform Name="Win32">
-                        <RemoteName>DASTTestApp.exe</RemoteName>
-                        <Overwrite>true</Overwrite>
-                    </Platform>
-                </DeployFile>
                 <DeployClass Name="AdditionalDebugSymbols">
                     <Platform Name="iOSSimulator">
                         <Operation>1</Operation>

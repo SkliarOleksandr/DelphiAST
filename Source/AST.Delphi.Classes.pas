@@ -262,6 +262,7 @@ type
 
     function DoesGenericUseParams(const AParams: TIDTypeArray): Boolean; virtual;
     function ToJson: TJsonASTDeclaration; override;
+    function DeclaredIn: string;
   end;
 
   {common ancestor for language entities that support generic parameterization}
@@ -819,6 +820,7 @@ type
     function FindVirtualProcInAncestor(Proc: TIDProcedure): TIDProcedure;
 
     function AddField(const AID: TIdentifier; DataType: TIDType; AIsClassVar: Boolean): TIDField;
+    function FindMember(const AName: string): TIDDeclaration;
     function FindField(const Name: string): TIDField;
     function FindMethod(const Name: string): TIDProcedure;
     function FindProperty(const Name: string): TIDProperty;
@@ -2853,6 +2855,11 @@ begin
   Result.fDepricatedExpression := fDepricatedExpression;
 end;
 
+function TIDDeclaration.DeclaredIn: string;
+begin
+  Result := DeclUnitName + ': ' + ID.TextPosition.Row.ToString;
+end;
+
 procedure TIDDeclaration.DecRefCount(RCPath: UInt32);
 begin
   if FRCPath = RCPath then
@@ -4864,6 +4871,11 @@ begin
     Result := TIDField(Decl)
   else
     Result := nil;
+end;
+
+function TIDStructure.FindMember(const AName: string): TIDDeclaration;
+begin
+  Result := FMembers.FindMembers(AName);
 end;
 
 function TIDStructure.FindMethod(const Name: string): TIDProcedure;

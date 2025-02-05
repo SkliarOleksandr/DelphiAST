@@ -81,6 +81,7 @@ uses
   ASTTest.Classes.Construct2 in '..\TestScripts\Classes\Constructors\ASTTest.Classes.Construct2.pas',
   ASTTest.Classes.Inherited1 in '..\TestScripts\Classes\ASTTest.Classes.Inherited1.pas',
   ASTTest.Classes.Inherited2 in '..\TestScripts\Classes\ASTTest.Classes.Inherited2.pas',
+  ASTTest.Classes.Inherited3 in '..\TestScripts\Classes\ASTTest.Classes.Inherited3.pas',
   ASTTest.Classes.MethodsRedefine1 in '..\TestScripts\Classes\ASTTest.Classes.MethodsRedefine1.pas',
   ASTTest.Classes.MethodsRedefine2 in '..\TestScripts\Classes\ASTTest.Classes.MethodsRedefine2.pas',
   ASTTest.Classes.VirtualsOverlod1 in '..\TestScripts\Classes\ASTTest.Classes.VirtualsOverlod1.pas',

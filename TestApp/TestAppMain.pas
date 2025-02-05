@@ -1290,7 +1290,11 @@ begin
   lbFiles.MultiSelect := True;
 
   ReportMemoryLeaksOnShutdown := ShowMemLeaksCheck.Checked;
-  BreakpointOnErrorCheck.Enabled := (System.DebugHook > 0);
+  BreakpointOnErrorCheck.Enabled := True;// (System.DebugHook > 0);
+
+  Caption := Caption + ' (' +
+    {$IFDEF CPU64BITS}'64'{$ELSE}'32'{$ENDIF} + ' Bit ' +
+    {$IFDEF DEBUG}'DEBUG'{$ELSE}'RELEASE'{$ENDIF} + ')';
 end;
 
 procedure TfrmTestAppMain.FormDestroy(Sender: TObject);

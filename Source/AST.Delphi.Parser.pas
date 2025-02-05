@@ -1787,7 +1787,7 @@ var
   ProcDecl: TIDProcedure;
   ProcResult: TIDType;
   Param: TIDVariable;
-  AExpr, NewExpr: TIDExpression;
+  ArgExpr, NewExpr: TIDExpression;
   SContext: PSContext;
 begin
   SContext := @EContext.SContext;
@@ -1871,27 +1871,27 @@ begin
     for AIndex := 0 to ParamsCount - 1 do
     begin
       Param := ProcParams[AIndex];
-      AExpr := UserArguments[AIndex];
+      ArgExpr := UserArguments[AIndex];
 
       {если аргумент константый дин. массив то делаем доп. проверку}
-      //if AExpr.Declaration is TIDDynArrayConstant then
-      //  AExpr := CheckConstDynArray(SContext, Param.DataType, AExpr);
+      //if ArgExpr.Declaration is TIDDynArrayConstant then
+      //  ArgExpr := CheckConstDynArray(SContext, Param.DataType, ArgExpr);
 
       {проверка диаппазона для константных аргументов}
-      if AExpr.IsConstant then
-        CheckConstValueOverflow(AExpr, Param.DataType);
+      if ArgExpr.IsConstant then
+        CheckConstValueOverflow(ArgExpr, Param.DataType);
 
       {подбираем implicit оператор}
-      AExpr := MatchImplicit3(SContext^, AExpr, Param.DataType);
+      ArgExpr := MatchImplicit3(SContext^, ArgExpr, Param.DataType);
 
       {если параметр - метод, получаем ссылку на него}
-      if (AExpr.ItemType = itProcedure) and (not (AExpr.DataType as TIDProcType).IsStatic) then
+      if (ArgExpr.ItemType = itProcedure) and (not (ArgExpr.DataType as TIDProcType).IsStatic) then
       begin
-        NewExpr := GetTMPVarExpr(SContext^, AExpr.DataType, AExpr.TextPosition);
-        AExpr := NewExpr;
+        NewExpr := GetTMPVarExpr(SContext^, ArgExpr.DataType, ArgExpr.TextPosition);
+        ArgExpr := NewExpr;
       end;
 
-      UserArguments[AIndex] := AExpr;
+      UserArguments[AIndex] := ArgExpr;
     end;
     CallArguments := UserArguments;
   end else
@@ -1904,55 +1904,51 @@ begin
     begin
       Param := ProcParams[PIndex];
       if AIndex < ArgsCount then begin
-        AExpr := UserArguments[AIndex];
+        ArgExpr := UserArguments[AIndex];
         Inc(AIndex);
       end else
-        AExpr := nil;
+        ArgExpr := nil;
       {подстановка аргуметов по умолчанию}
-      if Assigned(AExpr) then
-        CallArguments[PIndex] := AExpr
+      if Assigned(ArgExpr) then
+        CallArguments[PIndex] := ArgExpr
       else begin
-        AExpr := Param.DefaultValue;
-        if not Assigned(AExpr) then
+        ArgExpr := Param.DefaultValue;
+        if not Assigned(ArgExpr) then
         begin
           ERRORS.E2035_NOT_ENOUGH_ACTUAL_PARAMETERS(Self, PExpr.TextPosition);
-          AExpr := CreateUnknownExpr(Lexer_Position);
+          ArgExpr := CreateUnknownExpr(Lexer_Position);
         end;
-        CallArguments[PIndex] := AExpr;
+        CallArguments[PIndex] := ArgExpr;
       end;
-
-      {если аргумент константый дин. массив то делаем доп. проверку}
-      //if AExpr.Declaration is TIDDynArrayConstant then
-      //  AExpr := CheckConstDynArray(SContext, Param.DataType, AExpr);     // нужно ли????
 
       {проверка диаппазона для константных аргументов}
-      if AExpr.IsConstant then
-        CheckConstValueOverflow(AExpr, Param.DataType);
+      if ArgExpr.IsConstant then
+        CheckConstValueOverflow(ArgExpr, Param.DataType);
 
       {подбираем implicit оператор}
-      AExpr := MatchImplicit3(SContext^, AExpr, Param.DataType);
+      ArgExpr := MatchImplicit3(SContext^, ArgExpr, Param.DataType);
 
       {если параметр - constref и аргумент - константа, то создаем временную переменную}
-      //if (VarConstRef in Param.Flags) and (AExpr.ItemType = itConst) then
-      //  AExpr := GenConstToVar(SContext, AExpr, Param.DataType);
+      //if (VarConstRef in Param.Flags) and (ArgExpr.ItemType = itConst) then
+      //  ArgExpr := GenConstToVar(SContext, ArgExpr, Param.DataType);
 
       {если параметр - метод, получаем ссылку на него}
-      if (AExpr.ItemType = itProcedure) and (not (AExpr.DataType as TIDProcType).IsStatic) then
+      if (ArgExpr.ItemType = itProcedure) and (not (ArgExpr.DataType as TIDProcType).IsStatic) then
       begin
-        NewExpr := GetTMPVarExpr(SContext^, AExpr.DataType, AExpr.TextPosition);
-        AExpr := NewExpr;
+        NewExpr := GetTMPVarExpr(SContext^, ArgExpr.DataType, ArgExpr.TextPosition);
+        ArgExpr := NewExpr;
       end;
 
-      CallArguments[PIndex] := AExpr;
+      CallArguments[PIndex] := ArgExpr;
 
       Inc(PIndex);
       {если параметр передается по ссылке, проверяем что аргумент можно менять}
       if Param.VarReference then
       begin
-        CheckVarExpression(AExpr, vmpPassArgument);
+        CheckVarExpression(ArgExpr, vmpPassArgument);
         {проверка на строгость соответствия типов}
-        if Param.DataType.ActualDataType <> AExpr.DataType.ActualDataType then
-          ERRORS.REF_PARAM_MUST_BE_IDENTICAL(AExpr);
+        if Param.DataType.ActualDataType <> ArgExpr.DataType.ActualDataType then
+          ERRORS.REF_PARAM_MUST_BE_IDENTICAL(ArgExpr);
       end;
     end;
   end;
@@ -3952,6 +3948,9 @@ begin
   FillChar(fProcMatches[0], SizeOf(TASTProcMatchItem)*Length(fProcMatches), #0);
   {$ENDIF}
 
+  curRate := 0;
+  curLevel := MatchNone;
+
   repeat
     if (Declaration.ParamsCount = 0) and (CallArgsCount = 0) then
       Exit(Declaration);
@@ -5435,7 +5434,10 @@ begin
         if not Assigned(LConst) then
           ERRORS.E2232_INTERFACE_HAS_NO_INTERFACE_IDENTIFICATION(Self, LIntfDecl);
       end else
+      begin
         ERRORS.CONST_EXPRESSION_REQUIRED(LExpr);
+        LConst := Sys._UnknownConstant;
+      end;
     end else
       LConst := LExpr.AsConst;
 
@@ -5879,7 +5881,8 @@ begin
       end else
         ERRORS.ID_REDECLARATED(ID);
     end;
-  end;
+  end else
+    LFwdDecl := nil;
 
   if not Assigned(Result) then
   begin
@@ -9289,9 +9292,8 @@ begin
 
   ERRORS.E2003_UNDECLARED_IDENTIFIER(Self, AID);
 
-  // return "unknown" to keep parsing
-  Decl := TIDConstant.Create(Scope, AID);
-  Decl.DataType := Sys._UnknownType;
+  // return "unknown" to "keep parsing"
+  Decl := Sys._UnknownConstant;
 end;
 
 function ProcCanBeGeneric(AProc: TIDProcedure): Boolean;
@@ -9436,6 +9438,8 @@ begin
     itMacroFunction: begin
       var LBuiltinExpr := TIDExpression.Create(Decl, PMContext.ID.TextPosition);
       Result := ParseBuiltinCall(Scope, LBuiltinExpr, EContext);
+      // ParseBuiltinCall already pushed result to EContext
+      Expression := nil;
     end;
     {variable}
     itVar: begin
@@ -9565,7 +9569,7 @@ begin
   ASTE.AddOperation<TASTOpMemberAccess>;
 
   Lexer_NextToken(Scope);
-  Result := ParseIdentifier(Scope, SearchScope, Right, EContext, Left, ASTE);
+  Result := ParseIdentifier(Scope, SearchScope, {out} Right, EContext, Left, ASTE);
   if Assigned(Right) then
     EContext.RPNPushExpression(Right);
 end;
@@ -9752,7 +9756,7 @@ begin
     if Assigned(Ancestor) then
     begin
       Lexer_ReadCurrIdentifier(ID);
-      Decl := FindID(Ancestor.Members, ID);
+      Decl := Ancestor.FindMember(ID.Name);
       if not Assigned(Decl) then
         ERRORS.UNDECLARED_ID(ID);
       case Decl.ItemType of
@@ -9764,7 +9768,17 @@ begin
           if Result = token_openround then
             Result := ParseEntryCall(Scope, CallExpr, EContext, nil {tmp!!!})
           else begin
-            // there is implicit call (with no parameters)
+            // there is implicit call (with no parameters),
+            // since ancestor(s) may have overloaded versions we have to find a correct one
+            while (InheritedProc.ParamsCount > 0) and
+                  (InheritedProc.ParamsCount <> InheritedProc.DefaultParamsCount) do
+            begin
+              if Assigned(InheritedProc.PrevOverload) then
+                InheritedProc := InheritedProc.PrevOverload
+              else
+                Break;
+            end;
+            CallExpr.Declaration := InheritedProc;
             EContext.RPNPushExpression(CallExpr);
             EContext.RPNPushOperator(opCall);
           end;
@@ -10815,7 +10829,7 @@ begin
 
   if Decl.ItemType <> itVar then
   case VarModifyPlace of
-    vmpAssignment: ERRORS.VAR_EXPRESSION_REQUIRED(Expression);
+    vmpAssignment: ERRORS.E2064_LEFT_SIDE_CANNOT_BE_ASSIGNED_TO(Self, Expression.TextPosition);
     vmpPassArgument: ERRORS.ARG_VAR_REQUIRED(Expression);
   end;
   Flags := TIDVariable(Decl).Flags;

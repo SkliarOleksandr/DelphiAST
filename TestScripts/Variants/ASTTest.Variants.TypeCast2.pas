@@ -10,7 +10,7 @@ type
     VType: Integer;
     case Integer of
       0: (VInt1, VInt2, VInt3: Integer);
-      1: (VBytes: array [1..12] of Byte);        
+      1: (VBytes: array [1..{$IFDEF CPU64BITS}20{$ELSE}12{$ENDIF}] of Byte);
   end;
 
 procedure Main;

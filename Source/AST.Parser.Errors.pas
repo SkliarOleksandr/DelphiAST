@@ -86,7 +86,8 @@ procedure AbortWork(const Message: string; const SourcePosition: TTextPosition);
 begin
   // stop if run under IDE only
   if (BreakpointOnError) and (System.DebugHook > 0) then
-    asm int3 end;
+    DebugBreak;
+
   WriteLog('ERROR: ' + Message);
   raise ECompilerAbort.Create(Message, SourcePosition);
 end;
@@ -99,7 +100,7 @@ end;
 procedure AbortWorkInternal(const Message: string; const Params: array of const; const SourcePosition: TTextPosition);
 begin
   if BreakpointOnError then
-    asm int3 end;
+    DebugBreak;
   WriteLog('INTERNAL ERROR: ' + Message, Params);
   raise ECompilerInternalError.CreateAsInteranl(Format(Message, Params), SourcePosition);
 end;

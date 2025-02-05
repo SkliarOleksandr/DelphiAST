@@ -297,6 +297,7 @@ type
     class procedure E2034_TOO_MANY_ACTUAL_PARAMETERS(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2035_NOT_ENOUGH_ACTUAL_PARAMETERS(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2037_DECLARATION_OF_DIFFERS_FROM_PREVIOUS_DECLARATION(const AModule: IASTModule; const AID: TIdentifier);
+    class procedure E2064_LEFT_SIDE_CANNOT_BE_ASSIGNED_TO(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2066_MISSING_OPERATOR_OR_SEMICOLON(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2089_INVALID_TYPECAST(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2170_CANNOT_OVERRIDE_A_NON_VIRTUAL_METHOD(const AModule: IASTModule; const ATextPosition: TTextPosition);
@@ -641,6 +642,12 @@ end;
 class procedure TASTDelphiErrors.E2037_DECLARATION_OF_DIFFERS_FROM_PREVIOUS_DECLARATION(const AModule: IASTModule; const AID: TIdentifier);
 begin
   AModule.PutError('E2037 Declaration of ''%s'' differs from previous declaration', [AID.Name], AID.TextPosition);
+end;
+
+class procedure TASTDelphiErrors.E2064_LEFT_SIDE_CANNOT_BE_ASSIGNED_TO(const AModule: IASTModule;
+  const APosition: TTextPosition);
+begin
+  AModule.PutError('E2064 Left side cannot be assigned to', APosition);
 end;
 
 class procedure TASTDelphiErrors.E2066_MISSING_OPERATOR_OR_SEMICOLON(const AModule: IASTModule; const APosition: TTextPosition);

@@ -1305,7 +1305,9 @@ function TSYSTEMUnit.Compile(ACompileIntfOnly: Boolean; RunPostCompile: Boolean 
 begin
   Result := CompileInProgress;
   try
-    SystemFixup;
+    // run it once
+    if fCompiled = CompileNone then
+      SystemFixup;
     Result := inherited Compile(ACompileIntfOnly, {RunPostCompile:} False);
     if Result = CompileSuccess then
     begin
