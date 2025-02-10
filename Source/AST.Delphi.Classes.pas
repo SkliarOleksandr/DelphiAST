@@ -1065,6 +1065,7 @@ type
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
     procedure CreateStandardOperators; override;
     function GetHelperScope: TScope;
+    function MatchImplicitFrom(ASrc: TIDType): Boolean; override;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
   end;
 
@@ -1089,7 +1090,7 @@ type
   protected
   public
     constructor CreateAsAnonymous(Scope: TScope); override;
-    ////////////////////////////////////////////////////////////////////////////
+    function MatchImplicitFrom(ASrc: TIDType): Boolean; override;
   end;
 
   TIDParamArray = array of TIDParam;
@@ -3723,12 +3724,12 @@ begin
   if Assigned(Node) then
     Exit(TIDDeclaration(Node.Data));
 
-  Result := SysImplicitToAny;
-
   // run system implicit proc
-  if not Assigned(Result) then
-    if MatchImplicitTo(Destination) then
-      Result := Destination;
+  if MatchImplicitTo(Destination) then
+    Exit(Destination);
+
+  // TODO: remove
+  Result := SysImplicitToAny;
 end;
 
 function TIDType.GetImplicitOperatorFrom(const Source: TIDType): TIDDeclaration;
@@ -3739,12 +3740,12 @@ begin
   if Assigned(Node) then
     Exit(TIDDeclaration(Node.Data));
 
-  Result := SysImplicitFromAny;
-
   // run system implicit proc
-  if not Assigned(Result) then
-    if MatchImplicitFrom(Source) then
-      Result := Self;
+  if MatchImplicitFrom(Source) then
+    Exit(Source);
+
+  // TODO: remove
+  Result := SysImplicitFromAny;
 end;
 
 function TIDType.GetActualDataType: TIDType;
@@ -6308,6 +6309,15 @@ begin
   Result := FMembersScope;
 end;
 
+function TIDDynArray.MatchImplicitFrom(ASrc: TIDType): Boolean;
+begin
+  // TODO: temporary solution until TIDOpenArray works
+  Result :=
+    (DataTypeID = dtOpenArray) and
+    (ASrc.DataTypeID = dtSet) and ASrc.IsAnonymous and
+    ((ASrc as TIDSet).BaseType = ElementDataType);
+end;
+
 function TIDSet.ASTJsonDeclClass: TASTJsonDeclClass;
 begin
   Result := TASTJsonDelphiSet;
@@ -7056,6 +7066,13 @@ begin
   inherited CreateAsAnonymous(Scope);
   FDataTypeID := dtOpenArray;
   FDimensionsCount := 1;
+end;
+
+function TIDOpenArray.MatchImplicitFrom(ASrc: TIDType): Boolean;
+begin
+  Result :=
+    (ASrc.DataTypeID = dtSet) and ASrc.IsAnonymous and
+    ((ASrc as TIDSet).BaseType = ElementDataType);
 end;
 
 { TIDRangeType }

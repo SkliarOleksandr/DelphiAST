@@ -1134,6 +1134,7 @@ begin
   fDecls._EmptyStrExpression := TIDExpression.Create(fDecls._EmptyStrConstant);
   // empty set type
   fDecls._EmptySetType := TIDSet.CreateAsSystem(IntfScope, '');
+  fDecls._EmptySetType.BaseType := _Int32 as TIDOrdinal;
   // constant "[]"
   fDecls._EmptyArrayConstant := TIDDynArrayConstant.CreateAsAnonymous(IntfScope, _EmptySetType, []);
 

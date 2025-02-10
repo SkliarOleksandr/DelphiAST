@@ -808,7 +808,13 @@ begin
   end else begin
     {dynamic array}
     Lexer_MatchToken(Result, token_of);
-    Decl := ParseGenericTypeDecl(Scope, GDescriptor, ID, TIDDynArray);
+
+    // TODO: Scope is never TParamsScope! Refactor ParseParameters()
+    if Scope is TParamsScope then
+      Decl := ParseGenericTypeDecl(Scope, GDescriptor, ID, TIDOpenArray)
+    else
+      Decl := ParseGenericTypeDecl(Scope, GDescriptor, ID, TIDDynArray);
+
     Result := ParseTypeSpec(TypeScope, DataType);
     // case: array of const
     if (DataType = nil) and (Result = token_const) then
