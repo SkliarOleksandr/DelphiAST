@@ -227,8 +227,6 @@ type
     class procedure UNDECLARED_ID(const ID: TIdentifier); overload; static;
     class procedure UNDECLARED_ID(const ID: TIdentifier; const GenericParams: TIDTypeArray); overload; static;
     class procedure UNDECLARED_ID(const Name: string; const TextPosition: TTextPosition); overload; static;
-    class procedure NOT_ENOUGH_ACTUAL_PARAMS(CallExpr: TIDExpression); static;
-    class procedure TOO_MANY_ACTUAL_PARAMS(CallExpr: TIDExpression; Expected, Actual: Integer); static;
     class procedure OVERLOADED_MUST_BE_MARKED(const ID: TIdentifier); static;
 
     class procedure TYPE_REQUIRED(const TextPosition: TTextPosition); static;
@@ -293,6 +291,7 @@ type
     class procedure E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2016_ARRAY_TYPE_REQUIRED(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2018_RECORD_OBJECT_OR_CLASS_TYPE_REQUIRED(const AModule: IASTModule; const ATextPosition: TTextPosition);
+    class procedure E2022_CLASS_HELPER_TYPE_REQUIRED(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2029_SEMICOLON_EXPECTED_BUT_ID_FOUND(const AModule: IASTModule; const AID: TIdentifier);
     class procedure E2034_TOO_MANY_ACTUAL_PARAMETERS(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2035_NOT_ENOUGH_ACTUAL_PARAMETERS(const AModule: IASTModule; const ATextPosition: TTextPosition);
@@ -508,11 +507,6 @@ begin
   AbortWork(sBreakOrContinueAreAllowedOnlyInALoops, Lexer.Position);
 end;
 
-class procedure TASTDelphiErrors.NOT_ENOUGH_ACTUAL_PARAMS(CallExpr: TIDExpression);
-begin
-  AbortWork(sNotEnoughActualParametersFmt, [CallExpr.DisplayName], CallExpr.TextPosition);
-end;
-
 class procedure TASTDelphiErrors.OVERLOADED_MUST_BE_MARKED(const ID: TIdentifier);
 begin
   AbortWork(sOverloadedMustBeMarked, [ID.Name], ID.TextPosition);
@@ -541,11 +535,6 @@ end;
 class procedure TASTDelphiErrors.THE_SAME_METHOD_EXISTS(const ID: TIdentifier);
 begin
   AbortWork('Method ''%s'' with identical parameters already exists', [ID.Name], ID.TextPosition);
-end;
-
-class procedure TASTDelphiErrors.TOO_MANY_ACTUAL_PARAMS(CallExpr: TIDExpression; Expected, Actual: Integer);
-begin
-  AbortWork(sTooManyActualParametersFmt, [Expected, Actual], CallExpr.TextPosition);
 end;
 
 procedure TASTDelphiErrors.SEMICOLON_EXPECTED();
@@ -621,6 +610,11 @@ end;
 class procedure TASTDelphiErrors.E2018_RECORD_OBJECT_OR_CLASS_TYPE_REQUIRED(const AModule: IASTModule; const ATextPosition: TTextPosition);
 begin
   AModule.PutError('E2018 Record, object or class type required', ATextPosition);
+end;
+
+class procedure TASTDelphiErrors.E2022_CLASS_HELPER_TYPE_REQUIRED(const AModule: IASTModule; const APosition: TTextPosition);
+begin
+  AModule.PutError('E2022 Class helper type required', APosition);
 end;
 
 class procedure TASTDelphiErrors.E2029_SEMICOLON_EXPECTED_BUT_ID_FOUND(const AModule: IASTModule; const AID: TIdentifier);

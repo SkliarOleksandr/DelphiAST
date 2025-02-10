@@ -82,6 +82,11 @@ begin
 
 end;
 
+procedure DebugBreak;
+asm
+  int 3;
+end;
+
 procedure AbortWork(const Message: string; const SourcePosition: TTextPosition);
 begin
   // stop if run under IDE only

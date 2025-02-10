@@ -1,29 +1,26 @@
-unit ASTTest.Helpers.Helper1;
+unit ASTTest.Helpers.InheritedHelper;
 
 interface
 
 {$HINTS OFF}
 
 type
-  TMyObj1 = class
-  end;
-
-  TMyObj2 = class(TMyObj1)
+  TMyObj1 = class    
   end;
 
   THelper1 = class helper for TMyObj1
     procedure Proc1;
   end;
 
-  THelper2 = class helper for TMyObj2
+  THelper2 = class helper(THelper1) for TMyObj1
     procedure Proc2;
   end;
 
 implementation
 
 var
-  Obj: TMyObj2;
-    
+  Obj: TMyObj1;
+
 procedure Main;
 begin
   Obj.Proc1;

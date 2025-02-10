@@ -6,14 +6,19 @@ uses
   ASTTest.Helpers.Main;
 
 type
-
-  THelper = class helper for TSourceStruct
-    procedure HelperProc;
+ 
+  TX = class
+  type
+    THelper = class helper for TSourceStruct
+      procedure HelperProc;
+    end;
   end;
+
 
 implementation
 
-procedure THelper.HelperProc;
+
+procedure TX.THelper.HelperProc;
 begin
  
 end;

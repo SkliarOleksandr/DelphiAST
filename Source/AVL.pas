@@ -43,7 +43,7 @@ type
     FCount: Integer;
     FRoot: Integer; {Index of Root of tree}
     FCompareFunc: TCompareFunc;
-    FItems: array of TAVLNode;
+    FItems: TArray<TAVLNode>;
     function GetNode(AIndex: Integer): PAVLNode; inline;
     function GetRoot: PAVLNode;
     function GetItem(AIndex: Integer): TData; inline;
@@ -67,6 +67,7 @@ type
     function Find(const Key: TKey): PAVLNode;
     function TryGetValue(const Key: TKey; out Value: TData): Boolean; overload;
     function TryGetValue<TDataCast: TData>(const Key: TKey; out Value: TDataCast): Boolean; overload;
+    procedure AddOrUpdate(const AKey: TKey; const AData: TData);
 
     function Iterate(const Action: TIterateFunc; Up: Boolean; OtherData: Pointer): PAVLNode;
     function First: PAVLNode; inline;
@@ -77,7 +78,7 @@ type
     property Root: PAVLNode read GetRoot;
     function Keys(SortOrder: TSortOrder = soASC): TKeys;
     function Values(SortOrder: TSortOrder = soASC): TValues;
-
+    property Nodes: TArray<TAVLNode> read FItems;
     property Items[AIndex: Integer]: TData read GetItem write SetItem;
   end;
 
@@ -107,6 +108,13 @@ begin
     InsertNode(Node.Key, Node.Data);
     Node := Tree.Next(Node);
   end;
+end;
+
+procedure TAVLTree<TKey, TData>.AddOrUpdate(const AKey: TKey; const AData: TData);
+begin
+  var LNode := InsertNode(AKey, AData);
+  if Assigned(LNode) then
+    LNode.Data := AData;
 end;
 
 procedure TAVLTree<TKey, TData>.AssingFrom(const Tree: TAVLTree<TKey, TData>);

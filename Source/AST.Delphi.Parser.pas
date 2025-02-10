@@ -110,6 +110,8 @@ type
     fSysDecls: PDelphiSystemDeclarations;
     fCache: TDeclCache;
     fForwardTypes: TList<TIDType>;
+    fIntfHelpers: THelperTree;
+    fImplHelpers: THelperTree;
     property Sys: PDelphiSystemDeclarations read fSysDecls;
     procedure CheckLeftOperand(const Status: TRPNStatus);
     class procedure CheckAndCallFuncImplicit(const EContext: TEContext); overload; static;
@@ -172,6 +174,7 @@ type
     function GetOverloadProcForImplicitCall(ACallExpr: TIDCallExpression): TIDProcedure;
     function GetBuiltins: IDelphiBuiltInTypes;
     property Builtins: IDelphiBuiltInTypes read GetBuiltins;
+    property IntfHelpers: THelperTree read fIntfHelpers;
   protected
     function GetSource: string; override;
     function GetErrors: TASTDelphiErrors;
@@ -352,7 +355,7 @@ type
     //=======================================================================================================================
     function ParseTypeRecord(Scope, GenericScope: TScope; GDescriptor: IGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
     function ParseTypeArray(Scope, GenericScope: TScope; GDescriptor: IGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
-    function ParseTypeHelper(Scope, GenericScope: TScope; GDescriptor: IGenericDescriptor; const ID: TIdentifier;
+    function ParseTypeHelper(Scope, GenericScope: TScope; AIsClassHelper: Boolean; const ID: TIdentifier;
                              out Decl: TDlphHelper): TTokenID;
     // функция парсинга анонимного типа
     function ParseTypeDecl(Scope: TScope; GDescriptor: IGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
@@ -960,39 +963,75 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.ParseTypeHelper(Scope, GenericScope: TScope; GDescriptor: IGenericDescriptor; const ID: TIdentifier;
+function TASTDelphiUnit.ParseTypeHelper(Scope, GenericScope: TScope; AIsClassHelper: Boolean; const ID: TIdentifier;
   out Decl: TDlphHelper): TTokenID;
 
-  procedure SetHelperForOriginalTypes(ATarget: TIDType; AHelper: TDlphHelper);
+  function IsInterfaceSection(AScope: TScope): Boolean;
   begin
+    repeat
+      if AScope = IntfScope then
+        Exit(True);
+      if AScope = ImplScope then
+        Exit(False);
+      AScope := AScope.Parent;
+    until AScope = nil;
+    Result := False;
+    Assert(False);
+  end;
+
+  procedure AddHelper(ATarget: TIDType; AHelper: TDlphHelper);
+  var
+    LHelpers: THelperTree;
+  begin
+    if IsInterfaceSection(Scope) then
+      LHelpers := fIntfHelpers
+    else
+      LHelpers := fImplHelpers;
+
     // A helper must be assigned for all parent aliased types (until a new type)
-    // TODO: rework helper association method
-    while (ATarget is TIDAliasType) and not TIDAliasType(ATarget).NewType do
+    while True do
     begin
-      TIDAliasType(ATarget).LinkedType.Helper := AHelper;
-      ATarget := TIDAliasType(ATarget).LinkedType;
+      LHelpers.AddOrUpdate(ATarget, AHelper);
+      if (ATarget is TIDAliasType) and not TIDAliasType(ATarget).NewType then
+        ATarget := TIDAliasType(ATarget).LinkedType
+      else
+        Break;
     end;
   end;
 
 var
+  LAncestor: TIDType;
   TargetDecl: TIDType;
   Visibility: TVisibility;
 begin
-  Lexer_ReadToken(Scope, token_for);
+  Result := Lexer_NextToken(Scope);
+  // parsing optional helper's ancestor
+  if AIsClassHelper and (Result = token_openround) then
+  begin
+    var LAncestorID: TIdentifier;
+    Lexer_ReadNextIdentifier(Scope, {out} LAncestorID);
+    var LAncestorDecl := FindID(Scope, LAncestorID);
+    if not (LAncestorDecl is TDlphHelper) then
+      ERRORS.E2022_CLASS_HELPER_TYPE_REQUIRED(Self, LAncestorID.TextPosition);
+    LAncestor := TIDType(LAncestorDecl);
+    Lexer_ReadToken(Scope, token_closeround);
+    Result := Lexer_NextToken(Scope);
+  end else
+    LAncestor := nil;
+
+  Lexer_MatchToken(Result, token_for);
+
   // parse target type
   Result := ParseTypeSpec(Scope, {out} TargetDecl);
 
   Decl := TDlphHelper.Create(Scope, ID);
+  Decl.AncestorDecl := LAncestor;
   Decl.Target := TargetDecl;
-  if Assigned(TargetDecl.Helper) then
-    Warning('Helper for %s was reassigned from %s to %s',
-      [TargetDecl.Name, TargetDecl.Helper.Name, ID.Name], ID.TextPosition);
-
-  TargetDecl.Helper := Decl;
 
   // in case this is an alias, set helper for the original type
-  SetHelperForOriginalTypes(TargetDecl, Decl);
+  AddHelper(TargetDecl, Decl);
 
+  // insert the helper as a normal type declaration
   Scope.AddType(Decl);
 
   while True do begin
@@ -1052,7 +1091,7 @@ begin
 
   if Lexer_AmbiguousId = tokenD_helper then
   begin
-    Result := ParseTypeHelper(Scope, GenericScope, GDescriptor, ID, {out} TDlphHelper(Decl));
+    Result := ParseTypeHelper(Scope, GenericScope, {AIsClassHelper:} False, ID, {out} TDlphHelper(Decl));
     Exit;
   end;
 
@@ -1236,7 +1275,7 @@ function TASTDelphiUnit.ParseUsesSection(Scope: TScope): TTokenID;
 var
   Token: TTokenID;
   ID: TIdentifier;
-  LUnit: TPascalUnit;
+  LUnit: TASTDelphiUnit;
   Idx: Integer;
 begin
   while True do begin
@@ -1247,7 +1286,7 @@ begin
       ERRORS.UNIT_RECURSIVELY_USES_ITSELF(ID);
 
     // find the unit file
-    LUnit := Package.UsesUnit(ID.Name) as TPascalUnit;
+    LUnit := Package.UsesUnit(ID.Name) as TASTDelphiUnit;
     if not Assigned(LUnit) then
     begin
       // for debug
@@ -1275,11 +1314,17 @@ begin
     Scope.AddScope(LUnit.IntfScope);
 
     if Scope = IntfScope then
-      IntfImportedUnits.AddObject(ID.Name, LUnit)
-    else
+    begin
+      IntfImportedUnits.AddObject(ID.Name, LUnit);
+      // import interface helpers from used unit (for interface section)
+      fIntfHelpers.AddHelpers(LUnit.fIntfHelpers);
+    end else
     if Scope = ImplScope then
-      ImplImportedUnits.AddObject(ID.Name, LUnit)
-    else
+    begin
+      ImplImportedUnits.AddObject(ID.Name, LUnit);
+      // import interface helpers from used unit (for implementation section)
+      fImplHelpers.AddHelpers(LUnit.fIntfHelpers);
+    end else
       AbortWorkInternal('Wrong scope');
 
     case Token of
@@ -1489,9 +1534,10 @@ begin
     if LBuiltin.ParamsCount >= 0 then
     begin
       if ArgsCount > LBuiltin.ParamsCount then
-        ERRORS.TOO_MANY_ACTUAL_PARAMS(CallExpr, LBuiltin.ParamsCount, ArgsCount)
-      else if ArgsCount < LBuiltin.ParamsCount then
-        ERRORS.NOT_ENOUGH_ACTUAL_PARAMS(CallExpr);
+        ERRORS.E2034_TOO_MANY_ACTUAL_PARAMETERS(Self, CallExpr.TextPosition)
+      else
+      if ArgsCount < LBuiltin.ParamsCount then
+        ERRORS.E2035_NOT_ENOUGH_ACTUAL_PARAMETERS(Self, CallExpr.TextPosition);
     end;
   end;
 
@@ -2090,6 +2136,8 @@ end;
 
 destructor TASTDelphiUnit.Destroy;
 begin
+  fImplHelpers.Free;
+  fIntfHelpers.Free;
   fForwardTypes.Free;
   fCache.Free;
   fOptions.Free;
@@ -3284,7 +3332,7 @@ var
   IDName: string;
 begin
   IDName := ID.Name;
-  Result := Scope.FindIDRecurcive(IDName);
+  Result := Scope.FindIDRecurcive(IDName, fImplHelpers);
   if not Assigned(Result) then
     ERRORS.UNDECLARED_ID(ID);
 end;
@@ -3293,14 +3341,14 @@ function TASTDelphiUnit.FindIDNoAbort(Scope: TScope; const ID: string): TIDDecla
 begin
   // Scope must be assigned
   if Assigned(Scope) then
-    Result := Scope.FindIDRecurcive(ID)
+    Result := Scope.FindIDRecurcive(ID, fImplHelpers)
   else
     Result := nil;
 end;
 
 function TASTDelphiUnit.FindIDNoAbort(Scope: TScope; const ID: TIdentifier): TIDDeclaration;
 begin
-  Result := Scope.FindIDRecurcive(ID.Name);
+  Result := Scope.FindIDRecurcive(ID.Name, fImplHelpers);
 end;
 
 procedure TASTDelphiUnit.AddType(const Decl: TIDType);
@@ -3710,7 +3758,7 @@ begin
   pc := Length(ProcParams);
   CallArgsCount := Length(CallArgs);
   if CallArgsCount > pc then
-    ERRORS.TOO_MANY_ACTUAL_PARAMS(CallArgs[pc], pc, CallArgsCount);
+    ERRORS.E2034_TOO_MANY_ACTUAL_PARAMETERS(Self, CallExpr.TextPosition);
 
   ArgIdx := 0;
   for i := 0 to pc - 1 do begin
@@ -3751,7 +3799,7 @@ begin
         ERRORS.E2008_INCOMPATIBLE_TYPES(Self, Arg.TextPosition);
       end else
       if not Assigned(Param.DefaultValue) then
-        ERRORS.NOT_ENOUGH_ACTUAL_PARAMS(CallExpr);
+        ERRORS.E2035_NOT_ENOUGH_ACTUAL_PARAMETERS(Self, CallExpr.TextPosition);
     end;
   end;
 end;
@@ -4164,9 +4212,7 @@ class procedure TASTDelphiUnit.CheckExprHasMembers(Expression: TIDExpression);
 begin
   var LDataType := Expression.ActualDataType;
 
-  if (LDataType is TIDStructure) or
-     Assigned(LDataType.Helper) or
-     Assigned(Expression.DataType.Helper) then
+  if (LDataType is TIDStructure) then
     Exit
   else
     AbortWork('Expression has no members', Expression.TextPosition);
@@ -4299,6 +4345,8 @@ begin
     TASTDelphiErrors.E2251_AMBIGUOUS_OVERLOADED_CALL(Self, ACallExpr)
   else
     TASTDelphiErrors.E2250_THERE_IS_NO_OVERLOADED_VERSION_THAT_CAN_BE_CALLED_WITH_THESE_ARGUMENTS(Self, ACallExpr);
+
+  Result := Sys._UnknownProcedure;
 end;
 
 function TASTDelphiUnit.CheckAndCallFuncImplicit(const SContext: TSContext; Expr: TIDExpression; out WasCall: Boolean): TIDExpression;
@@ -5967,10 +6015,9 @@ begin
 
   if Result = tokenD_helper then
   begin
-    Result := ParseTypeHelper(Scope, nil, GDescriptor, ID, {out} TDlphHelper(Decl));
+    Result := ParseTypeHelper(Scope, nil, {AIsClassHelper:} True, ID, {out} TDlphHelper(Decl));
     Exit;
   end;
-
 
   Decl := TIDClass(ParseGenericTypeDecl(Scope, GDescriptor, ID, TIDClass));
 
@@ -6411,6 +6458,8 @@ begin
   fErrors := TASTDelphiErrors.Create(Lexer);
   fCache := TDeclCache.Create;
   fForwardTypes := TList<TIDType>.Create;
+  fIntfHelpers := THelperTree.Create({AParent:} nil);
+  fImplHelpers := THelperTree.Create({AParent:} fIntfHelpers);
 
   FOptions := TDelphiOptions.Create(Package.Options);
 
@@ -9291,7 +9340,6 @@ begin
   end;
 
   ERRORS.E2003_UNDECLARED_IDENTIFIER(Self, AID);
-
   // return "unknown" to "keep parsing"
   Decl := Sys._UnknownConstant;
 end;
@@ -9331,7 +9379,7 @@ begin
     Decl := FindIDNoAbort(Scope, PMContext.ID)
 
   else begin
-    Decl := SearchScope.FindMembers(PMContext.ID.Name);
+    Decl := SearchScope.FindMembers(PMContext.ID.Name, fImplHelpers);
   end;
 
   StrictSearch := Assigned(SearchScope);
@@ -9493,9 +9541,11 @@ function TASTDelphiUnit.ParseMember(Scope: TScope; var EContext: TEContext; cons
   begin
     while Assigned(ATypeDecl) do
     begin
-      if Assigned(ATypeDecl.Helper) then
-        Exit(ATypeDecl.Helper.Members)
-      else
+      // try to find any helper first
+      var LHelper := fImplHelpers.FindHelper(ATypeDecl);
+      if Assigned(LHelper) then
+        Exit(LHelper.Members);
+
       if ATypeDecl is TIDStructure then
         Exit(TIDStructure(ATypeDecl).Members)
       else
@@ -9556,7 +9606,6 @@ begin
         SearchScope := TIDNameSpace(Decl).Members
     end;
     itType: SearchScope := GetTypeMembersScope(TIDType(Decl), {ADereref:} False);
-    itProcedure: SearchScope := GetTypeMembersScope(TIDProcedure(Decl).ResultType, {ADereref:} True);
     itVar, itConst, itProperty: SearchScope := GetTypeMembersScope(Left.DataType, {ADereref:} True);
   else
     AbortWorkInternal('Unsuported decl type: %d', [Ord(Decl.ItemType)]);

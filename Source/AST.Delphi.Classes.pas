@@ -379,7 +379,6 @@ type
     fInitProc: TIDProcedure;
     fCopyProc: TIDProcedure;
     fFinalProc: TIDProcedure;
-    fHelper: TDlphHelper;
     function GetOperators(const Op: TOperatorID): TBinaryOperatorsArray;
     function GetIsReferenced: Boolean; inline;
     function GetIsUntypedPointer: Boolean; inline;
@@ -496,7 +495,6 @@ type
     property SysImplicitFromAny: TIDOperator read fSysImplicitFromAny;
 
     property SysBinayOperator: TSysBinaryOperators read fSysBinaryOperators;
-    property Helper: TDlphHelper read fHelper write fHelper;
     function MakeCopy: TIDDeclaration; override;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
     function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
@@ -1896,6 +1894,15 @@ type
     function FindID(const Identifier: string): TIDDeclaration; virtual; //inline;
   end;
 
+  THelperTree = class(TAVLTree<TIDType, TDlphHelper>)
+  private
+    FParent: THelperTree;
+  public
+    constructor Create(AParent: THelperTree);
+    function FindHelper(AType: TIDType): TDlphHelper;
+    procedure AddHelpers(AHelpers: THelperTree);
+  end;
+
   TScopeClass = (scInterface, scImplementation, scProc);
 
   TScopes = array of TScope;
@@ -1936,9 +1943,9 @@ type
     procedure RemoveVariable(ADeclaration: TIDVariable);
     function FindInAdditionalScopes(const ID: string): TIDDeclaration; overload;
     procedure FindInAdditionalScopes(const ID: string; var ADeclArray: TIDdeclarray); overload;
-    function FindIDRecurcive(const ID: string): TIDDeclaration; overload; virtual;
+    function FindIDRecurcive(const ID: string; AHelperTree: THelperTree = nil): TIDDeclaration; overload; virtual;
     procedure FindIDRecurcive(const ID: string; var ADeclArray: TIDDeclArray); overload; virtual;
-    function FindMembers(const ID: string): TIDDeclaration; overload; virtual;
+    function FindMembers(const ID: string; AHelperTree: THelperTree = nil): TIDDeclaration; overload; virtual;
     procedure FindMembers(const ID: string; var ADeclArray: TIDDeclArray); overload; virtual;
     function GetDeclArray(Recursively: Boolean = False): TIDDeclArray;
     function GetDeclNamesArray(Recursively: Boolean = False): TStrArray;
@@ -1995,7 +2002,7 @@ type
     property ExplicitParamsCount: Integer read GetExplicitParamsCount;
     property ExplicitParams: TIDParamArray read GetExplicitParams;
     function FindID(const Identifier: string): TIDDeclaration; override;
-    function FindIDRecurcive(const ID: string): TIDDeclaration; override;
+    function FindIDRecurcive(const ID: string; AHelperTree: THelperTree = nil): TIDDeclaration; override;
   end;
 
   TStructScope = class(TScope)
@@ -2006,9 +2013,9 @@ type
     function GetNameEx: string; override;
   public
     constructor CreateAsStruct(Parent: TScope; Struct: TIDStructure; DeclUnit: TASTModule); reintroduce;
-    function FindIDRecurcive(const ID: string): TIDDeclaration; override;
+    function FindIDRecurcive(const ID: string; AHelperTree: THelperTree = nil): TIDDeclaration; override;
     procedure FindIDRecurcive(const ID: string; var ADeclArray: TIDDeclArray); override;
-    function FindMembers(const ID: string): TIDDeclaration; override;
+    function FindMembers(const ID: string; AHelperTree: THelperTree = nil): TIDDeclaration; override;
     property Struct: TIDStructure read fStruct;
     property AncestorScope: TStructScope read fAncestorScope;
   end;
@@ -2068,7 +2075,7 @@ type
   public
     constructor Create(Parent: TScope; Expression: TIDExpression); reintroduce;
     ///////////////////////////////////////
-    function FindIDRecurcive(const ID: string): TIDDeclaration; override;
+    function FindIDRecurcive(const ID: string; AHelperTree: THelperTree = nil): TIDDeclaration; override;
     property InnerScope: TScope read FInnerScope write FInnerScope;
     property Expression: TIDExpression read FExpression;
   end;
@@ -2085,7 +2092,7 @@ type
     function GetName: string; override;
   public
     constructor CreateInDecl(OuterScope, Parent: TScope; AProc: TIDProcedure); reintroduce;
-    function FindIDRecurcive(const ID: string): TIDDeclaration; override;
+    function FindIDRecurcive(const ID: string; AHelperTree: THelperTree = nil): TIDDeclaration; override;
     property Struct: TIDStructure read GetStruct;
   end;
 
@@ -2106,7 +2113,7 @@ type
     constructor Create(InterfaceScope: TScope); reintroduce;
     function FindID(const Identifier: string): TIDDeclaration; override;
     //TODO: remove unneded code in TImplementationScope
-    function FindIDRecurcive(const ID: string): TIDDeclaration; override;
+    function FindIDRecurcive(const ID: string; AHelperTree: THelperTree = nil): TIDDeclaration; override;
     property IntfScope: TScope read fIntfScope;
   end;
 
@@ -2555,7 +2562,7 @@ begin
   Inc(FVarCount);
 end;
 
-function TScope.FindIDRecurcive(const ID: string): TIDDeclaration;
+function TScope.FindIDRecurcive(const ID: string; AHelperTree: THelperTree): TIDDeclaration;
 begin
   // search within oneself
   Result := FindID(ID);
@@ -2569,7 +2576,7 @@ begin
 
   // search in the parent
   if Assigned(FParent) then
-    Result := FParent.FindIDRecurcive(ID);
+    Result := FParent.FindIDRecurcive(ID, AHelperTree);
 end;
 
 procedure TScope.FindIDRecurcive(const ID: string; var ADeclArray: TIDDeclArray);
@@ -2606,7 +2613,7 @@ begin
   Result := nil;
 end;
 
-function TScope.FindMembers(const ID: string): TIDDeclaration;
+function TScope.FindMembers(const ID: string; AHelperTree: THelperTree): TIDDeclaration;
 var
   sc: TScope;
 begin
@@ -6945,7 +6952,7 @@ begin
     Result := FIntfScope.FindID(Identifier);
 end;
 
-function TImplementationScope.FindIDRecurcive(const ID: string): TIDDeclaration;
+function TImplementationScope.FindIDRecurcive(const ID: string; AHelperTree: THelperTree): TIDDeclaration;
 begin
   Result := inherited FindIDRecurcive(ID);
 
@@ -7020,7 +7027,7 @@ begin
   Parent.AddChild(Self);
 end;
 
-function TWithScope.FindIDRecurcive(const ID: string): TIDDeclaration;
+function TWithScope.FindIDRecurcive(const ID: string; AHelperTree: THelperTree): TIDDeclaration;
 begin
   Result := FInnerScope.FindMembers(ID);
   if Assigned(Result) then begin
@@ -7381,7 +7388,7 @@ begin
     Result := FParamsScope.FindID(Identifier);
 end;
 
-function TProcScope.FindIDRecurcive(const ID: string): TIDDeclaration;
+function TProcScope.FindIDRecurcive(const ID: string; AHelperTree: THelperTree): TIDDeclaration;
 begin
   Result := inherited FindIDRecurcive(ID);
   if not Assigned(Result) and Assigned(fOuterScope) then
@@ -7664,7 +7671,7 @@ begin
   fOuterScope := OuterScope;
 end;
 
-function TMethodScope.FindIDRecurcive(const ID: string): TIDDeclaration;
+function TMethodScope.FindIDRecurcive(const ID: string; AHelperTree: THelperTree): TIDDeclaration;
 begin
   // search in local scope
   Result := FindID(ID);
@@ -7672,24 +7679,20 @@ begin
     Exit;
 
   // serach in ancestor scopes
-  var AStructScope := FParent as TStructScope;
-  while Assigned(AStructScope) and (AStructScope.ScopeType = stStruct) do
-  begin
-    Result := AStructScope.FindID(ID);
-    if Assigned(Result) then
-      Exit;
-    AStructScope := AStructScope.AncestorScope;
-  end;
+  Result := FParent.FindMembers(ID, AHelperTree);
+  if Assigned(Result) then
+    Exit;
 
-  // serach in local parent scopes
-  var ALocalScope := FParent;  // TODO: rework
-  while Assigned(ALocalScope) {and (ALocalScope.ScopeType <> stStruct)} do
-  begin
-    Result := ALocalScope.FindID(ID);
-    if Assigned(Result) then
-      Exit;
-    ALocalScope := ALocalScope.Parent;
-  end;
+// TODO: is it needed?
+//  // serach in local parent scopes
+//  var ALocalScope := FParent;  // TODO: rework
+//  while Assigned(ALocalScope) {and (ALocalScope.ScopeType <> stStruct)} do
+//  begin
+//    Result := ALocalScope.FindID(ID);
+//    if Assigned(Result) then
+//      Exit;
+//    ALocalScope := ALocalScope.Parent;
+//  end;
 
   // search in the all impl uses scopes
   Result := fOuterScope.FindIDRecurcive(ID);
@@ -8198,7 +8201,7 @@ begin
     FAncestorScope := Struct.Ancestor.Members;
 end;
 
-function TStructScope.FindIDRecurcive(const ID: string): TIDDeclaration;
+function TStructScope.FindIDRecurcive(const ID: string; AHelperTree: THelperTree): TIDDeclaration;
 begin
   Result := inherited FindIDRecurcive(ID);
   if not Assigned(Result) and Assigned(FAncestorScope) then
@@ -8212,8 +8215,20 @@ begin
     FAncestorScope.FindIDRecurcive(ID, ADeclArray);
 end;
 
-function TStructScope.FindMembers(const ID: string): TIDDeclaration;
+function TStructScope.FindMembers(const ID: string; AHelperTree: THelperTree): TIDDeclaration;
 begin
+  // search in helpers first
+  if Assigned(AHelperTree) then
+  begin
+    var LHelper := AHelperTree.FindHelper(Struct);
+    if Assigned(LHelper) then
+    begin
+      Result := LHelper.FindMember(ID);
+      if Assigned(Result) then
+        Exit;
+    end;
+  end;
+
   Result := FindID(ID);
   if Assigned(Result) then
     Exit;
@@ -8223,7 +8238,7 @@ begin
     Exit;
 
   if Assigned(FAncestorScope) then
-    Result := FAncestorScope.FindMembers(ID)
+    Result := FAncestorScope.FindMembers(ID, AHelperTree)
   else
     Result := nil;
 end;
@@ -8665,7 +8680,8 @@ end;
 procedure TDlphHelper.SetTarget(const Value: TIDType);
 begin
   fTarget := Value;
-  if Value.ActualDataType is TIDStructure then
+  // use the target type as an ancestor (if there is not explicit ancestor)
+  if (Value.ActualDataType is TIDStructure) and not Assigned(Ancestor) then
   begin
     fMembers.FAncestorScope := TIDStructure(Value.ActualDataType).Members;
     fAncestorDecl := Value;
@@ -9197,6 +9213,38 @@ begin
   else
     Result := Self;
   end;
+end;
+
+{ THelperTree }
+
+function Cmp_TIDType(const L, R: TIDType): NativeInt;
+begin
+  Result := CompareValue(NativeInt(L), NativeInt(R));
+end;
+
+procedure THelperTree.AddHelpers(AHelpers: THelperTree);
+begin
+  for var LIndex := 0 to AHelpers.Count - 1 do
+    AddOrUpdate(AHelpers.Nodes[LIndex].Key,
+                AHelpers.Nodes[LIndex].Data);
+end;
+
+constructor THelperTree.Create(AParent: THelperTree);
+begin
+  inherited Create(Cmp_TIDType);
+  FParent := AParent;
+end;
+
+function THelperTree.FindHelper(AType: TIDType): TDlphHelper;
+begin
+  var LNode := Find(AType);
+  if Assigned(LNode) then
+    Exit(LNode.Data);
+
+  if Assigned(FParent) then
+    Result := FParent.FindHelper(AType)
+  else
+    Result := nil;
 end;
 
 initialization

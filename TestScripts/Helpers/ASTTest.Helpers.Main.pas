@@ -16,10 +16,10 @@ uses
   
 var
   Obj: TSourceStruct2;
-  
+
 procedure Main;
 begin
-  Obj.HelperProc; 
+  Obj.HelperProc;
 end;
   
   

@@ -213,9 +213,14 @@
         <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.VirtualsOverlod1.pas"/>
         <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.DiffSigns1.pas"/>
         <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.Helper1.pas"/>
+        <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.Helper2.pas"/>
+        <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.InheritedHelper.pas"/>
         <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.HelperForNested1.pas"/>
         <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.HelperForAliases1.pas"/>
         <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.HelperForAliases2.pas"/>
+        <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.HelperForAliases3.pas"/>
+        <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.Declaration.pas"/>
+        <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.Main.pas"/>
         <DCCReference Include="..\TestScripts\Loops\ASTTest.Loops.For1.pas"/>
         <DCCReference Include="..\TestScripts\Loops\ASTTest.Loops.ForIn1.pas"/>
         <DCCReference Include="..\TestScripts\Variants\ASTTest.Variants.Variant1.pas"/>

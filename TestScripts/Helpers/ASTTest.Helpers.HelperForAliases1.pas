@@ -9,8 +9,9 @@ type
 
   TMyInteger = TInteger;
 
+  // this helper actually extends the original type as well as all weak aliases
   TMyIntegerHelper = record helper for TMyInteger
-    function ToString: string;
+    function ToStr: string;
   end;
 
 var
@@ -22,14 +23,14 @@ implementation
 
 procedure Main;
 begin
-  var LStr1 := Int1.ToString;
-  var LStr2 := Int2.ToString;
-  var LStr3 := Int3.ToString;
+  var LStr1 := Int1.ToStr;
+  var LStr2 := Int2.ToStr;
+  var LStr3 := Int3.ToStr;
 end;
 
 { TMyIntegerHelper }
 
-function TMyIntegerHelper.ToString: string;
+function TMyIntegerHelper.ToStr: string;
 begin
   Result := '';
 end;
