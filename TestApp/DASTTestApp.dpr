@@ -69,6 +69,7 @@ uses
   ASTTest.Generics.Constr2 in '..\TestScripts\Generics\ASTTest.Generics.Constr2.pas',
   ASTTest.Ordian.Enums.Init in '..\TestScripts\Ordinals\ASTTest.Ordian.Enums.Init.pas',
   ASTTest.Procs.External in '..\TestScripts\Procedures\ASTTest.Procs.External.pas',
+  ASTTest.Procs.DiffSigns1 in '..\TestScripts\Procedures\ASTTest.Procs.DiffSigns1.pas',
   ASTTest.Procs.Overloads.Generics1 in '..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.Generics1.pas',
   ASTTest.Procs.Overloads.Generics2 in '..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.Generics2.pas',
   ASTTest.Procs.Overloads.ImplicitCall1 in '..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.ImplicitCall1.pas',

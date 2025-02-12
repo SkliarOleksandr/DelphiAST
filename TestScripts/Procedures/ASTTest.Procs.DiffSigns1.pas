@@ -2,7 +2,9 @@ unit ASTTest.Procs.DiffSigns1;
 
 interface
 
-procedure TestProc(a, b: Integer); overload;
+{$HINTS OFF}
+
+procedure TestProc(a, b: Integer);
 
 implementation
 

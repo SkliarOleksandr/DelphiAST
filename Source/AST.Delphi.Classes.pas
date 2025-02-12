@@ -79,8 +79,6 @@ type
   TProcScopeClass = class of TProcScope;
   TParamsScope = class;
 
-  TIDParam = TIDVariable;
-
   TIDItems = array of TObject;
   TIDExpressions = array of TIDExpression;
   TIDDeclArray = array of TIDDeclaration;
@@ -752,6 +750,7 @@ type
   TIDEnum = class(TIDOrdinal)
   private
     FItems: TScope;
+    FScopedEnum: Boolean;
   protected
     function GetDisplayName: string; override;
     function GetDataSize: Integer; override;
@@ -763,6 +762,7 @@ type
     function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
     function SysUnarOperator(AOpID: TOperatorID): TIDType; override;
     property Items: TScope read FItems write FItems;
+    property ScopedEnum: Boolean read FScopedEnum write FScopedEnum;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
     function ToJson: TJsonASTDeclaration; override;
     function ASTJsonDeclClass: TASTJsonDeclClass; override;
@@ -1091,66 +1091,6 @@ type
   public
     constructor CreateAsAnonymous(Scope: TScope); override;
     function MatchImplicitFrom(ASrc: TIDType): Boolean; override;
-  end;
-
-  TIDParamArray = array of TIDParam;
-
-
-  TProcType = (
-    ptFunc,               // глобальная или локальная функция
-    ptClassFunc,          // классовая функция
-    ptStaticFunc,         // статичная функция
-    ptProc,               // глобальная или локальная процедура
-    ptClassProc,          // классовая процедура
-    ptStaticProc,         // статичная процедура
-    ptConstructor,        // конструктор
-    ptDestructor,         // деструктор
-    ptClassConstructor,   // классовый конструктор
-    ptClassDestructor,    // классовый деструктор
-    ptOperator
-  );
-
-  TProcTypeClass = (
-    procStatic,           // simple static proc type, TProc = procedure(...)
-    procMethod,           // method proc type, TProc = procedure(...) of object
-    procReference         // referenced proc type, TProc = reference to procedure(...)
-  );
-
-
-  TCallConvention = (
-    ConvNative,
-    ConvRegister,
-    ConvStdCall,
-    ConvCDecl,
-    ConvFastCall,
-    ConvSafeCall
-  );
-
-  {procedural type}
-  TIDProcType = class(TIDType)
-  private
-    fParams: TIDParamArray;
-    fResultType: TIDType;
-    fCallConv: TCallConvention;
-    fProcClass: TProcTypeClass;
-    function GetIsStatic: Boolean; inline;
-  protected
-    function GetDisplayName: string; override;
-    function GetDataSize: Integer; override;
-  public
-    constructor Create(Scope: TScope; const Identifier: TIdentifier); override;
-    constructor CreateAsAnonymous(Scope: TScope); override;
-    ////////////////////////////////////////////////////////////////////////
-    procedure AddParam(const ID: TIdentifier; DataType: TIDType);
-    procedure CreateStandardOperators; override;
-    property Params: TIDParamArray read fParams write fParams;
-    property ResultType: TIDType read fResultType write fResultType;
-    property IsStatic: Boolean read GetIsStatic;
-    property CallConv: TCallConvention read FCallConv write FCallConv;
-    property ProcClass: TProcTypeClass read fProcClass write fProcClass;
-    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
-    function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
-                                AContext: TGenericInstantiateContext): TIDDeclaration; override;
   end;
 
   {base constant class}
@@ -1654,12 +1594,78 @@ type
     function MakeCopy: TIDDeclaration; override;
     function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                 AContext: TGenericInstantiateContext): TIDDeclaration; override;
+
+    function ASTJsonDeclClass: TASTJsonDeclClass; override;
+    function ToJson: TJsonASTDeclaration; override;
   end;
 
   {proc parameter class}
-  TIDParameter = class(TIDVariable)
+  TIDParam = class(TIDVariable)
+  protected
+    function GetASTKind: string; override;
   public
+    function ASTJsonDeclClass: TASTJsonDeclClass; override;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
+  end;
+
+  TIDParamArray = array of TIDParam;
+
+
+  TProcType = (
+    ptFunc,               // глобальная или локальная функция
+    ptClassFunc,          // классовая функция
+    ptStaticFunc,         // статичная функция
+    ptProc,               // глобальная или локальная процедура
+    ptClassProc,          // классовая процедура
+    ptStaticProc,         // статичная процедура
+    ptConstructor,        // конструктор
+    ptDestructor,         // деструктор
+    ptClassConstructor,   // классовый конструктор
+    ptClassDestructor,    // классовый деструктор
+    ptOperator
+  );
+
+  TProcTypeClass = (
+    procStatic,           // simple static proc type, TProc = procedure(...)
+    procMethod,           // method proc type, TProc = procedure(...) of object
+    procReference         // referenced proc type, TProc = reference to procedure(...)
+  );
+
+
+  TCallConvention = (
+    ConvNative,
+    ConvRegister,
+    ConvStdCall,
+    ConvCDecl,
+    ConvFastCall,
+    ConvSafeCall
+  );
+
+  {procedural type}
+  TIDProcType = class(TIDType)
+  private
+    fParams: TIDParamArray;
+    fResultType: TIDType;
+    fCallConv: TCallConvention;
+    fProcClass: TProcTypeClass;
+    function GetIsStatic: Boolean; inline;
+  protected
+    function GetDisplayName: string; override;
+    function GetDataSize: Integer; override;
+  public
+    constructor Create(Scope: TScope; const Identifier: TIdentifier); override;
+    constructor CreateAsAnonymous(Scope: TScope); override;
+    ////////////////////////////////////////////////////////////////////////
+    procedure AddParam(const ID: TIdentifier; DataType: TIDType);
+    procedure CreateStandardOperators; override;
+    property Params: TIDParamArray read fParams write fParams;
+    property ResultType: TIDType read fResultType write fResultType;
+    property IsStatic: Boolean read GetIsStatic;
+    property CallConv: TCallConvention read FCallConv write FCallConv;
+    property ProcClass: TProcTypeClass read fProcClass write fProcClass;
+    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
+    function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
+                                AContext: TGenericInstantiateContext): TIDDeclaration; override;
   end;
 
   {structure field class}
@@ -1737,7 +1743,6 @@ type
   TIDProcedure = class(TIDDeclarationGeneric)
   strict private
     FExplicitParams: TIDParamArray; // actual arguments (excluding 'self', 'Result', etc...);
-    FParamsScope: TProcScope;       // only parameters scope
     FEntryScope: TProcScope;        // proc body scope (params, local vars, types, procs etc...)
     FStruct: TIDStructure;          // self parameter
     FProcFlags: TProcFlags;         // флаги inline/pure
@@ -1760,12 +1765,13 @@ type
     function GetIsStatic: Boolean; inline;
     function GetDefaultParamsCount: Integer;
     function GetMethodIndex: Integer;
-    function GetSelfParam: TIDVariable;
+    function GetSelfParam: TIDParam;
     function GetSelfParamExpression: TIDExpression;
     function GetResultParamExpression: TIDExpression;
     function GetIsClassMethod: Boolean; inline;
     function GetIsConstructor: Boolean; inline;
     function GetIsDestructor: Boolean;
+    function GetParamsScope: TParamsScope;
   protected
     function GetDisplayName: string; override;
     function GetIndex: Integer; override;
@@ -1798,12 +1804,12 @@ type
 
     property PrevOverload: TIDProcedure read FNextOverload write FNextOverload;
     property EntryScope: TProcScope read FEntryScope write SetEntryScope;
-    property ParamsScope: TProcScope read FParamsScope write FParamsScope;
+    property ParamsScope: TParamsScope read GetParamsScope;
     property ParamsCount: Integer read GetParamsCount;
     property ResultType: TIDType read FResultType write FResultType;
     property Flags: TProcFlags read FProcFlags write FProcFlags;
     property Struct: TIDStructure read FStruct write FStruct;
-    property SelfParam: TIDVariable read GetSelfParam;
+    property SelfParam: TIDParam read GetSelfParam;
     property SelfParamExpression: TIDExpression read GetSelfParamExpression;
     property InheritedProc: TIDProcedure read FInherited write FInherited;
 
@@ -1811,7 +1817,7 @@ type
 
     procedure MakeSelfParam;
     procedure SetResult(DataType: TIDType);
-    procedure AddParam(const Param: TIDVariable); overload;
+    procedure AddParam(const Param: TIDParam); overload;
     function AddParam(const Name: string; DataType: TIDType): TIDParam; overload;
     function AddParam(const Name: string; DataType: TIDType; Flags: TVariableFlags; DefaultValue: TIDExpression = nil): TIDParam; overload;
     //======================================================================
@@ -1855,6 +1861,8 @@ type
                                 AContext: TGenericInstantiateContext): TIDDeclaration; override;
 
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
+    function ASTJsonDeclClass: TASTJsonDeclClass; override;
+    function ToJson: TJsonASTDeclaration; override;
   end;
 
   TIDProcArray = array of TIDProcedure;
@@ -2940,7 +2948,7 @@ end;
 
 { TIDProcDeclaration }
 
-procedure TIDProcedure.AddParam(const Param: TIDVariable);
+procedure TIDProcedure.AddParam(const Param: TIDParam);
 begin
   var ACount := Length(FExplicitParams);
   SetLength(FExplicitParams, ACount + 1);
@@ -2961,6 +2969,11 @@ begin
   Result.Flags := Flags + [varParameter];
   Result.DefaultValue := DefaultValue;
   AddParam(Result);
+end;
+
+function TIDProcedure.ASTJsonDeclClass: TASTJsonDeclClass;
+begin
+  Result := TASTJsonFunction;
 end;
 
 function TIDProcedure.CanBeCalledImpicitly(const AGenericArgs: TIDExpressions): Boolean;
@@ -2996,8 +3009,7 @@ constructor TIDProcedure.CreateAsSystem(Scope: TScope; const Name: string);
 begin
   inherited CreateAsSystem(Scope, Name);
   ItemType := itProcedure;
-  FParamsScope := TProcScope.CreateInDecl(Scope, Self);
-  FEntryScope := FParamsScope;
+  FEntryScope := TProcScope.CreateInDecl(Scope, Self);
 end;
 
 constructor TIDProcedure.CreateAsSystemMethod(Struct: TIDStructure; const Name: string);
@@ -3006,14 +3018,13 @@ var
 begin
   inherited CreateAsSystem(Scope, Name);
   ItemType := itProcedure;
-  FParamsScope := TMethodScope.CreateInDecl(Scope, Struct.Members, Self);
+  FEntryScope := TMethodScope.CreateInDecl(Scope, Struct.Members, Self);
   if Struct.DataTypeID = dtRecord then
-    SelfParam := TIDVariable.Create(FParamsScope, Identifier('Self'), Struct, [VarParameter, VarSelf, VarConst, VarInOut, VarHiddenParam])
+    SelfParam := TIDVariable.Create(ParamsScope, Identifier('Self'), Struct, [VarParameter, VarSelf, VarConst, VarInOut, VarHiddenParam])
   else
-    SelfParam := TIDVariable.Create(FParamsScope, Identifier('Self'), Struct, [VarParameter, VarSelf, VarConst, VarHiddenParam]);
+    SelfParam := TIDVariable.Create(ParamsScope, Identifier('Self'), Struct, [VarParameter, VarSelf, VarConst, VarHiddenParam]);
 
-  FParamsScope.AddVariable(SelfParam);
-  FEntryScope := FParamsScope;
+  ParamsScope.AddVariable(SelfParam);
 end;
 
 destructor TIDProcedure.Destroy;
@@ -3092,6 +3103,19 @@ begin
   FResultParam.DataType := DataType;
   FResultParam.IncludeFlags([VarParameter, VarOut, VarHiddenParam, VarResult]);
   FResultType := DataType;
+end;
+
+function TIDProcedure.ToJson: TJsonASTDeclaration;
+begin
+  Result := inherited;
+  var LObject := TASTJsonFunction(Result);
+  SetLength(LObject.params, ParamsCount);
+  for var LIndex := 0 to ParamsCount - 1 do
+  begin
+    var LParam := ParamsScope.Items[LIndex];
+    var LParamJson := LParam.ToJson as TASTJsonParam;
+    LObject.params[LIndex] := LParamJson;
+  end;
 end;
 
 procedure TIDProcedure.Warning(const Message: string; const Params: array of const; const TextPosition: TTextPosition);
@@ -3216,6 +3240,11 @@ end;
 function TIDProcedure.GetParamsCount: Integer;
 begin
   Result := Length(FExplicitParams);
+end;
+
+function TIDProcedure.GetParamsScope: TParamsScope;
+begin
+  Result := FEntryScope.ParamsScope;
 end;
 
 function TIDProcedure.GetProcKindName: string;
@@ -3425,7 +3454,6 @@ begin
   var LNewProc := MakeCopy as TIDProcedure;
 
   LNewProc.FEntryScope := TProcScopeClass(EntryScope.ClassType).CreateInDecl(ADstScope, LNewProc);
-  LNewProc.FParamsScope := LNewProc.FEntryScope;
 
   // todo: what about implicit params (self, open array len, etc)?
   LNewProc.ExplicitParams := InstantiateParams(ParamsScope, ExplicitParams, AContext);
@@ -3476,9 +3504,9 @@ end;
 procedure TIDProcedure.MakeSelfParam;
 begin
   Assert(Assigned(FStruct));
-  var LSelfParam := TIDParam.Create(FParamsScope, Identifier('Self'), FStruct, [VarParameter, VarConst, VarHiddenParam]);
-  FParamsScope.AddVariable(LSelfParam);
-  FParamsScope.ParamsScope.SelfParam := LSelfParam;
+  var LSelfParam := TIDParam.Create(ParamsScope, Identifier('Self'), FStruct, [VarParameter, VarConst, VarHiddenParam]);
+  ParamsScope.AddVariable(LSelfParam);
+  ParamsScope.SelfParam := LSelfParam;
 end;
 
 procedure TIDProcedure.RemoveILReferences(var RCPathCount: UInt32);
@@ -3767,11 +3795,13 @@ begin
     dtSet: Result := 'set';
     dtStaticArray: Result := 'static-array';
     dtDynArray: Result := 'dynamic-array';
+    dtOpenArray: Result := 'open-array';
     dtProcType: Result := 'proctype';
     dtRecord: Result := 'record';
     dtClass: Result := 'class';
     dtClassOf: Result := 'classof';
     dtInterface: Result := 'interface';
+    dtGeneric: Result := 'generic-param';
   else
     Result := '<unknown>';
   end;
@@ -4305,6 +4335,11 @@ begin
   FValue := Value;
 end;
 
+function TIDVariable.ASTJsonDeclClass: TASTJsonDeclClass;
+begin
+  Result := TASTJsonVariable;
+end;
+
 { TIDVariableItem }
 
 constructor TIDVariable.Create(Scope: TScope; const Name: TIdentifier; DataType: TIDType; Flags: TVariableFlags);
@@ -4490,6 +4525,13 @@ begin
     Include(FFlags, VarHasDefault);
 end;
 
+function TIDVariable.ToJson: TJsonASTDeclaration;
+begin
+  Result := inherited;
+  var LJson := Result as TASTJsonVariable;
+  LJson.dataTypeName := DataType.Name;
+end;
+
 constructor TIDXXXConstant<T>.CreateAsSystem(AScope: TScope; const AName: string; ADataType: TIDType);
 begin
   inherited CreateAsSystem(AScope, AName);
@@ -4636,7 +4678,12 @@ end;
 
 function TIDExpression.GetAsType: TIDType;
 begin
-  Result := FDeclaration as TIDType;
+  if FDeclaration is TIDType then
+    Result := TIDType(FDeclaration)
+  else begin
+    AbortWorkInternal('Invalid Expression Type Cast [as type] for %s:%s', [Text, DataTypeName]);
+    Result := nil;
+  end;
 end;
 
 function TIDExpression.GetAsUnit: TIDUnit;
@@ -5285,12 +5332,12 @@ begin
   end;
 end;
 
-function TIDProcedure.GetSelfParam: TIDVariable;
+function TIDProcedure.GetSelfParam: TIDParam;
 begin
   if not Assigned(FStruct) then
     AbortWorkInternal('Self param is not found');
 
-  Result := FParamsScope.ParamsScope.SelfParam;
+  Result := ParamsScope.SelfParam;
 end;
 
 function TIDProcedure.GetSelfParamExpression: TIDExpression;
@@ -5642,9 +5689,8 @@ begin
     Exit;
 
   case FDataTypeID of
-    dtStaticArray: Result := 'static array [' + GetDimInfo + '] of ';
-    dtDynArray: Result := 'array of ';
-    dtOpenArray: Result := 'openarray of ';
+    dtStaticArray: Result := 'array [' + GetDimInfo + '] of ';
+    dtDynArray, dtOpenArray: Result := 'array of ';
   end;
 
   if Assigned(FElementDataType) then
@@ -6231,6 +6277,7 @@ function TIDEnum.ToJson: TJsonASTDeclaration;
 begin
   Result := inherited;
   var LResult := TASTJsonDelphiEnum(Result);
+  LResult.scopedEnum := ScopedEnum;
   // fill enum items
   SetLength(LResult.items, FItems.Count);
   for var LIndex := 0 to FItems.Count - 1 do
@@ -6311,9 +6358,7 @@ end;
 
 function TIDDynArray.MatchImplicitFrom(ASrc: TIDType): Boolean;
 begin
-  // TODO: temporary solution until TIDOpenArray works
   Result :=
-    (DataTypeID = dtOpenArray) and
     (ASrc.DataTypeID = dtSet) and ASrc.IsAnonymous and
     ((ASrc as TIDSet).BaseType = ElementDataType);
 end;
@@ -7158,9 +7203,9 @@ end;
 
 procedure TIDProcType.AddParam(const ID: TIdentifier; DataType: TIDType);
 var
-  Param: TIDVariable;
+  Param: TIDParam;
 begin
-  Param := TIDVariable.Create(Scope, ID);
+  Param := TIDParam.Create(Scope, ID);
   Param.IncludeFlags([VarParameter]);
   FParams := FParams + [Param];
 end;
@@ -7364,7 +7409,7 @@ begin
   FUnit := Parent.DeclUnit;
   fProc := Proc;
   Parent.AddChild(Self);
-  FParamsScope := TParamsScope.Create(stLocal, Parent);
+  FParamsScope := TParamsScope.Create(stLocal, Self);
 end;
 
 function TProcScope.GetExplicitParams: TIDParamArray;
@@ -9088,9 +9133,19 @@ begin
             (Length(FGenericArguments) = Length(AType.FGenericArguments)); // todo: improve
 end;
 
-{ TIDParameter }
+{ TIDParam }
 
-procedure TIDParameter.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
+function TIDParam.ASTJsonDeclClass: TASTJsonDeclClass;
+begin
+  Result := TASTJsonParam;
+end;
+
+function TIDParam.GetASTKind: string;
+begin
+  Result := 'parameter';
+end;
+
+procedure TIDParam.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
   if VarConst in FFlags then
     ABuilder.Append('const ')

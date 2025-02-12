@@ -16,6 +16,7 @@ type
     end;
   var
     items: TArray<TItem>;
+    scopedEnum: Boolean;
   end;
 
   TASTJsonDelphiSet = class(TASTJsonType)

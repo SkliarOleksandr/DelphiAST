@@ -354,18 +354,20 @@ type
     function ParseIntfGUID(Scope: TScope; Decl: TIDInterface): TTokenID;
     //=======================================================================================================================
     function ParseTypeRecord(Scope, GenericScope: TScope; GDescriptor: IGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
-    function ParseTypeArray(Scope, GenericScope: TScope; GDescriptor: IGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
+    function ParseTypeArray(Scope, GenericScope: TScope; GDescriptor: IGenericDescriptor; AInParameters: Boolean;
+                            const ID: TIdentifier; out Decl: TIDType): TTokenID;
     function ParseTypeHelper(Scope, GenericScope: TScope; AIsClassHelper: Boolean; const ID: TIdentifier;
                              out Decl: TDlphHelper): TTokenID;
     // функция парсинга анонимного типа
-    function ParseTypeDecl(Scope: TScope; GDescriptor: IGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
+    function ParseTypeDecl(Scope: TScope; GDescriptor: IGenericDescriptor; AInParameters: Boolean;
+                           const ID: TIdentifier; out Decl: TIDType): TTokenID;
     function ParseTypeDeclOther(Scope: TScope; const ID: TIdentifier; out Decl: TIDType): TTokenID;
     // функция парсинга именованного типа
     function ParseNamedTypeDecl(Scope: TScope): TTokenID;
     function ParseTypeSection(Scope: TScope): TTokenID;
     function ParseTypeSectionInStruct(Scope: TScope): TTokenID;
     // функция парсинга указания типа (имени существующего или анонимного типа)
-    function ParseTypeSpec(Scope: TScope; out DataType: TIDType): TTokenID;
+    function ParseTypeSpec(Scope: TScope; out DataType: TIDType; AInParameters: Boolean = False): TTokenID;
     function ParseGenericTypeSpec(Scope, ASearchScope: TScope; const ID: TIdentifier; out DataType: TIDType): TTokenID; virtual;
     function ParseGenericsHeader(Scope: TScope; out Args: TIDTypeArray): TTokenID;
     function ParseGenericsConstraint(Scope: TScope; out AConstraint: TGenericConstraint;
@@ -785,8 +787,8 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.ParseTypeArray(Scope, GenericScope: TScope; GDescriptor: IGenericDescriptor; const ID: TIdentifier;
-  out Decl: TIDType): TTokenID;
+function TASTDelphiUnit.ParseTypeArray(Scope, GenericScope: TScope; GDescriptor: IGenericDescriptor;
+                                       AInParameters: Boolean; const ID: TIdentifier; out Decl: TIDType): TTokenID;
 var
   TypeScope: TScope;
   DataType: TIDType;
@@ -809,8 +811,8 @@ begin
     {dynamic array}
     Lexer_MatchToken(Result, token_of);
 
-    // TODO: Scope is never TParamsScope! Refactor ParseParameters()
-    if Scope is TParamsScope then
+    // "array of <type>" declared as a param type must be an open array
+    if AInParameters and (ID.Name = '') then
       Decl := ParseGenericTypeDecl(Scope, GDescriptor, ID, TIDOpenArray)
     else
       Decl := ParseGenericTypeDecl(Scope, GDescriptor, ID, TIDDynArray);
@@ -828,7 +830,8 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.ParseTypeDecl(Scope: TScope; GDescriptor: IGenericDescriptor; const ID: TIdentifier;
+function TASTDelphiUnit.ParseTypeDecl(Scope: TScope; GDescriptor: IGenericDescriptor;
+                                      AInParameters: Boolean; const ID: TIdentifier;
                                       out Decl: TIDType): TTokenID;
 var
   IsPacked: Boolean;
@@ -870,7 +873,7 @@ begin
     /////////////////////////////////////////////////////////////////////////
     // array type
     /////////////////////////////////////////////////////////////////////////
-    token_array: Result := ParseTypeArray(Scope, nil, GDescriptor, ID, Decl);
+    token_array: Result := ParseTypeArray(Scope, nil, GDescriptor, AInParameters, ID, Decl);
     /////////////////////////////////////////////////////////////////////////
     // procedural type
     /////////////////////////////////////////////////////////////////////////
@@ -1118,7 +1121,7 @@ begin
   Result := ParseRecordType(Scope, TIDRecord(Decl));
 end;
 
-function TASTDelphiUnit.ParseTypeSpec(Scope: TScope; out DataType: TIDType): TTokenID;
+function TASTDelphiUnit.ParseTypeSpec(Scope: TScope; out DataType: TIDType; AInParameters: Boolean): TTokenID;
 var
   Decl: TIDDeclaration;
   SearchScope: TScope;
@@ -1237,7 +1240,7 @@ begin
     Exit;
   end;
   // parse an anonymous type declaration
-  Result := ParseTypeDecl(Scope, nil, TIdentifier.Make('', Lexer_Position), DataType);
+  Result := ParseTypeDecl(Scope, nil, AInParameters, TIdentifier.Make('', Lexer_Position), DataType);
   if not Assigned(DataType) then
     ERRORS.INVALID_TYPE_DECLARATION;
 end;
@@ -1424,6 +1427,7 @@ begin
     // in Delphi enum constants are placed to the top-level scope (intf or impl), even it the enum is nested type!!!
     if not Options.SCOPEDENUMS then
     begin
+      Decl.ScopedEnum := True;
       var LGlobalScope := IntfScope;
       if UnitState = UnitIntfCompiled then
         LGlobalScope := ImplScope;
@@ -4300,7 +4304,7 @@ end;
 
 class procedure TASTDelphiUnit.AddSelfParameter(AProcScope: TProcScope; Struct: TIDStructure; ClassMethod: Boolean);
 var
-  SelfParam: TIDVariable;
+  SelfParam: TIDParam;
   DataType: TIDType;
 begin
   if Struct is TDlphHelper then
@@ -4311,7 +4315,7 @@ begin
   if ClassMethod and (DataType is TIDClass)  then
     DataType := TIDClass(DataType).ClassOfType;
 
-  SelfParam := TIDVariable.Create(AProcScope, Identifier('Self'), DataType, [VarParameter, VarSelf, VarHiddenParam]);
+  SelfParam := TIDParam.Create(AProcScope, Identifier('Self'), DataType, [VarParameter, VarSelf, VarHiddenParam]);
   AProcScope.AddVariable(SelfParam);
   AProcScope.ParamsScope.SelfParam := SelfParam;
 end;
@@ -4609,7 +4613,6 @@ begin
     ResultType := nil;
 
   ProcDecl := TASTDelphiProc.CreateAsAnonymous(ImplScope);
-  ProcDecl.ParamsScope := ProcScope;
   ProcDecl.EntryScope := ProcScope;
   ProcDecl.ResultType := ResultType;
   ProcDecl.CreateProcedureTypeIfNeed(Scope);
@@ -7216,12 +7219,12 @@ type
   PIDItem = ^TIDItem;
   TIDItem = record
     ID: TIdentifier;
-    Param: TIDVariable;
+    Param: TIDParam;
     NextItem: PIDItem;
   end;
 var
   DataType: TIDType;
-  Param: TIDVariable;
+  Param: TIDParam;
   VarFlags: TVariableFlags;
   DefaultExpr: TIDExpression;
   IDItem: TIDItem;
@@ -7286,7 +7289,7 @@ begin
       if Result = token_colon then
       begin
         // parse param type
-        Result := ParseTypeSpec(EntryScope, DataType);
+        Result := ParseTypeSpec(EntryScope, DataType, {AInParameters:} True);
         // open array case
         if DataType.IsAnonymous and (DataType.DataTypeID = dtDynArray) then
           DataType.DataTypeID := dtOpenArray;
@@ -7313,7 +7316,7 @@ begin
       while Assigned(NextItem) do begin
         if not Assigned(NextItem.Param) then
         begin
-          Param := TIDParameter.Create(EntryScope, NextItem.ID, DataType, VarFlags);
+          Param := TIDParam.Create(EntryScope, NextItem.ID, DataType, VarFlags);
           Param.DefaultValue := DefaultExpr;
           NextItem.Param := Param;
         end;
@@ -7660,7 +7663,6 @@ begin
 
   {create a new declaration}
   Proc := TASTDelphiProc.Create(Scope, ID);
-  Proc.ParamsScope := ProcScope;
   Proc.EntryScope := ProcScope;
   Proc.ResultType := ResultType;
   Proc.ExplicitParams := ProcScope.ExplicitParams;
@@ -7838,7 +7840,7 @@ begin
     begin
       FwdDeclState := dsSame;
       Proc := ForwardDecl;
-      ProcScope.CopyFrom(ForwardDecl.ParamsScope);
+      ProcScope.CopyFrom(ForwardDecl.EntryScope);
     end else
     begin
       // search overload
@@ -7881,7 +7883,6 @@ begin
     {if there are explict generic params - create generic descriptor}
     if Assigned(GenericParams) then
       Proc.GenericDescriptor := TGenericDescriptor.Create(Scope, GenericParams);
-    Proc.ParamsScope := ProcScope;
     Proc.EntryScope := ProcScope;
     Proc.ResultType := ResultType;
     ProcScope.Proc := Proc;
@@ -8118,7 +8119,7 @@ begin
     begin
       FwdDeclState := dsSame;
       Proc := ForwardDecl;
-      ProcScope.CopyFrom(ForwardDecl.ParamsScope);
+      ProcScope.CopyFrom(ForwardDecl.EntryScope);
     end else
     begin
       // search overload
@@ -8145,7 +8146,7 @@ begin
   if not Assigned(Proc) then
   begin
     Proc := TASTDelphiProc.Create(Scope, ID);
-    Proc.ParamsScope := ProcScope;
+    Proc.EntryScope := ProcScope;
     Proc.ResultType := ResultType;
     ProcScope.Proc := Proc;
 
@@ -8326,7 +8327,7 @@ begin
     begin
       FwdDeclState := dsSame;
       Proc := ForwardDecl;
-      ProcScope.CopyFrom(ForwardDecl.ParamsScope);
+      ProcScope.CopyFrom(ForwardDecl.EntryScope);
     end else
     if (pfOveload in ForwardDecl.Flags) then
     begin
@@ -8354,7 +8355,7 @@ begin
   if not Assigned(Proc) then
   begin
     Proc := TASTDelphiProc.Create(Scope, ID);
-    Proc.ParamsScope := ProcScope;
+    Proc.EntryScope := ProcScope;
     Proc.ResultType := ResultType;
     ProcScope.Proc := Proc;
 
@@ -8655,7 +8656,6 @@ begin
   if not Assigned(Proc) then
   begin
     Proc := TIDOperator.Create(Struct.Operators, ID, LOperatorDef.OpID);
-    Proc.ParamsScope := ProcScope;
     Proc.ResultType := ResultType;
     Proc.ExplicitParams := ProcScope.ExplicitParams;
     Proc.Struct := Struct;
@@ -9710,7 +9710,7 @@ begin
 
   Lexer_NextToken(Scope);
 
-  Result := ParseTypeDecl(Scope, GDescriptor, ID, Decl);
+  Result := ParseTypeDecl(Scope, GDescriptor, {AInParameters:} False, ID, Decl);
   if not Assigned(Decl) then
     ERRORS.INVALID_TYPE_DECLARATION(ID);
 

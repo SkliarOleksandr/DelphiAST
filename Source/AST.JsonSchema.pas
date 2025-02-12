@@ -8,7 +8,8 @@ uses
 type
 
   TJsonBase = class
-
+  public
+    function ToJsonText: string;
   end;
 
   TASTHandle = NativeUInt;
@@ -59,5 +60,15 @@ type
   end;
 
 implementation
+
+uses
+  REST.Json;
+
+{ TJsonBase }
+
+function TJsonBase.ToJsonText: string;
+begin
+  Result := TJson.ObjectToJsonString(Self);
+end;
 
 end.
