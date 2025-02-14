@@ -34,6 +34,22 @@ type
     HighValue: string;
   end;
 
+  TASTJsonDelphiRecord = class(TASTJsonStruct)
+
+  end;
+
+  TASTJsonDelphiClass = class(TASTJsonStruct)
+
+  end;
+
+  TASTJsonDelphiInterface = class(TASTJsonStruct)
+
+  end;
+
+  TASTJsonDelphiHelper = class(TASTJsonStruct)
+
+  end;
+
 implementation
 
 end.

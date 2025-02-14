@@ -28,9 +28,15 @@ type
 
   TASTJsonDeclClass = class of TJsonASTDeclaration;
 
-  TASTJsonType = class (TJsonASTDeclaration)
+  TASTJsonType = class(TJsonASTDeclaration)
     typeKind: string;
     typeDecl: TASTTypeDeclDetails;
+  end;
+
+  TASTJsonStruct = class(TASTJsonType)
+    ansestorName: string;
+    ansestorHandle: TASTHandle;
+    members: TArray<TJsonASTDeclaration>;
   end;
 
   TASTJsonVariable = class(TJsonASTDeclaration)
@@ -39,11 +45,18 @@ type
   end;
 
   TASTJsonParam = class(TASTJsonVariable)
+    modifier: string;
+  end;
+
+  TASTJsonFunctionBody = class(TJsonBase)
 
   end;
 
   TASTJsonFunction = class(TJsonASTDeclaration)
     params: TArray<TASTJsonParam>;
+    isVirtual: Boolean;
+    isOverload: Boolean;
+    body: TASTJsonFunctionBody;
   end;
 
   TJsonASTProject = class(TJsonASTDeclaration)
