@@ -38,6 +38,7 @@ uses
 // system.Rtti
 // System.JSON
 // System.JSON.Types
+// REST.JsonReflect
 // system.Types
 // system.TypInfo
 // System.TimeSpan
@@ -4376,7 +4377,7 @@ function TASTDelphiUnit.CheckAndParseAttribute(Scope: TScope): TTokenID;
 begin
   // todo: complete the attributes parsing
   Result := Lexer_CurTokenID;
-  if Result = token_openblock then
+  while (Result = token_openblock) and Lexer_NotEof do
     Result := ParseAttribute(Scope);
 end;
 
@@ -6821,7 +6822,7 @@ begin
   AConstraint := gsNone;
   AConstraintType := nil;
   Result := Lexer_NextToken(Scope);
-  while true do begin
+  while True do begin
     case Result of
       token_class: begin
         case AConstraint of
@@ -6869,6 +6870,10 @@ begin
         if AConstraint = gsNone then
           ERRORS.GENERIC_INVALID_CONSTRAINT(Result);
         Exit;
+      end;
+      token_coma: begin
+        Result := Lexer_NextToken(Scope);
+        Continue;
       end;
     else
       ERRORS.GENERIC_INVALID_CONSTRAINT(Result);
@@ -7070,12 +7075,23 @@ begin
 end;
 
 function TASTDelphiUnit.ParseImmVarStatement(Scope: TScope; const SContext: TSContext): TTokenID;
+
+  function CreateVariable(const AID: TIdentifier; ADataType: TIDType; AKW: TASTKWInlineVarDecl): TIDVariable;
+  begin
+    Result := TIDVariable.Create(Scope, AID);
+    Result.DataType := ADataType;
+    Result.Visibility := vLocal;
+    Scope.AddVariable(Result);
+    AKW.AddDecl(Result);
+  end;
+
 var
   DataType: TIDType;
   Variable: TIDVariable;
   LVarID: TIdentifier;
   EContext: TEContext;
   KW: TASTKWInlineVarDecl;
+  LVarArray: TArray<TIdentifier>;
 begin
   Result := Lexer_NextToken(Scope);
   KW := SContext.Add(TASTKWInlineVarDecl) as TASTKWInlineVarDecl;
@@ -7089,6 +7105,7 @@ begin
     if Result = token_Coma then begin
       Inc(LVarCount);
       Result := Lexer_NextToken(Scope);
+      LVarArray := LVarArray + [LVarID];
       Continue;
     end;
 
@@ -7098,13 +7115,13 @@ begin
     else
       DataType := nil;
 
-    Variable := TIDVariable.Create(Scope, LVarID);
-    Variable.DataType := DataType;
-    Variable.Visibility := vLocal;
-    Variable.DefaultValue := nil;
-    Variable.Absolute := nil;
-    Scope.AddVariable(Variable);
-    KW.AddDecl(Variable);
+    if LVarCount = 0 then
+      Variable := CreateVariable(LVarID, DataType, KW)
+    else begin
+      Variable := nil;
+      for var LIndex := 0 to LVarCount - 1 do
+        CreateVariable(LVarID, DataType, KW);
+    end;
 
     // parse a default value if declared
     if Result = token_assign then
