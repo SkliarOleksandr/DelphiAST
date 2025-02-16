@@ -37,6 +37,7 @@ uses
 // System.IOUtils
 // system.Rtti
 // System.JSON
+// System.JSON.Types
 // system.Types
 // system.TypInfo
 // System.TimeSpan
@@ -223,8 +224,6 @@ type
     function MatchOverloadProc(const SContext: TSContext; Item: TIDExpression; const CallArgs: TIDExpressions; CallArgsCount: Integer): TIDProcedure;
     class function MatchImplicitClassOf(Source: TIDExpression; Destination: TIDClassOf): TIDDeclaration; static;
     class function MatchProcedureTypes(Src: TIDProcType; Dst: TIDProcType): TIDType; static;
-    procedure MatchPropSetter(Prop: TIDProperty; Setter: TIDExpression; const PropParams: TIDParamArray);
-    procedure MatchPropGetter(Prop: TIDProperty; Getter: TIDProcedure; const PropParams: TIDParamArray);
     class function MatchImplicit(Source, Destination: TIDType): TIDDeclaration; static; inline;
     procedure CheckVarParamConformity(Param: TIDVariable; Arg: TIDExpression);
     function IsConstValueInRange(Value: TIDExpression; RangeExpr: TIDRangeConstant): Boolean;
@@ -3845,59 +3844,6 @@ begin
     Result := Result + ': ' + ResultType.DisplayName;
 end;
 
-procedure TASTDelphiUnit.MatchPropGetter(Prop: TIDProperty; Getter: TIDProcedure; const PropParams: TIDParamArray);
-begin
-  var LParamCount := Length(PropParams);
-  if Getter.ParamsCount <> LParamCount then
-    ERRORS.GETTER_MUST_BE_SUCH(Getter, GetProcDeclSring(PropParams, Prop.DataType));
-
-  for var LParamIndex := 0 to LParamCount - 1 do
-  begin
-    var LGetterParam := Getter.ExplicitParams[LParamIndex];
-    var LPropertyParam := PropParams[LParamIndex];
-    if MatchImplicit(LPropertyParam.DataType, LGetterParam.DataType) = nil then
-      ERRORS.GETTER_MUST_BE_SUCH(Getter, GetProcDeclSring(PropParams, Prop.DataType));
-  end;
-end;
-
-procedure TASTDelphiUnit.MatchPropSetter(Prop: TIDProperty; Setter: TIDExpression; const PropParams: TIDParamArray);
-var
-  Proc: TIDProcedure;
-  LSetterParam, LPropertryParam: TIDParam;
-begin
-  var LParamCount := Length(PropParams);
-  // due to possible overloaded setters (getter can't be overloaded), serach for the proper setter
-  Proc := Setter.AsProcedure;
-  while Assigned(Proc) do
-  begin
-    if not Assigned(Proc.ResultType) and (Proc.ParamsCount = (LParamCount + 1)) then
-    begin
-      var IsMatch := True;
-      // match indexed params first
-      for var LParamIndex := 0 to LParamCount - 1 do
-      begin
-        LSetterParam := Proc.ExplicitParams[LParamIndex];
-        LPropertryParam := PropParams[LParamIndex];
-        if MatchImplicit(LPropertryParam.DataType, LSetterParam.DataType) = nil then
-        begin
-          IsMatch := False;
-          Break;
-        end;
-      end;
-      if IsMatch then
-      begin      
-        // match property setter value param 
-        LSetterParam := Proc.ExplicitParams[LParamCount];
-        if MatchImplicit(LSetterParam.DataType, Prop.DataType) <> nil then
-          Exit;
-      end;
-    end;
-    Proc := Proc.PrevOverload;
-  end;
-  if not Assigned(Proc) then
-    ERRORS.SETTER_MUST_BE_SUCH(GetProcDeclSring(PropParams, nil), Setter.TextPosition);
-end;
-
 function TASTDelphiUnit.MatchBinarOperator(Op: TOperatorID; var Left, Right: TIDExpression): TIDDeclaration;
 var
   LeftDT, RightDT: TIDType;
@@ -4903,7 +4849,13 @@ begin
       if not Assigned(Prop.Params) then
         Prop.Params := TParamsScope.Create(stLocal, Scope);
       var LIndexParam := TIDParam.CreateAsSystem(Prop.Scope, 'Index');
-      LIndexParam.DataType := LIndexValue.ActualDataType;
+
+      // Delphi requires the Integer or an enumeration type here
+      if LIndexValue.DataType.IsInteger then
+        LIndexParam.DataType := Sys._Int32
+      else
+        LIndexParam.DataType := LIndexValue.DataType;
+
       Prop.Params.AddExplicitParam(LIndexParam);
     end;
 
@@ -5004,7 +4956,6 @@ var
   SContext: TSContext;
   EContext: TEContext;
   LExpr: TIDExpression;
-  LDataType: TIDType;
   ASTE: TASTExpression;
 begin
   SContext := fUnitSContext;
@@ -5012,22 +4963,39 @@ begin
   Lexer_NextToken(Scope);
   Result := ParseExpression(Scope, SContext, EContext, ASTE);
   LExpr := EContext.Result;
-  if LExpr.ItemType = itProcedure then
-  begin
-    var LIndexedParams: TIDParamArray;
-    if Assigned(AProp.Params) then
-      LIndexedParams := AProp.Params.ExplicitParams;
+  case LExpr.ItemType of
+    itVar: if not SameTypes(LExpr.DataType, AProp.DataType) then
+      ERRORS.E2010_INCOMPATIBLE_TYPES(Self, LExpr.DataType, AProp.DataType, LExpr.TextPosition);
+    itProcedure: begin
+      var LIndexedParams: TIDParamArray;
+      if Assigned(AProp.Params) then
+        LIndexedParams := AProp.Params.ExplicitParams;
 
-    var LProc := LExpr.AsProcedure;
-    LDataType := LProc.ResultType;
-    if not Assigned(LDataType) then
-      AbortWork(sFieldConstOrFuncRequiredForGetter, LExpr.TextPosition);
+      var LFound := False;
+      var LGetter := LExpr.AsProcedure;
+      var LHasOverload := Assigned(LGetter.PrevOverload);
+      while Assigned(LGetter) do
+      begin
+        if LGetter.SameDeclaration(LIndexedParams, AProp.DataType) then
+        begin
+          LFound := True;
+          Break;
+        end;
+        LGetter := LGetter.PrevOverload;
+      end;
 
-    MatchPropGetter(AProp, LProc, LIndexedParams);
-  end else
-    LDataType := LExpr.DataType;
+      if not LFound then
+      begin
+        if LHasOverload then
+          ERRORS.E2250_THERE_IS_NO_OVERLOADED_VERSION_THAT_CAN_BE_CALLED_WITH_THESE_ARGUMENTS(Self, LExpr)
+        else
+          ERRORS.E2008_INCOMPATIBLE_TYPES(Self, LExpr.TextPosition);
+      end;
+    end;
+  else
+    ERRORS.E2168_FIELD_OR_METHOD_IDENTIFIER_EXPECTED(Self, LExpr.TextPosition);
+  end;
 
-  CheckImplicitTypes(LDataType, AProp.DataType, LExpr.TextPosition);
   AProp.Getter := LExpr.Declaration;
 end;
 
@@ -5043,14 +5011,40 @@ begin
   Lexer_NextToken(Scope);
   Result := ParseExpression(Scope, SContext, EContext, {out} ASTE);
   LExpr := EContext.Result;
-  var LIndexedParams: TIDParamArray;
-  if Assigned(AProp.Params) then
-    LIndexedParams := AProp.Params.ExplicitParams;
   case LExpr.ItemType of
-    itVar: {do nothing};  // todo: check scope of the field
-    itProcedure: MatchPropSetter(AProp, LExpr, LIndexedParams);
+    itVar: if not SameTypes(LExpr.DataType, AProp.DataType) then
+      ERRORS.E2010_INCOMPATIBLE_TYPES(Self, LExpr.DataType, AProp.DataType, LExpr.TextPosition);
+    itProcedure: begin
+      var LIndexedParams: TIDParamArray;
+      if Assigned(AProp.Params) then
+        LIndexedParams := AProp.Params.ExplicitParams;
+
+      var LValueParam := TIDParam.CreateAsTemporary(AProp.Scope, AProp.DataType);
+      LIndexedParams := LIndexedParams + [LValueParam];
+
+      var LFound := False;
+      var LSetter := LExpr.AsProcedure;
+      var LHasOverload := Assigned(LSetter.PrevOverload);
+      while Assigned(LSetter) do
+      begin
+        if LSetter.SameDeclaration(LIndexedParams, {AResultType:} nil) then
+        begin
+          LFound := True;
+          Break;
+        end;
+        LSetter := LSetter.PrevOverload;
+      end;
+
+      if not LFound then
+      begin
+        if LHasOverload then
+          ERRORS.E2250_THERE_IS_NO_OVERLOADED_VERSION_THAT_CAN_BE_CALLED_WITH_THESE_ARGUMENTS(Self, LExpr)
+        else
+          ERRORS.E2008_INCOMPATIBLE_TYPES(Self, LExpr.TextPosition);
+      end;
+    end;
   else
-    AbortWork(sFieldOrProcRequiredForSetter, LExpr.TextPosition);
+    ERRORS.E2168_FIELD_OR_METHOD_IDENTIFIER_EXPECTED(Self, LExpr.TextPosition);
   end;
   AProp.Setter := LExpr.Declaration;
 end;
@@ -7639,7 +7633,8 @@ begin
     // search overload
     var Decl := ForwardDecl;
     while True do begin
-      if Decl.SameDeclaration(ProcScope.ExplicitParams, ResultType, {ACheckNames:} True) then
+      // check only explicit parameters, the result type does not matter here
+      if Decl.SameDeclaration(ProcScope.ExplicitParams) then
       begin
         if Decl.Scope = Scope then
           ERRORS.THE_SAME_METHOD_EXISTS(ID)
@@ -7846,7 +7841,8 @@ begin
       // search overload
       var Decl := ForwardDecl;
       while True do begin
-        if Decl.SameDeclaration(ProcScope.ExplicitParams, GenericParams, ResultType, {ACheckNames:} True) then
+        // check only explicit and generic parameters, the result type does not matter here
+        if Decl.SameDeclaration(ProcScope.ExplicitParams, GenericParams, {ACheckNames:} True) then
         begin
           if Decl.Scope = Scope then
             ERRORS.THE_SAME_METHOD_EXISTS(ID)
@@ -8125,7 +8121,9 @@ begin
       // search overload
       var Decl := ForwardDecl;
       while True do begin
-        if Decl.SameDeclaration(ProcScope.ExplicitParams, ResultType) then begin
+        // check only explicit parameters, the result type does not matter here
+        if Decl.SameDeclaration(ProcScope.ExplicitParams) then
+        begin
           FwdDeclState := dsSame;
 
           if (Decl.Scope = Scope) and not (pfForward in Decl.Flags) then
@@ -8334,7 +8332,9 @@ begin
       // search overload
       var Decl := ForwardDecl;
       while True do begin
-        if Decl.SameDeclaration(ProcScope.ExplicitParams, ResultType) then begin
+        // check only explicit parameters, the result type does not matter here
+        if Decl.SameDeclaration(ProcScope.ExplicitParams) then
+        begin
           FwdDeclState := dsSame;
           if ((Decl.Scope = Scope) and not (pfForward in Decl.Flags)) or
               ((pfCompleted in Decl.Flags) and (ForwardDecl.Scope.DeclUnit = Self)) then
@@ -8632,13 +8632,15 @@ begin
       ERRORS.ID_REDECLARATED(ID);
     // ищем подходящую декларацию в списке перегруженных:
     while True do begin
-      if ForwardDecl.SameDeclaration(ProcScope.ExplicitParams, ResultType) then begin
+      // check only explicit parameters, the result type does not matter here
+      if ForwardDecl.SameDeclaration(ProcScope.ExplicitParams) then
+      begin
         // нашли подходящую декларацию
         FwdDeclState := dsSame;
         if ForwardDecl.IsCompleted then
         begin
           // for debug
-          if ForwardDecl.SameDeclaration(ProcScope.ExplicitParams, ResultType) then
+          if ForwardDecl.SameDeclaration(ProcScope.ExplicitParams) then
             ERRORS.ID_REDECLARATED(ID);
         end;
         Proc := ForwardDecl;

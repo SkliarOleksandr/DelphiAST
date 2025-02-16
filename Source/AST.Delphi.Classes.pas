@@ -1800,14 +1800,17 @@ type
     property ExplicitParams: TIDParamArray read FExplicitParams write SetParameters;
 
     function SameDeclaration(const AParams: TIDParamArray;
+                             ACheckNames: Boolean = False): Boolean; overload;
+    function SameDeclaration(const AParams: TIDParamArray;
                              AResultType: TIDType;
                              ACheckNames: Boolean = False): Boolean; overload;
-
     function SameDeclaration(const AParams: TIDParamArray;
                              const AGenericParams: TIDTypeArray;
                              AResultType: TIDType;
                              ACheckNames: Boolean = False): Boolean; overload;
-
+    function SameDeclaration(const AParams: TIDParamArray;
+                             const AGenericParams: TIDTypeArray;
+                             ACheckNames: Boolean = False): Boolean; overload;
     // Temporary variable alloc
     function GetTMPVar(DataType: TIDType; Reference: Boolean = False): TIDVariable; overload;
     function GetTMPVar(DataType: TIDType; VarFlags: TVariableFlags): TIDVariable; overload;
@@ -3069,9 +3072,7 @@ begin
             (AParam1.ConstraintType = AParam2.ConstraintType);
 end;
 
-function TIDProcedure.SameDeclaration(const AParams: TIDParamArray;
-                                      AResultType: TIDType;
-                                      ACheckNames: Boolean): Boolean;
+function TIDProcedure.SameDeclaration(const AParams: TIDParamArray; ACheckNames: Boolean): Boolean;
 var
   LCnt: Integer;
 begin
@@ -3089,12 +3090,37 @@ begin
       Exit(False);
   end;
 
-  // treat a generic result as a parameter
-  if (Assigned(ResultType) and not Assigned(AResultType) and ResultType.IsGeneric) or
-     (not Assigned(ResultType) and Assigned(AResultType) and AResultType.IsGeneric) then
-    Result := False
-  else
-    Result := True;
+  Result := True;
+end;
+
+function TIDProcedure.SameDeclaration(const AParams: TIDParamArray;
+                                      AResultType: TIDType;
+                                      ACheckNames: Boolean): Boolean;
+begin
+  Result := SameDeclaration(AParams, ACheckNames);
+  // check result type
+  if Result then
+  begin
+    if Assigned(AResultType) and Assigned(ResultType) then
+      Result := SameProcSignTypes(AResultType, ResultType)
+    else
+      Result := not Assigned(AResultType) and not Assigned(ResultType);
+   end;
+end;
+
+function TIDProcedure.SameDeclaration(const AParams: TIDParamArray; const AGenericParams: TIDTypeArray;
+  ACheckNames: Boolean): Boolean;
+begin
+  var LGenericParamsCnt := Length(AGenericParams);
+  if LGenericParamsCnt > 0 then
+  begin
+    if not Assigned(GenericDescriptor) or (GenericDescriptor.ParamsCount <> LGenericParamsCnt) then
+      Exit(False);
+  end else
+    if Assigned(GenericDescriptor) then
+      Exit(False);
+
+  Result := SameDeclaration(AParams, ACheckNames);
 end;
 
 function TIDProcedure.SameDeclaration(const AParams: TIDParamArray;
@@ -4993,7 +5019,7 @@ begin
     begin
       var LMethod := TIDProcedure(LDecl);
       if (pfVirtual in LMethod.Flags) and
-         (LMethod.SameDeclaration(AProc.ExplicitParams, AProc.ResultType)) and
+         (LMethod.SameDeclaration(AProc.ExplicitParams, AProc.ResultType, {ACheckNames:} False)) and
           LMethod.IsClassMethod = AProc.IsClassMethod then
       begin
         var LResultType1 := LMethod.ResultType;

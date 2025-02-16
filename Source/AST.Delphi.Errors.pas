@@ -99,8 +99,6 @@ resourcestring
   sRecordTypeRequired = 'Record type is required';
   sStructTypeRequired = 'Structured type is required';
   sRecurciveTypeLinkIsNotAllowed = 'Recurcive link is not allowed';
-  sFieldConstOrFuncRequiredForGetter = 'The field, constant or function are required for a getter';
-  sFieldOrProcRequiredForSetter = 'The field or procedure are required for a setter';
   sCannotModifyReadOnlyProperty = 'Cannot modify the read-only property';
   sCannotAccessToWriteOnlyProperty = 'Cannot access to write-only property';
   sSetterMustBeMethodWithSignFmt = 'Setter must be a method with signature: procedure(const Value: %s);';
@@ -299,6 +297,7 @@ type
     class procedure E2064_LEFT_SIDE_CANNOT_BE_ASSIGNED_TO(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2066_MISSING_OPERATOR_OR_SEMICOLON(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2089_INVALID_TYPECAST(const AModule: IASTModule; const ATextPosition: TTextPosition);
+    class procedure E2168_FIELD_OR_METHOD_IDENTIFIER_EXPECTED(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2170_CANNOT_OVERRIDE_A_NON_VIRTUAL_METHOD(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2185_CANNOT_SPECIFY_DISPID(const AModule: IASTModule; const AMethodID: TIdentifier);
     class procedure E2196_CANNOT_INIT_MULTIPLE_VARS(const ATextPosition: TTextPosition); static;
@@ -652,6 +651,12 @@ end;
 class procedure TASTDelphiErrors.E2089_INVALID_TYPECAST(const AModule: IASTModule;const ATextPosition: TTextPosition);
 begin
   AModule.PutError('E2089 Invalid typecast', ATextPosition);
+end;
+
+class procedure TASTDelphiErrors.E2168_FIELD_OR_METHOD_IDENTIFIER_EXPECTED(const AModule: IASTModule;
+  const APosition: TTextPosition);
+begin
+  AModule.PutError('E2168 Field or method identifier expected', APosition);
 end;
 
 class procedure TASTDelphiErrors.E2170_CANNOT_OVERRIDE_A_NON_VIRTUAL_METHOD(const AModule: IASTModule;

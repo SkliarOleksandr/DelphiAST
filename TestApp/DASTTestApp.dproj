@@ -195,6 +195,7 @@
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Constr2.pas"/>
         <DCCReference Include="..\TestScripts\Ordinals\ASTTest.Ordian.Enums.Init.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.External.pas"/>
+        <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.DiffSigns1.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.Generics1.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.Generics2.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.ImplicitCall1.pas"/>
@@ -203,6 +204,9 @@
         <DCCReference Include="..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload1.pas"/>
         <DCCReference Include="..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload2.pas"/>
         <DCCReference Include="..\TestScripts\Properties\ASTTest.Props.InheritedProp1.pas"/>
+        <DCCReference Include="..\TestScripts\Properties\ASTTest.Props.OverloadGetSet.pas"/>
+        <DCCReference Include="..\TestScripts\Properties\ASTTest.Props.PropWithIndex1.pas"/>
+        <DCCReference Include="..\TestScripts\Properties\ASTTest.Props.PropWithIndex2.pas"/>
         <DCCReference Include="..\TestScripts\Classes\Constructors\ASTTest.Classes.Construct1.pas"/>
         <DCCReference Include="..\TestScripts\Classes\Constructors\ASTTest.Classes.Construct2.pas"/>
         <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.Inherited1.pas"/>
@@ -239,7 +243,6 @@
         <DCCReference Include="..\TestScripts\Records\ASTTest.Records.CaseRecord2.pas"/>
         <DCCReference Include="..\TestScripts\Records\ASTTest.Records.CaseRecord1.pas"/>
         <DCCReference Include="..\TestScripts\Built-ins\ASTTest.Builtins.High1.pas"/>
-        <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.DiffSigns1.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
