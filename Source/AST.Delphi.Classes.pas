@@ -379,12 +379,12 @@ type
     fCopyProc: TIDProcedure;
     fFinalProc: TIDProcedure;
     function GetOperators(const Op: TOperatorID): TBinaryOperatorsArray;
-    function GetIsReferenced: Boolean; inline;
     function GetIsUntypedPointer: Boolean; inline;
     function GetIsClass: Boolean; inline;
     function GetIsInterface: Boolean; inline;
     function GetIsChar: Boolean;
   protected
+    function GetIsReferenced: Boolean; virtual;
     function GetDataSize: Integer; virtual;
     function GetIsOrdinal: Boolean; virtual;
     function GetIsInteger: Boolean; virtual;
@@ -550,6 +550,8 @@ type
   private
     fConstraint: TGenericConstraint;
     fConstraintType: TIDType;
+  protected
+    function GetIsReferenced: Boolean; override;
   public
     constructor Create(Scope: TScope; const ID: TIdentifier); override;
     property Constraint: TGenericConstraint read fConstraint write fConstraint;
@@ -7941,6 +7943,12 @@ begin
       Exit(True);
 
   Result := False;
+end;
+
+function TIDGenericParam.GetIsReferenced: Boolean;
+begin
+  Result := Assigned(fConstraintType) or
+            (fConstraint in [gsClass, gsConstructor, gsClassAndConstructor]);
 end;
 
 function TIDGenericParam.InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
