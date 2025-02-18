@@ -116,7 +116,8 @@ uses
   ASTTest.Intf.MethodRedeclaration in '..\TestScripts\Interfaces\ASTTest.Intf.MethodRedeclaration.pas',
   ASTTest.Records.CaseRecord2 in '..\TestScripts\Records\ASTTest.Records.CaseRecord2.pas',
   ASTTest.Records.CaseRecord1 in '..\TestScripts\Records\ASTTest.Records.CaseRecord1.pas',
-  ASTTest.Builtins.High1 in '..\TestScripts\Built-ins\ASTTest.Builtins.High1.pas';
+  ASTTest.Builtins.High1 in '..\TestScripts\Built-ins\ASTTest.Builtins.High1.pas',
+  ASTTest.TypeInfer.InlineVar1 in '..\TestScripts\Type Inference\ASTTest.TypeInfer.InlineVar1.pas';
 
 {$R *.res}
 

@@ -7111,7 +7111,7 @@ begin
 
     // parse a type if declared
     if Result = token_colon then
-      Result := ParseTypeSpec(Scope, DataType)
+      Result := ParseTypeSpec(Scope, {out} DataType)
     else
       DataType := nil;
 
@@ -7130,8 +7130,9 @@ begin
         ERRORS.E2196_CANNOT_INIT_MULTIPLE_VARS(LVarID.TextPosition);
 
       InitEContext(EContext, SContext, ExprRValue);
-      var ADefaultValueExpr := TIDExpression.Create(Variable, Variable.TextPosition);
-      EContext.RPNPushExpression(ADefaultValueExpr);
+      // prepare variable (dest) expression and put to the RPN stack
+      var LVarExpr := TIDExpression.Create(Variable, Variable.TextPosition);
+      EContext.RPNPushExpression(LVarExpr);
 
       Lexer_NextToken(Scope);
       var ASTExpr: TASTExpression := nil;
@@ -7140,7 +7141,10 @@ begin
 
       if not Assigned(DataType) then
       begin
-        DataType := EContext.Result.DataType;
+        // resolve implicit call if right expression is a function
+        var LValueExpr := CheckAndCallFuncImplicit(EContext, EContext.Result);
+
+        DataType := LValueExpr.DataType;
         if DataType = Sys._Untyped then
           ERRORS.COULD_NOT_INFER_VAR_TYPE_FROM_UNTYPED(EContext.Result);
 
