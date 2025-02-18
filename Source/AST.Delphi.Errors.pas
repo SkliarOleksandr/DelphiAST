@@ -219,8 +219,6 @@ type
     class procedure CANNOT_MODIFY_CONSTANT(Expr: TIDExpression); static;
     class procedure BOOLEAN_EXPRESSION_REQUIRED(Expr: TIDExpression); static;
     class procedure ARRAY_EXPRESSION_REQUIRED(Expr: TIDExpression); static;
-    class procedure ID_REDECLARATED(Decl: TIDDeclaration); overload; static;
-    class procedure ID_REDECLARATED(const ID: TIdentifier); overload; static;
     class procedure THE_SAME_METHOD_EXISTS(const ID: TIdentifier); overload; static;
     class procedure UNDECLARED_ID(const ID: TIdentifier); overload; static;
     class procedure UNDECLARED_ID(const ID: TIdentifier; const GenericParams: TIDTypeArray); overload; static;
@@ -258,7 +256,6 @@ type
     class procedure METHOD_NOT_DECLARED_IN_CLASS(const ID: TIdentifier; Struct: TIDStructure); static;
     class procedure INPLACEVAR_ALLOWED_ONLY_FOR_OUT_PARAMS(Variable: TIDVariable);
     class procedure CANNOT_ACCESS_PRIVATE_MEMBER(const ID: TIdentifier); static;
-    class procedure REF_PARAM_MUST_BE_IDENTICAL(Expr: TIDExpression);
     class procedure UNKNOWN_OPTION(const ID: TIdentifier);
     class procedure CANNOT_ASSIGN_TEMPORARRY_OBJECT(Expr: TIDExpression);
 
@@ -283,6 +280,7 @@ type
     procedure GENERIC_INVALID_CONSTRAINT(ActualToken: TTokenID);
 
     class procedure E2003_UNDECLARED_IDENTIFIER(const AModule: IASTModule; const AID: TIdentifier);
+    class procedure E2004_IDENTIFIER_REDECLARED(const AModule: IASTModule; const AID: TIdentifier);
     class procedure E2005_ID_IS_NOT_A_TYPE_IDENTIFIER(const AModule: IASTModule; const AExpr: TIDExpression);
     class procedure E2008_INCOMPATIBLE_TYPES(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2010_INCOMPATIBLE_TYPES(const AModule: IASTModule; ALeft, ARight: TIDType; const ATextPosition: TTextPosition);
@@ -291,6 +289,7 @@ type
     class procedure E2018_RECORD_OBJECT_OR_CLASS_TYPE_REQUIRED(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2022_CLASS_HELPER_TYPE_REQUIRED(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2029_SEMICOLON_EXPECTED_BUT_ID_FOUND(const AModule: IASTModule; const AID: TIdentifier);
+    class procedure E2033_TYPES_OF_ACTUAL_AND_FORMAL_VAR_PARAMETER_MUST_BE_IDENTICAL(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2034_TOO_MANY_ACTUAL_PARAMETERS(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2035_NOT_ENOUGH_ACTUAL_PARAMETERS(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2037_DECLARATION_OF_DIFFERS_FROM_PREVIOUS_DECLARATION(const AModule: IASTModule; const AID: TIdentifier);
@@ -301,7 +300,7 @@ type
     class procedure E2170_CANNOT_OVERRIDE_A_NON_VIRTUAL_METHOD(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2185_CANNOT_SPECIFY_DISPID(const AModule: IASTModule; const AMethodID: TIdentifier);
     class procedure E2196_CANNOT_INIT_MULTIPLE_VARS(const ATextPosition: TTextPosition); static;
-    class procedure E2197_CONSTANT_OBJECT_CANNOT_BE_PASSED_AS_VAR_PARAMETER(const AModule: IASTModule; const AID: TIdentifier);
+    class procedure E2197_CONSTANT_OBJECT_CANNOT_BE_PASSED_AS_VAR_PARAMETER(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2250_THERE_IS_NO_OVERLOADED_VERSION_THAT_CAN_BE_CALLED_WITH_THESE_ARGUMENTS(const AModule: IASTModule; AExpression: TIDExpression);
     class procedure E2251_AMBIGUOUS_OVERLOADED_CALL(const AModule: IASTModule; AExpression: TIDExpression);
     class procedure E2232_INTERFACE_HAS_NO_INTERFACE_IDENTIFICATION(const AModule: IASTModule; ADecl: TIDDeclaration);
@@ -580,6 +579,11 @@ begin
   AModule.PutError('E2003 Undeclared identifier: ''%s''', [AID.Name], AID.TextPosition);
 end;
 
+class procedure TASTDelphiErrors.E2004_IDENTIFIER_REDECLARED(const AModule: IASTModule; const AID: TIdentifier);
+begin
+  AModule.PutError('E2004 Identifier redeclared: ''%s''', [AID.Name], AID.TextPosition);
+end;
+
 class procedure TASTDelphiErrors.E2005_ID_IS_NOT_A_TYPE_IDENTIFIER(const AModule: IASTModule; const AExpr: TIDExpression);
 begin
   AModule.PutError('E2005 ''%s'' is not a type identifier', [AExpr.DisplayName], AExpr.TextPosition);
@@ -619,6 +623,12 @@ end;
 class procedure TASTDelphiErrors.E2029_SEMICOLON_EXPECTED_BUT_ID_FOUND(const AModule: IASTModule; const AID: TIdentifier);
 begin
   AModule.PutError('E2029 '';'' expected but ''%s'' found', [AID.Name], AID.TextPosition);
+end;
+
+class procedure TASTDelphiErrors.E2033_TYPES_OF_ACTUAL_AND_FORMAL_VAR_PARAMETER_MUST_BE_IDENTICAL(const AModule: IASTModule;
+  const APosition: TTextPosition);
+begin
+  AModule.PutError('E2033 Types of actual and formal var parameters must be identical', APosition);
 end;
 
 class procedure TASTDelphiErrors.E2034_TOO_MANY_ACTUAL_PARAMETERS(const AModule: IASTModule;
@@ -677,9 +687,9 @@ begin
 end;
 
 class procedure TASTDelphiErrors.E2197_CONSTANT_OBJECT_CANNOT_BE_PASSED_AS_VAR_PARAMETER(const AModule: IASTModule;
-  const AID: TIdentifier);
+  const APosition: TTextPosition);
 begin
-  AModule.PutError('E2197 Constant object cannot be passed as var parameter', AID.TextPosition);
+  AModule.PutError('E2197 Constant object cannot be passed as var parameter', APosition);
 end;
 
 class procedure TASTDelphiErrors.E2232_INTERFACE_HAS_NO_INTERFACE_IDENTIFICATION(const AModule: IASTModule; ADecl: TIDDeclaration);
@@ -811,16 +821,6 @@ end;
 procedure TASTDelphiErrors.INVALID_TYPE_DECLARATION;
 begin
   AbortWork('Invalid type declaration', Lexer.Position);
-end;
-
-class procedure TASTDelphiErrors.ID_REDECLARATED(Decl: TIDDeclaration);
-begin
-  AbortWork(sIdentifierRedeclaredFmt, [Decl.DisplayName], Decl.SourcePosition);
-end;
-
-class procedure TASTDelphiErrors.ID_REDECLARATED(const ID: TIdentifier);
-begin
-  AbortWork(sIdentifierRedeclaredFmt, [ID.Name], ID.TextPosition);
 end;
 
 procedure TASTDelphiErrors.IMPORT_FUNCTION_CANNOT_BE_INLINE;
@@ -1046,11 +1046,6 @@ end;
 class procedure TASTDelphiErrors.REFERENCE_TYPE_EXPECTED(const Expr: TIDExpression);
 begin
   AbortWork('REFERENCE type required', Expr.TextPosition);
-end;
-
-class procedure TASTDelphiErrors.REF_PARAM_MUST_BE_IDENTICAL(Expr: TIDExpression);
-begin
-  AbortWork('Types of actual and formal VAR parameters must be identical: ' + Expr.DisplayName, Expr.TextPosition);
 end;
 
 class procedure TASTDelphiErrors.CANNOT_MODIFY_READONLY_PROPERTY(const Expr: TIDExpression);

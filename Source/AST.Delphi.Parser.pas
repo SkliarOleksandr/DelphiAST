@@ -1308,7 +1308,7 @@ begin
        ImplImportedUnits.Find(ID.Name, {var} Idx) then
     begin
       //if (LUnit <> SYSUnit) or FSystemExplicitUse then
-      ERRORS.ID_REDECLARATED(ID);
+      ERRORS.E2004_IDENTIFIER_REDECLARED(Self, ID);
     end;
 
     // compile if not compiled yet
@@ -2004,7 +2004,7 @@ begin
         CheckVarExpression(ArgExpr, vmpPassArgument);
         {проверка на строгость соответствия типов}
         if Param.DataType.ActualDataType <> ArgExpr.DataType.ActualDataType then
-          ERRORS.REF_PARAM_MUST_BE_IDENTICAL(ArgExpr);
+          ERRORS.E2033_TYPES_OF_ACTUAL_AND_FORMAL_VAR_PARAMETER_MUST_BE_IDENTICAL(Self, ArgExpr.TextPosition);
       end;
     end;
   end;
@@ -3048,13 +3048,13 @@ end;
 procedure TASTDelphiUnit.InsertToScope(Scope: TScope; Item: TIDDeclaration);
 begin
   if not Scope.InsertID(Item) then
-    ERRORS.ID_REDECLARATED(Item);
+    ERRORS.E2004_IDENTIFIER_REDECLARED(Self, Item.ID);
 end;
 
 procedure TASTDelphiUnit.InsertToScope(Scope: TScope; const ID: string; Declaration: TIDDeclaration);
 begin
   if Assigned(Scope.InsertNode(ID, Declaration)) then
-    ERRORS.ID_REDECLARATED(Declaration);
+    ERRORS.E2004_IDENTIFIER_REDECLARED(Self, Declaration.ID);
 end;
 
 {parser methods}
@@ -5923,7 +5923,7 @@ begin
               Result := LFwdDecl;
               Break;
             end else
-              ERRORS.ID_REDECLARATED(ID);
+              ERRORS.E2004_IDENTIFIER_REDECLARED(Self, ID);
           end;
           if Assigned(LFwdDecl.NextGenericOverload) then
             LFwdDecl := TIDType(LFwdDecl.NextGenericOverload)
@@ -5931,7 +5931,7 @@ begin
             Break;
         end;
       end else
-        ERRORS.ID_REDECLARATED(ID);
+        ERRORS.E2004_IDENTIFIER_REDECLARED(Self, ID);
     end;
   end else
     LFwdDecl := nil;
@@ -6033,7 +6033,7 @@ begin
   if Result = token_semicolon then
   begin
     if Decl.NeedForward then
-      ERRORS.ID_REDECLARATED(ID);
+      ERRORS.E2004_IDENTIFIER_REDECLARED(Self, ID);
     Decl.NeedForward := True;
     fForwardTypes.Add(Decl);
     Exit;
@@ -7649,7 +7649,7 @@ begin
   begin
     // check redeclaration
     if ForwardDecl.ItemType <> itProcedure then
-      ERRORS.ID_REDECLARATED(ID);
+      ERRORS.E2004_IDENTIFIER_REDECLARED(Self, ID);
 
     // search overload
     var Decl := ForwardDecl;
@@ -7848,7 +7848,7 @@ begin
   begin
     // ошибка если перекрыли идентификатор другого типа:
     if ForwardDecl.ItemType <> itProcedure then
-      ERRORS.ID_REDECLARATED(ID);
+      ERRORS.E2004_IDENTIFIER_REDECLARED(Self, ID);
 
     // The case when proc impl doesn't have params at all insted of decl
     if (Scope.ScopeClass = scImplementation) and (ProcScope.ExplicitParamsCount = 0) and
@@ -8128,7 +8128,7 @@ begin
 
     // ошибка если перекрыли идентификатор другого типа:
     if ForwardDecl.ItemType <> itProcedure then
-      ERRORS.ID_REDECLARATED(ID);
+      ERRORS.E2004_IDENTIFIER_REDECLARED(Self, ID);
 
     // The case when proc impl doesn't have params at all insted of decl
     if (Scope.ScopeClass = scImplementation) and (ProcScope.ExplicitParamsCount = 0) and
@@ -8148,7 +8148,7 @@ begin
           FwdDeclState := dsSame;
 
           if (Decl.Scope = Scope) and not (pfForward in Decl.Flags) then
-            ERRORS.ID_REDECLARATED(ID);
+            ERRORS.E2004_IDENTIFIER_REDECLARED(Self, ID);
 
           Proc := Decl;
           Break;
@@ -8339,7 +8339,7 @@ begin
 
     // ошибка если перекрыли идентификатор другого типа:
     if ForwardDecl.ItemType <> itProcedure then
-      ERRORS.ID_REDECLARATED(ID);
+      ERRORS.E2004_IDENTIFIER_REDECLARED(Self, ID);
 
     // The case when proc impl doesn't have params at all insted of decl
     if (ProcScope.ExplicitParamsCount = 0) and (ForwardDecl.PrevOverload = nil) and (ForwardDecl.Scope = Scope) then
@@ -8359,7 +8359,7 @@ begin
           FwdDeclState := dsSame;
           if ((Decl.Scope = Scope) and not (pfForward in Decl.Flags)) or
               ((pfCompleted in Decl.Flags) and (ForwardDecl.Scope.DeclUnit = Self)) then
-            ERRORS.ID_REDECLARATED(ID);
+            ERRORS.E2004_IDENTIFIER_REDECLARED(Self, ID);
           Proc := Decl;
           Break;
         end;
@@ -8650,7 +8650,7 @@ begin
   if Assigned(ForwardDecl) then begin
     // ошибка если перекрыли идентификатор другого типа:
     if ForwardDecl.ItemType <> itProcedure then
-      ERRORS.ID_REDECLARATED(ID);
+      ERRORS.E2004_IDENTIFIER_REDECLARED(Self, ID);
     // ищем подходящую декларацию в списке перегруженных:
     while True do begin
       // check only explicit parameters, the result type does not matter here
@@ -8662,7 +8662,7 @@ begin
         begin
           // for debug
           if ForwardDecl.SameDeclaration(ProcScope.ExplicitParams) then
-            ERRORS.ID_REDECLARATED(ID);
+            ERRORS.E2004_IDENTIFIER_REDECLARED(Self, ID);
         end;
         Proc := ForwardDecl;
         Break;
@@ -9942,7 +9942,7 @@ begin
   if Result = token_semicolon then
   begin
     if Decl.NeedForward then
-      ERRORS.ID_REDECLARATED(ID);
+      ERRORS.E2004_IDENTIFIER_REDECLARED(Self, ID);
     Decl.NeedForward := True;
     Exit;
   end;
@@ -10908,7 +10908,12 @@ begin
   if Decl.ItemType <> itVar then
   case VarModifyPlace of
     vmpAssignment: ERRORS.E2064_LEFT_SIDE_CANNOT_BE_ASSIGNED_TO(Self, Expression.TextPosition);
-    vmpPassArgument: ERRORS.ARG_VAR_REQUIRED(Expression);
+    vmpPassArgument: begin
+      if Decl.ItemType  = itConst then
+        ERRORS.E2197_CONSTANT_OBJECT_CANNOT_BE_PASSED_AS_VAR_PARAMETER(Self, Expression.TextPosition)
+      else
+        ERRORS.E2033_TYPES_OF_ACTUAL_AND_FORMAL_VAR_PARAMETER_MUST_BE_IDENTICAL(Self, Expression.TextPosition);
+    end;
   end;
   Flags := TIDVariable(Decl).Flags;
   if (VarConst in Flags) and (Expression.DataType <> Sys._UntypedReference) then
@@ -10934,7 +10939,7 @@ begin
        not SameTypes(Param.DataType, Arg.DataType) and
        not ((Param.DataType.DataTypeID = dtPointer) and
             (Arg.DataType.DataTypeID = dtPointer)) then
-    ERRORS.REF_PARAM_MUST_BE_IDENTICAL(Arg);
+    ERRORS.E2033_TYPES_OF_ACTUAL_AND_FORMAL_VAR_PARAMETER_MUST_BE_IDENTICAL(Self, Arg.TextPosition);
   end;
 end;
 

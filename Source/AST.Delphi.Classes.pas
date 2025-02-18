@@ -9134,7 +9134,7 @@ end;
 procedure TParamsScope.AddExplicitParam(AParam: TIDParam);
 begin
   if not InsertID(AParam) then
-    TASTDelphiErrors.ID_REDECLARATED(AParam);
+    TASTDelphiErrors.E2004_IDENTIFIER_REDECLARED(DeclUnit, AParam.ID);
 
   // add the explicit param to the explicits array
   var LArrayLen := Length(FExplicitParams);
@@ -9145,7 +9145,7 @@ end;
 procedure TParamsScope.AddImplicitParam(AParam: TIDParam);
 begin
   if not InsertID(AParam) then
-    TASTDelphiErrors.ID_REDECLARATED(AParam);
+    TASTDelphiErrors.E2004_IDENTIFIER_REDECLARED(DeclUnit, AParam.ID);
 end;
 
 function TParamsScope.GetItem(AIndex: Integer): TIDParam;
