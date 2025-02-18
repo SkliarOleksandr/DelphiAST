@@ -13,6 +13,12 @@ uses
   AST.Delphi.Contexts;
 
 type
+  {Addr}
+  TSF_Addr = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
+  end;
 
   {Assigned}
   TSF_Assigned = class(TIDSysRuntimeFunction)
@@ -1566,6 +1572,21 @@ begin
   A2 := EContext.RPNPopExpression();
   A1 := EContext.RPNPopExpression();
   Result := nil;
+end;
+
+{ TSF_Addr }
+
+class function TSF_Addr.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Addr', SYSUnit._Pointer);
+  Result.AddParam('X', SysUnit._UntypedReference, [VarInOut]);
+end;
+
+function TSF_Addr.Process(var EContext: TEContext): TIDExpression;
+begin
+  var X := EContext.RPNPopExpression();
+  var ResVar := EContext.SContext.Proc.GetTMPVar(SYSUnit._Pointer);
+  Result := TIDExpression.Create(ResVar, X.TextPosition);
 end;
 
 { TSF_ReturnAddress }

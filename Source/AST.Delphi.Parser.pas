@@ -425,7 +425,7 @@ type
     function ParseForInStatement(Scope: TScope; const SContext: TSContext; LoopVar: TIDExpression): TTokenID;
     function ParseCaseStatement(Scope: TScope; const SContext: TSContext): TTokenID;
     function ParseInheritedStatement(Scope: TScope; const EContext: TEContext): TTokenID;
-    function ParseImmVarStatement(Scope: TScope; const SContext: TSContext): TTokenID;
+    function ParseInlineVarStatement(Scope: TScope; const SContext: TSContext): TTokenID;
     function ParseTrySection(Scope: TScope; const SContext: TSContext): TTokenID;
     function ParseExceptOnSection(Scope: TScope; KW: TASTKWTryBlock; const SContext: TSContext): TTokenID;
     function ParseRaiseStatement(Scope: TScope; const SContext: TSContext): TTokenID;
@@ -632,7 +632,7 @@ begin
       {;}
       token_semicolon:;
       {VAR}
-      token_var: Result := ParseImmVarStatement(Scope, SContext);
+      token_var: Result := ParseInlineVarStatement(Scope, SContext);
       {CONST}
       token_const: begin
         Lexer_NextToken(Scope);
@@ -6745,16 +6745,6 @@ begin
   if StopExpr.IsTMPVar then
     StopExpr.AsVariable.IncludeFlags([VarLoopIndex]);
 
-  // проверка на константы
-  if (StartExpr.ItemType = itConst) and
-     (StopExpr.ItemType = itConst) then
-  begin
-    WriteIL := ((JMPCondition = cGreater) and (StartExpr.AsIntConst.Value <= StopExpr.AsIntConst.Value)) or
-               ((JMPCondition = cLess) and (StartExpr.AsIntConst.Value >= StopExpr.AsIntConst.Value));
-    if not WriteIL then
-      Warning(sForOrWhileLoopExecutesZeroTimes, [], StartExpr.TextPosition);
-  end;
-
   // тело цикла
   Lexer_MatchToken(Result, token_do);
   Result := Lexer_NextToken(Scope);
@@ -7074,7 +7064,7 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.ParseImmVarStatement(Scope: TScope; const SContext: TSContext): TTokenID;
+function TASTDelphiUnit.ParseInlineVarStatement(Scope: TScope; const SContext: TSContext): TTokenID;
 
   function CreateVariable(const AID: TIdentifier; ADataType: TIDType; AKW: TASTKWInlineVarDecl): TIDVariable;
   begin
@@ -7100,14 +7090,15 @@ begin
   while True do begin
     Lexer_MatchIdentifier(Result);
     Lexer_ReadCurrIdentifier(LVarID);
-
+    Inc(LVarCount);
     Result := Lexer_NextToken(Scope);
     if Result = token_Coma then begin
-      Inc(LVarCount);
       Result := Lexer_NextToken(Scope);
       LVarArray := LVarArray + [LVarID];
       Continue;
-    end;
+    end else
+      if LVarCount > 1 then
+        LVarArray := LVarArray + [LVarID];
 
     // parse a type if declared
     if Result = token_colon then
@@ -7115,18 +7106,18 @@ begin
     else
       DataType := nil;
 
-    if LVarCount = 0 then
+    if LVarCount = 1 then
       Variable := CreateVariable(LVarID, DataType, KW)
     else begin
       Variable := nil;
       for var LIndex := 0 to LVarCount - 1 do
-        CreateVariable(LVarID, DataType, KW);
+        CreateVariable(LVarArray[LIndex], DataType, KW);
     end;
 
     // parse a default value if declared
     if Result = token_assign then
     begin
-      if LVarCount > 0 then
+      if LVarCount > 1 then
         ERRORS.E2196_CANNOT_INIT_MULTIPLE_VARS(LVarID.TextPosition);
 
       InitEContext(EContext, SContext, ExprRValue);
@@ -9825,6 +9816,10 @@ var
   KW: TASTKWInheritedCall;
 begin
   Proc := EContext.SContext.Proc;
+
+  if not Assigned(Proc.Struct) then
+    ERRORS.E2075_THIS_FORM_OF_METHOD_CALL_ONLY_ALLOWED_IN_METHODS_OF_DERIVED_TYPES(Self, Lexer_Position);
+
   KW := EContext.SContext.Add(TASTKWInheritedCall) as TASTKWInheritedCall;
   Result := Lexer_NextToken(Scope);
   if Result = token_identifier then
@@ -9890,10 +9885,8 @@ begin
       ResultExpr := Process_CALL_direct(EContext.SContext, CallExpr, CallArgs);
       if Assigned(ResultExpr) then
         EContext.RPNPushExpression(ResultExpr);
-    end else
-    // ignore if there is no inherited constructor
-    if not (pfConstructor in Proc.Flags) then
-      ERRORS.NO_METHOD_IN_BASE_CLASS(Proc);
+    end else;
+      // ignore if there is no inherited
   end;
 end;
 

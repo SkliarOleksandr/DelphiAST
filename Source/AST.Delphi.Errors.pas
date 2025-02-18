@@ -295,7 +295,9 @@ type
     class procedure E2037_DECLARATION_OF_DIFFERS_FROM_PREVIOUS_DECLARATION(const AModule: IASTModule; const AID: TIdentifier);
     class procedure E2064_LEFT_SIDE_CANNOT_BE_ASSIGNED_TO(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2066_MISSING_OPERATOR_OR_SEMICOLON(const AModule: IASTModule; const APosition: TTextPosition);
+    class procedure E2075_THIS_FORM_OF_METHOD_CALL_ONLY_ALLOWED_IN_METHODS_OF_DERIVED_TYPES(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2089_INVALID_TYPECAST(const AModule: IASTModule; const ATextPosition: TTextPosition);
+    class procedure E2137_METHOD_NOT_FOUND_IN_BASE_CLASS(const AModule: IASTModule; const AID: TIdentifier);
     class procedure E2168_FIELD_OR_METHOD_IDENTIFIER_EXPECTED(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2170_CANNOT_OVERRIDE_A_NON_VIRTUAL_METHOD(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2185_CANNOT_SPECIFY_DISPID(const AModule: IASTModule; const AMethodID: TIdentifier);
@@ -312,7 +314,6 @@ type
 
     procedure PROCEDURE_CANNOT_HAVE_RESULT;
     procedure BREAK_OR_CONTINUE_ALLOWED_ONLY_IN_LOOPS;
-    procedure NO_METHOD_IN_BASE_CLASS(Proc: TIDProcedure);
     procedure DEFAULT_PROP_MUST_BE_ARRAY_PROP;
     procedure DEFAULT_PROP_ALREADY_EXIST(Prop: TIDProperty);
     procedure IMPORT_FUNCTION_CANNOT_BE_INLINE;
@@ -658,9 +659,20 @@ begin
   AModule.PutError('E2066 Missing operator or semicolon', APosition);
 end;
 
+class procedure TASTDelphiErrors.E2075_THIS_FORM_OF_METHOD_CALL_ONLY_ALLOWED_IN_METHODS_OF_DERIVED_TYPES(
+  const AModule: IASTModule; const APosition: TTextPosition);
+begin
+  AModule.PutError('E2075 This form of method call only allowed in methods of derived types', APosition);
+end;
+
 class procedure TASTDelphiErrors.E2089_INVALID_TYPECAST(const AModule: IASTModule;const ATextPosition: TTextPosition);
 begin
   AModule.PutError('E2089 Invalid typecast', ATextPosition);
+end;
+
+class procedure TASTDelphiErrors.E2137_METHOD_NOT_FOUND_IN_BASE_CLASS(const AModule: IASTModule; const AID: TIdentifier);
+begin
+  AModule.PutError('E2137 Method ''%s'' not found in base class', [AID.Name], AID.TextPosition);
 end;
 
 class procedure TASTDelphiErrors.E2168_FIELD_OR_METHOD_IDENTIFIER_EXPECTED(const AModule: IASTModule;
@@ -1136,11 +1148,6 @@ begin
   if Assigned(TIDProcedure(Decl).Struct) then
     ProcName := TIDProcedure(Decl).Struct.Name + '.' + ProcName;
   AbortWork(sIncompleteProcFmt, [ProcName], Decl.SourcePosition);
-end;
-
-procedure TASTDelphiErrors.NO_METHOD_IN_BASE_CLASS(Proc: TIDProcedure);
-begin
-  AbortWork('Method %s is not found in base classes', [Proc.DisplayName], Proc.ID.TextPosition);
 end;
 
 procedure TASTDelphiErrors.HINT_TEXT_AFTER_END;

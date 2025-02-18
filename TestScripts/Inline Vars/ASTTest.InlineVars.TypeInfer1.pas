@@ -1,4 +1,4 @@
-unit ASTTest.TypeInfer.InlineVar1;
+unit ASTTest.InlineVars.TypeInfer1;
 
 interface
 

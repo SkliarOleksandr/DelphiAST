@@ -1209,6 +1209,7 @@ end;
 procedure TSYSTEMUnit.RegisterBuiltinFunctions;
 begin
   RegisterBuiltin(TSF_Abs);
+  RegisterBuiltin(TSF_Addr);
   RegisterBuiltin(TSF_Assert);
   RegisterBuiltin(TSF_Assigned);
   RegisterBuiltin(TSF_AtomicCmpExchange);
