@@ -76,7 +76,6 @@ resourcestring
   sInvalidTypecastFmt = 'Can not explicitly convert type "%s" into "%s"';
   sEmptyExpression = 'Empty expression';
   sExpressionMustBeBoolean = 'Type of expression must be BOOLEAN';
-  sExpressionMustBeConstant = 'Expression must be a CONSTANT';
   sDeclarationHasNoDataTypeFmt = 'Declaration "%s" has no data type';
   sInvalidTypeDeclarationFmt = '%s Invalid type declaration';
   sTypeKeywordRequred = 'The TYPE keyword required';
@@ -209,7 +208,6 @@ type
   public
     constructor Create(Lexer: TDelphiLexer);
     class procedure ARG_VAR_REQUIRED(Expr: TIDExpression); static;
-    class procedure CONST_EXPRESSION_REQUIRED(Expr: TIDExpression); static;
     class procedure INCOMPATIBLE_TYPES(const Src, Dst: TIDExpression); overload; static;
     class procedure INCOMPATIBLE_TYPES(const Src: TIDExpression; Dst: TIDType); overload; static;
     class procedure INVALID_EXPLICIT_TYPECAST(const Src: TIDExpression; Dst: TIDType); static;
@@ -288,6 +286,7 @@ type
     class procedure E2016_ARRAY_TYPE_REQUIRED(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2018_RECORD_OBJECT_OR_CLASS_TYPE_REQUIRED(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2022_CLASS_HELPER_TYPE_REQUIRED(const AModule: IASTModule; const APosition: TTextPosition);
+    class procedure E2026_CONSTANT_EXPRESSION_EXPECTED(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2029_SEMICOLON_EXPECTED_BUT_ID_FOUND(const AModule: IASTModule; const AID: TIdentifier);
     class procedure E2033_TYPES_OF_ACTUAL_AND_FORMAL_VAR_PARAMETER_MUST_BE_IDENTICAL(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2034_TOO_MANY_ACTUAL_PARAMETERS(const AModule: IASTModule; const ATextPosition: TTextPosition);
@@ -413,11 +412,6 @@ end;
 class procedure TASTDelphiErrors.INCOMPATIBLE_TYPES(const Src: TIDExpression; Dst: TIDType);
 begin
   AbortWork(sIncompatibleTypesFmt, [Src.DataTypeName, Dst.DisplayName], Src.TextPosition);
-end;
-
-class procedure TASTDelphiErrors.CONST_EXPRESSION_REQUIRED(Expr: TIDExpression);
-begin
-  AbortWork(sExpressionMustBeConstant, Expr.TextPosition);
 end;
 
 class procedure TASTDelphiErrors.CONST_VALUE_OVERFLOW(Expr: TIDExpression; DstDataType: TIDType);
@@ -619,6 +613,11 @@ end;
 class procedure TASTDelphiErrors.E2022_CLASS_HELPER_TYPE_REQUIRED(const AModule: IASTModule; const APosition: TTextPosition);
 begin
   AModule.PutError('E2022 Class helper type required', APosition);
+end;
+
+class procedure TASTDelphiErrors.E2026_CONSTANT_EXPRESSION_EXPECTED(const AModule: IASTModule; const APosition: TTextPosition);
+begin
+  AModule.PutError('E2026 Constant expression expected', APosition);
 end;
 
 class procedure TASTDelphiErrors.E2029_SEMICOLON_EXPECTED_BUT_ID_FOUND(const AModule: IASTModule; const AID: TIdentifier);

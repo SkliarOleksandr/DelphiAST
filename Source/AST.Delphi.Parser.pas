@@ -5477,21 +5477,29 @@ begin
     CheckConstExpression(LExpr);
 
     // the const is an interface guid
-    if LExpr.ItemType = itType then
-    begin
-      if LExpr.AsType.DataTypeID = dtInterface then
-      begin
-        var LIntfDecl := LExpr.AsType.Original as TIDInterface;
-        LConst := LIntfDecl.GuidDecl;
-        if not Assigned(LConst) then
-          ERRORS.E2232_INTERFACE_HAS_NO_INTERFACE_IDENTIFICATION(Self, LIntfDecl);
-      end else
-      begin
-        ERRORS.CONST_EXPRESSION_REQUIRED(LExpr);
-        LConst := Sys._UnknownConstant;
+    case LExpr.ItemType of
+      itType: begin
+        if LExpr.AsType.DataTypeID = dtInterface then
+        begin
+          var LIntfDecl := LExpr.AsType.Original as TIDInterface;
+          LConst := LIntfDecl.GuidDecl;
+          if not Assigned(LConst) then
+            ERRORS.E2232_INTERFACE_HAS_NO_INTERFACE_IDENTIFICATION(Self, LIntfDecl);
+        end else
+        begin
+          ERRORS.E2026_CONSTANT_EXPRESSION_EXPECTED(Self, LExpr.TextPosition);
+          LConst := Sys._UnknownConstant;
+        end;
       end;
-    end else
-      LConst := LExpr.AsConst;
+      itProcedure: begin
+        var LProc := LExpr.AsProcedure;
+        // todo: improve procedure as a constant
+        LConst := TIDProceduralConstant.Create(Scope, LProc.ID, LExplicitType, LProc);
+      end;
+      itConst: LConst := LExpr.AsConst;
+    else
+      ERRORS.E2026_CONSTANT_EXPRESSION_EXPECTED(Self, LExpr.TextPosition)
+    end;
 
     if LConst.IsAnonymous then
       LConst.ID := LConstID
@@ -10018,7 +10026,10 @@ begin
       begin
         Result := ParseConstExpression(Scope, DefaultValue, ExprRValue);
       end else
-        Result := ParseVarRecordDefaultValue(Scope, DataType as TIDStructure, DefaultValue)
+      begin
+        var LActualDataType := DataType.ActualDataType as TIDStructure;
+        Result := ParseVarRecordDefaultValue(Scope, LActualDataType, DefaultValue)
+      end;
     end
   else
     SContext := fUnitSContext;
@@ -10594,7 +10605,7 @@ end;
 procedure TASTDelphiUnit.CheckConstExpression(Expression: TIDExpression);
 begin
   if not (Expression.Declaration.ItemType in [itConst, itType, itProcedure]) then
-    ERRORS.CONST_EXPRESSION_REQUIRED(Expression);
+    ERRORS.E2026_CONSTANT_EXPRESSION_EXPECTED(Self, Expression.TextPosition)
 end;
 
 procedure TASTDelphiUnit.CheckConstValueOverflow(Src: TIDExpression; DstDataType: TIDType);

@@ -1237,6 +1237,12 @@ type
     procedure AssignValue(Source: TIDConstant); override;
   end;
 
+  {procedural constant}
+  TIDProceduralConstant = class(TIDXXXConstant<TIDProcedure>)
+  public
+    function AsString: string; override;
+  end;
+
   {array constant}
   TIDDynArrayConstant = class(TIDXXXConstant<TIDExpressions>)
   private
@@ -9438,6 +9444,13 @@ begin
     Result := FParent.FindHelper(AType)
   else
     Result := nil;
+end;
+
+{ TIDProceduralConstant }
+
+function TIDProceduralConstant.AsString: string;
+begin
+  Result := FValue.Name;
 end;
 
 initialization

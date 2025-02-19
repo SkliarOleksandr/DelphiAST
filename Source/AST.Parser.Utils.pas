@@ -709,22 +709,23 @@ end;
 
 function GetValueDataType(const Value: Int64): TDataTypeID;
 begin
+  // Delphi treats untyped int constat as Int64 or Integer
   if Value > MaxUInt32 then
     Result := dtInt64
   else
   if Value > MaxInt32 then
     Result := dtUInt32
   else
-  if Value > MaxUInt16 then
+ // if Value > MaxUInt16 then
     Result := dtInt32
-  else
+{  else
   if Value > MaxInt16 then
     Result := dtUInt16
   else
   if Value > MaxUInt8 then
     Result := dtInt16
   else
-    Result := dtUInt8;
+    Result := dtUInt8;}
 end;
 
 function GetValueDataType(const Value: Extended): TDataTypeID;
