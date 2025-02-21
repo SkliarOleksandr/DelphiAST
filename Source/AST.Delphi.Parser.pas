@@ -2540,7 +2540,10 @@ begin
 
   OperatorItem := MatchUnarOperator(EContext.SContext, opNegative, Right);
   if not Assigned(OperatorItem) then
-   ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Self, Right.TextPosition);
+  begin
+    ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Self, Right.TextPosition);
+    Exit(CreateUnknownExpr(Right.TextPosition));
+  end;
 
   if Right.ItemType = itConst then
     Result := fCCalc.ProcessConstOperation(EContext.Scope, Right, Right, opNegative)
@@ -7073,16 +7076,6 @@ begin
 end;
 
 function TASTDelphiUnit.ParseInlineVarStatement(Scope: TScope; const SContext: TSContext): TTokenID;
-
-  function CreateVariable(const AID: TIdentifier; ADataType: TIDType; AKW: TASTKWInlineVarDecl): TIDVariable;
-  begin
-    Result := TIDVariable.Create(Scope, AID);
-    Result.DataType := ADataType;
-    Result.Visibility := vLocal;
-    Scope.AddVariable(Result);
-    AKW.AddDecl(Result);
-  end;
-
 var
   DataType: TIDType;
   Variable: TIDVariable;
@@ -7114,13 +7107,13 @@ begin
     else
       DataType := nil;
 
-    if LVarCount = 1 then
-      Variable := CreateVariable(LVarID, DataType, KW)
-    else begin
+    if LVarCount = 1 then begin
+      Variable := TIDVariable.Create(Scope, LVarID);
+      Variable.DataType := DataType;
+      Variable.Visibility := vLocal;
+      KW.AddDecl(Variable);
+    end else
       Variable := nil;
-      for var LIndex := 0 to LVarCount - 1 do
-        CreateVariable(LVarArray[LIndex], DataType, KW);
-    end;
 
     // parse a default value if declared
     if Result = token_assign then
@@ -7152,6 +7145,19 @@ begin
 
       EContext.RPNPushOperator(opAssignment);
       EContext.RPNFinish;
+    end;
+
+    if LVarCount = 1 then
+      Scope.AddVariable(Variable)
+    else begin
+      for var LIndex := 0 to LVarCount - 1 do
+      begin
+        Variable := TIDVariable.Create(Scope, LVarArray[LIndex]);
+        Variable.DataType := DataType;
+        Variable.Visibility := vLocal;
+        KW.AddDecl(Variable);
+        Scope.AddVariable(Variable);
+      end;
     end;
 
     Break;

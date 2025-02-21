@@ -747,6 +747,7 @@ type
     property HiDecl: TIDConstant read fHiDecl write SetHiDecl;
     function ASTJsonDeclClass: TASTJsonDeclClass; override;
     function ToJson: TJsonASTDeclaration; override;
+    function SysUnarOperator(AOpID: TOperatorID): TIDType; override;
   end;
 
   {enum type}
@@ -7280,6 +7281,11 @@ procedure TIDRangeType.SetLoDecl(const Value: TIDConstant);
 begin
   fLoDecl := Value;
   LowBound := Value.AsInt64;
+end;
+
+function TIDRangeType.SysUnarOperator(AOpID: TOperatorID): TIDType;
+begin
+  Result := Self; // type will be the same
 end;
 
 function TIDRangeType.ToJson: TJsonASTDeclaration;
