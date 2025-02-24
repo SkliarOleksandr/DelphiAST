@@ -263,9 +263,8 @@ begin
     token_ampersand: begin
       if not GetNextCharIsSeparator then
       begin
-        Result := TTokenID(GetNextTokenId());
-        fOriginalToken := TokenLexem(Result);
-        fCurrentToken := fOriginalToken;
+        // read the escaped token
+        GetNextTokenId();
         fCurrentTokenID := ord(token_identifier);
         fIdentifireType := itIdentifier;
         Result := token_identifier;

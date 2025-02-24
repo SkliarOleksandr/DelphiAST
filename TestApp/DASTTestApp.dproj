@@ -179,6 +179,7 @@
         <DCCReference Include="..\TestScripts\Operators\Add\ASTTest.Add.Pointers.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Compare\ASTTest.Cmp.Pointers.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadWithImplicitCast.pas"/>
+        <DCCReference Include="..\TestScripts\Operators\Neg\ASTTest.Operators.Neg1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Class1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenResult.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Methods.pas"/>
@@ -244,6 +245,7 @@
         <DCCReference Include="..\TestScripts\Records\ASTTest.Records.CaseRecord1.pas"/>
         <DCCReference Include="..\TestScripts\Built-ins\ASTTest.Builtins.High1.pas"/>
         <DCCReference Include="..\TestScripts\Inline Vars\ASTTest.InlineVars.TypeInfer1.pas"/>
+        <DCCReference Include="..\TestScripts\Enums\ASTTest.Enums.ReservedNames1.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

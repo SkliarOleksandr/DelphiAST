@@ -5647,20 +5647,22 @@ var
     Prev: TIDExpression;
     IsDuplicate: Boolean;
   begin
+    // TODO: doesn't work correct with range constant
+    Exit;
     IsDuplicate := False;
     for i := 0 to Length(MatchItems) - 2 do
     begin
       Prev := MatchItems[i].Expression;
       if Prev.IsConstant and Cur.IsConstant then
       begin
-        if Prev.DataTypeID = dtRange then
+        if Prev.IsRangeConst then
         begin
-          if Cur.DataTypeID <> dtRange then
+          if not Prev.IsRangeConst then
             IsDuplicate := IsConstValueInRange(Cur, TIDRangeConstant(Prev.Declaration))
           else
             IsDuplicate := IsConstRangesIntersect(TIDRangeConstant(Cur.Declaration), TIDRangeConstant(Prev.Declaration))
         end else
-        if Cur.DataTypeID = dtRange then
+        if Cur.IsRangeConst then
         begin
           IsDuplicate := IsConstValueInRange(Prev, TIDRangeConstant(Cur.Declaration));
         end else
@@ -5852,7 +5854,7 @@ begin
         LIntfDecl := TIDGenericInstantiation(Decl).Original as TIDInterface;
         ClassDecl.AddGenericInterface(TIDGenericInstantiation(Decl));
       end else
-        LIntfDecl := TIDInterface(Decl);
+        LIntfDecl := Decl.ActualDataType as TIDInterface;
 
       if ClassDecl.FindInterface(LIntfDecl) then
         ERRORS.INTF_ALREADY_IMPLEMENTED(Expr);

@@ -118,7 +118,8 @@ uses
   ASTTest.Records.CaseRecord2 in '..\TestScripts\Records\ASTTest.Records.CaseRecord2.pas',
   ASTTest.Records.CaseRecord1 in '..\TestScripts\Records\ASTTest.Records.CaseRecord1.pas',
   ASTTest.Builtins.High1 in '..\TestScripts\Built-ins\ASTTest.Builtins.High1.pas',
-  ASTTest.InlineVars.TypeInfer1 in '..\TestScripts\Inline Vars\ASTTest.InlineVars.TypeInfer1.pas';
+  ASTTest.InlineVars.TypeInfer1 in '..\TestScripts\Inline Vars\ASTTest.InlineVars.TypeInfer1.pas',
+  ASTTest.Enums.ReservedNames1 in '..\TestScripts\Enums\ASTTest.Enums.ReservedNames1.pas';
 
 {$R *.res}
 
