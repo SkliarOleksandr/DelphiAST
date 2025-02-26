@@ -145,6 +145,9 @@ type
     TestsBottomPanel: TPanel;
     TotalTestCntLabel: TLabel;
     TestRunProgressLabel: TLabel;
+    UnitsFullPathCheck: TCheckBox;
+    ShowProgressCheck: TCheckBox;
+    DelphiDirComboBox: TComboBox;
     procedure ASTParseRTLButtonClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure SearchButtonClick(Sender: TObject);
@@ -186,6 +189,7 @@ type
     procedure FilesRemoveAllActionExecute(Sender: TObject);
     procedure ASTResultFormatComboBoxChange(Sender: TObject);
     procedure ASTParseActionUpdate(Sender: TObject);
+    procedure DelphiDirComboBoxChange(Sender: TObject);
   private
     { Private declarations }
     fSettings: IASTProjectSettings;
@@ -204,6 +208,7 @@ type
     procedure SetDefines(const APrj: IASTDelphiProject);
     procedure SaveSettings;
     procedure LoadSettings;
+    procedure LoadDelphiDirs;
     procedure LoadTestScripts(const ALastTestName: string);
     procedure LoadLSPConfigDccCmdLine(const ACMDLine: string);
     procedure LoadLSPConfigFiles(const AJSONArray: TJSONArray);
@@ -229,6 +234,7 @@ uses
   System.StrUtils,
   System.IniFiles,
   System.NetEncoding,
+  System.Win.Registry,
   REST.Json,
   AST.Delphi.System,
   AST.Delphi.Parser,
@@ -257,6 +263,7 @@ begin
   var LSourceToShow := '';
   var LSourceToShowRow := 0;
   var LSourceToShowCol := 0;
+  var LUnitsFullPath := UnitsFullPathCheck.Checked;
 
   ErrMemo.Lines.Add('-----------------------------------------------');
   for var LIndex := 0 to Project.Messages.Count - 1 do
@@ -264,7 +271,7 @@ begin
     var LMessage := Project.Messages[LIndex];
     if (LMessage.MessageType >= cmtError) or ShowWarningsCheck.Checked then
     begin
-      ErrMemo.Lines.AddStrings(LMessage.AsString.Split([sLineBreak]));
+      ErrMemo.Lines.AddStrings(LMessage.AsString(LUnitsFullPath).Split([sLineBreak]));
       if (LMessage.MessageType >= cmtError) and AShowFailUnit then
       begin
         LSourceToShow := LMessage.ModuleSource;
@@ -462,12 +469,16 @@ end;
 
 procedure TfrmTestAppMain.OnProgress(const Module: IASTModule; Status: TASTProcessStatusClass; AElapsedTime: Int64);
 begin
-  var LStr := Format('%s: %s', [Module.Name, Status.Name]);
-  if Status <> TASTStatusParseBegin then
-    LStr := LStr + ' in ' + GetElapsedStr(AElapsedTime);
+  if ShowProgressCheck.Checked then
+  begin
+    var LStr := Format('%s: %s',
+      [IfThen(UnitsFullPathCheck.Checked, Module.FileName, Module.Name), Status.Name]);
+    if Status <> TASTStatusParseBegin then
+      LStr := LStr + ' in ' + GetElapsedStr(AElapsedTime);
 
-  ErrMemo.Lines.Add(LStr);
-  ErrMemo.SelStart := Length(ErrMemo.Text);
+    ErrMemo.Lines.Add(LStr);
+    ErrMemo.SelStart := Length(ErrMemo.Text);
+  end;
   Application.ProcessMessages;
 end;
 
@@ -488,8 +499,11 @@ begin
       LINI.WriteBool(SGeneral, 'SHOW_MEMLEAKS', ShowMemLeaksCheck.Checked);
       LINI.WriteBool(SGeneral, 'BREAKPOINT_ON_ERROR', BreakpointOnErrorCheck.Checked);
       LINI.WriteInteger(SGeneral, 'LEFT_ACTIVE_TAB', LeftPageControl.ActivePageIndex);
+      LINI.WriteBool(SGeneral, 'UNITS_FULL_PATH', UnitsFullPathCheck.Checked);
+      LINI.WriteBool(SGeneral, 'SHOW_PROGRESS', ShowProgressCheck.Checked);
 
       LINI.WriteString(SGeneral, 'PLATFORM', cbPlatform.Text);
+      LINI.WriteString(SGeneral, 'DELPHI_BDS', DelphiDirComboBox.Text);
       LINI.WriteString(SGeneral, 'DELPHI_SRC_PATH', DelphiSrcPathEdit.Text);
         LINI.WriteBool(SGeneral, 'DELPHI_SRC_PATH_INCLUDE_SUBDIRS', DelphiPathIncludeSubDirCheck.Checked);
 
@@ -557,6 +571,25 @@ begin
   lbFiles.CheckAll(cbChecked);
 end;
 
+procedure TfrmTestAppMain.LoadDelphiDirs;
+begin
+  var LRegistry := TRegistry.Create;
+  try
+    LRegistry.RootKey := HKEY_LOCAL_MACHINE;
+    LRegistry.OpenKeyReadOnly('SOFTWARE\Embarcadero\BDS');
+    var LSubKeyNames := TStringList.Create;
+    try
+      LRegistry.GetKeyNames(LSubKeyNames);
+      for var LName in LSubKeyNames do
+        DelphiDirComboBox.Items.Add('BDS-' + LName);
+    finally
+      LSubKeyNames.Free;
+    end;
+  finally
+    LRegistry.Free;
+  end;
+end;
+
 procedure TfrmTestAppMain.LoadLSPConfigActionExecute(Sender: TObject);
 begin
   var LDlg := TOpenDialog.Create(Self);
@@ -603,9 +636,12 @@ begin
     ShowMemLeaksCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_MEMLEAKS', False);
     BreakpointOnErrorCheck.Checked := LINI.ReadBool(SGeneral, 'BREAKPOINT_ON_ERROR', False);
     LeftPageControl.ActivePageIndex := LINI.ReadInteger(SGeneral, 'LEFT_ACTIVE_TAB', 0);
+    UnitsFullPathCheck.Checked := LINI.ReadBool(SGeneral, 'UNITS_FULL_PATH', False);
+    ShowProgressCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_PROGRESS', True);
 
     cbPlatform.Text := LINI.ReadString(SGeneral, 'PLATFORM', 'WIN32');
     ProjectNameEdit.Text := LINI.ReadString(SGeneral, 'PROJECT_NAME', ProjectNameEdit.Text);
+    DelphiDirComboBox.Text := LINI.ReadString(SGeneral, 'DELPHI_BDS', '');
     DelphiSrcPathEdit.Text := LINI.ReadString(SGeneral, 'DELPHI_SRC_PATH', DelphiSrcPathEdit.Text);
     DelphiPathIncludeSubDirCheck.Checked := LINI.ReadBool(SGeneral, 'DELPHI_SRC_PATH_INCLUDE_SUBDIRS', True);
     UnitScopeNamesEdit.Text := LINI.ReadString(SGeneral, 'UNIT_SCOPE_NAMES', UnitScopeNamesEdit.Text);
@@ -835,6 +871,25 @@ begin
                         begin
                           ErrMemo.Lines.Add(format('#console: [%s: %d]: %s', [Module.Name, Line, Msg]));
                         end;
+end;
+
+procedure TfrmTestAppMain.DelphiDirComboBoxChange(Sender: TObject);
+begin
+  if DelphiDirComboBox.Text <> '' then
+  begin
+    var LRegistry := TRegistry.Create;
+    try
+      LRegistry.RootKey := HKEY_LOCAL_MACHINE;
+      if LRegistry.OpenKeyReadOnly('SOFTWARE\Embarcadero\BDS\' +
+        StringReplace(DelphiDirComboBox.Text, 'BDS-', '', [])) then
+      begin
+        DelphiSrcPathEdit.Text :=
+          IncludeTrailingPathDelimiter(LRegistry.ReadString('RootDir')) + 'Source';
+      end;
+    finally
+      LRegistry.Free;
+    end;
+  end;
 end;
 
 procedure TfrmTestAppMain.edUnitChange(Sender: TObject);
@@ -1285,6 +1340,7 @@ begin
       LogMemo.Lines.Add(DupeString(' ', ANestedLevel) + AMessage);
   end;
 
+  LoadDelphiDirs;
   LoadSettings;
 
   lbFiles.MultiSelect := True;

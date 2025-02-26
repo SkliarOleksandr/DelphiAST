@@ -363,6 +363,23 @@ object frmTestAppMain: TfrmTestAppMain
             TabOrder = 0
             OnClick = StopIfErrorCheckClick
           end
+          object UnitsFullPathCheck: TCheckBox
+            Left = 106
+            Top = 3
+            Width = 97
+            Height = 17
+            Caption = 'Units Full Path'
+            TabOrder = 1
+            OnClick = StopIfErrorCheckClick
+          end
+          object ShowProgressCheck: TCheckBox
+            Left = 209
+            Top = 3
+            Width = 97
+            Height = 17
+            Caption = 'Show Progress'
+            TabOrder = 2
+          end
         end
       end
       object MainPanel: TPanel
@@ -702,7 +719,7 @@ object frmTestAppMain: TfrmTestAppMain
       object DelphiSrcPathEdit: TEdit
         Left = 14
         Top = 37
-        Width = 1227
+        Width = 1098
         Height = 21
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 0
@@ -794,6 +811,7 @@ object frmTestAppMain: TfrmTestAppMain
         Width = 122
         Height = 25
         Action = LoadLSPConfigAction
+        Anchors = [akTop, akRight]
         TabOrder = 9
       end
       object ProjectNameEdit: TEdit
@@ -804,6 +822,15 @@ object frmTestAppMain: TfrmTestAppMain
         Anchors = [akLeft, akTop, akRight]
         TabOrder = 10
         Text = 'Project1'
+      end
+      object DelphiDirComboBox: TComboBox
+        Left = 1118
+        Top = 37
+        Width = 123
+        Height = 21
+        Anchors = [akTop, akRight]
+        TabOrder = 11
+        OnChange = DelphiDirComboBoxChange
       end
     end
   end
