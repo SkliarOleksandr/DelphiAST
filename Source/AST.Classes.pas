@@ -106,6 +106,7 @@ type
   TASTModule = class(TInterfacedObject, IASTModule)
   private
     fFileName: string;
+    function GetFileName: string;
   protected
     fProject: IASTProject;
     fTotalLinesParsed: Integer;
@@ -117,9 +118,10 @@ type
     procedure PutError(const AMessage: string; const AParams: array of const; const ATextPosition: TTextPosition; ACritical: Boolean = False); overload;
     function Lexer_Line: Integer; virtual; abstract;
     function Lexer_Position: TTextPosition; virtual; abstract;
+    function Lexer_TokenName(AToken: Integer): string; virtual; abstract;
   public
     property Name: string read GetModuleName;
-    property FileName: string read fFileName write SetFileName;
+    property FileName: string read GetFileName write SetFileName;
     property Project: IASTProject read fProject;
     function GetTotalLinesParsed: Integer;
     constructor Create(const AProject: IASTProject; const AFileName: string; const ASource: string = ''); virtual;
@@ -1275,6 +1277,11 @@ end;
 constructor TASTModule.CreateFromFile(const Project: IASTProject; const FileName: string);
 begin
   fFileName := FileName;
+end;
+
+function TASTModule.GetFileName: string;
+begin
+  Result := fFileName;
 end;
 
 function TASTModule.GetModuleName: string;

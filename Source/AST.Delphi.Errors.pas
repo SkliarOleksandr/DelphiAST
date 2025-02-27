@@ -287,11 +287,13 @@ type
     class procedure E2018_RECORD_OBJECT_OR_CLASS_TYPE_REQUIRED(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2022_CLASS_HELPER_TYPE_REQUIRED(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2026_CONSTANT_EXPRESSION_EXPECTED(const AModule: IASTModule; const APosition: TTextPosition);
-    class procedure E2029_SEMICOLON_EXPECTED_BUT_ID_FOUND(const AModule: IASTModule; const AID: TIdentifier);
+    class procedure E2029_TOKEN_EXPECTED_BUT_ID_FOUND(const AModule: IASTModule; AExpectedToken: TTokenID; const AID: TIdentifier);
+    class procedure E2029_EXPECTED_BUT_FOUND(const AModule: IASTModule; const AExpected, AActual: string; const APosition: TTextPosition);
     class procedure E2033_TYPES_OF_ACTUAL_AND_FORMAL_VAR_PARAMETER_MUST_BE_IDENTICAL(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2034_TOO_MANY_ACTUAL_PARAMETERS(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2035_NOT_ENOUGH_ACTUAL_PARAMETERS(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2037_DECLARATION_OF_DIFFERS_FROM_PREVIOUS_DECLARATION(const AModule: IASTModule; const AID: TIdentifier);
+    class procedure E2050_STATEMENTS_NOT_ALLOWED_IN_INTERFACE_PART(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2064_LEFT_SIDE_CANNOT_BE_ASSIGNED_TO(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2066_MISSING_OPERATOR_OR_SEMICOLON(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2075_THIS_FORM_OF_METHOD_CALL_ONLY_ALLOWED_IN_METHODS_OF_DERIVED_TYPES(const AModule: IASTModule; const APosition: TTextPosition);
@@ -620,9 +622,15 @@ begin
   AModule.PutError('E2026 Constant expression expected', APosition);
 end;
 
-class procedure TASTDelphiErrors.E2029_SEMICOLON_EXPECTED_BUT_ID_FOUND(const AModule: IASTModule; const AID: TIdentifier);
+class procedure TASTDelphiErrors.E2029_EXPECTED_BUT_FOUND(const AModule: IASTModule; const AExpected, AActual: string;
+  const APosition: TTextPosition);
 begin
-  AModule.PutError('E2029 '';'' expected but ''%s'' found', [AID.Name], AID.TextPosition);
+  AModule.PutError('E2029 ''%s'' expected but ''%s'' found', [AExpected, AActual], APosition);
+end;
+
+class procedure TASTDelphiErrors.E2029_TOKEN_EXPECTED_BUT_ID_FOUND(const AModule: IASTModule; AExpectedToken: TTokenID; const AID: TIdentifier);
+begin
+  E2029_EXPECTED_BUT_FOUND(AModule, AModule.Lexer_TokenName(Ord(AExpectedToken)), AID.Name, AID.TextPosition);
 end;
 
 class procedure TASTDelphiErrors.E2033_TYPES_OF_ACTUAL_AND_FORMAL_VAR_PARAMETER_MUST_BE_IDENTICAL(const AModule: IASTModule;
@@ -645,6 +653,12 @@ end;
 class procedure TASTDelphiErrors.E2037_DECLARATION_OF_DIFFERS_FROM_PREVIOUS_DECLARATION(const AModule: IASTModule; const AID: TIdentifier);
 begin
   AModule.PutError('E2037 Declaration of ''%s'' differs from previous declaration', [AID.Name], AID.TextPosition);
+end;
+
+class procedure TASTDelphiErrors.E2050_STATEMENTS_NOT_ALLOWED_IN_INTERFACE_PART(const AModule: IASTModule;
+  const APosition: TTextPosition);
+begin
+  AModule.PutError('E2050 Statements not allowed in interface part', APosition);
 end;
 
 class procedure TASTDelphiErrors.E2064_LEFT_SIDE_CANNOT_BE_ASSIGNED_TO(const AModule: IASTModule;

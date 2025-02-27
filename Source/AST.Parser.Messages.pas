@@ -27,16 +27,18 @@ type
     function GetMessageText: string;
     function GetCol: Integer;
     function GetRow: Integer;
+    function GetModuleFullPath: string;
   public
     property Module: IASTModule read GetModule write SetModule;
     property ModuleName: string read GetModuleName write SetModuleName;
+    property ModuleFullPath: string read GetModuleFullPath;
     property ModuleSource: string read GetModuleSource;
     property MessageType: TCompilerMessageType read GetMessageType;
     property MessageTypeName: string read GetMessageTypeName;
     property MessageText: string read GetMessageText;
     property Row: Integer read GetRow;
     property Col: Integer read GetCol;
-    function AsString: string;
+    function AsString(AUnitFullPath: Boolean): string;
     constructor Create(const AModule: IASTModule; AMessageType: TCompilerMessageType;
                        const AMessageText: string; const APosition: TTextPosition);
   end;
@@ -84,9 +86,11 @@ type
 
 implementation
 
-uses AST.Pascal.Parser,
-     AST.Delphi.Errors,
-     AST.Parser.Utils;
+uses
+  System.StrUtils,
+  AST.Pascal.Parser,
+  AST.Delphi.Errors,
+  AST.Parser.Utils;
 
 { TCompilerMessage }
 
@@ -99,9 +103,14 @@ begin
   FSourcePosition := APosition;
 end;
 
-function TCompilerMessage.AsString: string;
+function TCompilerMessage.AsString(AUnitFullPath: Boolean): string;
 begin
-  Result := Format('%s [%s(%d, %d)]: %s', [GetMessageTypeName, ModuleName, Row, Col, MessageText]);
+  Result := Format('%s [%s(%d, %d)]: %s', [
+              GetMessageTypeName,
+              IfThen(AUnitFullPath, ModuleFullPath, ModuleName),
+              Row,
+              Col,
+              MessageText]);
 end;
 
 function TCompilerMessage.GetCol: Integer;
@@ -132,6 +141,11 @@ end;
 function TCompilerMessage.GetModule: IASTModule;
 begin
   Result := FModule;
+end;
+
+function TCompilerMessage.GetModuleFullPath: string;
+begin
+  Result := FModule.FileName;
 end;
 
 function TCompilerMessage.GetRow: Integer;

@@ -114,6 +114,7 @@ type
     fForwardTypes: TList<TIDType>;
     fIntfHelpers: THelperTree;
     fImplHelpers: THelperTree;
+    fIsPorgram: Boolean;
     property Sys: PDelphiSystemDeclarations read fSysDecls;
     procedure CheckLeftOperand(const Status: TRPNStatus);
     class procedure CheckAndCallFuncImplicit(const EContext: TEContext); overload; static;
@@ -328,7 +329,7 @@ type
     class function ConstDynArrayToSet(const SContext: TSContext; const CDynArray: TIDExpression; TargetSetType: TIDSet): TIDExpression; static;
     class function MatchSetImplicit(const SContext: TSContext; Source: TIDExpression; Destination: TIDSet): TIDExpression; static;
     function ParseUnitName(Scope: TScope; out ID: TIdentifier): TTokenID;
-    procedure ParseUnitDecl(Scope: TScope);
+    function ParseUnitDecl(Scope: TScope): Boolean;
     function ParseUsesSection(Scope: TScope): TTokenID;
     //=======================================================================================================================
     ///  Парсинг типов
@@ -1245,17 +1246,26 @@ begin
     ERRORS.INVALID_TYPE_DECLARATION;
 end;
 
-procedure TASTDelphiUnit.ParseUnitDecl(Scope: TScope);
+function TASTDelphiUnit.ParseUnitDecl(Scope: TScope): Boolean;
 var
   Decl: TIDUnit;
   Token: TTokenID;
 begin
-  Lexer_ReadToken(Scope, token_Unit);
-  Token := ParseUnitName(Scope, fUnitName);
-  Lexer_MatchSemicolon(Token);
-  Decl := TIDUnit.Create(Scope, Self);
-  // add itself to the intf scope
-  InsertToScope(Scope, Decl);
+  Token := Lexer_NextToken(Scope);
+  if Token in [token_unit, token_program] then
+  begin
+    fIsPorgram := (Token = token_program);
+    Token := ParseUnitName(Scope, fUnitName);
+    Lexer_MatchSemicolon(Token);
+    Decl := TIDUnit.Create(Scope, Self);
+    // add itself to the intf scope
+    InsertToScope(Scope, Decl);
+    Result := True;
+  end else
+  begin
+    ERRORS.E2029_TOKEN_EXPECTED_BUT_ID_FOUND(Self, token_unit, Lexer_CurTokenAsID);
+    Result := False;
+  end;
 end;
 
 function TASTDelphiUnit.ParseUnitName(Scope: TScope; out ID: TIdentifier): TTokenID;
@@ -2670,7 +2680,11 @@ begin
 
       Lexer.First;
       Scope := IntfScope;
-      ParseUnitDecl(Scope);
+      if not ParseUnitDecl(Scope) then
+        Exit(CompileFail);
+
+      if fIsPorgram then
+        Scope := ImplScope;
     end else
     if UnitState = UnitIntfCompiled then
     begin
@@ -2788,7 +2802,6 @@ begin
         Token := Lexer_NextToken(Scope);
       end;
       token_interface: begin
-        Scope := IntfScope;
         Token := Lexer_NextToken(Scope);
       end;
       token_implementation: begin
@@ -2801,6 +2814,17 @@ begin
         end;
         Scope := ImplScope;
         Token := Lexer_NextToken(Scope);
+      end;
+      token_begin: begin
+        if Scope = ImplScope then
+        begin
+          Lexer_NextToken(Scope);
+          Token := ParseStatements(Scope, fUnitSContext, {IsBlock:} True);
+        end else
+        begin
+          ERRORS.E2050_STATEMENTS_NOT_ALLOWED_IN_INTERFACE_PART(Self, Lexer_Position);
+          Exit(CompileFail);
+        end;
       end;
       token_end: begin
         Lexer_MatchToken(Lexer_NextToken(Scope), token_dot);

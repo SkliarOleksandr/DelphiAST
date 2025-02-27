@@ -34,9 +34,8 @@ type
   IASTModule = interface
     ['{1E3A5748-1671-41E8-BAAD-4BBB2B363BF4}']
     function GetModuleName: string;
+    function GetFileName: string;
     function GetTotalLinesParsed: Integer;
-    property Name: string read GetModuleName;
-    property TotalLinesParsed: Integer read GetTotalLinesParsed;
 
     procedure PutError(const AMessage: string; const ATextPosition: TTextPosition; ACritical: Boolean = False); overload;
     procedure PutError(const AMessage: string; const AParams: array of const; const ATextPosition: TTextPosition; ACritical: Boolean = False); overload;
@@ -47,8 +46,13 @@ type
 
     function Lexer_Line: Integer;
     function Lexer_Position: TTextPosition;
+    function Lexer_TokenName(AToken: Integer): string;
 
     function ToJson: TJsonASTDeclaration;
+
+    property Name: string read GetModuleName;
+    property FileName: string read GetFileName;
+    property TotalLinesParsed: Integer read GetTotalLinesParsed;
   end;
 
   TCompilerMessageType = (cmtHint, cmtWarning, cmtError, cmtInteranlError);
@@ -77,7 +81,7 @@ type
     property MessageText: string read GetMessageText;
     property Row: Integer read GetRow;
     property Col: Integer read GetCol;
-    function AsString: string;
+    function AsString(AUnitFullPath: Boolean): string;
   end;
 
   IASTProject = interface

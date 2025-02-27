@@ -140,6 +140,7 @@ type
     function GetDefinesAsString: string;
     function Defined(const ADefine: string): Boolean;
     function ToJson: TJsonASTDeclaration; override;
+    function Lexer_TokenName(AToken: Integer): string; override;
 
     property _ID: TIdentifier read FUnitName;
     property UnitID: Integer read FID write FID;
@@ -371,6 +372,11 @@ end;
 function TPascalUnit.GetSysUnit: IASTPascalUnit;
 begin
   Result := Project.SysUnit;
+end;
+
+function TPascalUnit.Lexer_TokenName(AToken: Integer): string;
+begin
+  Result := Lexer.TokenLexem(TTokenID(AToken));
 end;
 
 {parser methods}
