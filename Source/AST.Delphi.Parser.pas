@@ -8793,7 +8793,10 @@ begin
   Result := ParseExpression(Scope, SContext, EContext, ASTExpr);
   EExcept := EContext.Result;
   if Assigned(EExcept) then
+  begin
+    EExcept := CheckAndCallFuncImplicit(EContext, EExcept);
     CheckClassExpression(EExcept);
+  end;
 
   if Lexer_AmbiguousId = token_at then
   begin

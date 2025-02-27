@@ -7,7 +7,7 @@ uses
   Winapi.Messages, Vcl.Graphics, Vcl.ComCtrls, System.Types, Vcl.ExtCtrls, Vcl.CheckLst, System.Actions, Vcl.ActnList,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.Menus, System.ImageList, Vcl.ImgList, System.UITypes,
   SynEdit, SynEditMiscClasses, SynEditSearch, SynEditHighlighter, SynEditCodeFolding, SynHighlighterPas, SynHighlighterJSON,
-  VirtualTrees, VirtualTrees.Types, VirtualTrees.Classes, VirtualTrees.Colors,
+  VirtualTrees, VirtualTrees.Types, VirtualTrees.Classes,
   AST.Intf,
   AST.Classes,
   AST.Pascal.Project,
@@ -423,7 +423,8 @@ procedure TfrmTestAppMain.ASTParseRTLButtonClick(Sender: TObject);
 
   procedure AddDelphiUnits(var AUsesList: string; const APath: string);
   begin
-    var LRtlSources := GetDirectoryFiles(DelphiSrcPathEdit.Text + APath, '*.pas');
+    var LRootPath := TPath.Combine(DelphiSrcPathEdit.Text, APath);
+    var LRtlSources := GetDirectoryFiles(LRootPath, '*.pas');
     for var LPath in LRtlSources do
     begin
       var LUnitName := StringReplace(ExtractFileName(LPath), '.pas', '', [rfReplaceAll]);
