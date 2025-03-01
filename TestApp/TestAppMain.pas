@@ -612,6 +612,14 @@ begin
         var LprojectFiles := LJson.FindValue('settings.projectFiles');
         if Assigned(LprojectFiles) and (LprojectFiles is TJSONArray) then
           LoadLSPConfigFiles(TJSONArray(LprojectFiles));
+
+        // since .delphilsp.json doesn't contain explicit Delhpi Source Path, we can infer it from the "Templates" field
+        var LTemplates := LJson.FindValue('settings.Templates');
+        if Assigned(LprojectFiles) then
+        begin
+          DelphiSrcPathEdit.Text := FileURLDecode(LTemplates.Value).Replace('\ObjRepos', '\Source');
+          DelphiDirComboBox.Text := '';
+        end;
       finally
         LJson.Free;
       end;
