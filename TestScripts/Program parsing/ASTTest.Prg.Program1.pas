@@ -1,7 +1,8 @@
 program Program1;
 
 uses
-  ASTTest.Prg.UntiWithBegin;
+  ASTTest.Prg.UntiWithBegin,
+  DefaultTest in '..\DefaultTest.pas';
 
 begin
 

@@ -1292,24 +1292,35 @@ end;
 
 function TASTDelphiUnit.ParseUsesSection(Scope: TScope): TTokenID;
 var
-  Token: TTokenID;
   ID: TIdentifier;
   LUnit: TASTDelphiUnit;
+  LUnitPath: string;
   Idx: Integer;
 begin
   while True do begin
-    Token := ParseUnitName(Scope, {out} ID);
+    Result := ParseUnitName(Scope, {out} ID);
 
     // check recursive using
     if ID.Name = Self.FUnitName.Name then
       ERRORS.UNIT_RECURSIVELY_USES_ITSELF(ID);
 
+    // parse explicit unit path
+    if fIsPorgram and (Result = token_in) then
+    begin
+      Lexer_NextToken(Scope);
+      var LPathExpr: TIDExpression;
+      Result := ParseConstExpression(Scope, {out} LPathExpr, TExpessionPosition.ExprLValue);
+      CheckEmptyExpression(LPathExpr);
+      CheckStringExpression(LPathExpr);
+      LUnitPath := LPathExpr.AsStrConst.Value;
+    end;
+
     // find the unit file
-    LUnit := Package.UsesUnit(ID.Name) as TASTDelphiUnit;
+    LUnit := Package.UsesUnit(ID.Name, LUnitPath) as TASTDelphiUnit;
     if not Assigned(LUnit) then
     begin
       // for debug
-      Package.UsesUnit(ID.Name);
+      Package.UsesUnit(ID.Name, LUnitPath);
       ERRORS.UNIT_NOT_FOUND(ID);
     end;
 
@@ -1346,7 +1357,7 @@ begin
     end else
       AbortWorkInternal('Wrong scope');
 
-    case Token of
+    case Result of
       token_coma: continue;
       token_semicolon: break;
     else

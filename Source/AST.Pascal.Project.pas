@@ -125,7 +125,7 @@ type
     function GetStringConstant(const StrConst: TIDStringConstant): Integer; overload;
     function FindUnitFile(const AUnitName: string; const AFileExt: string = ''): string;
     function FindParsedUnit(const AUnitName: string): IASTPascalUnit;
-    function UsesUnit(const AUnitName: string): IASTPascalUnit;
+    function UsesUnit(const AUnitName, AUnitPath: string): IASTPascalUnit;
     function FindType(const AUnitName, ATypeName: string): TASTDeclaration;
     function GetMessages: ICompilerMessages;
     function InPogress: Boolean; override;
@@ -365,12 +365,29 @@ begin
     raise Exception.CreateFmt('Unit ''%s'' not found', [AUnitName]);
 end;
 
-function TPascalProject.UsesUnit(const AUnitName: string): IASTPascalUnit;
+function TPascalProject.UsesUnit(const AUnitName, AUnitPath: string): IASTPascalUnit;
 var
   i: Integer;
   SUnitName: string;
 begin
-  // поиск в текущем пакете
+  // use explicit path to find the unit
+  if AUnitPath <> '' then
+  begin
+    var LFullPath := '';
+    if IsRelativePath(AUnitPath) then
+      LFullPath := TPath.Combine(RootPath, AUnitPath)
+    else
+      LFullPath := AUnitPath;
+
+    if FileExists(LFullPath) then
+    begin
+      Result := OpenUnit(LFullPath);
+      fAllUnits.Add(Result);
+    end else
+      Exit(nil);
+  end;
+
+  // search in the project itself (explicit units)
   for i := 0 to FUnits.Count - 1 do
   begin
     SUnitName := TPascalUnit(FUnits[i]).Name;
@@ -378,10 +395,11 @@ begin
       Exit(FUnits[i]);
   end;
 
+  // search in the project itself (implicit units)
   if fImplicitUnits.TryGetValue(LowerCase(AUnitName), {out} Result) then
     Exit;
 
-  // ищем на файловой системе
+  // search using search paths
   SUnitName := FindUnitFile(AUnitName, '.pas');
   if SUnitName <> '' then
   begin

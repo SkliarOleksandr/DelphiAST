@@ -36,7 +36,7 @@ type
     function FindUnitFile(const AUnitName: string; const AFileExt: string = ''): string;
     function FindParsedUnit(const AUnitName: string): IASTPascalUnit;
     function GetUnit(const AUnitName: string): TObject; overload;
-    function UsesUnit(const AUnitName: string): IASTPascalUnit;
+    function UsesUnit(const AUnitName: string; const AUnitPath: string): IASTPascalUnit;
     function GetSysUnit: IASTPascalUnit;
     function GetCompileAll: Boolean;
     procedure SetCompileAll(const Value: Boolean);
