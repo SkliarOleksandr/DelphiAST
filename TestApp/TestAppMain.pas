@@ -550,10 +550,24 @@ end;
 procedure TfrmTestAppMain.LoadLSPConfigDccCmdLine(const ACMDLine: string);
 begin
   var LOptions := TDcc32CMDLineParser.Parse(ACMDLine);
-  UnitSearchPathEdit.Text := LOptions['-I'].Value;
+  UnitSearchPathEdit.Text := LOptions['-I'].Value.Replace('"', ''); // remove all quotes
   UnitSearchPathIncludeSubDirCheck.Checked := False;
   CondDefinesEdit.Text := LOptions['-D'].Value;
   UnitScopeNamesEdit.Text := LOptions['-NS'].Value;
+
+  // since .delphilsp.json doesn't contain explicit Delhpi Source Path, we can infer it from the CMD line
+  var LPathArray := LOptions['-I'].Value.Split([';']);
+  if Length(LPathArray) > 0 then
+  begin
+    // take first path, as usual it shold contain '\lib\Win32\debug' or smth like that
+    var LPath := LowerCase(FileURLDecode(LPathArray[0])).Replace('"', '');;
+    LPath := LPath.Replace('\lib\win32\debug', '\source');
+    LPath := LPath.Replace('\lib\win32\release', '\source');
+    LPath := LPath.Replace('\lib\win64\debug', '\source');
+    LPath := LPath.Replace('\lib\win64\release', '\source');
+    DelphiSrcPathEdit.Text := LPath;
+    DelphiDirComboBox.Text := '';
+  end;
 end;
 
 procedure TfrmTestAppMain.LoadLSPConfigFiles(const AJSONArray: TJSONArray);
@@ -565,8 +579,7 @@ begin
     if Assigned(LFileField) then
     begin
       var LFileName := FileURLDecode(LFileField.Value);
-      if FileExists(LFileName) then
-        lbFiles.AddItem(LFileName, nil);
+      lbFiles.AddItem(LFileName, nil);
     end;
   end;
   lbFiles.CheckAll(cbChecked);
@@ -601,7 +614,7 @@ begin
     begin
       var LJson := TJSONValue.ParseJSONValue(TFile.ReadAllText(LDlg.FileName));
       try
-        var Lproject :=  LJson.FindValue('settings.project');
+        var Lproject := LJson.FindValue('settings.project');
         if Assigned(Lproject) then
           ProjectNameEdit.Text := FileURLDecode(Lproject.Value);
 
@@ -612,14 +625,6 @@ begin
         var LprojectFiles := LJson.FindValue('settings.projectFiles');
         if Assigned(LprojectFiles) and (LprojectFiles is TJSONArray) then
           LoadLSPConfigFiles(TJSONArray(LprojectFiles));
-
-        // since .delphilsp.json doesn't contain explicit Delhpi Source Path, we can infer it from the "Templates" field
-        var LTemplates := LJson.FindValue('settings.Templates');
-        if Assigned(LprojectFiles) then
-        begin
-          DelphiSrcPathEdit.Text := FileURLDecode(LTemplates.Value).Replace('\ObjRepos', '\Source');
-          DelphiDirComboBox.Text := '';
-        end;
       finally
         LJson.Free;
       end;
