@@ -58,6 +58,7 @@ type
     tokenD_fastcall,                // directive: fastcall
     tokenD_cdecl,                   // directive: cdecl
     tokenD_safecall,                // directive: safecall
+    tokenD_register,                // directive: register
     token_unit,                     // keyword: unit
     token_uses,                     // keyword: uses
 
@@ -166,7 +167,8 @@ type
     token_cond_else,                // {$ELSE...
     token_cond_else_if,             // {$ELSEIF (condition)}
     token_cond_end,                 // {$END... / {$IFEND... / {$ENDIF...
-    token_cond_include,             // {$INCLUDE
+    token_cond_include,             // {$INCLUDE <filename>}
+    token_cond_include_short,       // {$I <filename>}
     token_cond_undefine,            // {$UNDEFINE
     token_cond_ifdef,               // {$IFDEF
     token_cond_ifndef,              // {$IFNDEF
@@ -467,6 +469,7 @@ begin
   RegisterToken('readonly', tokenD_readonly, tcWeakKeyword);
   RegisterToken('record', token_record);
   RegisterToken('reference', tokenD_reference, tcWeakKeyword);
+  RegisterToken('register', tokenD_register, tcWeakKeyword);
   RegisterToken('repeat', token_repeat);
   RegisterToken('resourcestring', token_resourcestring);
   RegisterToken('reintroduce', tokenD_reintroduce, tcWeakKeyword);
@@ -511,7 +514,7 @@ begin
   RegisterToken('{$IFOPT', token_cond_ifopt);
   RegisterToken('{$MESSAGE', token_cond_message);
   RegisterToken('{$INCLUDE', token_cond_include);
-  RegisterToken('{$I', token_cond_include);
+  RegisterToken('{$I', token_cond_include_short); // WARNING, "I" is ambiguous - can be INCLUDE or IO CHECK OPTION
   RegisterToken('{$', token_cond_any);
 end;
 

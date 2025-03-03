@@ -144,6 +144,7 @@ type
     function ProcSpec_Final(Scope: TScope; Struct: TIDStructure; var Flags: TProcFlags): TTokenID;
     function ProcSpec_Reintroduce(Scope: TScope; var Flags: TProcFlags): TTokenID;
     function ProcSpec_Static(Scope: TScope; var Flags: TProcFlags; var ProcType: TProcType): TTokenID;
+    function ProcSpec_Register(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
     function ProcSpec_FastCall(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
     function ProcSpec_StdCall(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
     function ProcSpec_SafeCall(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
@@ -1047,17 +1048,7 @@ begin
   while True do begin
     Result := ParseVisibilityModifiers(Scope, {var} Visibility, {AIsClass:} False);
     case Result of
-      token_class: begin
-        Result := Lexer_NextReseredToken(scope);
-        case Result of
-          token_procedure: Result := ParseProcedure(Decl.Members, ptClassProc, Decl);
-          token_function: Result := ParseProcedure(Decl.Members, ptClassFunc, Decl);
-          tokenD_operator: Result := ParseOperator(Decl.Members, Decl);
-          token_property: Result := ParseProperty(Decl.Members, Decl);
-        else
-          AbortWork('PROCEDURE, FUNCTION and PROPERIES are allowed in helpers only', Lexer_Position);
-        end;
-      end;
+      token_class: Result := ParseTypeMember(Scope, Decl);
       token_procedure: Result := ParseProcedure(Decl.Members, ptProc, Decl);
       token_function: Result := ParseProcedure(Decl.Members, ptFunc, Decl);
       token_property: Result := ParseProperty(Decl.Members, Decl);
@@ -1065,7 +1056,7 @@ begin
       token_type: Result := ParseTypeSectionInStruct(Decl.Members);
       token_end: break;
     else
-      AbortWork('PROCEDURE, FUNCTION and PROPERIES are allowed in helpers only', Lexer_Position);
+      ERRORS.E2599_FIELD_DEFINITION_NOT_ALLOWED_IN_HELPER_TYPE(Self, Lexer_Position);
     end;
   end;
   Result := Lexer_NextToken(Scope);
@@ -4461,6 +4452,12 @@ begin
       if Result = token_semicolon then
         Result := Lexer_NextToken(Scope);
     end;
+    tokenD_register: begin
+      TypeDecl.CallConv := ConvRegister;
+      Result := Lexer_NextToken(Scope);
+      if Result = token_semicolon then
+        Result := Lexer_NextToken(Scope);
+    end;
   end;
 end;
 
@@ -5367,6 +5364,19 @@ begin
       //////////////////////////////////////////
       // {$include ...}
       token_cond_include: Result := ParseCondInclude(Scope);
+      //////////////////////////////////////////
+      //  {$i ...}
+      token_cond_include_short: begin
+        // since {$I... is ambiguous, need to check what is it
+        if CharInSet(Lexer.NextChar, ['+', '-']) then
+        begin
+          // TODO: implement set {$I+/-} opt
+          repeat
+            Result := Lexer.NextToken;
+          until (Result = token_eof) or (Result = token_closefigure);
+        end else
+          Result := ParseCondInclude(Scope);
+      end;
       //////////////////////////////////////////
       // {$undefine ...}
       token_cond_undefine: begin
@@ -7662,6 +7672,7 @@ begin
       tokenD_stdcall: Result := ProcSpec_StdCall(Scope, CallConv);
       tokenD_safecall: Result := ProcSpec_SafeCall(Scope, CallConv);
       tokenD_cdecl: Result := ProcSpec_CDecl(Scope, CallConv);
+      tokenD_register: Result := ProcSpec_Register(Scope, CallConv);
       tokenD_dispid: Result := ProcSpec_DispId(Scope, Struct, ID);
       token_deprecated: begin
         CheckAndParseDeprecated(Scope, token_deprecated);
@@ -7841,6 +7852,7 @@ begin
       tokenD_safecall: Result := ProcSpec_SafeCall(Scope, CallConv);
       tokenD_fastcall: Result := ProcSpec_FastCall(Scope, CallConv);
       tokenD_cdecl: Result := ProcSpec_CDecl(Scope, CallConv);
+      tokenD_register: Result := ProcSpec_Register(Scope, CallConv);
       tokenD_dispid: Result := ProcSpec_DispId(Scope, Struct, ID);
       tokenD_message: Result := ProcSpec_Message(Scope, ProcFlags);
       tokenD_varargs: begin
@@ -8105,6 +8117,7 @@ begin
       tokenD_safecall: Result := ProcSpec_SafeCall(Scope, CallConv);
       tokenD_fastcall: Result := ProcSpec_FastCall(Scope, CallConv);
       tokenD_cdecl: Result := ProcSpec_CDecl(Scope, CallConv);
+      tokenD_register: Result := ProcSpec_Register(Scope, CallConv);
       tokenD_varargs: begin
         Lexer_ReadSemicolon(Scope);
         Result := Lexer_NextToken(Scope);
@@ -8316,6 +8329,7 @@ begin
       tokenD_safecall:  Result := ProcSpec_SafeCall(Scope, CallConv);
       tokenD_fastcall: Result := ProcSpec_FastCall(Scope, CallConv);
       tokenD_cdecl: Result := ProcSpec_CDecl(Scope, CallConv);
+      tokenD_register: Result := ProcSpec_Register(Scope, CallConv);
       tokenD_varargs: begin
         Lexer_ReadSemicolon(Scope);
         Result := Lexer_NextToken(Scope);
@@ -9321,6 +9335,15 @@ begin
   Result := Lexer_NextToken(Scope);
   if Result = token_semicolon then
     Result := Lexer_NextToken(Scope);
+end;
+
+function TASTDelphiUnit.ProcSpec_Register(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
+begin
+  if CallConvention = ConvRegister then
+    ERRORS.DUPLICATE_SPECIFICATION(PS_REGISTER);
+  CallConvention := ConvRegister;
+  Lexer_ReadSemicolon(Scope);
+  Result := Lexer_NextToken(Scope);
 end;
 
 function TASTDelphiUnit.ProcSpec_FastCall(Scope: TScope; var CallConvention: TCallConvention): TTokenID;

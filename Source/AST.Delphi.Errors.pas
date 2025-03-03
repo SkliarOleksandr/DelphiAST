@@ -312,6 +312,7 @@ type
     class procedure E2529_TYPE_PARAMETERS_NOT_ALLOWED_ON_OPERATOR(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2530_TYPE_PARAMETERS_NOT_ALLOWED_ON_GLOBAL_PROCEDURE_OR_FUNCTION(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2535_INTERFACE_METHODS_MUST_NOT_HAVE_PARAMETERIZED_METHODS(const AModule: IASTModule; const ATextPosition: TTextPosition);
+    class procedure E2599_FIELD_DEFINITION_NOT_ALLOWED_IN_HELPER_TYPE(const AModule: IASTModule; const APosition: TTextPosition);
 
     procedure PROCEDURE_CANNOT_HAVE_RESULT;
     procedure BREAK_OR_CONTINUE_ALLOWED_ONLY_IN_LOOPS;
@@ -765,6 +766,12 @@ begin
   AModule.PutError('E2535 Interface methods must not have parameterized methods', ATextPosition);
 end;
 
+class procedure TASTDelphiErrors.E2599_FIELD_DEFINITION_NOT_ALLOWED_IN_HELPER_TYPE(const AModule: IASTModule;
+  const APosition: TTextPosition);
+begin
+  AModule.PutError('E2599 Field definition not allowed in helper type', APosition);
+end;
+
 procedure TASTDelphiErrors.EMPTY_EXPRESSION;
 begin
   AbortWork(sEmptyExpression, Lexer.PrevPosition);
@@ -935,7 +942,8 @@ begin
     PS_STATIC: SpecName := 'STATIC';
     PS_STDCALL: SpecName := 'STDCALL';
     PS_CDECL: SpecName := 'CDECL';
-    PS_FASTCALL: SpecName := 'REGISTER';
+    PS_FASTCALL: SpecName := 'FASTCALL';
+    PS_REGISTER: SpecName := 'REGISTER';
     PS_REINTRODUCE: SpecName := 'REINTRODUCE';
   else
     SpecName := '<UNKNOWN>';

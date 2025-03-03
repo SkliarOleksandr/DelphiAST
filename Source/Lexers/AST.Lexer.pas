@@ -181,6 +181,7 @@ type
     property PrevPosition: TTextPosition read fPrevPostion;
     property LinePosition: TTextPosition read GetLinePosition;
     property IdentifireType: TIdentifierType read fIdentifireType;
+    property NextChar: Char read GetNextChar;
     function TokenLexem(TokenID: Integer): string;
     function GetSubString(StartPos, EndPos: Integer): string;
     procedure GetIdentifier(var ID: TIdentifier);
