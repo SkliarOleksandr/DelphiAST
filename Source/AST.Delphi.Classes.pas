@@ -44,6 +44,7 @@ type
     PS_FASTCALL,
     PS_CDECL,
     PS_SAFECALL,
+    PS_REGISTER,
     PS_REINTRODUCE
   );
 
@@ -1388,6 +1389,7 @@ type
     function GetIsRangeConst: Boolean;
     function GetActualDataType: TIDType;
     function GetIsUnknown: Boolean;
+    function GetIsAnonymousConst: Boolean;
   protected
     function GetDataType: TIDType; virtual;
   public
@@ -1411,6 +1413,7 @@ type
     property IsAnonymous: Boolean read GetIsAnonymous;
     property IsAnonymousVar: Boolean read GetIsAnonymousVar;
     property IsAnonymousRef: Boolean read GetIsAnonymousRef;
+    property IsAnonymousConst: Boolean read GetIsAnonymousConst;
     property IsTMPVar: Boolean read GetIsTMPVar;
     property IsTMPRef: Boolean read GetIsTMPRef;
     property IsConstant: Boolean read GetIsConstant;
@@ -4736,7 +4739,10 @@ end;
 
 function TIDExpression.GetAsRangeConst: TIDRangeConstant;
 begin
-  Result := FDeclaration as TIDRangeConstant;
+  if FDeclaration is TIDRangeConstant then
+    Result := FDeclaration as TIDRangeConstant
+  else
+    Result := nil; // TODO: abort work
 end;
 
 function TIDExpression.GetAsStrConst: TIDStringConstant;
@@ -4808,6 +4814,11 @@ end;
 function TIDExpression.GetIsAnonymous: Boolean;
 begin
   Result := FDeclaration.ID.Name = '';
+end;
+
+function TIDExpression.GetIsAnonymousConst: Boolean;
+begin
+  Result := (FDeclaration.ItemType = itConst) and (FDeclaration.ID.Name = '');
 end;
 
 function TIDExpression.GetIsAnonymousRef: Boolean;

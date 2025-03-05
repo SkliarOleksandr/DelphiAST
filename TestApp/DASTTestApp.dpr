@@ -116,6 +116,7 @@ uses
   ASTTest.RTL.IEnumerable1 in '..\TestScripts\RTL\ASTTest.RTL.IEnumerable1.pas',
   ASTTest.NamesOverloading1 in '..\TestScripts\Names Overloading\ASTTest.NamesOverloading1.pas',
   ASTTest.NamesOverloading2 in '..\TestScripts\Names Overloading\ASTTest.NamesOverloading2.pas',
+  ASTTest.NamesOverloading.Prop1 in '..\TestScripts\Names Overloading\ASTTest.NamesOverloading.Prop1.pas',
   ASTTest.Sets.ForInSet1 in '..\TestScripts\Sets\ASTTest.Sets.ForInSet1.pas',
   ASTTest.Sets.ForInSet2 in '..\TestScripts\Sets\ASTTest.Sets.ForInSet2.pas',
   ASTTest.Sets.ExplicitCast1 in '..\TestScripts\Sets\ASTTest.Sets.ExplicitCast1.pas',

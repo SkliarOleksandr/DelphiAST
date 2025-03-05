@@ -67,6 +67,7 @@ uses
 // Winapi.D3DCommon
 // AnsiStrings
 // Character
+// Data.DB
 // Vcl.Forms
 // Vcl.ImgList
 // Vcl.ActnList
@@ -1165,8 +1166,8 @@ begin
             ERRORS.UNDECLARED_ID(ID);
         end;
 
-        // workaround for a case when param or field can be named as type
-        if Decl.ItemType = itVar then
+        // workaround for a case when param or field or property can be named as type
+        if Decl.ItemType in [itVar, itProperty] then
         begin
           var OuterDecl := FindIDNoAbort(Scope.Parent, ID);
           if Assigned(OuterDecl) then
@@ -10382,7 +10383,11 @@ type
         CheckEmptyExpression(Expr);
         if CheckImplicit(fUnitSContext, Expr, CArray.ElementType) = nil then
           ERRORS.INCOMPATIBLE_TYPES(Expr, CArray.ElementType);
-        Expr.Declaration.DataType := CArray.ElementType;
+
+        // set common element type for anonymous constants
+        if Expr.IsAnonymousConst then
+          Expr.Declaration.DataType := CArray.ElementType;
+
         CArray.AddItem(Expr);
       end;
       if i < c  then
