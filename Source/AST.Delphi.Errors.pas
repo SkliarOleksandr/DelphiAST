@@ -366,6 +366,10 @@ type
 
   procedure STATIC_ASSERT_ERROR(const AModule: IASTModule; const ATextPosition: TTextPosition; const AMessage: string);
 
+  procedure INTERNAL_ERROR(const AModule: IASTModule; const AMessage: string; const APosition: TTextPosition); overload;
+  procedure INTERNAL_ERROR(const AModule: IASTModule; const AMessage: string; AParams: array of const; const
+                           APosition: TTextPosition); overload;
+
 implementation
 
 uses AST.Parser.Utils,
@@ -1188,5 +1192,17 @@ procedure STATIC_ASSERT_ERROR(const AModule: IASTModule; const ATextPosition: TT
 begin
   AModule.PutError(AMessage, ATextPosition);
 end;
+
+procedure INTERNAL_ERROR(const AModule: IASTModule; const AMessage: string; const APosition: TTextPosition);
+begin
+  AModule.PutError(AMessage, APosition);
+end;
+
+procedure INTERNAL_ERROR(const AModule: IASTModule; const AMessage: string; AParams: array of const; const
+                         APosition: TTextPosition);
+begin
+  AModule.PutError(AMessage, AParams, APosition);
+end;
+
 
 end.

@@ -52,6 +52,7 @@ type
     _UnknownType: TIDUnknown;
     _UnknownVariable: TIDVariable;
     _UnknownConstant: TIDConstant;
+    _UnknownRangeConstant: TIDRangeConstant;
     _UnknownProcedure: TIDProcedure;
     _MetaType: TIDType;
     _Void: TIDType;

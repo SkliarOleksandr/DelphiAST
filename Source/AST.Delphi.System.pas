@@ -1072,6 +1072,7 @@ begin
   fDecls._UnknownVariable := TIDVariable.CreateAsSystem(IntfScope, '<unknown>');
   fDecls._UnknownVariable.DataType := fDecls._UnknownType;
   fDecls._UnknownConstant := TIDIntConstant.CreateAsSystem(IntfScope, '<unknown>', fDecls._UnknownType);
+  fDecls._UnknownRangeConstant := TIDRangeConstant.CreateAsSystem(IntfScope, '<unknown>', fDecls._UnknownType);
   fDecls._UnknownProcedure := TIDProcedure.CreateAsSystem(IntfScope, '<unknown>');
   fDecls._UnknownProcedure.DataType := _UnknownType;
 

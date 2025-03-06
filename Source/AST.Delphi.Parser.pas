@@ -1498,7 +1498,11 @@ begin
   SContext := EContext.SContext;
   LBuiltin := TIDBuiltInFunction(CallExpr.Declaration);
 
-  // парсинг аргументов
+  // special workaround for "Declared" built-in
+  if LBuiltin.Name = 'Declared' then
+    Scope := TConditionalDeclaredScope.Create(TScopeType.stLocal, Scope);
+
+  // built-in arguments parsing
   if Result = token_openround then
   begin
     ParamsBeginPos := Lexer.SourcePosition;
@@ -8781,6 +8785,10 @@ begin
       token_inline: Result := ProcSpec_Inline(Scope, ProcFlags);
       tokenD_external: Result := ProcSpec_External(Scope, ImportLib, ImportName, ProcFlags);
       tokenD_overload: Result := ProcSpec_Overload(Scope, ProcFlags);
+      tokenD_static: begin
+        Lexer_ReadSemicolon(Scope);
+        Result := Lexer_NextToken(Scope);
+      end
     else
       if (Scope.ScopeClass = scInterface) or (pfImport in ProcFlags) then
       begin
@@ -9583,9 +9591,14 @@ begin
     {built-in}
     itMacroFunction: begin
       var LBuiltinExpr := TIDExpression.Create(Decl, PMContext.ID.TextPosition);
-      Result := ParseBuiltinCall(Scope, LBuiltinExpr, EContext);
-      // ParseBuiltinCall already pushed result to EContext
-      Expression := nil;
+      // "Declared" built-in doesn't need to "resolve" its argument
+      if not (Scope is TConditionalDeclaredScope) then
+      begin
+        Result := ParseBuiltinCall(Scope, LBuiltinExpr, EContext);
+        // ParseBuiltinCall already pushed result to EContext
+        Expression := nil;
+      end else
+        Expression := LBuiltinExpr;
     end;
     {variable}
     itVar: begin

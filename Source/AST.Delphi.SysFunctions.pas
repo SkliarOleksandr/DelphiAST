@@ -567,6 +567,7 @@ var
   Expr: TIDExpression;
 begin
   Expr := Ctx.EContext.RPNPopExpression();
+  GetUnit(Ctx.SContext).CheckEmptyExpression(Expr);
 
   if Expr.DataTypeID <> dtString then
     AbortWork('DEFINE String expected', Expr.TextPosition);

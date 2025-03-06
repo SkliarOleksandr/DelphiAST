@@ -2159,6 +2159,12 @@ type
     function GetName: string; override;
   end;
 
+  // special scope for "Declared" built-in
+  TConditionalDeclaredScope = class(TConditionalScope)
+  protected
+    function GetName: string; override;
+  end;
+
   TASTDelphiLabel = class(TIDDeclaration)
     constructor Create(Scope: TScope; const Identifier: TIdentifier); overload; override;
   end;
@@ -4741,8 +4747,10 @@ function TIDExpression.GetAsRangeConst: TIDRangeConstant;
 begin
   if FDeclaration is TIDRangeConstant then
     Result := FDeclaration as TIDRangeConstant
-  else
-    Result := nil; // TODO: abort work
+  else begin
+    INTERNAL_ERROR(Declaration.DeclUnit, 'EXPRESSION %s IS NOT A RANGE CONSTANT', [Text], TextPosition);
+    Result := Declaration.SYSUnit.fSysDecls._UnknownRangeConstant;
+  end;
 end;
 
 function TIDExpression.GetAsStrConst: TIDStringConstant;
@@ -5449,8 +5457,12 @@ begin
   fAncestorDecl := Value;
   if Assigned(Value) then
   begin
-    fAncestor := Value.Original as TIDStructure;
-    fMembers.fAncestorScope := fAncestor.Members;
+    if Value.Original is TIDStructure then
+    begin
+      fAncestor := Value.Original as TIDStructure;
+      fMembers.fAncestorScope := fAncestor.Members;
+    end;
+    // TODO: else
   end else
     fAncestor := nil;
 end;
@@ -9048,6 +9060,13 @@ end;
 function TConditionalScope.GetName: string;
 begin
   Result := 'conditional$scope';
+end;
+
+{ TConditionalDeclaredScope }
+
+function TConditionalDeclaredScope.GetName: string;
+begin
+  Result := 'cond-declared$scope';
 end;
 
 { TRecordInitScope }
