@@ -285,6 +285,7 @@ type
     class procedure E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2016_ARRAY_TYPE_REQUIRED(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2018_RECORD_OBJECT_OR_CLASS_TYPE_REQUIRED(const AModule: IASTModule; const ATextPosition: TTextPosition);
+    class procedure E2021_CLASS_TYPE_REQUIRED(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2022_CLASS_HELPER_TYPE_REQUIRED(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2026_CONSTANT_EXPRESSION_EXPECTED(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2029_TOKEN_EXPECTED_BUT_ID_FOUND(const AModule: IASTModule; AExpectedToken: TTokenID; const AID: TIdentifier);
@@ -297,6 +298,7 @@ type
     class procedure E2064_LEFT_SIDE_CANNOT_BE_ASSIGNED_TO(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2066_MISSING_OPERATOR_OR_SEMICOLON(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2075_THIS_FORM_OF_METHOD_CALL_ONLY_ALLOWED_IN_METHODS_OF_DERIVED_TYPES(const AModule: IASTModule; const APosition: TTextPosition);
+    class procedure E2086_TYPE_IS_NOT_YET_COMPLETELY_DEFINED(const AModule: IASTModule; const AID: TIdentifier);
     class procedure E2089_INVALID_TYPECAST(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2137_METHOD_NOT_FOUND_IN_BASE_CLASS(const AModule: IASTModule; const AID: TIdentifier);
     class procedure E2168_FIELD_OR_METHOD_IDENTIFIER_EXPECTED(const AModule: IASTModule; const APosition: TTextPosition);
@@ -304,6 +306,7 @@ type
     class procedure E2185_CANNOT_SPECIFY_DISPID(const AModule: IASTModule; const AMethodID: TIdentifier);
     class procedure E2196_CANNOT_INIT_MULTIPLE_VARS(const ATextPosition: TTextPosition); static;
     class procedure E2197_CONSTANT_OBJECT_CANNOT_BE_PASSED_AS_VAR_PARAMETER(const AModule: IASTModule; const APosition: TTextPosition);
+    class procedure E2205_INTERFACE_TYPE_REQUIRED(const AModule: IASTModule; const APosition: TTextPosition); static;
     class procedure E2250_THERE_IS_NO_OVERLOADED_VERSION_THAT_CAN_BE_CALLED_WITH_THESE_ARGUMENTS(const AModule: IASTModule; AExpression: TIDExpression);
     class procedure E2251_AMBIGUOUS_OVERLOADED_CALL(const AModule: IASTModule; AExpression: TIDExpression);
     class procedure E2232_INTERFACE_HAS_NO_INTERFACE_IDENTIFICATION(const AModule: IASTModule; ADecl: TIDDeclaration);
@@ -617,6 +620,11 @@ begin
   AModule.PutError('E2018 Record, object or class type required', ATextPosition);
 end;
 
+class procedure TASTDelphiErrors.E2021_CLASS_TYPE_REQUIRED(const AModule: IASTModule; const APosition: TTextPosition);
+begin
+  AModule.PutError('E2022 Class type required', APosition);
+end;
+
 class procedure TASTDelphiErrors.E2022_CLASS_HELPER_TYPE_REQUIRED(const AModule: IASTModule; const APosition: TTextPosition);
 begin
   AModule.PutError('E2022 Class helper type required', APosition);
@@ -683,6 +691,11 @@ begin
   AModule.PutError('E2075 This form of method call only allowed in methods of derived types', APosition);
 end;
 
+class procedure TASTDelphiErrors.E2086_TYPE_IS_NOT_YET_COMPLETELY_DEFINED(const AModule: IASTModule; const AID: TIdentifier);
+begin
+  AModule.PutError('E2086 Type ''%s'' is not yet completely defined', [AID.Name], AID.TextPosition);
+end;
+
 class procedure TASTDelphiErrors.E2089_INVALID_TYPECAST(const AModule: IASTModule;const ATextPosition: TTextPosition);
 begin
   AModule.PutError('E2089 Invalid typecast', ATextPosition);
@@ -720,6 +733,11 @@ class procedure TASTDelphiErrors.E2197_CONSTANT_OBJECT_CANNOT_BE_PASSED_AS_VAR_P
   const APosition: TTextPosition);
 begin
   AModule.PutError('E2197 Constant object cannot be passed as var parameter', APosition);
+end;
+
+class procedure TASTDelphiErrors.E2205_INTERFACE_TYPE_REQUIRED(const AModule: IASTModule; const APosition: TTextPosition);
+begin
+  AModule.PutError('E2205 Interface type required', APosition);
 end;
 
 class procedure TASTDelphiErrors.E2232_INTERFACE_HAS_NO_INTERFACE_IDENTIFICATION(const AModule: IASTModule; ADecl: TIDDeclaration);

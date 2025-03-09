@@ -31,6 +31,7 @@ type
     _Float32: TIDType;
     _Float64: TIDType;
     _Float80: TIDType;
+    _Real48: TIDType;
     _Currency: TIDType;
     _Comp: TIDType;
     _Real: TIDType;
@@ -224,6 +225,11 @@ type
   TBuiltin_Comp = class(TBuiltin_FltType)
   public
     procedure SetupOperators(ADecls: PDelphiSystemDeclarations); override;
+  end;
+
+  TBuiltin_Real48 = class(TBuiltin_FltType)
+  protected
+    function GetDataSize: Integer; override;
   end;
 
   TBuiltin_OpenString = class(TBuiltin_StrType)
@@ -841,6 +847,13 @@ end;
 function TBuiltin_Variant.SysUnarOperator(AOpID: TOperatorID): TIDType;
 begin
   Result := Self;
+end;
+
+{ TBuiltin_Real48 }
+
+function TBuiltin_Real48.GetDataSize: Integer;
+begin
+  Result := 6;
 end;
 
 end.

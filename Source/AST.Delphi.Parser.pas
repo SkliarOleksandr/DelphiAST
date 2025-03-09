@@ -5871,44 +5871,58 @@ end;
 function TASTDelphiUnit.ParseClassAncestorType(Scope: TScope; ClassDecl: TIDClass): TTokenID;
 var
   Expr: TIDExpression;
-  Decl: TIDType;
+  LAncestorDecl: TIDType;
 begin
   var LAncestorsCount := 0;
   while True do begin
     Lexer_NextToken(Scope);
-    Result := ParseConstExpression(Scope, Expr, ExprNested);
+    Result := ParseConstExpression(Scope, {out} Expr, ExprNested);
     if Assigned(Expr) then
     begin
-      CheckClassOrIntfType(Expr);
-      Decl := Expr.AsType;
-      // проверка на зацикливание на себя
-      if Decl = ClassDecl then
-        AbortWork(sRecurciveTypeLinkIsNotAllowed, Expr.TextPosition);
+      LAncestorDecl := Expr.AsType;
+
+      // check recursive using
+      if LAncestorDecl = ClassDecl then
+        ERRORS.E2086_TYPE_IS_NOT_YET_COMPLETELY_DEFINED(Self, Expr.Declaration.ID);
+
     end else begin
       ERRORS.CLASS_OR_INTF_TYPE_REQUIRED(Lexer_PrevPosition);
-      Decl := nil;
+      LAncestorDecl := nil;
     end;
 
-    if (Decl.DataTypeID = dtClass) then
-    begin
-      if LAncestorsCount = 0 then
-      begin
-        ClassDecl.AncestorDecl := Decl;
-      end else
-        AbortWork('Multiple inheritance is not supported', Expr.TextPosition);
-    end else
-    begin
-      var LIntfDecl: TIDInterface;
-      if Decl is TIDGenericInstantiation then
-      begin
-        LIntfDecl := TIDGenericInstantiation(Decl).Original as TIDInterface;
-        ClassDecl.AddGenericInterface(TIDGenericInstantiation(Decl));
-      end else
-        LIntfDecl := Decl.ActualDataType as TIDInterface;
+    case LAncestorDecl.DataTypeID of
+      dtClass: begin
+        if LAncestorsCount = 0 then
+        begin
+          ClassDecl.AncestorDecl := LAncestorDecl;
+        end else
+         ERRORS.E2021_CLASS_TYPE_REQUIRED(Self, Expr.TextPosition);
+      end;
+      dtInterface: begin
+        var LIntfDecl: TIDInterface;
+        if LAncestorDecl is TIDGenericInstantiation then
+        begin
+          LIntfDecl := TIDGenericInstantiation(LAncestorDecl).Original as TIDInterface;
+          ClassDecl.AddGenericInterface(TIDGenericInstantiation(LAncestorDecl));
+        end else
+          LIntfDecl := LAncestorDecl.ActualDataType as TIDInterface;
 
-      if ClassDecl.FindInterface(LIntfDecl) then
-        ERRORS.INTF_ALREADY_IMPLEMENTED(Expr);
-      ClassDecl.AddInterface(LIntfDecl);
+        if ClassDecl.FindInterface(LIntfDecl) then
+          ERRORS.INTF_ALREADY_IMPLEMENTED(Expr);
+        ClassDecl.AddInterface(LIntfDecl);
+      end;
+      dtProcType: begin
+        var LProcType := LAncestorDecl.Original as TIDProcType;
+        if LProcType.ProcClass = procReference then
+        begin
+          // a reference to procedure can be treated as an interface
+          var LIntfDecl := LProcType.GetAsInterface;
+          ClassDecl.AddInterface(LIntfDecl);
+        end else
+          ERRORS.E2205_INTERFACE_TYPE_REQUIRED(Self, Expr.TextPosition);
+      end;
+    else
+      ERRORS.E2021_CLASS_TYPE_REQUIRED(Self, Expr.TextPosition);
     end;
 
     Inc(LAncestorsCount);
@@ -6964,9 +6978,9 @@ begin
         var AConstraintType: TIDType;
         Result := ParseGenericsConstraint(Scope, {out} AConstraint, {out} AConstraintType);
         // set constraint to all params in the group (like in <A, B, C: class>)
-        for var AIndex := ParamsInGroupCount - 1 downto 0 do
+        for var LParamIndex := ParamsCount - ParamsInGroupCount to ParamsCount - 1 do
         begin
-          ParamDecl := TIDGenericParam(Args[ParamsInGroupCount - ParamsCount]);
+          ParamDecl := TIDGenericParam(Args[LParamIndex]);
           ParamDecl.Constraint := AConstraint;
           ParamDecl.ConstraintType := AConstraintType;
         end;
@@ -10867,8 +10881,8 @@ var
 begin
   Decl := Expression.Declaration;
   if (Decl.ItemType = itType) and
-     ((TIDType(Decl).DataTypeID = dtClass) or
-      (TIDType(Decl).DataTypeID = dtInterface)) then Exit;
+     (TIDType(Decl).IsClass or
+      TIDType(Decl).IsInterface) then Exit;
   ERRORS.CLASS_OR_INTF_TYPE_REQUIRED(Expression.TextPosition);
 end;
 
@@ -10878,8 +10892,8 @@ var
 begin
   Decl := Expression.Declaration;
   if (Decl.ItemType = itType) and
-     ((TIDType(Decl).DataTypeID = dtClass) or
-      (TIDType(Decl).DataTypeID = dtInterface)) then Exit;
+     (TIDType(Decl).IsClass or
+      TIDType(Decl).IsInterface) then Exit;
 
   if (Decl.ItemType = itVar) and
      (TIDVariable(Decl).DataTypeID = dtClassOf) then Exit;
@@ -10889,8 +10903,9 @@ end;
 
 procedure TASTDelphiUnit.CheckClassOrIntfType(DataType: TIDType; const TextPosition: TTextPosition);
 begin
-  if (DataType.DataTypeID = dtClass) or
-     (DataType.DataTypeID = dtInterface) then Exit;
+  if DataType.IsClass or
+     DataType.IsInterface then
+    Exit;
   ERRORS.CLASS_OR_INTF_TYPE_REQUIRED(TextPosition);
 end;
 

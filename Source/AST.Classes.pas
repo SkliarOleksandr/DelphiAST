@@ -1305,11 +1305,20 @@ end;
 
 procedure TASTModule.PutError(const AMessage: string; const AParams: array of const;
   const ATextPosition: TTextPosition; ACritical: Boolean);
+
+  procedure DebugBreak;
+  asm
+    int 3;
+  end;
+
 begin
   if Project.StopCompileIfError or ACritical then
     AbortWork(AMessage, AParams, ATextPosition)
-  else
+  else begin
     Project.PutMessage(Self, cmtError, Format(AMessage, AParams), ATextPosition);
+    if (BreakpointOnError) and (System.DebugHook > 0) then
+      DebugBreak;
+  end;
 end;
 
 procedure TASTModule.PutError(const AMessage: string; const ATextPosition: TTextPosition; ACritical: Boolean);

@@ -381,7 +381,7 @@ type
     fFinalProc: TIDProcedure;
     function GetOperators(const Op: TOperatorID): TBinaryOperatorsArray;
     function GetIsUntypedPointer: Boolean; inline;
-    function GetIsClass: Boolean; inline;
+    function GetIsClass: Boolean; virtual;
     function GetIsInterface: Boolean; inline;
     function GetIsChar: Boolean;
   protected
@@ -546,13 +546,14 @@ type
     gsType                   // <T: IMyIntf, K: TMyClass>
   );
 
-  {special type for describing the generic parameter}
+  {special type for describing the generic type parameter}
   TIDGenericParam = class(TIDType)
   private
     fConstraint: TGenericConstraint;
     fConstraintType: TIDType;
   protected
     function GetIsReferenced: Boolean; override;
+    function GetIsClass: Boolean; override;
   public
     constructor Create(Scope: TScope; const ID: TIdentifier); override;
     property Constraint: TGenericConstraint read fConstraint write fConstraint;
@@ -566,6 +567,7 @@ type
     function MatchExplicitTo(ADst: TIDType): Boolean; override;
     function MatchExplicitFrom(ASrc: TIDType): Boolean; override;
     function SameConstraint(ADstParam: TIDGenericParam): Boolean;
+    function ConstraintToStr: string;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
   end;
 
@@ -1672,6 +1674,7 @@ type
     fResultType: TIDType;
     fCallConv: TCallConvention;
     fProcClass: TProcTypeClass;
+    fAsInterface: TIDInterface;
     function GetIsStatic: Boolean; inline;
   protected
     function GetDisplayName: string; override;
@@ -1690,6 +1693,8 @@ type
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
     function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                 AContext: TGenericInstantiateContext): TIDDeclaration; override;
+    function MatchImplicitFrom(ASrc: TIDType): Boolean; override;
+    function GetAsInterface: TIDInterface;
   end;
 
   {structure field class}
@@ -7380,6 +7385,29 @@ begin
   GenericOverloads2Str(ABuilder, ANestedLevel);
 end;
 
+function TIDProcType.GetAsInterface: TIDInterface;
+
+  function GenerateInterface: TIDInterface;
+  begin
+    Result := TIDInterface.Create(Scope, ID);
+    var LMethod := TIDProcedure.CreateAsSystem(Result.Members, 'Invoke');
+    LMethod.ResultType := Self.ResultType;
+    Result.Members.AddProcedure(LMethod);
+  end;
+
+begin
+  if fProcClass = procReference then
+  begin
+    if not Assigned(fAsInterface) then
+      fAsInterface := GenerateInterface;
+    Result := fAsInterface;
+  end else
+  begin
+    Assert(False);
+    Result := nil;
+  end;
+end;
+
 function TIDProcType.GetDataSize: Integer;
 begin
   case fProcClass of
@@ -7457,6 +7485,14 @@ begin
     Result := LNewType;
     LogEnd('inst [type: %s, dst: %s]', [ClassName, Result.DisplayName]);
   end;
+end;
+
+function TIDProcType.MatchImplicitFrom(ASrc: TIDType): Boolean;
+begin
+  Result := inherited;
+  // check if a class supports this reference to procedure as interface
+  if not Result and (fProcClass = procReference) and (ASrc.DataTypeID = dtClass) then
+    Result := TIDClass(ASrc).FindInterface(GetAsInterface, {AFindInAncestors:} True);
 end;
 
 { TIDRangeConstant }
@@ -7957,6 +7993,19 @@ end;
 
 { TIDGenericParam }
 
+function TIDGenericParam.ConstraintToStr: string;
+begin
+  case fConstraint of
+    gsClass: Result := 'class';
+    gsConstructor: Result := 'constructor';
+    gsClassAndConstructor: Result := 'class, constructor';
+    gsRecord: Result := 'record';
+    gsType: Result := fConstraintType.Name;
+  else
+    Result := '';
+  end;
+end;
+
 constructor TIDGenericParam.Create(Scope: TScope; const ID: TIdentifier);
 begin
   inherited Create(Scope, ID);
@@ -7966,9 +8015,12 @@ end;
 procedure TIDGenericParam.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
   ABuilder.Append(' ', ANestedLevel*2);
-  ABuilder.Append('<');
   ABuilder.Append(DisplayName);
-  ABuilder.Append('>');
+  if fConstraint > gsNone then
+  begin
+    ABuilder.Append(': ');
+    ABuilder.Append(ConstraintToStr);
+  end;
 end;
 
 function TIDGenericParam.DoesGenericUseParams(const AParams: TIDTypeArray): Boolean;
@@ -7978,6 +8030,12 @@ begin
       Exit(True);
 
   Result := False;
+end;
+
+function TIDGenericParam.GetIsClass: Boolean;
+begin
+  Result := (fConstraint in [gsClass, gsConstructor, gsClassAndConstructor]) or
+    (Assigned(fConstraintType) and fConstraintType.IsClass);
 end;
 
 function TIDGenericParam.GetIsReferenced: Boolean;
@@ -8125,7 +8183,8 @@ begin
   ABuilder.Append('<');
   for var LIndex := 0 to Length(FGenericParams) - 1 do
   begin
-    ABuilder.Append(FGenericParams[LIndex].Name);
+    FGenericParams[LIndex].Decl2Str(ABuilder);
+
     if LIndex < Length(FGenericParams) - 1 then
       ABuilder.Append(', ');
   end;

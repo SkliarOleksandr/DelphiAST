@@ -1,4 +1,4 @@
-unit ASTTest.Genrics.RecursiveUsing1;
+unit ASTTest.Generics.RecursiveUsing1;
 
 interface
 

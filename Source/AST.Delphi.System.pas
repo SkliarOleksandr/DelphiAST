@@ -1005,6 +1005,7 @@ begin
   fDecls._Float80 := RegisterType('Extended', TBuiltin_Extended, dtFloat80);
   fDecls._Currency := RegisterType('Currency', TBuiltin_Currency, dtCurrency);
   fDecls._Comp := RegisterType('Comp', TBuiltin_Comp, dtComp);
+  fDecls._Real48 := RegisterType('Real48', TBuiltin_Real48, dtFloat64);
   //===============================================================
   fDecls._Boolean := RegisterOrdinal('Boolean', dtBoolean, 0, 1, TBuiltin_Boolean);
   _Boolean.OverloadExplicitFromAny(Operators.IsOrdinal);
