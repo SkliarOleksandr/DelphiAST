@@ -543,7 +543,8 @@ type
     gsConstructor,           // <T: constructor>
     gsClassAndConstructor,   // <T: class constructor>
     gsRecord,                // <T: record>
-    gsType                   // <T: IMyIntf, K: TMyClass>
+    gsType,                  // <T: IMyIntf, K: TMyClass>
+    gsTypeAndConstructor     // <T: IMyIntf, K: TMyClass>
   );
 
   {special type for describing the generic type parameter}
@@ -2287,8 +2288,9 @@ begin
     gsConstructor : Result := (ATypeArg.DataTypeID = dtClass);        // <T: constructor>
     gsClassAndConstructor: Result := (ATypeArg.DataTypeID = dtClass); // <T: class constructor>
     gsRecord: Result := (ATypeArg.DataTypeID = dtRecord {todo:});     // <T: record>
-    gsType: Result := (ATypeArg is TIDStructure) and
-                       TIDStructure(ATypeArg).IsInheritsForm(AGenericParam.ConstraintType as TIDStructure);
+    gsType, gsTypeAndConstructor:                                     // <T: <type>>
+      Result := (ATypeArg is TIDStructure) and
+                TIDStructure(ATypeArg).IsInheritsForm(AGenericParam.ConstraintType as TIDStructure);
   else
     Result := True;
   end;
@@ -8001,6 +8003,7 @@ begin
     gsClassAndConstructor: Result := 'class, constructor';
     gsRecord: Result := 'record';
     gsType: Result := fConstraintType.Name;
+    gsTypeAndConstructor: Result := fConstraintType.Name + ', constructor';
   else
     Result := '';
   end;
@@ -8197,7 +8200,7 @@ begin
   begin
     ABuilder.Append(sLineBreak);
     ABuilder.Append(' ', ANestedLevel*2);
-    ABuilder.Append('// generic instase:');
+    ABuilder.Append('// generic instance:');
     ABuilder.Append(sLineBreak);
     LInstance.Instance.Decl2Str(ABuilder, ANestedLevel);
   end;

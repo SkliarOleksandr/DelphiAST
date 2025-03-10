@@ -120,7 +120,7 @@ type
     token_to,                       // keyword: to
     token_downto,                   // keyword: downto
     token_do,                       // keyword: do
-    token_deprecated,               // keyword: depricated
+    tokenD_deprecated,              // keyword: depricated
     token_while,                    // keyword: while
     tokenD_reference,               // directive: reference
     token_repeat,                   // keyword: repeat
@@ -408,7 +408,7 @@ begin
   RegisterToken('downto', token_downto);
   RegisterToken('div', token_div);
   RegisterToken('destructor', token_destructor);
-  RegisterToken('deprecated', token_deprecated);
+  RegisterToken('deprecated', tokenD_deprecated, tcWeakKeyword);
   RegisterToken('default', tokenD_default, tcWeakKeyword);
   RegisterToken('nodefault', tokenD_nodefault, tcWeakKeyword);
   RegisterToken('dynamic', tokenD_dynamic, tcWeakKeyword);

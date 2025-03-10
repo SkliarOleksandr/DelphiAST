@@ -1701,11 +1701,10 @@ begin
   Result := ParseStatements(NewScope, NewSContext, {IsBlock:} False);
 
   if Result = token_semicolon then
-    //Lexer_MatchSemicolon(Result);
     Result := Lexer_NextToken(Scope)
   else
-  if Result <> token_else then  
-    ERRORS.SEMICOLON_EXPECTED;
+  if not (Result in [token_else, token_end]) then
+    ERRORS.E2066_MISSING_OPERATOR_OR_SEMICOLON(Self, Lexer_Position);
 end;
 
 function TASTDelphiUnit.ParseWhileStatement(Scope: TScope; const SContext: TSContext): TTokenID;
@@ -4419,7 +4418,7 @@ function TASTDelphiUnit.CheckAndParseDeprecated(Scope: TScope; CurrToken: TToken
 var
   MessageExpr: TIDExpression;
 begin
-  if Lexer_AmbiguousId = token_deprecated then
+  if Lexer_AmbiguousId = tokenD_deprecated then
   begin
     Result := Lexer_NextToken(Scope);
     if Result = token_identifier then
@@ -6904,6 +6903,7 @@ begin
         case AConstraint of
           gsNone: AConstraint := gsConstructor;
           gsClass: AConstraint := gsClassAndConstructor;
+          gsType: AConstraint := gsTypeAndConstructor;
         else
           ERRORS.GENERIC_INVALID_CONSTRAINT(Result);
         end;
@@ -6918,7 +6918,7 @@ begin
           ERRORS.GENERIC_INVALID_CONSTRAINT(Result);
       end;
       token_identifier{, token_id_or_keyword}: begin
-        if AConstraint = gsNone then
+        if AConstraint in [gsNone, gsConstructor] then
         begin
           var AID: TIdentifier;
           Lexer_ReadCurrIdentifier(AID);
@@ -6927,8 +6927,16 @@ begin
              (TIDType(ADeclaration).DataTypeID in [dtClass, dtInterface, dtGeneric]) then
           begin
             AConstraintType := TIDType(ADeclaration);
-            AConstraint := gsType;
-            Exit;
+            if AConstraint = gsNone then
+            begin
+              Result := Lexer_NextToken(Scope);
+              AConstraint := gsType;
+              continue;
+            end else
+            begin
+              AConstraint := gsTypeAndConstructor;
+              Exit;
+            end;
           end;
         end;
         ERRORS.GENERIC_INVALID_CONSTRAINT(Result);
@@ -7693,8 +7701,8 @@ begin
       tokenD_cdecl: Result := ProcSpec_CDecl(Scope, CallConv);
       tokenD_register: Result := ProcSpec_Register(Scope, CallConv);
       tokenD_dispid: Result := ProcSpec_DispId(Scope, Struct, ID);
-      token_deprecated: begin
-        CheckAndParseDeprecated(Scope, token_deprecated);
+      tokenD_deprecated: begin
+        CheckAndParseDeprecated(Scope, tokenD_deprecated);
         Result := Lexer_NextToken(Scope);
       end;
       tokenD_platform: begin
@@ -7878,8 +7886,8 @@ begin
         Lexer_ReadSemicolon(Scope);
         Result := Lexer_NextToken(Scope);
       end;
-      token_deprecated: begin
-        CheckAndParseDeprecated(Scope, token_deprecated);
+      tokenD_deprecated: begin
+        CheckAndParseDeprecated(Scope, tokenD_deprecated);
         Result := Lexer_NextToken(Scope);
       end;
       tokenD_platform: begin
@@ -8141,8 +8149,8 @@ begin
         Lexer_ReadSemicolon(Scope);
         Result := Lexer_NextToken(Scope);
       end;
-      token_deprecated: begin
-        CheckAndParseDeprecated(Scope, token_deprecated);
+      tokenD_deprecated: begin
+        CheckAndParseDeprecated(Scope, tokenD_deprecated);
         Result := Lexer_NextToken(Scope);
       end;
       tokenD_platform:
@@ -8353,8 +8361,8 @@ begin
         Lexer_ReadSemicolon(Scope);
         Result := Lexer_NextToken(Scope);
       end;
-      token_deprecated: begin
-        CheckAndParseDeprecated(Scope, token_deprecated);
+      tokenD_deprecated: begin
+        CheckAndParseDeprecated(Scope, tokenD_deprecated);
         Result := Lexer_NextToken(Scope);
       end;
       tokenD_platform:
@@ -8985,7 +8993,7 @@ begin
     if Assigned( AGenericArgs[LIndex]) then
       LGArgs[LIndex] := AGenericArgs[LIndex].AsType
     else
-      AbortWorkInternal('Generic argument is not initialized');
+      AbortWorkInternal('Generic argument is not initialized', Lexer_Position);
 
   {find in the pool first}
   var LDecl: TIDDeclaration;
@@ -10263,7 +10271,7 @@ var
   Variable: TIDVariable;
   Names: TIdentifiersPool;
   VarFlags: TVariableFlags;
-  DeprecatedText: TIDExpression;
+  // DeprecatedText: TIDExpression; TODO:
 begin
   c := 0;
   Names := TIdentifiersPool.Create(2);
@@ -10295,8 +10303,7 @@ begin
       Result := ParseVarDefaultValue(Scope, DataType.ActualDataType, {out} DefaultValue);
 
     // deprecated
-    if Result = token_deprecated then
-      Result := ParseDeprecated(Scope, DeprecatedText);
+    Result := CheckAndParseDeprecated(Scope, Result);
 
     for i := 0 to c do begin
       Variable := TIDVariable.Create(Scope, Names.Items[i]);
