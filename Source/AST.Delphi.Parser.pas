@@ -6778,18 +6778,24 @@ begin
 
   Lexer_MatchToken(Result, token_assign);
 
-  if LoopVar.DataType = nil then
-    LoopVar.DataType := Sys._Int32
-  else
-  if (LoopVar.ItemType <> itVar) or not (LoopVar.DataType.IsOrdinal) then
-    AbortWork(sForLoopIndexVarsMastBeSimpleIntVar, Lexer_Position);
-
-  // начальное значение
+  // initial index value
   Lexer_NextToken(Scope);
   Result := ParseExpression(Scope, SContext, EContext, ASTExpr);
   KW.ExprInit := ASTExpr;
   StartExpr := EContext.Result;
   CheckEmptyExpression(StartExpr);
+
+  // set datatape for inline var
+  if LoopVar.DataType = nil then
+  begin
+    // align infered type to System.Integer for integer types
+    if StartExpr.ActualDataType.IsInteger then
+      LoopVar.DataType := Sys._Int32
+    else
+      LoopVar.DataType := StartExpr.ActualDataType;
+  end else
+  if (LoopVar.ItemType <> itVar) or not (LoopVar.DataType.IsOrdinal) then
+    AbortWork(sForLoopIndexVarsMastBeSimpleIntVar, Lexer_Position);
 
   // пишем инструкцию присваениея начального значения
   EContext.RPNPushOperator(opAssignment);

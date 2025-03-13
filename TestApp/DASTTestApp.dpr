@@ -132,7 +132,8 @@ uses
   ASTTest.Builtins.High1 in '..\TestScripts\Built-ins\ASTTest.Builtins.High1.pas',
   ASTTest.Builtins.Declared1 in '..\TestScripts\Built-ins\ASTTest.Builtins.Declared1.pas',
   ASTTest.InlineVars.TypeInfer1 in '..\TestScripts\Inline Vars\ASTTest.InlineVars.TypeInfer1.pas',
-  ASTTest.Enums.ReservedNames1 in '..\TestScripts\Enums\ASTTest.Enums.ReservedNames1.pas';
+  ASTTest.Enums.ReservedNames1 in '..\TestScripts\Enums\ASTTest.Enums.ReservedNames1.pas',
+  ASTTest.Enums.ForLowHigh in '..\TestScripts\Enums\ASTTest.Enums.ForLowHigh.pas';
 
 {$R *.res}
 
