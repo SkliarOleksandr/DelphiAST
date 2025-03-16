@@ -103,7 +103,7 @@ type
     procedure PrepareStrLiterals;
     procedure SaveStrLiterals(Stream: TStream);
     procedure AddUnit(const aUnit, BeforeUnit: IASTPascalUnit); overload;
-    procedure AddUnit(const AFileName: string); overload;
+    procedure AddUnit(const AFileName: string; const AModule: IASTModule); overload;
     procedure AddUnitSource(const Source: string);
     procedure AddUnitSearchPath(const APath: string; AIncludeSubDirs: Boolean);
     procedure RemoveUnitSearchPath(const APath: string);
@@ -123,9 +123,9 @@ type
     property RootPath: string read GetRootPath;
     function GetStringConstant(const Value: string): Integer; overload;
     function GetStringConstant(const StrConst: TIDStringConstant): Integer; overload;
-    function FindUnitFile(const AUnitName: string; const AFileExt: string = ''): string;
+    function FindUnitFile(const AUnitName: string; const AModule: IASTModule; const AFileExt: string = ''): string;
     function FindParsedUnit(const AUnitName: string): IASTPascalUnit;
-    function UsesUnit(const AUnitName, AUnitPath: string): IASTPascalUnit;
+    function UsesUnit(const AUnitName, AUnitPath: string; const AModule: IASTModule): IASTPascalUnit;
     function FindType(const AUnitName, ATypeName: string): TASTDeclaration;
     function GetMessages: ICompilerMessages;
     function InPogress: Boolean; override;
@@ -248,7 +248,7 @@ begin
   if not Assigned(fSysUnit) then
   begin
     var LSystemName := GetSystemUnitFileName;
-    var LSystemUnitFileName := FindUnitFile(LSystemName);
+    var LSystemUnitFileName := FindUnitFile(LSystemName, {AModule:} nil);
     fSysUnit := GetSystemUnitClass.Create(Self, LSystemUnitFileName) as IASTPascalUnit;
     if FileExists(LSystemUnitFileName) and fParseSystemUnit then
       fSysUnit.Compile(not fCompileAll);
@@ -365,7 +365,7 @@ begin
     raise Exception.CreateFmt('Unit ''%s'' not found', [AUnitName]);
 end;
 
-function TPascalProject.UsesUnit(const AUnitName, AUnitPath: string): IASTPascalUnit;
+function TPascalProject.UsesUnit(const AUnitName, AUnitPath: string; const AModule: IASTModule): IASTPascalUnit;
 var
   i: Integer;
   SUnitName: string;
@@ -400,7 +400,7 @@ begin
     Exit;
 
   // search using search paths
-  SUnitName := FindUnitFile(AUnitName, '.pas');
+  SUnitName := FindUnitFile(AUnitName, AModule, '.pas');
   if SUnitName <> '' then
   begin
     Result := OpenUnit(SUnitName);
@@ -443,9 +443,9 @@ begin
   AddUnit(UN, nil);
 end;
 
-procedure TPascalProject.AddUnit(const AFileName: string);
+procedure TPascalProject.AddUnit(const AFileName: string; const AModule: IASTModule);
 begin
-  var LFullFileName := FindUnitFile(AFileName);
+  var LFullFileName := FindUnitFile(AFileName, AModule);
   if LFullFileName <> '' then
     AddUnit(GetUnitClass().CreateFromFile(Self, LFullFileName) as IASTPascalUnit, nil)
   else
@@ -623,7 +623,7 @@ begin
   Result := LUnit.GetPublicType(ATypeName);
 end;
 
-function TPascalProject.FindUnitFile(const AUnitName: string; const AFileExt: string): string;
+function TPascalProject.FindUnitFile(const AUnitName: string; const AModule: IASTModule; const AFileExt: string): string;
 
   function DoFindFile(const APath, AFileName: string): string;
   begin
@@ -664,7 +664,11 @@ begin
   if AFileExt <> '' then
     LFileName := LFileName + AFileExt;
 
-  // search file in the root dir
+  // search in the same dir the unit exists
+  if Assigned(AModule) and FileExists(AModule.ModulePath + LFileName) then
+    Exit(AModule.ModulePath + LFileName);
+
+  // search file in the project root dir
   if FileExists(RootPath + LFileName) then
     Exit(RootPath + LFileName);
 

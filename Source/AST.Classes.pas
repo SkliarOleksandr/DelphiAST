@@ -111,6 +111,7 @@ type
     fProject: IASTProject;
     fTotalLinesParsed: Integer;
     function GetModuleName: string; virtual;
+    function GetModulePath: string;
     function GetSource: string; virtual; abstract;
     procedure SetFileName(const Value: string);
     procedure Progress(StatusClass: TASTProcessStatusClass; AElapsedTime: Int64); virtual;
@@ -1288,6 +1289,11 @@ end;
 function TASTModule.GetModuleName: string;
 begin
   Result := ExtractFileName(fFileName);
+end;
+
+function TASTModule.GetModulePath: string;
+begin
+  Result := ExtractFilePath(fFileName);
 end;
 
 function TASTModule.GetTotalLinesParsed: Integer;

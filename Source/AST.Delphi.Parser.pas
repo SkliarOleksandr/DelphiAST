@@ -1310,11 +1310,11 @@ begin
     end;
 
     // find the unit file
-    LUnit := Package.UsesUnit(ID.Name, LUnitPath) as TASTDelphiUnit;
+    LUnit := Package.UsesUnit(ID.Name, LUnitPath, Self) as TASTDelphiUnit;
     if not Assigned(LUnit) then
     begin
       // for debug
-      Package.UsesUnit(ID.Name, LUnitPath);
+      Package.UsesUnit(ID.Name, LUnitPath, Self);
       ERRORS.UNIT_NOT_FOUND(ID);
     end;
 
@@ -2851,7 +2851,8 @@ begin
         Token := ParseCondStatements(Scope, Token);
         continue;
       end;
-      ERRORS.KEYWORD_EXPECTED;
+      ERRORS.E2029_EXPECTED_BUT_FOUND(Self, 'Keyword', Lexer_Original, Lexer_Position);
+      Exit(CompileFail);
     end;
   end;
 end;
@@ -5182,7 +5183,7 @@ begin
     LFileName := LFileName + Lexer.OriginalToken
   end;
 
-  var LFullFileName := Project.FindUnitFile(LFileName, {AFileExt:} '');
+  var LFullFileName := Project.FindUnitFile(LFileName, Self, {AFileExt:} '');
   if LFullFileName <> '' then
   begin
     var LStrings := TStringList.Create;

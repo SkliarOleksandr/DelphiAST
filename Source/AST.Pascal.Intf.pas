@@ -33,10 +33,10 @@ type
     function GetOptions: TPackageOptions;
     function GetTarget: TASTTargetClass;
     function GetDefines: TDefines;
-    function FindUnitFile(const AUnitName: string; const AFileExt: string = ''): string;
+    function FindUnitFile(const AUnitName: string; const AModule: IASTModule; const AFileExt: string = ''): string;
     function FindParsedUnit(const AUnitName: string): IASTPascalUnit;
     function GetUnit(const AUnitName: string): TObject; overload;
-    function UsesUnit(const AUnitName: string; const AUnitPath: string): IASTPascalUnit;
+    function UsesUnit(const AUnitName: string; const AUnitPath: string; const AModule: IASTModule): IASTPascalUnit;
     function GetSysUnit: IASTPascalUnit;
     function GetCompileAll: Boolean;
     procedure SetCompileAll(const Value: Boolean);
@@ -45,7 +45,7 @@ type
     procedure SetTarget(const Value: TASTTargetClass);
     procedure SaveToStream(Stream: TStream);
     procedure AddUnit(const AUnit, BeforeUnit: IASTPascalUnit); overload;
-    procedure AddUnit(const FileName: string); overload;
+    procedure AddUnit(const FileName: string; const AModule: IASTModule); overload;
     procedure AddUnitSource(const Source: string); overload;
     procedure AddUnitSearchPath(const APath: string; AIncludeSubDirs: Boolean = True);
     procedure RemoveUnitSearchPath(const APath: string);

@@ -579,7 +579,8 @@ begin
     if Assigned(LFileField) then
     begin
       var LFileName := FileURLDecode(LFileField.Value);
-      lbFiles.AddItem(LFileName, nil);
+      if ExtractFileExt(LFileName) = '.pas' then
+        lbFiles.AddItem(LFileName, nil);
     end;
   end;
   lbFiles.CheckAll(cbChecked);
@@ -1253,7 +1254,7 @@ begin
     var LFilePath := lbFiles.Items[LIndex];
     if lbFiles.Checked[LIndex] then
       if FileExists(LFilePath) then
-        Prj.AddUnit(LFilePath)
+        Prj.AddUnit(LFilePath, {AModule:} nil)
       else
         ErrMemo.Lines.Add(Format('Warning: File ''%s'' is not found', [LFilePath]));
   end;
@@ -1311,7 +1312,7 @@ end;
 procedure TfrmTestAppMain.FilesParseFocusedActionExecute(Sender: TObject);
 begin
   var LProject := CreateProject(ProjectNameEdit.Text, {AParseSystemUnit:} True);
-  LProject.AddUnit(lbFiles.Items[lbFiles.ItemIndex]);
+  LProject.AddUnit(lbFiles.Items[lbFiles.ItemIndex], {AModule:} nil);
   ParseProject(LProject, {AClearOutput:} True, {AShowResults:} True);
   LProject.Clear({AClearImplicitUnits:} True);
 end;

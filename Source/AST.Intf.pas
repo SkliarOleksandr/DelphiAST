@@ -35,6 +35,7 @@ type
     ['{1E3A5748-1671-41E8-BAAD-4BBB2B363BF4}']
     function GetModuleName: string;
     function GetFileName: string;
+    function GetModulePath: string;
     function GetTotalLinesParsed: Integer;
 
     procedure PutError(const AMessage: string; const ATextPosition: TTextPosition; ACritical: Boolean = False); overload;
@@ -53,6 +54,7 @@ type
 
     property Name: string read GetModuleName;
     property FileName: string read GetFileName;
+    property ModulePath: string read GetModulePath;
     property TotalLinesParsed: Integer read GetTotalLinesParsed;
   end;
 
