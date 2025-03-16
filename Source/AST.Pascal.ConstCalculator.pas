@@ -292,10 +292,19 @@ end;
 function TExpressionCalculator.CalcPointer(AScope: TScope; LeftConst, RightConst: TIDConstant; Operation: TOperatorID): TIDConstant;
 begin
   // todo:
-  if LeftConst is TIDPointerConstant then
-    Exit(LeftConst)
+  case Operation of
+    opEqual,
+    opNotEqual,
+    opGreater,
+    opGreaterOrEqual,
+    opLess,
+    opLessOrEqual: Result := Sys._True;
   else
-    Exit(RightConst);
+    if LeftConst is TIDPointerConstant then
+      Exit(LeftConst)
+    else
+      Exit(RightConst);
+  end;
 end;
 
 function TExpressionCalculator.CalcInteger(AScope: TScope; LValue, RValue: Int64; Operation: TOperatorID): TIDConstant;

@@ -61,6 +61,7 @@ uses
 // Winapi.CommCtrl
 // Winapi.UrlMon
 // Winapi.PropSys
+// Winapi.PsAPI
 // Winapi.MSXMLIntf
 // Winapi.ShlObj
 // Winapi.ImageHlp
@@ -175,7 +176,7 @@ type
     class function GetTMPVarExpr(const EContext: TEContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline; static;
     class function GetTMPRefExpr(const SContext: TSContext; DataType: TIDType): TIDExpression; overload; inline; static;
     class function GetTMPRefExpr(const SContext: TSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline; static;
-    class function GetStaticTMPVar(DataType: TIDType; VarFlags: TVariableFlags = []): TIDVariable; static;
+    class function GetStaticTMPVar(AScope: TScope; DataType: TIDType; VarFlags: TVariableFlags = []): TIDVariable; static;
     function GetOverloadProcForImplicitCall(ACallExpr: TIDCallExpression): TIDProcedure;
     function GetBuiltins: IDelphiBuiltInTypes;
     property Builtins: IDelphiBuiltInTypes read GetBuiltins;
@@ -299,6 +300,7 @@ type
     function Lexer_PrevPosition: TTextPosition; inline;
     function Lexer_IdentifireType: TIdentifierType; inline;
     function Lexer_TokenLexem(const TokenID: TTokenID): string; inline;
+    function Lexer_TokenText(ATokenID: Integer): string; override;
     function Lexer_Line: Integer; override;
     function Lexer_Original: string; inline;
     function Lexer_SkipBlock(StopToken: TTokenID): TTokenID;
@@ -2435,7 +2437,6 @@ end;
 function TASTDelphiUnit.Process_operator_Addr(var EContext: TEContext): TIDExpression;
 var
   Expr: TIDExpression;
-  TmpDecl: TIDVariable;
   DataType: TIDType;
 begin
   DataType := fSysDecls._PointerType;
@@ -2444,21 +2445,23 @@ begin
   if Expr.IsConstant or Expr.IsProcedure then
   begin
     // resourcestring -> PResStringRec support
-    var LConst := TIDPointerConstant.CreateAsAnonymous(IntfScope, {DataType:} nil, Expr.Declaration);
+    var LConst := TIDPointerConstant.CreateAsAnonymous(EContext.Scope, {DataType:} nil, Expr.Declaration);
     if Expr.DataTypeID in [dtString, dtAnsiString] then
       LConst.DataType := Sys._ResStringRecord
     else
       LConst.DataType := Sys._PointerType;
 
+    LConst.TextPosition := Expr.TextPosition;
     Result := TIDExpression.Create(LConst, Expr.TextPosition);
   end else
   if Expr.IsTMPVar and Expr.AsVariable.Reference then
   begin
     Result := GetTMPVarExpr(EContext.SContext, DataType, Expr.TextPosition);
     Result.AsVariable.Absolute := Expr.AsVariable;
-  end else begin
-    TmpDecl := GetTMPVar(EContext.SContext, DataType);
-    Result := TIDExpression.Create(TmpDecl, Expr.TextPosition);
+  end else
+  begin
+    var LResultVar := GetTMPVar(EContext.SContext, DataType);
+    Result := TIDAddrExpression.Create(LResultVar, Expr);
   end;
 end;
 
@@ -2967,7 +2970,7 @@ end;
 
 class function TASTDelphiUnit.GetTMPVar(const EContext: TEContext; DataType: TIDType): TIDVariable;
 begin
-  Result := TIDProcedure(EContext.Proc).GetTMPVar(DataType);
+  Result := TIDProcedure(EContext.Proc).GetTMPVar(EContext.Scope, DataType);
 end;
 
 function TASTDelphiUnit.GetSource: string;
@@ -2975,9 +2978,9 @@ begin
   Result := Lexer.Source;
 end;
 
-class function TASTDelphiUnit.GetStaticTMPVar(DataType: TIDType; VarFlags: TVariableFlags): TIDVariable;
+class function TASTDelphiUnit.GetStaticTMPVar(AScope: TScope; DataType: TIDType; VarFlags: TVariableFlags): TIDVariable;
 begin
-  Result := TIDVariable.CreateAsTemporary(nil, DataType);
+  Result := TIDVariable.CreateAsTemporary(AScope, DataType);
   Result.IncludeFlags(VarFlags);
 end;
 
@@ -2989,9 +2992,9 @@ end;
 class function TASTDelphiUnit.GetTMPVar(const SContext: TSContext; DataType: TIDType): TIDVariable;
 begin
   if Assigned(SContext.Proc) then
-    Result := SContext.Proc.GetTMPVar(DataType)
+    Result := SContext.Proc.GetTMPVar(SContext.Scope, DataType)
   else
-    Result := GetStaticTMPVar(DataType);
+    Result := GetStaticTMPVar(SContext.Scope, DataType);
 end;
 
 class function TASTDelphiUnit.GetTMPVarExpr(const EContext: TEContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression;
@@ -3006,7 +3009,7 @@ end;
 
 class function TASTDelphiUnit.GetTMPRef(const SContext: TSContext; DataType: TIDType): TIDVariable;
 begin
-  Result := SContext.Proc.GetTMPRef(DataType);
+  Result := SContext.Proc.GetTMPRef(SContext.Scope, DataType);
 end;
 
 class function TASTDelphiUnit.GetTMPRefExpr(const SContext: TSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression;
@@ -3166,7 +3169,7 @@ end;
 procedure TASTDelphiUnit.Lexer_MatchToken(const ActualToken, ExpectedToken: TTokenID);
 begin
   if ActualToken <> ExpectedToken then
-    ERRORS.EXPECTED_TOKEN(ExpectedToken, ActualToken);
+    ERRORS.E2029_TOKEN_EXPECTED_BUT_ID_FOUND(Self, ExpectedToken, Lexer_CurTokenAsID);
 end;
 
 procedure TASTDelphiUnit.Lexer_MatchCurToken(const ExpectedToken: TTokenID);
@@ -3279,6 +3282,11 @@ end;
 function TASTDelphiUnit.Lexer_TokenLexem(const TokenID: TTokenID): string;
 begin
   Result := Lexer.TokenLexem(TokenID);
+end;
+
+function TASTDelphiUnit.Lexer_TokenText(ATokenID: Integer): string;
+begin
+  Result := Lexer.TokenText(ATokenID);
 end;
 
 function TASTDelphiUnit.Lexer_SkipBlock(StopToken: TTokenID): TTokenID;
@@ -4551,7 +4559,7 @@ begin
     begin
       if Assigned(Source.AsProcedure.ResultType) then
       begin
-        var AResultExpr := TIDExpression.Create(SContext.Proc.GetTMPVar(Source.AsProcedure.ResultType), Source.TextPosition);
+        var AResultExpr := TIDExpression.Create(SContext.Proc.GetTMPVar(SContext.Scope, Source.AsProcedure.ResultType), Source.TextPosition);
         Exit(CheckImplicit(SContext, AResultExpr, Dest));
       end;
     end;
@@ -4561,7 +4569,7 @@ begin
       var AResultType := TIDProcType(Source.DataType).ResultType;
       if Assigned(AResultType) then
       begin
-        var AResultExpr := TIDExpression.Create(SContext.Proc.GetTMPVar(AResultType), Source.TextPosition);
+        var AResultExpr := TIDExpression.Create(SContext.Proc.GetTMPVar(SContext.Scope,AResultType), Source.TextPosition);
         Exit(CheckImplicit(SContext, AResultExpr, Dest));
       end;
     end;
@@ -4639,7 +4647,7 @@ begin
   // auto resolve function call when missed parentheses
   if (ArrDecl.ItemType = itProcedure) and Assigned(TIDProcedure(ArrDecl).ResultType) then
   begin
-    ArrDecl := EContext.Proc.GetTMPVar(TIDProcedure(ArrDecl).ResultType);
+    ArrDecl := EContext.Proc.GetTMPVar(Scope, TIDProcedure(ArrDecl).ResultType);
     ArrExpr := TIDExpression.Create(ArrDecl, ArrExpr.TextPosition);
   end;
   ArrType := ArrExpr.ActualDataType;
@@ -10226,9 +10234,12 @@ function TASTDelphiUnit.ParseVarRecordDefaultValue(Scope: TScope; Struct: TIDStr
 var
   i: Integer;
   ID: TIdentifier;
+  EContext: TEContext;
+  ASTE: TASTExpression;
   Expr: TIDExpression;
   Decl: TIDDeclaration;
   Field: TIDField;
+  LFieldDataType: TIDType;
   Expressions: TIDRecordConstantFields;
 begin
   i := 0;
@@ -10239,14 +10250,33 @@ begin
     Lexer_ReadCurrIdentifier(ID);
     Lexer_ReadToken(Scope, token_colon);
     Field := Struct.FindField(ID.Name);
+    LFieldDataType := Field.DataType.ActualDataType;
     if not Assigned(Field) then
       ERRORS.UNDECLARED_ID(ID);
 
-    if Field.DataType.DataTypeID = dtStaticArray then
-      Result := ParseVarStaticArrayDefaultValue(Scope, TIDArray(Field.DataType), Expr)
-    else begin
+    case LFieldDataType.DataTypeID of
+      dtStaticArray: Result := ParseVarStaticArrayDefaultValue(Scope, TIDArray(LFieldDataType), {out} Expr);
+      dtRecord: begin
+        Lexer_NextToken(Scope);
+        Result := ParseVarRecordDefaultValue(Scope, TIDRecord(LFieldDataType), {out} Expr);
+      end;
+    else
       Lexer_NextToken(Scope);
-      Result := ParseConstExpression(Scope, Expr, ExprRValue);
+      InitEContext(EContext, fUnitSContext, ExprRValue);
+      Result := ParseExpression(Scope, fUnitSContext, EContext, ASTE);
+      CheckEndOfFile(Result);
+      Expr := EContext.Result;
+      CheckEmptyExpression(Expr);
+      // as default value can be a constant or pointer of any global declaration
+      if (Expr.Declaration.ItemType in [itConst, itType, itProcedure]) or
+         ((Expr is TIDAddrExpression) and Expr.IsStaticVar) then
+      begin
+        // success
+      end else
+        ERRORS.E2026_CONSTANT_EXPRESSION_EXPECTED(Self, Expr.TextPosition);
+
+      if (Expr.ItemType <> itType) and (Expr.DataTypeID <> dtGeneric) and not Expr.IsStaticVar then
+        CheckConstExpression(Expr);
     end;
 
     Expressions[i].Field := Field;

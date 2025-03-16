@@ -1,7 +1,7 @@
 ﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{3C2A4704-BAD3-42B6-8C41-69D707A46C18}</ProjectGuid>
-        <ProjectVersion>20.2</ProjectVersion>
+        <ProjectVersion>20.3</ProjectVersion>
         <FrameworkType>VCL</FrameworkType>
         <MainSource>DASTTestApp.dpr</MainSource>
         <Base>True</Base>
@@ -180,9 +180,12 @@
         <DCCReference Include="..\TestScripts\Operators\Compare\ASTTest.Cmp.Pointers.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadWithImplicitCast.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Neg\ASTTest.Operators.Neg1.pas"/>
+        <DCCReference Include="..\TestScripts\Operators\Addr\ASTTest.AddrOp.Addr1.pas"/>
+        <DCCReference Include="..\TestScripts\Operators\Addr\ASTTest.AddrOp.Addr2.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Class1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenResult.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Methods.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.MethodWithConstr.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Mixed.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Arrays.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Nested1.pas"/>
@@ -244,6 +247,8 @@
         <DCCReference Include="..\TestScripts\Names Overloading\ASTTest.NamesOverloading1.pas"/>
         <DCCReference Include="..\TestScripts\Names Overloading\ASTTest.NamesOverloading2.pas"/>
         <DCCReference Include="..\TestScripts\Names Overloading\ASTTest.NamesOverloading.Prop1.pas"/>
+        <DCCReference Include="..\TestScripts\Names Overloading\ASTTest.NamesOverloading.DirsAsFields.pas"/>
+        <DCCReference Include="..\TestScripts\Names Overloading\ASTTest.NamesOverloading.DirsAsProps.pas"/>
         <DCCReference Include="..\TestScripts\Sets\ASTTest.Sets.ForInSet1.pas"/>
         <DCCReference Include="..\TestScripts\Sets\ASTTest.Sets.ForInSet2.pas"/>
         <DCCReference Include="..\TestScripts\Sets\ASTTest.Sets.ExplicitCast1.pas"/>
@@ -252,11 +257,13 @@
         <DCCReference Include="..\TestScripts\Interfaces\ASTTest.Intf.RefToProcAsInterface1.pas"/>
         <DCCReference Include="..\TestScripts\Records\ASTTest.Records.CaseRecord2.pas"/>
         <DCCReference Include="..\TestScripts\Records\ASTTest.Records.CaseRecord1.pas"/>
+        <DCCReference Include="..\TestScripts\Records\ASTTest.Records.StaticInit1.pas"/>
         <DCCReference Include="..\TestScripts\Built-ins\ASTTest.Builtins.High1.pas"/>
         <DCCReference Include="..\TestScripts\Built-ins\ASTTest.Builtins.Declared1.pas"/>
         <DCCReference Include="..\TestScripts\Inline Vars\ASTTest.InlineVars.TypeInfer1.pas"/>
         <DCCReference Include="..\TestScripts\Enums\ASTTest.Enums.ReservedNames1.pas"/>
-        <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.MethodWithConstr.pas"/>
+        <DCCReference Include="..\TestScripts\Enums\ASTTest.Enums.ForLowHigh.pas"/>
+        <DCCReference Include="..\TestScripts\Records\ASTTest.Records.StaticInit2.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
@@ -283,6 +290,12 @@
                 </Excluded_Packages>
             </Delphi.Personality>
             <Deployment Version="5">
+                <DeployFile LocalName="Bin\DASTTestApp.exe" Configuration="Debug" Class="ProjectOutput">
+                    <Platform Name="Win32">
+                        <RemoteName>DASTTestApp.exe</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
                 <DeployFile LocalName="Win32\Debug\DASTTestApp.exe" Configuration="Debug" Class="ProjectOutput"/>
                 <DeployClass Name="AdditionalDebugSymbols">
                     <Platform Name="iOSSimulator">
@@ -395,6 +408,16 @@
                     </Platform>
                     <Platform Name="Android64">
                         <RemoteDir>res\values-v31</RemoteDir>
+                        <Operation>1</Operation>
+                    </Platform>
+                </DeployClass>
+                <DeployClass Name="AndroidSplashStylesV35">
+                    <Platform Name="Android">
+                        <RemoteDir>res\values-v35</RemoteDir>
+                        <Operation>1</Operation>
+                    </Platform>
+                    <Platform Name="Android64">
+                        <RemoteDir>res\values-v35</RemoteDir>
                         <Operation>1</Operation>
                     </Platform>
                 </DeployClass>

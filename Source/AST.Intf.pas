@@ -47,6 +47,7 @@ type
     function Lexer_Line: Integer;
     function Lexer_Position: TTextPosition;
     function Lexer_TokenName(AToken: Integer): string;
+    function Lexer_TokenText(AToken: Integer): string;
 
     function ToJson: TJsonASTDeclaration;
 

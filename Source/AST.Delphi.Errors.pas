@@ -643,7 +643,7 @@ end;
 
 class procedure TASTDelphiErrors.E2029_TOKEN_EXPECTED_BUT_ID_FOUND(const AModule: IASTModule; AExpectedToken: TTokenID; const AID: TIdentifier);
 begin
-  E2029_EXPECTED_BUT_FOUND(AModule, AModule.Lexer_TokenName(Ord(AExpectedToken)), AID.Name, AID.TextPosition);
+  E2029_EXPECTED_BUT_FOUND(AModule, AModule.Lexer_TokenText(Ord(AExpectedToken)), AID.Name, AID.TextPosition);
 end;
 
 class procedure TASTDelphiErrors.E2033_TYPES_OF_ACTUAL_AND_FORMAL_VAR_PARAMETER_MUST_BE_IDENTICAL(const AModule: IASTModule;

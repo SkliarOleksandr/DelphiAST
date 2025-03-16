@@ -182,6 +182,7 @@ type
   TDelphiLexer = class(TGenericLexer)
   private
     fOriginalToken: string;
+    fAllTokens: array [TTokenID] of string;
   protected
     procedure ParseChainedString;
     procedure ParseCharCodeSymbol;
@@ -198,6 +199,7 @@ type
     procedure MatchToken(ActualToken, ExpectedToken: TTokenID); inline;
     procedure MatchNextToken(ExpectedToken: TTokenID); inline;
     function TokenCanBeID(TokenID: TTokenID): Boolean; inline;
+    function TokenText(ATokenID: Integer): string; override;
     property OriginalToken: string read fOriginalToken;
   end;
 
@@ -331,16 +333,23 @@ end;
 procedure TDelphiLexer.RegisterToken(const Token: string; TokenID: TTokenID; const TokenCaption: string; TokenType: TTokenType);
 begin
   inherited RegisterToken(Token, Integer(TokenID), TokenType, tcStrongKeyword, TokenCaption);
+  fAllTokens[TokenID] := Token;
 end;
 
 procedure TDelphiLexer.RegisterToken(const Token: string; TokenID: TTokenID; Priority: TTokenClass);
 begin
   inherited RegisterToken(Token, Integer(TokenID), ttToken, Priority, Token);
+  fAllTokens[TokenID] := Token;
 end;
 
 function TDelphiLexer.TokenLexem(TokenID: TTokenID): string;
 begin
   Result := inherited TokenLexem(Integer(TokenID));
+end;
+
+function TDelphiLexer.TokenText(ATokenID: Integer): string;
+begin
+  Result := fAllTokens[TTokenID(ATokenID)];
 end;
 
 constructor TDelphiLexer.Create(const Source: string);

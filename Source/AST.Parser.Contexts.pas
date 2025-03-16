@@ -60,6 +60,7 @@ type
     function GetExpression: TIDExpression;
     function GetProc: TProcType;
     function GetScope: TScope;
+    function GetModule: IASTModule;
   public
     procedure Initialize(const SContext: TASTSContext<TProcType>; const ProcessProc: TRPNPocessProc);
     procedure Reset;                    // clear RPN stack and reinit
@@ -82,6 +83,7 @@ type
     property SContext: TASTSContext<TProcType> read fSContext;
     property Proc: TProcType read GetProc;
     property Scope: TScope read GetScope;
+    property Module: IASTModule read GetModule;
   end;
 
 implementation
@@ -116,8 +118,8 @@ end;
 procedure TASTEContext<TProcType>.RPNError(Status: TRPNError);
 begin
   case Status of
-    reUnclosedOpenBracket: AbortWork(sUnclosedOpenBracket, TTextPosition.Empty);
-    reDublicateOperation: AbortWork(sDublicateOperationFmt, TTextPosition.Empty);
+    reUnclosedOpenBracket: AbortWork(sUnclosedOpenBracket, Module.Lexer_Position);
+    reDublicateOperation: AbortWork(sDublicateOperationFmt, Module.Lexer_Position);
   end;
 end;
 
@@ -254,6 +256,11 @@ begin
     Result := fRPNEArray[fRPNExprCount];
   end else
     Result := nil;
+end;
+
+function TASTEContext<TProcType>.GetModule: IASTModule;
+begin
+  Result := fSContext.Module;
 end;
 
 function TASTEContext<TProcType>.GetProc: TProcType;

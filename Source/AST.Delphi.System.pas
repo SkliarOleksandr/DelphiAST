@@ -357,7 +357,7 @@ class function TIDBuiltInFunction.CreateTMPExpr(const EContext: TEContext; const
 var
   Decl: TIDVariable;
 begin
-  Decl := EContext.SContext.Proc.GetTMPVar(DataType);
+  Decl := EContext.SContext.Proc.GetTMPVar(EContext.Scope, DataType);
   Result := TIDExpression.Create(Decl);
 end;
 

@@ -124,7 +124,6 @@ type
     fErrorState: TParserErrorState;
     fOmitted: string;
     fTokenIDGenerator: Integer;
-
   private
     function GetPosition: TTextPosition; inline;
     function GetLinePosition: TTextPosition; inline;
@@ -182,6 +181,7 @@ type
     property LinePosition: TTextPosition read GetLinePosition;
     property IdentifireType: TIdentifierType read fIdentifireType;
     property NextChar: Char read GetNextChar;
+    function TokenText(ATokenID: Integer): string; virtual; abstract;
     function TokenLexem(TokenID: Integer): string;
     function GetSubString(StartPos, EndPos: Integer): string;
     procedure GetIdentifier(var ID: TIdentifier);

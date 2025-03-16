@@ -119,6 +119,7 @@ type
     function Lexer_Line: Integer; virtual; abstract;
     function Lexer_Position: TTextPosition; virtual; abstract;
     function Lexer_TokenName(AToken: Integer): string; virtual; abstract;
+    function Lexer_TokenText(AToken: Integer): string; virtual; abstract;
   public
     property Name: string read GetModuleName;
     property FileName: string read GetFileName write SetFileName;

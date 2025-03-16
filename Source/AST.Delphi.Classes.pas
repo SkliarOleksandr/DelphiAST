@@ -1382,7 +1382,6 @@ type
     function GetIsAnonymousRef: Boolean;
     function GetIsAnonymousVar: Boolean;
     function GetIsNonAnonimousVariable: Boolean;
-    function GetIsAnyLocalVar: Boolean;
     function GetCValue: TIDConstant; inline;
     procedure SetCValue(Value: TIDConstant); inline;
     function GetIsParam: Boolean;
@@ -1393,6 +1392,7 @@ type
     function GetActualDataType: TIDType;
     function GetIsUnknown: Boolean;
     function GetIsAnonymousConst: Boolean;
+    function GetIsStaticVar: Boolean;
   protected
     function GetDataType: TIDType; virtual;
   public
@@ -1423,7 +1423,7 @@ type
     property IsProcedure: Boolean read GetIsProcedure;
     property IsDynArrayConst: Boolean read GetDynArrayConst;
     property IsLocalVar: Boolean read GetIsLocalVar;
-    property IsAnyLocalVar: Boolean read GetIsAnyLocalVar;
+    property IsStaticVar: Boolean read GetIsStaticVar;
     property IsVariable: Boolean read GetIsVariable;
     property IsRangeConst: Boolean read GetIsRangeConst;
     property IsParam: Boolean read GetIsParam;
@@ -1515,6 +1515,13 @@ type
     constructor Create(Src: TIDExpression); reintroduce;
   end;
 
+  TIDAddrExpression = class(TIDExpression)
+  private
+    FSrc: TIDExpression;
+  public
+    constructor Create(ADecl: TIDDeclaration; Src: TIDExpression); reintroduce;
+  end;
+
   TIDArrayExpression = class(TIDExpression)
   private
     fIndexes: TIDExpressions;
@@ -1580,7 +1587,6 @@ type
     function GetIsTemporary: Boolean; inline;
     function GetIsTemporaryOwner: Boolean;
     function GetLastRWInstruction: TObject;
-    function GetIsAnyLocalVar: Boolean; inline;
     function GetIsExplicit: Boolean; inline;
   protected
     function GetDisplayName: string; override;
@@ -1604,7 +1610,6 @@ type
     property IsTemporary: Boolean read GetIsTemporary;
     property IsExplicit: Boolean read GetIsExplicit;
     property IsTemporaryOwner: Boolean read GetIsTemporaryOwner;
-    property IsAnyLocalVar: Boolean read GetIsAnyLocalVar;
     // первая инструкция оперирующая с этой переменной
     property FirstWInstruction: TObject read FFirstWInstruction write FFirstWInstruction;
     // последняя инструкция оперирующая с этой переменной
@@ -1830,9 +1835,9 @@ type
                              const AGenericParams: TIDTypeArray;
                              ACheckNames: Boolean = False): Boolean; overload;
     // Temporary variable alloc
-    function GetTMPVar(DataType: TIDType; Reference: Boolean = False): TIDVariable; overload;
-    function GetTMPVar(DataType: TIDType; VarFlags: TVariableFlags): TIDVariable; overload;
-    function GetTMPRef(DataType: TIDType): TIDVariable;
+    function GetTMPVar(AScope: TScope; DataType: TIDType; AReference: Boolean = False): TIDVariable; overload;
+    function GetTMPVar(AScope: TScope; DataType: TIDType; VarFlags: TVariableFlags): TIDVariable; overload;
+    function GetTMPRef(AScope: TScope; DataType: TIDType): TIDVariable;
     property TempVars: TItemsStack read FTempVars;
 
     property PrevOverload: TIDProcedure read FNextOverload write FNextOverload;
@@ -2196,9 +2201,6 @@ type
   function GetVarDebugString(AScope: TScope): string;
   procedure WriteDataTypeIndex(Stream: TStream; DataType: TIDType);
 
-  procedure IncReadCount(const Expression: TIDExpression; const Instruction: TObject; RCPath: UInt32); inline;
-  procedure DecReadCount(const Expression: TIDExpression; const Instruction: TObject; RCPath: UInt32); inline;
-
   function GetBoolResultExpr(ExistExpr: TIDExpression): TIDBoolResultExpression;
   function GetItemTypeName(ItemType: TIDItemType): string;
 
@@ -2337,57 +2339,6 @@ end;
 function IDVarCompare(const Key1, Key2: TIDVariable): NativeInt;
 begin
   Result := NativeInt(Key1) - NativeInt(Key2);
-end;
-
-procedure IncReadCount(const Expression: TIDExpression; const Instruction: TObject; RCPath: UInt32); inline;
-var
-  i: Integer;
-  Decl: TIDDeclaration;
-  Items: TIDExpressions;
-begin
-  if Assigned(Expression) then
-   if Expression.ExpressionType = etDeclaration then
-   begin
-     Decl := Expression.Declaration;
-     Decl.IncRefCount(RCPath);
-     if Expression.IsAnyLocalVar then
-       TIDVariable(Decl).LastRInstruction := Instruction;
-
-     if Expression is TIDCastedCallExpression then
-       Expression.DataType.IncRefCount(RCPath);
-
-   end else begin
-     Items := TIDMultiExpression(Expression).Items;
-     for i := 0 to Length(Items) - 1 do
-     begin
-       Decl := Items[i].Declaration;
-       Decl.IncRefCount(RCPath);
-       if Items[i].IsAnyLocalVar then
-         TIDVariable(Decl).LastRInstruction := Instruction;
-     end;
-   end;
-end;
-
-procedure DecReadCount(const Expression: TIDExpression; const Instruction: TObject; RCPath: UInt32);
-var
-  i: Integer;
-  Decl: TIDDeclaration;
-  Items: TIDExpressions;
-begin
-  if Assigned(Expression) then
-   if Expression.ExpressionType = etDeclaration then
-   begin
-     Decl := Expression.Declaration;
-     Decl.DecRefCount(RCPath);
-   end
-   else begin
-     Items := TIDMultiExpression(Expression).Items;
-     for i := 0 to Length(Items) - 1 do
-     begin
-       Decl := Items[i].Declaration;
-       Decl.DecRefCount(RCPath);
-     end;
-   end;
 end;
 
 function Identifier(const Name: string; SourceRow: Integer = 0; SourceCol: Integer = 0): TIdentifier;
@@ -3364,25 +3315,25 @@ begin
   end;
 end;
 
-function TIDProcedure.GetTMPRef(DataType: TIDType): TIDVariable;
+function TIDProcedure.GetTMPRef(AScope: TScope; DataType: TIDType): TIDVariable;
 begin
-  Result := GetTMPVar(DataType, True);
+  Result := GetTMPVar(AScope, DataType, True);
   Result.FFlags := [VarInOut, VarTemporatyRef];
 end;
 
-function TIDProcedure.GetTMPVar(DataType: TIDType; VarFlags: TVariableFlags): TIDVariable;
+function TIDProcedure.GetTMPVar(AScope: TScope; DataType: TIDType; VarFlags: TVariableFlags): TIDVariable;
 begin
-  Result := TIDVariable.CreateAsTemporary(EntryScope, DataType);
+  Result := TIDVariable.CreateAsTemporary(AScope, DataType);
   Result.IncludeFlags(VarFlags);
   FTempVars.Push(Result);
 end;
 
-function TIDProcedure.GetTMPVar(DataType: TIDType; Reference: Boolean): TIDVariable;
+function TIDProcedure.GetTMPVar(AScope: TScope; DataType: TIDType; AReference: Boolean): TIDVariable;
 begin
-  if Reference then
-    Result := GetTMPVar(DataType, [VarInOut])
+  if AReference then
+    Result := GetTMPVar(AScope, DataType, [VarInOut])
   else
-    Result := GetTMPVar(DataType, []);
+    Result := GetTMPVar(AScope, DataType, []);
 end;
 
 procedure TIDProcedure.Hint(const Message: string; const Params: array of const; const TextPosition: TTextPosition);
@@ -4539,11 +4490,6 @@ begin
     Result := '$' + IntToStr(FIndex);
 end;
 
-function TIDVariable.GetIsAnyLocalVar: Boolean;
-begin
-  Result := (Scope.ScopeType = stLocal) and not Assigned(FAbsolute);
-end;
-
 function TIDVariable.GetIsField: Boolean;
 begin
   Result := VarIsField in FFlags;
@@ -4846,11 +4792,6 @@ begin
   Result := (FDeclaration.ItemType = itVar) and (VarTemporatyVar in TIDVariable(FDeclaration).FFlags);
 end;
 
-function TIDExpression.GetIsAnyLocalVar: Boolean;
-begin
-  Result := (FDeclaration.ItemType = itVar) and TIDVariable(FDeclaration).IsAnyLocalVar;
-end;
-
 function TIDExpression.GetIsConstant: Boolean;
 begin
   Result := (FDeclaration.ItemType = itConst);
@@ -4861,6 +4802,13 @@ end;
 function TIDExpression.GetIsLocalVar: Boolean;
 begin
   Result := (FDeclaration.ItemType = itVar) and (FDeclaration.Scope.ScopeType = stLocal) and (FDeclaration.ID.Name <> '') and not Assigned(TIDVariable(FDeclaration).Absolute);
+end;
+
+function TIDExpression.GetIsStaticVar: Boolean;
+begin
+  // TODO: it needs to recognize class vars
+  Result := (FDeclaration.ItemType = itVar) and
+    (FDeclaration.Scope.ScopeType = stGlobal);
 end;
 
 function TIDExpression.GetIsNonAnonimousVariable: Boolean;
@@ -8718,6 +8666,14 @@ begin
     Result := FSrc.Declaration.SYSUnit._UntypedReference;
 end;
 
+{ TIDAddrExpression }
+
+constructor TIDAddrExpression.Create(ADecl: TIDDeclaration; Src: TIDExpression);
+begin
+  inherited Create(ADecl, Src.TextPosition);
+  FSrc := Src;
+end;
+
 { TIDClosure }
 
 function TIDClosure.CaptureByReference: Boolean;
@@ -9043,14 +8999,14 @@ function TIDPointerConstant.AsString: string;
 begin
   if Assigned(FValue) then
   begin
-    if FValue.ItemType = itConst then
-      Result := TIDConstant(FValue).AsString
+    case FValue.ItemType of
+      itVar: Result := (FValue as TIDVariable).Name;
+      itConst: Result := (FValue as TIDConstant).AsString;
+      itProcedure: Result := (FValue as TIDProcedure).Name;
     else
-    if FValue.ItemType = itProcedure then
-      Result := TIDProcedure(FValue).Name
-    else
-      AbortWorkInternal('Unsupported Constant Declaration');
- end else
+     AbortWorkInternal('Unsupported Constant Declaration');
+    end;
+  end else
    Result := '<uknown>';
 end;
 

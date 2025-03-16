@@ -894,12 +894,12 @@ begin
     var ADT := TIDArray(Left.DataType);
     if ADT.ElementDataType = SYSUnit._WideChar then
     begin
-      Result := TIDExpression.Create(GetTMPVar(SYSUnit._WideChar.DefaultReference));
+      Result := TIDExpression.Create(GetTMPVar(SContext.Scope, SYSUnit._WideChar.DefaultReference));
       Exit;
     end;
     if ADT.ElementDataType = SYSUnit._AnsiChar then
     begin
-      Result := TIDExpression.Create(GetTMPVar(SYSUnit._AnsiChar.DefaultReference));
+      Result := TIDExpression.Create(GetTMPVar(SContext.Scope, SYSUnit._AnsiChar.DefaultReference));
       Exit;
     end;
   end;
@@ -1121,7 +1121,7 @@ begin
      (TIDDynArray(LLeftDataType).ElementDataType.ActualDataType =
       TIDDynArray(LRightDataType).ElementDataType.ActualDataType) then
   begin
-    var LResult := SContext.Proc.GetTMPVar(LLeftDataType);
+    var LResult := SContext.Proc.GetTMPVar(SContext.Scope, LLeftDataType);
     // todo: implement arrays concatination
     Result := TIDExpression.Create(LResult, Left.TextPosition);
   end else
