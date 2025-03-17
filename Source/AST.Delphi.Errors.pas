@@ -322,8 +322,8 @@ type
     procedure DEFAULT_PROP_MUST_BE_ARRAY_PROP;
     procedure DEFAULT_PROP_ALREADY_EXIST(Prop: TIDProperty);
     procedure IMPORT_FUNCTION_CANNOT_BE_INLINE;
-    procedure INVALID_TYPE_DECLARATION(const ID: TIdentifier); overload;
-    procedure INVALID_TYPE_DECLARATION; overload;
+    class procedure INVALID_TYPE_DECLARATION(const AModule: IASTModule; const ID: TIdentifier); overload;
+    class procedure INVALID_TYPE_DECLARATION(const AModule: IASTModule; const APosition: TTextPosition); overload;
     procedure EXPECTED_TOKEN(Token: TTokenID; ActulToken: TTokenID = token_unknown);
     procedure EXPECTED_KEYWORD_OR_ID;
     procedure IDENTIFIER_EXPECTED(ActualToken: TTokenID); overload;
@@ -638,7 +638,7 @@ end;
 class procedure TASTDelphiErrors.E2029_EXPECTED_BUT_FOUND(const AModule: IASTModule; const AExpected, AActual: string;
   const APosition: TTextPosition);
 begin
-  AModule.PutError('E2029 ''%s'' expected but ''%s'' found', [AExpected, AActual], APosition);
+  AModule.PutError('E2029 ''%s'' expected but ''%s'' found', [AExpected, AActual], APosition, {ACritical:} True);
 end;
 
 class procedure TASTDelphiErrors.E2029_TOKEN_EXPECTED_BUT_ID_FOUND(const AModule: IASTModule; AExpectedToken: TTokenID; const AID: TIdentifier);
@@ -867,14 +867,14 @@ begin
   AbortWork(sInvalidTypecastFmt, [Src.DataTypeName, Dst.DisplayName], Src.TextPosition);
 end;
 
-procedure TASTDelphiErrors.INVALID_TYPE_DECLARATION(const ID: TIdentifier);
+class procedure TASTDelphiErrors.INVALID_TYPE_DECLARATION(const AModule: IASTModule; const ID: TIdentifier);
 begin
-  AbortWork(sInvalidTypeDeclarationFmt, [ID.Name], ID.TextPosition);
+  AModule.PutError(sInvalidTypeDeclarationFmt, [ID.Name], ID.TextPosition);
 end;
 
-procedure TASTDelphiErrors.INVALID_TYPE_DECLARATION;
+class procedure TASTDelphiErrors.INVALID_TYPE_DECLARATION(const AModule: IASTModule; const APosition: TTextPosition);
 begin
-  AbortWork('Invalid type declaration', Lexer.Position);
+  AModule.PutError('Invalid type declaration', APosition);
 end;
 
 procedure TASTDelphiErrors.IMPORT_FUNCTION_CANNOT_BE_INLINE;

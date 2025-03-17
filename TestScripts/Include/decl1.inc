@@ -1,0 +1,1 @@
+Decl1: Integer = 0;

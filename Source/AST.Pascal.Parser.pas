@@ -112,6 +112,7 @@ type
     fDefines: TDefines;                // unit conditional defines
     //////////////////////////////////////////////////////////////////////////////////////////////////////////
     function GetModuleName: string; override;
+    function GetCurrentFileName: string; override;
     procedure SetUnitName(const Name: string);
   public
     function FindPublicDecl(const Name: string): TIDDeclaration;
@@ -439,6 +440,13 @@ end;
 function TPascalUnit.GetDefinesAsString: string;
 begin
 //  Result := FDefines.Text;
+end;
+
+function TPascalUnit.GetCurrentFileName: string;
+begin
+  Result := fLexer.IncludeFileName;
+  if Result = '' then
+    Result := FileName;
 end;
 
 initialization

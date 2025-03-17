@@ -12,7 +12,8 @@ type
   TCompilerMessage = class(TInterfacedObject, IASTParserMessage)
   strict private
     FModule: IASTModule;
-    FModuleName: string; // can differs from FModule.Nam, bacuse of .inc files
+    FModuleName: string; // may differ from Module.FileName due to included files
+    FIsCritical: Boolean;
     FMessageType: TCompilerMessageType;
     FMessageText: string;
     FSourcePosition: TTextPosition;
@@ -25,6 +26,7 @@ type
     function GetMessageType: TCompilerMessageType;
     function GetMessageTypeName: string;
     function GetMessageText: string;
+    function GetIsCritical: Boolean;
     function GetCol: Integer;
     function GetRow: Integer;
     function GetModuleFullPath: string;
@@ -36,13 +38,13 @@ type
     property MessageType: TCompilerMessageType read GetMessageType;
     property MessageTypeName: string read GetMessageTypeName;
     property MessageText: string read GetMessageText;
+    property IsCritical: Boolean read GetIsCritical;
     property Row: Integer read GetRow;
     property Col: Integer read GetCol;
     function AsString(AUnitFullPath: Boolean): string;
     constructor Create(const AModule: IASTModule; AMessageType: TCompilerMessageType;
-                       const AMessageText: string; const APosition: TTextPosition);
+                       const AMessageText: string; const APosition: TTextPosition; ACritical: Boolean = False);
   end;
-  //PCompilerMessage = ^TCompilerMessage;
 
   ICompilerMessages = interface
     ['{0F47607D-E9F5-41F2-BB05-B539743EC65A}']
@@ -95,9 +97,15 @@ uses
 { TCompilerMessage }
 
 constructor TCompilerMessage.Create(const AModule: IASTModule; AMessageType: TCompilerMessageType;
-  const AMessageText: string; const APosition: TTextPosition);
+  const AMessageText: string; const APosition: TTextPosition; ACritical: Boolean);
 begin
   FModule := AModule;
+  FIsCritical := ACritical;
+  // take the current parsed file name (like .inc file)
+  if Assigned(AModule) then
+    FModuleName := AModule.CurrentFileName
+  else
+    FIsCritical := True;
   FMessageType := AMessageType;
   FMessageText := AMessageText;
   FSourcePosition := APosition;
@@ -105,7 +113,9 @@ end;
 
 function TCompilerMessage.AsString(AUnitFullPath: Boolean): string;
 begin
-  Result := Format('%s [%s(%d, %d)]: %s', [
+  var LIsCritialStr := IfThen(FIsCritical, '[critical] ', '');
+  Result := Format('%s%s [%s(%d, %d)]: %s', [
+              LIsCritialStr,
               GetMessageTypeName,
               IfThen(AUnitFullPath, ModuleFullPath, ModuleName),
               Row,
@@ -116,6 +126,11 @@ end;
 function TCompilerMessage.GetCol: Integer;
 begin
   Result := FSourcePosition.Col;
+end;
+
+function TCompilerMessage.GetIsCritical: Boolean;
+begin
+  Result := FIsCritical;
 end;
 
 function TCompilerMessage.GetMessageText: string;

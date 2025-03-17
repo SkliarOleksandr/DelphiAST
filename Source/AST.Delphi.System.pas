@@ -1322,7 +1322,7 @@ begin
     on e: ECompilerStop do Exit;
     on e: ECompilerSkip do Exit(CompileSkip);
     on e: ECompilerAbort do PutMessage(ECompilerAbort(e).CompilerMessage);
-    on e: Exception do PutMessage(cmtInteranlError, e.Message);
+    on e: Exception do PutMessage(cmtInteranlError, e.Message, Lexer_Position, {ACritical:} True);
   end;
 end;
 

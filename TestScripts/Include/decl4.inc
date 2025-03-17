@@ -1,0 +1,1 @@
+Decl4: {$I inttype.inc} = 0

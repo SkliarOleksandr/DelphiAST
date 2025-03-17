@@ -313,12 +313,11 @@ type
     function ReadNewOrExistingID(Scope: TScope; out ID: TIDentifier; out Decl: TIDDeclaration): TTokenID;
 
     procedure PutMessage(const AMessage: IASTParserMessage); overload;
-    procedure PutMessage(MessageType: TCompilerMessageType; const MessageText: string); overload;
-    procedure PutMessage(MessageType: TCompilerMessageType; const MessageText: string; const SourcePosition: TTextPosition); overload;
+    procedure PutMessage(MessageType: TCompilerMessageType; const MessageText: string;
+                         const SourcePosition: TTextPosition; ACritical: Boolean = False); overload;
     procedure Error(const Message: string; const Params: array of const; const TextPosition: TTextPosition);
     procedure Warning(const Message: string; const Params: array of const; const TextPosition: TTextPosition);
     procedure Hint(const Message: string; const Params: array of const; const TextPosition: TTextPosition); overload;
-    procedure Hint(const Message: string; const Params: array of const); overload;
 
     function FindAll(Scope: TScope; const ID: TIdentifier): TIDDeclArray; overload;
     function FindID(Scope: TScope; const ID: TIdentifier): TIDDeclaration; overload; inline;
@@ -1223,7 +1222,7 @@ begin
           continue;
         end;
       else
-        ERRORS.INVALID_TYPE_DECLARATION(ID);
+        ERRORS.INVALID_TYPE_DECLARATION(Self, ID);
       end;
       Exit;
     end;
@@ -1237,7 +1236,7 @@ begin
   // parse an anonymous type declaration
   Result := ParseTypeDecl(Scope, nil, AInParameters, TIdentifier.Make('', Lexer_Position), DataType);
   if not Assigned(DataType) then
-    ERRORS.INVALID_TYPE_DECLARATION;
+    ERRORS.INVALID_TYPE_DECLARATION(Self, Lexer_Position);
 end;
 
 function TASTDelphiUnit.ParseUnitDecl(Scope: TScope): Boolean;
@@ -2724,7 +2723,7 @@ begin
       Result := CompileFail;
     end;
     on e: Exception do begin
-      PutMessage(cmtInteranlError, e.Message, Lexer_Position);
+      PutMessage(cmtInteranlError, e.Message, Lexer_Position, {ACritical:} True);
       Progress(TASTStatusParseFail, TTickCounter.GetTicks - LStartedAt);
       Result := CompileFail;
     end;
@@ -3320,21 +3319,13 @@ begin
   end;
 end;
 
-procedure TASTDelphiUnit.PutMessage(MessageType: TCompilerMessageType; const MessageText: string);
+procedure TASTDelphiUnit.PutMessage(MessageType: TCompilerMessageType; const MessageText: string;
+  const SourcePosition: TTextPosition; ACritical: Boolean);
 var
   LMessage: TCompilerMessage;
 begin
-  LMessage := TCompilerMessage.Create(Self, MessageType, MessageText, Lexer_Position);
-  Messages.Add(LMessage);
-  fPackage.PutMessage(LMessage);
-end;
-
-procedure TASTDelphiUnit.PutMessage(MessageType: TCompilerMessageType; const MessageText: string; const SourcePosition: TTextPosition);
-var
-  LMessage: TCompilerMessage;
-begin
-  LMessage := TCompilerMessage.Create(Self, MessageType, MessageText, SourcePosition);
-  LMessage.ModuleName := GetCurrentParsedFileName({OnlyFileName:} True);
+  LMessage := TCompilerMessage.Create(Self, MessageType, MessageText, SourcePosition, ACritical);
+  LMessage.ModuleName := CurrentFileName;
   Messages.Add(LMessage);
   fPackage.PutMessage(LMessage);
 end;
@@ -3359,11 +3350,6 @@ end;
 procedure TASTDelphiUnit.Hint(const Message: string; const Params: array of const; const TextPosition: TTextPosition);
 begin
   PutMessage(cmtHint, Format(Message, Params), TextPosition);
-end;
-
-procedure TASTDelphiUnit.Hint(const Message: string; const Params: array of const);
-begin
-  PutMessage(cmtHint, Format(Message, Params));
 end;
 
 function TASTDelphiUnit.FindAll(Scope: TScope; const ID: TIdentifier): TIDDeclArray;
@@ -5190,9 +5176,7 @@ begin
     try
       // use TStringList since it proper handles any file encodings
       LStrings.LoadFromFile(LFullFileName);
-      var LMessages := CompileSource(Scope, LFileName, LStrings.Text);
-      if LMessages.ErrorCount > 0 then
-        AbortWork('The included file: %s has errors', [LFileName], Lexer_Position);
+      Lexer.PushIncludeFile(LStrings.Text, LFullFileName);
     finally
       LStrings.Free;
     end;
@@ -9854,7 +9838,7 @@ begin
 
   Result := ParseTypeDecl(Scope, GDescriptor, {AInParameters:} False, ID, Decl);
   if not Assigned(Decl) then
-    ERRORS.INVALID_TYPE_DECLARATION(ID);
+    ERRORS.INVALID_TYPE_DECLARATION(Self, ID);
 
   if Result = token_semicolon then
     Result := Lexer_NextToken(Scope);
@@ -10167,8 +10151,10 @@ begin
 
     if CheckImplicit(SContext, DefaultValue, DataType) = nil then
     begin
+      // for debug:
       CheckImplicit(SContext, DefaultValue, DataType);
-      ERRORS.INCOMPATIBLE_TYPES(DefaultValue, DataType);
+
+      ERRORS.E2010_INCOMPATIBLE_TYPES(Self, DefaultValue.DataType, DataType, DefaultValue.TextPosition);
     end;
 
     DefaultValue := MatchImplicit3(SContext, DefaultValue, DataType);

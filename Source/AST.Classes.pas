@@ -72,7 +72,7 @@ type
     function InPogress: Boolean; virtual; abstract;
     procedure PutMessage(const AMessage: IASTParserMessage); overload; virtual;
     procedure PutMessage(const AModule: IASTModule; AMsgType: TCompilerMessageType; const AMessage: string;
-                         const ATextPostition: TTextPosition); overload; virtual;
+                         const ATextPostition: TTextPosition; ACritical: Boolean); overload; virtual;
   public
     constructor Create(const AName: string); virtual;
     property Name: string read GetName write SetName;
@@ -113,6 +113,7 @@ type
     function GetModuleName: string; virtual;
     function GetModulePath: string;
     function GetSource: string; virtual; abstract;
+    function GetCurrentFileName: string; virtual; abstract;
     procedure SetFileName(const Value: string);
     procedure Progress(StatusClass: TASTProcessStatusClass; AElapsedTime: Int64); virtual;
     procedure PutError(const AMessage: string; const ATextPosition: TTextPosition; ACritical: Boolean = False); overload;
@@ -124,6 +125,7 @@ type
   public
     property Name: string read GetModuleName;
     property FileName: string read GetFileName write SetFileName;
+    property CurrentFileName: string read GetCurrentFileName;
     property Project: IASTProject read fProject;
     function GetTotalLinesParsed: Integer;
     constructor Create(const AProject: IASTProject; const AFileName: string; const ASource: string = ''); virtual;
@@ -1400,7 +1402,7 @@ begin
 end;
 
 procedure TASTProject.PutMessage(const AModule: IASTModule; AMsgType: TCompilerMessageType;
-  const AMessage: string; const ATextPostition: TTextPosition);
+  const AMessage: string; const ATextPostition: TTextPosition; ACritical: Boolean);
 begin
   // do nothing
 end;

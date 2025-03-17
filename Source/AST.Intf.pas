@@ -36,6 +36,7 @@ type
     function GetModuleName: string;
     function GetFileName: string;
     function GetModulePath: string;
+    function GetCurrentFileName: string;
     function GetTotalLinesParsed: Integer;
 
     procedure PutError(const AMessage: string; const ATextPosition: TTextPosition; ACritical: Boolean = False); overload;
@@ -55,6 +56,7 @@ type
     property Name: string read GetModuleName;
     property FileName: string read GetFileName;
     property ModulePath: string read GetModulePath;
+    property CurrentFileName: string read GetCurrentFileName;
     property TotalLinesParsed: Integer read GetTotalLinesParsed;
   end;
 
@@ -73,6 +75,7 @@ type
     function GetMessageType: TCompilerMessageType;
     function GetMessageTypeName: string;
     function GetMessageText: string;
+    function GetIsCritical: Boolean;
     function GetCol: Integer;
     function GetRow: Integer;
 
@@ -82,6 +85,7 @@ type
     property MessageType: TCompilerMessageType read GetMessageType;
     property MessageTypeName: string read GetMessageTypeName;
     property MessageText: string read GetMessageText;
+    property IsCritical: Boolean read GetIsCritical;
     property Row: Integer read GetRow;
     property Col: Integer read GetCol;
     function AsString(AUnitFullPath: Boolean): string;
@@ -119,7 +123,7 @@ type
 
     procedure PutMessage(const AMessage: IASTParserMessage); overload;
     procedure PutMessage(const AModule: IASTModule; AMsgType: TCompilerMessageType; const AMessage: string;
-                         const ATextPostition: TTextPosition); overload;
+                         const ATextPostition: TTextPosition; ACritical: Boolean = False); overload;
 
     function ToJson: TJsonASTDeclaration;
   end;

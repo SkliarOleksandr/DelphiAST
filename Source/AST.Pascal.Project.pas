@@ -134,7 +134,7 @@ type
     procedure EnumDeclarations(const AEnumProc: TEnumASTDeclProc; AUnitScope: TUnitScopeKind);
     procedure PutMessage(const AMessage: IASTParserMessage); override;
     procedure PutMessage(const AModule: IASTModule; AMsgType: TCompilerMessageType; const AMessage: string;
-                         const ATextPostition: TTextPosition); override;
+                         const ATextPostition: TTextPosition; ACritical: Boolean); override;
     property UnitScopeNames: string read GetUnitScopeNames write SetUnitScopeNames; // semicolon delimited
   end;
 
@@ -600,9 +600,9 @@ begin
 end;
 
 procedure TPascalProject.PutMessage(const AModule: IASTModule; AMsgType: TCompilerMessageType; const AMessage: string;
-                         const ATextPostition: TTextPosition);
+                         const ATextPostition: TTextPosition; ACritical: Boolean);
 begin
-  fMessages.Add(TCompilerMessage.Create(AModule, AMsgType, AMessage, ATextPostition));
+  fMessages.Add(TCompilerMessage.Create(AModule, AMsgType, AMessage, ATextPostition, ACritical));
 end;
 
 function TPascalProject.RefCount: Integer;

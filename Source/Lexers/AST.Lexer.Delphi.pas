@@ -2,7 +2,10 @@
 
 interface
 
-uses AST.Lexer, SysUtils, StrUtils, Types, Classes, AST.Parser.Errors;
+uses
+  System.SysUtils, System.StrUtils, System.Types, System.Classes, System.Generics.Collections,
+  AST.Lexer,
+  AST.Parser.Errors;
 
 type
 
@@ -183,11 +186,16 @@ type
   private
     fOriginalToken: string;
     fAllTokens: array [TTokenID] of string;
+    fIncludeFilesStack: TStack<TParserPosition>;
+    fIncludeFileName: string;
+    function GetIncludeFileName: string;
   protected
     procedure ParseChainedString;
     procedure ParseCharCodeSymbol;
+    procedure PopIncludeFile;
   public
     constructor Create(const Source: string); override;
+    destructor Destroy; override;
     function NextToken: TTokenID;
     function TokenLexem(TokenID: TTokenID): string;
     procedure RegisterToken(const Token: string; TokenID: TTokenID; const TokenCaption:
@@ -201,6 +209,8 @@ type
     function TokenCanBeID(TokenID: TTokenID): Boolean; inline;
     function TokenText(ATokenID: Integer): string; override;
     property OriginalToken: string read fOriginalToken;
+    property IncludeFileName: string read GetIncludeFileName;
+    procedure PushIncludeFile(const ASource, AFileName: string);
   end;
 
 
@@ -234,6 +244,20 @@ procedure TDelphiLexer.MatchToken(ActualToken, ExpectedToken: TTokenID);
 begin
   if ActualToken <> ExpectedToken then
     AbortWork(sExpected, [UpperCase(TokenLexem(ExpectedToken))], PrevPosition);
+end;
+
+destructor TDelphiLexer.Destroy;
+begin
+  fIncludeFilesStack.Free;
+  inherited;
+end;
+
+function TDelphiLexer.GetIncludeFileName: string;
+begin
+  if fIncludeFilesStack.Count > 0 then
+    Result := fIncludeFileName
+  else
+    Result := '';
 end;
 
 procedure TDelphiLexer.MatchNextToken(ExpectedToken: TTokenID);
@@ -272,6 +296,13 @@ begin
         fCurrentTokenID := ord(token_identifier);
         fIdentifireType := itIdentifier;
         Result := token_identifier;
+      end;
+    end;
+    token_eof: begin
+      if fIncludeFilesStack.Count > 0 then
+      begin
+        PopIncludeFile;
+        Result := NextToken;
       end;
     end;
   else
@@ -330,6 +361,23 @@ begin
   end;
 end;
 
+procedure TDelphiLexer.PopIncludeFile;
+begin
+  Assert(fIncludeFilesStack.Count > 0);
+  LoadState(fIncludeFilesStack.Pop);
+end;
+
+procedure TDelphiLexer.PushIncludeFile(const ASource, AFileName: string);
+var
+  LSavedState: TParserPosition;
+begin
+  SaveState(LSavedState);
+  fIncludeFilesStack.Push(LSavedState);
+  fIncludeFileName := AFileName;
+  Source := ASource;
+  First;
+end;
+
 procedure TDelphiLexer.RegisterToken(const Token: string; TokenID: TTokenID; const TokenCaption: string; TokenType: TTokenType);
 begin
   inherited RegisterToken(Token, Integer(TokenID), TokenType, tcStrongKeyword, TokenCaption);
@@ -355,6 +403,7 @@ end;
 constructor TDelphiLexer.Create(const Source: string);
 begin
   inherited Create(Source);
+  fIncludeFilesStack := TStack<TParserPosition>.Create;
   IdentifireID := ord(token_identifier);
   EofID := ord(token_eof);
 //  AmbiguousId := ord(token_id_or_keyword);

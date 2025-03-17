@@ -2520,7 +2520,7 @@ end;
 procedure TScope.AddConstant(ADeclaration: TIDConstant);
 begin
   if not InsertID(ADeclaration) then
-    AbortWork(sIdentifierRedeclaredFmt, [ADeclaration.Name], ADeclaration.SourcePosition);
+    TASTDelphiErrors.E2004_IDENTIFIER_REDECLARED(fUnit, ADeclaration.ID);
   Inc(FConstCount);
 end;
 
