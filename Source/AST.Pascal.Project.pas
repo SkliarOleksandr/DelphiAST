@@ -117,8 +117,8 @@ type
     property AllUnits: TUnits read fAllUnits;
     property SysUnit: IASTPascalUnit read fSysUnit;
     property Options: TPackageOptions read GetOptions;
-    property TotalLinesParsed: Integer read fTotalLinesParsed;
-    property TotalUnitsParsed: Integer read fTotalUnitsParsed;
+    property TotalLinesParsed: Integer read GetTotalLinesParsed;
+    property TotalUnitsParsed: Integer read GetTotalUnitsParsed;
     property ProjectFileName: string read GetProjectFileName write SetProjectFileName;
     property RootPath: string read GetRootPath;
     function GetStringConstant(const Value: string): Integer; overload;
@@ -553,10 +553,12 @@ end;
 
 procedure TPascalProject.DoFinishCompileUnit(AUnit: TASTModule; AIntfOnly: Boolean);
 begin
-  Inc(fTotalUnitsParsed);
   if AIntfOnly then
-    Inc(fTotalUnitsIntfOnlyParsed);
-  // do nothing
+    Inc(fTotalUnitsIntfOnlyParsed)
+  else begin
+    Inc(fTotalUnitsParsed);
+    Dec(fTotalUnitsIntfOnlyParsed);
+  end;
 end;
 
 procedure TPascalProject.EnumDeclarations(const AEnumProc: TEnumASTDeclProc; AUnitScope: TUnitScopeKind);

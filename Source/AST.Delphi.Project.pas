@@ -47,7 +47,7 @@ end;
 procedure TASTDelphiProject.DoBeforeCompileUnit(AUnit: TASTModule);
 begin
   inherited;
-  // add SysInit unit implicitly
+  // add SysInit unit implicitly (Delphi does it for all units)
   if Assigned(fSysInitUnit) then
     (AUnit as TASTDelphiUnit).IntfImportedUnits.AddObject('SysInit', fSysInitUnit);
 end;

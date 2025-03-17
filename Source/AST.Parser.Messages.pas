@@ -171,7 +171,7 @@ end;
 function TCompilerMessage.GetModuleName: string;
 begin
   if FModuleName <> '' then
-    Result := FModuleName
+    Result := ExtractFileName(FModuleName)
   else
     Result := FModule.Name;
 end;

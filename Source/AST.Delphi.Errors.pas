@@ -1213,13 +1213,13 @@ end;
 
 procedure INTERNAL_ERROR(const AModule: IASTModule; const AMessage: string; const APosition: TTextPosition);
 begin
-  AModule.PutError(AMessage, APosition);
+  AModule.PutError(AMessage, APosition, {ACritical:} True);
 end;
 
 procedure INTERNAL_ERROR(const AModule: IASTModule; const AMessage: string; AParams: array of const; const
                          APosition: TTextPosition);
 begin
-  AModule.PutError(AMessage, AParams, APosition);
+  AModule.PutError(AMessage, AParams, APosition, {ACritical:} True);
 end;
 
 

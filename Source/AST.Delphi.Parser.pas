@@ -1419,6 +1419,21 @@ begin
 end;
 
 procedure TASTDelphiUnit.ParseEnumType(Scope: TScope; Decl: TIDEnum);
+
+  function GetEnumScope(AScope: TScope): TScope;
+  begin
+    // in Delphi enum constants are placed to the top-level scope (intf or impl),
+    // even it the enum is nested type!!! But not procedural scopes!
+    repeat
+      if (AScope = IntfScope) or (AScope = ImplScope) or (AScope.ScopeClass = scProc) then
+        Exit(AScope);
+
+      AScope := AScope.Parent;
+    until (AScope = nil);
+    INTERNAL_ERROR(Self, 'Enum parsing error', Lexer_Position);
+    Result := nil;
+  end;
+
 var
   ID: TIdentifier;
   Token: TTokenID;
@@ -1438,13 +1453,11 @@ begin
     Item.DataType := Decl;
     Decl.Items.AddConstant(Item);
 
-    // in Delphi enum constants are placed to the top-level scope (intf or impl), even it the enum is nested type!!!
-    if not Options.SCOPEDENUMS then
+    if Options.SCOPEDENUMS then
+      Decl.ScopedEnum := True
+    else
     begin
-      Decl.ScopedEnum := True;
-      var LGlobalScope := IntfScope;
-      if UnitState = UnitIntfCompiled then
-        LGlobalScope := ImplScope;
+      var LGlobalScope := GetEnumScope(Scope);
       InsertToScope(LGlobalScope, Item);
     end;
 
