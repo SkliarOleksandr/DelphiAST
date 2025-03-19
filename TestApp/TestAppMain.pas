@@ -446,7 +446,9 @@ begin
   VTTests.Repaint;
 
   var LUsesUntis: string := '';
+
   AddDelphiUnits({var} LUsesUntis, 'rtl\sys');
+  AddDelphiUnits({var} LUsesUntis, 'rtl\common');
 
   var RTLUsesSourceText :=
   'unit RTLParseTest; '#10#13 +

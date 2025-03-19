@@ -64,6 +64,7 @@ uses
 // Winapi.PsAPI
 // Winapi.MSXMLIntf
 // Winapi.ShlObj
+// Winapi.ShellAPI
 // Winapi.ImageHlp
 // Winapi.D3DCommon
 // AnsiStrings
@@ -338,7 +339,7 @@ type
     ///  Парсинг типов
     procedure ParseEnumType(Scope: TScope; Decl: TIDEnum);
     procedure ParseRangeType(Scope: TScope; Expr: TIDExpression; const ID: TIdentifier; out Decl: TIDRangeType);
-    function ParseImportStatement(Scope: TScope; out ImportLib, ImportName: TIDDeclaration): TTokenID;
+    function ParseImportStatement(Scope: TScope; out AImportLib, AImportName: TIDDeclaration): TTokenID;
     function ParseStaticArrayType(Scope: TScope; Decl: TIDArray): TTokenID;
     function ParseSetType(Scope: TScope; Decl: TIDSet): TTokenID;
     function ParsePointerType(Scope: TScope; const ID: TIdentifier; out Decl: TIDPointer): TTokenID;
@@ -7250,7 +7251,7 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.ParseImportStatement(Scope: TScope; out ImportLib, ImportName: TIDDeclaration): TTokenID;
+function TASTDelphiUnit.ParseImportStatement(Scope: TScope; out AImportLib, AImportName: TIDDeclaration): TTokenID;
 
   function ParseLibNameDecl: TIDDeclaration;
   var
@@ -7269,15 +7270,15 @@ function TASTDelphiUnit.ParseImportStatement(Scope: TScope; out ImportLib, Impor
 var
   LLibNameExpr: TIDExpression;
 begin
-  ImportLib := nil;
-  ImportName := nil;
+  AImportLib := nil;
+  AImportName := nil;
 
   Lexer_NextToken(Scope);
 
   if Lexer_AmbiguousId = tokenD_name then
   begin
     // static linking:
-    ImportName := ParseLibNameDecl;
+    AImportName := ParseLibNameDecl;
   end else
   begin
     // dynamic linking:
@@ -7285,9 +7286,9 @@ begin
     if Assigned(LLibNameExpr) then
     begin
       CheckStringExpression(LLibNameExpr);
-      ImportLib := LLibNameExpr.Declaration;
+      AImportLib := LLibNameExpr.Declaration;
       if Lexer_AmbiguousId = tokenD_name then
-        ImportName := ParseLibNameDecl;
+        AImportName := ParseLibNameDecl;
     end;
   end;
 
@@ -7297,7 +7298,9 @@ begin
 
   Result := Lexer_CurTokenID;
 
-  Lexer_MatchSemicolon(Result);
+  // NOTE: Delphi allows otional semicolon after "external"
+  if Result = token_semicolon then
+    Result := Lexer_NextToken(Scope);
 end;
 
 function TASTDelphiUnit.ParseLabelSection(Scope: TScope): TTokenID;
@@ -9235,8 +9238,8 @@ begin
   if pfImport in Flags then
     ERRORS.DUPLICATE_SPECIFICATION(PS_IMPORT);
   Include(Flags, pfImport);
-  ParseImportStatement(Scope, ImportLib, ImportName);
-  Result := Lexer_NextToken(Scope);
+
+  Result := ParseImportStatement(Scope, ImportLib, ImportName);
 end;
 
 function TASTDelphiUnit.ProcSpec_Overload(Scope: TScope; var Flags: TProcFlags): TTokenID;

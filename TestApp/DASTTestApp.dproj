@@ -202,7 +202,7 @@
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.RecursiveUsing1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.SmartRef1.pas"/>
         <DCCReference Include="..\TestScripts\Ordinals\ASTTest.Ordian.Enums.Init.pas"/>
-        <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.External.pas"/>
+        <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.External1.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.DiffSigns1.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.Generics1.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.Generics2.pas"/>
@@ -266,6 +266,7 @@
         <DCCReference Include="..\TestScripts\Enums\ASTTest.Enums.ForLowHigh.pas"/>
         <DCCReference Include="..\TestScripts\Include\ASTTest.Include1.pas"/>
         <DCCReference Include="..\TestScripts\Include\ASTTest.Include2.pas"/>
+        <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.External2.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

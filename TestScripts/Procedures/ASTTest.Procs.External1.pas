@@ -1,4 +1,4 @@
-unit ASTTest.Procs.External;
+unit ASTTest.Procs.External1;
 
 interface
 
