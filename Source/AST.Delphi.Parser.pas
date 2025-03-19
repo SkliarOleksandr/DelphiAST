@@ -8211,19 +8211,22 @@ begin
   Proc := nil;
   FwdDeclState := dsDifferent;
 
-  {если найдена ранее обьявленная декларация, проверяем соответствие}
+  {a previous declaration is found}
   if Assigned(ForwardDecl) then
   begin
-    if (Scope.ScopeClass = scInterface) and (ForwardDecl.Scope.DeclUnit = Self) then
+    if (Scope.ScopeClass = scInterface) and
+       (ForwardDecl.Scope.DeclUnit = Self) and
+       // NOTE: external (pfImport) declaration means implementation
+       not (pfImport in ProcFlags) then
     begin
-      if not (pfOveload in ForwardDecl.Flags) then
+      if not (pfOveload in ForwardDecl.Flags)  then
         ERRORS.OVERLOADED_MUST_BE_MARKED(ForwardDecl.ID)
       else
       if not (pfOveload in ProcFlags) then
         ERRORS.OVERLOADED_MUST_BE_MARKED(ID);
     end;
 
-    // ошибка если перекрыли идентификатор другого типа:
+    // TODO: is it still correct?
     if ForwardDecl.ItemType <> itProcedure then
       ERRORS.E2004_IDENTIFIER_REDECLARED(Self, ID);
 
