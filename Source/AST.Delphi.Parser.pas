@@ -76,6 +76,7 @@ uses
 // Vcl.Controls
 // Vcl.StdCtrls
 // Vcl.ComCtrls
+// Vcl.Graphics
 
 type
 
@@ -8160,6 +8161,11 @@ begin
       tokenD_fastcall: Result := ProcSpec_FastCall(Scope, CallConv);
       tokenD_cdecl: Result := ProcSpec_CDecl(Scope, CallConv);
       tokenD_register: Result := ProcSpec_Register(Scope, CallConv);
+      tokenD_assembler: begin
+        // deprecated directive, just for compatibility
+        Lexer_ReadSemicolon(Scope);
+        Result := Lexer_NextToken(Scope);
+      end;
       tokenD_varargs: begin
         Lexer_ReadSemicolon(Scope);
         Result := Lexer_NextToken(Scope);
@@ -8375,6 +8381,11 @@ begin
       tokenD_fastcall: Result := ProcSpec_FastCall(Scope, CallConv);
       tokenD_cdecl: Result := ProcSpec_CDecl(Scope, CallConv);
       tokenD_register: Result := ProcSpec_Register(Scope, CallConv);
+      tokenD_assembler: begin
+        // deprecated directive, just for compatibility
+        Lexer_ReadSemicolon(Scope);
+        Result := Lexer_NextToken(Scope);
+      end;
       tokenD_varargs: begin
         Lexer_ReadSemicolon(Scope);
         Result := Lexer_NextToken(Scope);

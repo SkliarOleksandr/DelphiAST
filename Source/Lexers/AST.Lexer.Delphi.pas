@@ -57,6 +57,7 @@ type
     tokenD_abstract,                // directive: abstract
     tokenD_aling,                   // directive: align
     token_asm,                      // keyword: asm
+    tokenD_assembler,               // directive: assembler
     tokenD_stdcall  {=40},          // directive: stdcall
     tokenD_fastcall,                // directive: fastcall
     tokenD_cdecl,                   // directive: cdecl
@@ -454,6 +455,7 @@ begin
   RegisterToken('align', tokenD_aling, tcWeakKeyword);
   RegisterToken('as', token_as);
   RegisterToken('asm', token_asm);
+  RegisterToken('assembler', tokenD_assembler, tcWeakKeyword);
   RegisterToken('and', token_and);
   RegisterToken('array', token_array);
   RegisterToken('begin', token_begin);

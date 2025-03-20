@@ -302,6 +302,7 @@ type
     class procedure E2089_INVALID_TYPECAST(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2137_METHOD_NOT_FOUND_IN_BASE_CLASS(const AModule: IASTModule; const AID: TIdentifier);
     class procedure E2168_FIELD_OR_METHOD_IDENTIFIER_EXPECTED(const AModule: IASTModule; const APosition: TTextPosition);
+    class procedure E2169_FIELD_DEFINITION_NOT_ALLOWED_AFTER_METHODS_OR_PROPERTIES(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2170_CANNOT_OVERRIDE_A_NON_VIRTUAL_METHOD(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2185_CANNOT_SPECIFY_DISPID(const AModule: IASTModule; const AMethodID: TIdentifier);
     class procedure E2196_CANNOT_INIT_MULTIPLE_VARS(const ATextPosition: TTextPosition); static;
@@ -710,6 +711,12 @@ class procedure TASTDelphiErrors.E2168_FIELD_OR_METHOD_IDENTIFIER_EXPECTED(const
   const APosition: TTextPosition);
 begin
   AModule.PutError('E2168 Field or method identifier expected', APosition);
+end;
+
+class procedure TASTDelphiErrors.E2169_FIELD_DEFINITION_NOT_ALLOWED_AFTER_METHODS_OR_PROPERTIES(const AModule: IASTModule;
+  const APosition: TTextPosition);
+begin
+  AModule.PutError('E2169 Field definition not allowed after methods or properties', APosition);
 end;
 
 class procedure TASTDelphiErrors.E2170_CANNOT_OVERRIDE_A_NON_VIRTUAL_METHOD(const AModule: IASTModule;
