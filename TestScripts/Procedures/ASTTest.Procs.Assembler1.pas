@@ -1,4 +1,4 @@
-unit ASTTest.Proc.Assembler1;
+unit ASTTest.Procs.Assembler1;
 
 interface
 

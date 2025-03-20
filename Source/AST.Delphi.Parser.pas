@@ -4463,9 +4463,17 @@ begin
     tokenD_cdecl: begin
       TypeDecl.CallConv := ConvCDecl;
       Result := Lexer_NextToken(Scope);
+
       if Result = token_semicolon then
         Result := Lexer_NextToken(Scope);
-    end;
+
+      // "varargs" can be combined with "cdecl" only!
+      if Lexer_AmbiguousId = tokenD_varargs then
+        Result := Lexer_NextToken(Scope);
+
+      if Result = token_semicolon then
+        Result := Lexer_NextToken(Scope);
+     end;
     tokenD_register: begin
       TypeDecl.CallConv := ConvRegister;
       Result := Lexer_NextToken(Scope);
@@ -7898,10 +7906,6 @@ begin
       tokenD_register: Result := ProcSpec_Register(Scope, CallConv);
       tokenD_dispid: Result := ProcSpec_DispId(Scope, Struct, ID);
       tokenD_message: Result := ProcSpec_Message(Scope, ProcFlags);
-      tokenD_varargs: begin
-        Lexer_ReadSemicolon(Scope);
-        Result := Lexer_NextToken(Scope);
-      end;
       tokenD_deprecated: begin
         CheckAndParseDeprecated(Scope, tokenD_deprecated);
         Result := Lexer_NextToken(Scope);
@@ -8166,10 +8170,6 @@ begin
         Lexer_ReadSemicolon(Scope);
         Result := Lexer_NextToken(Scope);
       end;
-      tokenD_varargs: begin
-        Lexer_ReadSemicolon(Scope);
-        Result := Lexer_NextToken(Scope);
-      end;
       tokenD_deprecated: begin
         CheckAndParseDeprecated(Scope, tokenD_deprecated);
         Result := Lexer_NextToken(Scope);
@@ -8383,10 +8383,6 @@ begin
       tokenD_register: Result := ProcSpec_Register(Scope, CallConv);
       tokenD_assembler: begin
         // deprecated directive, just for compatibility
-        Lexer_ReadSemicolon(Scope);
-        Result := Lexer_NextToken(Scope);
-      end;
-      tokenD_varargs: begin
         Lexer_ReadSemicolon(Scope);
         Result := Lexer_NextToken(Scope);
       end;
@@ -9422,6 +9418,14 @@ begin
   CallConvention := ConvCDecl;
 
   Result := Lexer_NextToken(Scope);
+
+  if Result = token_semicolon then
+    Result := Lexer_NextToken(Scope);
+
+  // "varargs" can be combined with "cdecl" only!
+  if Lexer_AmbiguousId = tokenD_varargs then
+    Result := Lexer_NextToken(Scope);
+
   if Result = token_semicolon then
     Result := Lexer_NextToken(Scope);
 end;

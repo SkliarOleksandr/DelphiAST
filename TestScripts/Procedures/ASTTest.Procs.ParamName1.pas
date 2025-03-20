@@ -1,4 +1,4 @@
-unit ASTTest.Proc.ParamName1;
+unit ASTTest.Procs.ParamName1;
 
 interface
 
