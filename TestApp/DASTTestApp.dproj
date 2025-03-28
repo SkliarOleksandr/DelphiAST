@@ -273,6 +273,8 @@
         <DCCReference Include="..\TestScripts\Include\ASTTest.Include2.pas"/>
         <DCCReference Include="..\TestScripts\Aliases\ASTTest.Aliases.StringTypeWithCodepage1.pas"/>
         <DCCReference Include="..\TestScripts\Aliases\ASTTest.Aliases.Nested1.pas"/>
+        <DCCReference Include="..\TestScripts\Classes\Inheritance\ASTTest.Classes.Inheritance.Generics1.pas"/>
+        <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.Deprecated1.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

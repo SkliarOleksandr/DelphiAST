@@ -38,6 +38,7 @@ uses
 // system.Rtti
 // System.JSON
 // System.JSON.Types
+// System.JSON.Converters
 // REST.JsonReflect
 // system.Types
 // system.TypInfo
@@ -49,6 +50,7 @@ uses
 // System.Character
 // System.SyncObjs
 // System.Math
+// System.Math.Vectors
 // System.Messaging
 // System.Variants
 // System.VarUtils
@@ -466,7 +468,7 @@ type
     function ParseDeprecated(Scope: TScope; out DeprecatedExpr: TIDExpression): TTokenID;
     function CheckAndMakeClosure(const SContext: TSContext; const ProcDecl: TIDProcedure): TIDClosure;
     function EmitCreateClosure(const SContext: TSContext; Closure: TIDClosure): TIDExpression;
-    function CheckAndParseDeprecated(Scope: TScope; CurrToken: TTokenID): TTokenID;
+    function CheckAndParseDeprecated(Scope: TScope; ASemicolonRequired: Boolean = True): TTokenID;
     function ParseAttribute(Scope: TScope): TTokenID;
     function CheckAndParseAttribute(Scope: TScope): TTokenID;
     function CheckAndParseProcTypeCallConv(Scope: TScope; Token: TTokenID; TypeDecl: TIDProcType): TTokenID;
@@ -937,8 +939,7 @@ begin
     Decl.IsPacked := IsPacked;
     AddType(Decl);
   end;
-  Result := CheckAndParseDeprecated(Scope, Result);
-
+  Result := CheckAndParseDeprecated(Scope, {ASemicolonRequired:} False);
   Result := CheckAndParsePlatform(Scope);
 end;
 
@@ -4421,7 +4422,7 @@ begin
     Result := ParseAttribute(Scope);
 end;
 
-function TASTDelphiUnit.CheckAndParseDeprecated(Scope: TScope; CurrToken: TTokenID): TTokenID;
+function TASTDelphiUnit.CheckAndParseDeprecated(Scope: TScope; ASemicolonRequired: Boolean): TTokenID;
 var
   MessageExpr: TIDExpression;
 begin
@@ -4433,8 +4434,14 @@ begin
       Result := ParseConstExpression(Scope, MessageExpr, TExpessionPosition.ExprRValue);
       CheckStringExpression(MessageExpr);
     end;
+
+    if ASemicolonRequired then
+    begin
+      Lexer_MatchSemicolon(Result);
+      Result := Lexer_NextToken(Scope);
+    end;
   end else
-    Result := CurrToken;
+    Result := Lexer_CurTokenID;
 end;
 
 function TASTDelphiUnit.CheckAndParseProcTypeCallConv(Scope: TScope; Token: TTokenID; TypeDecl: TIDProcType): TTokenID;
@@ -5582,7 +5589,7 @@ begin
 
     Result := CheckAndParsePlatform(Scope);
 
-    Result := CheckAndParseDeprecated(Scope, Result);
+    Result := CheckAndParseDeprecated(Scope, {ASemicolonRequired:} False);
 
     Lexer_MatchToken(Result, token_semicolon);
 
@@ -7805,10 +7812,7 @@ begin
       tokenD_cdecl: Result := ProcSpec_CDecl(Scope, CallConv);
       tokenD_register: Result := ProcSpec_Register(Scope, CallConv);
       tokenD_dispid: Result := ProcSpec_DispId(Scope, Struct, ID);
-      tokenD_deprecated: begin
-        CheckAndParseDeprecated(Scope, tokenD_deprecated);
-        Result := Lexer_NextToken(Scope);
-      end;
+      tokenD_deprecated: Result := CheckAndParseDeprecated(Scope);
       tokenD_platform: begin
         CheckAndParsePlatform(Scope);
         Result := Lexer_NextToken(Scope);
@@ -7986,10 +7990,7 @@ begin
       tokenD_register: Result := ProcSpec_Register(Scope, CallConv);
       tokenD_dispid: Result := ProcSpec_DispId(Scope, Struct, ID);
       tokenD_message: Result := ProcSpec_Message(Scope, ProcFlags);
-      tokenD_deprecated: begin
-        CheckAndParseDeprecated(Scope, tokenD_deprecated);
-        Result := Lexer_NextToken(Scope);
-      end;
+      tokenD_deprecated: Result := CheckAndParseDeprecated(Scope);
       tokenD_platform: begin
         CheckAndParsePlatform(Scope);
         Result := Lexer_NextToken(Scope);
@@ -8250,10 +8251,7 @@ begin
         Lexer_ReadSemicolon(Scope);
         Result := Lexer_NextToken(Scope);
       end;
-      tokenD_deprecated: begin
-        CheckAndParseDeprecated(Scope, tokenD_deprecated);
-        Result := Lexer_NextToken(Scope);
-      end;
+      tokenD_deprecated: Result := CheckAndParseDeprecated(Scope);
       tokenD_platform:
       begin
         CheckAndParsePlatform(Scope);
@@ -8466,10 +8464,7 @@ begin
         Lexer_ReadSemicolon(Scope);
         Result := Lexer_NextToken(Scope);
       end;
-      tokenD_deprecated: begin
-        CheckAndParseDeprecated(Scope, tokenD_deprecated);
-        Result := Lexer_NextToken(Scope);
-      end;
+      tokenD_deprecated: Result := CheckAndParseDeprecated(Scope);
       tokenD_platform:
       begin
         CheckAndParsePlatform(Scope);
@@ -8944,6 +8939,7 @@ begin
       token_inline: Result := ProcSpec_Inline(Scope, ProcFlags);
       tokenD_external: Result := ProcSpec_External(Scope, ImportLib, ImportName, ProcFlags);
       tokenD_overload: Result := ProcSpec_Overload(Scope, ProcFlags);
+      tokenD_deprecated: Result := CheckAndParseDeprecated(Scope);
       tokenD_static: begin
         Lexer_ReadSemicolon(Scope);
         Result := Lexer_NextToken(Scope);
@@ -9108,7 +9104,6 @@ begin
   end;
 
   Result := CheckAndParsePlatform(Scope);
-  Result := CheckAndParseDeprecated(Scope, Result);
 end;
 
 function TASTDelphiUnit.InstantiateGenericProc(AScope: TScope; AGenericProc: TIDProcedure;
@@ -10472,7 +10467,7 @@ begin
       Result := ParseVarDefaultValue(Scope, DataType.ActualDataType, {out} DefaultValue);
 
     // deprecated
-    Result := CheckAndParseDeprecated(Scope, Result);
+    Result := CheckAndParseDeprecated(Scope, {ASemicolonRequired:} False);
 
     for i := 0 to c do begin
       Variable := TIDVariable.Create(Scope, Names.Items[i]);
@@ -10528,7 +10523,7 @@ begin
     Result := CheckAndParsePlatform(Scope);
 
     // deprecated
-    Result := CheckAndParseDeprecated(Scope, Result);
+    Result := CheckAndParseDeprecated(Scope, {ASemicolonRequired:} False);
 
     for var LIndex := 0 to c do
     begin
