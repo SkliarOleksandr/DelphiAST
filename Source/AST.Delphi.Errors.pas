@@ -279,7 +279,7 @@ type
 
     class procedure E2003_UNDECLARED_IDENTIFIER(const AModule: IASTModule; const AID: TIdentifier);
     class procedure E2004_IDENTIFIER_REDECLARED(const AModule: IASTModule; const AID: TIdentifier);
-    class procedure E2005_ID_IS_NOT_A_TYPE_IDENTIFIER(const AModule: IASTModule; const AExpr: TIDExpression);
+    class procedure E2005_ID_IS_NOT_A_TYPE_IDENTIFIER(const AModule: IASTModule; const AID: TIdentifier);
     class procedure E2008_INCOMPATIBLE_TYPES(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2010_INCOMPATIBLE_TYPES(const AModule: IASTModule; ALeft, ARight: TIDType; const ATextPosition: TTextPosition);
     class procedure E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(const AModule: IASTModule; const ATextPosition: TTextPosition);
@@ -590,9 +590,9 @@ begin
   AModule.PutError('E2004 Identifier redeclared: ''%s''', [AID.Name], AID.TextPosition);
 end;
 
-class procedure TASTDelphiErrors.E2005_ID_IS_NOT_A_TYPE_IDENTIFIER(const AModule: IASTModule; const AExpr: TIDExpression);
+class procedure TASTDelphiErrors.E2005_ID_IS_NOT_A_TYPE_IDENTIFIER(const AModule: IASTModule; const AID: TIdentifier);
 begin
-  AModule.PutError('E2005 ''%s'' is not a type identifier', [AExpr.DisplayName], AExpr.TextPosition);
+  AModule.PutError('E2005 ''%s'' is not a type identifier', [AID.Name], AID.TextPosition);
 end;
 
 class procedure TASTDelphiErrors.E2008_INCOMPATIBLE_TYPES(const AModule: IASTModule; const ATextPosition: TTextPosition);

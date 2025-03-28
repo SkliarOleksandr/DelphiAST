@@ -178,8 +178,9 @@
         <DCCReference Include="..\TestScripts\Operators\Substruct\ASTTest.Sub.Integer.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Add\ASTTest.Add.Pointers.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Compare\ASTTest.Cmp.Pointers.pas"/>
-        <DCCReference Include="..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadWithImplicitCast.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Neg\ASTTest.Operators.Neg1.pas"/>
+        <DCCReference Include="..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadWithImplicitCast.pas"/>
+        <DCCReference Include="..\TestScripts\Operators\Overload\ASTTest.Ops.ImplicitAsExplicit1.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Addr\ASTTest.AddrOp.Addr1.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Addr\ASTTest.AddrOp.Addr2.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Class1.pas"/>
@@ -219,6 +220,7 @@
         <DCCReference Include="..\TestScripts\Procedures\callconv\ASTTest.Procs.CallConv.Register1.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.Assembler1.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.MixingDirectives1.pas"/>
+        <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.ParamName1.pas"/>
         <DCCReference Include="..\TestScripts\Classes\Constructors\ASTTest.Classes.Construct1.pas"/>
         <DCCReference Include="..\TestScripts\Classes\Constructors\ASTTest.Classes.Construct2.pas"/>
         <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.Inherited1.pas"/>
@@ -269,7 +271,8 @@
         <DCCReference Include="..\TestScripts\Enums\ASTTest.Enums.ForLowHigh.pas"/>
         <DCCReference Include="..\TestScripts\Include\ASTTest.Include1.pas"/>
         <DCCReference Include="..\TestScripts\Include\ASTTest.Include2.pas"/>
-        <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.ParamName1.pas"/>
+        <DCCReference Include="..\TestScripts\Aliases\ASTTest.Aliases.StringTypeWithCodepage1.pas"/>
+        <DCCReference Include="..\TestScripts\Aliases\ASTTest.Aliases.Nested1.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

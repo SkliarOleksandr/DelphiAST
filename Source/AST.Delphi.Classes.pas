@@ -1393,6 +1393,7 @@ type
     function GetIsUnknown: Boolean;
     function GetIsAnonymousConst: Boolean;
     function GetIsStaticVar: Boolean;
+    function GetDeclarationID: TIdentifier;
   protected
     function GetDataType: TIDType; virtual;
   public
@@ -1409,6 +1410,7 @@ type
     property DisplayName: string read GetDisplayName;
     property DataTypeID: TDataTypeID read GetDataTypeID;
     property Declaration: TIDDeclaration read FDeclaration write FDeclaration;
+    property DeclarationID: TIdentifier read GetDeclarationID;
     property TextPosition: TTextPosition read FTextPosition write FTextPosition;
     property Line: Integer read GetLine;
     property Instruction: TObject read FInstruction write FInstruction;
@@ -4755,6 +4757,14 @@ begin
     Result := Dt.DisplayName
   else
     Result := '<NULL>';
+end;
+
+function TIDExpression.GetDeclarationID: TIdentifier;
+begin
+  if Assigned(fDeclaration) then
+    Result := fDeclaration.ID
+  else
+    Result := TIdentifier.Empty;
 end;
 
 function TIDExpression.GetDeclClass: TIDDeclarationClass;

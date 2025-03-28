@@ -52,8 +52,9 @@ uses
   ASTTest.Sub.Integer in '..\TestScripts\Operators\Substruct\ASTTest.Sub.Integer.pas',
   ASTTest.Add.Pointers in '..\TestScripts\Operators\Add\ASTTest.Add.Pointers.pas',
   ASTTest.Cmp.Pointers in '..\TestScripts\Operators\Compare\ASTTest.Cmp.Pointers.pas',
-  ASTTest.Ops.OverloadWithImplicitCast in '..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadWithImplicitCast.pas',
   ASTTest.Operators.Neg1 in '..\TestScripts\Operators\Neg\ASTTest.Operators.Neg1.pas',
+  ASTTest.Ops.OverloadWithImplicitCast in '..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadWithImplicitCast.pas',
+  ASTTest.Ops.ImplicitAsExplicit1 in '..\TestScripts\Operators\Overload\ASTTest.Ops.ImplicitAsExplicit1.pas',
   ASTTest.AddrOp.Addr1 in '..\TestScripts\Operators\Addr\ASTTest.AddrOp.Addr1.pas',
   ASTTest.AddrOp.Addr2 in '..\TestScripts\Operators\Addr\ASTTest.AddrOp.Addr2.pas',
   ASTTest.Generics.Class1 in '..\TestScripts\Generics\ASTTest.Generics.Class1.pas',
@@ -143,7 +144,9 @@ uses
   ASTTest.Enums.ReservedNames1 in '..\TestScripts\Enums\ASTTest.Enums.ReservedNames1.pas',
   ASTTest.Enums.ForLowHigh in '..\TestScripts\Enums\ASTTest.Enums.ForLowHigh.pas',
   ASTTest.Include1 in '..\TestScripts\Include\ASTTest.Include1.pas',
-  ASTTest.Include2 in '..\TestScripts\Include\ASTTest.Include2.pas';
+  ASTTest.Include2 in '..\TestScripts\Include\ASTTest.Include2.pas',
+  ASTTest.Aliases.StringTypeWithCodepage1 in '..\TestScripts\Aliases\ASTTest.Aliases.StringTypeWithCodepage1.pas',
+  ASTTest.Aliases.Nested1 in '..\TestScripts\Aliases\ASTTest.Aliases.Nested1.pas';
 
 {$R *.res}
 

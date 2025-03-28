@@ -362,6 +362,8 @@ type
     function ParseTypeRecord(Scope, GenericScope: TScope; GDescriptor: IGenericDescriptor; const ID: TIdentifier; out Decl: TIDType): TTokenID;
     function ParseTypeArray(Scope, GenericScope: TScope; GDescriptor: IGenericDescriptor; AInParameters: Boolean;
                             const ID: TIdentifier; out Decl: TIDType): TTokenID;
+    function ParseNewTypeDeclaration(Scope: TScope; const AID: TIdentifier; out Decl: TIDType): TTokenID;
+
     function ParseTypeHelper(Scope, GenericScope: TScope; AIsClassHelper: Boolean; const ID: TIdentifier;
                              out Decl: TDlphHelper): TTokenID;
     // функция парсинга анонимного типа
@@ -399,6 +401,10 @@ type
     function ParseMember(Scope: TScope; var EContext: TEContext; const ASTE: TASTExpression): TTokenID;
     function ParseIdentifier(Scope, SearchScope: TScope; out Expression: TIDExpression;
                              var EContext: TEContext; const PrevExpr: TIDExpression; const ASTE: TASTExpression): TTokenID;
+
+    // parse an existing declaration name (with optional explicit unit spec)
+    function ParseExistingDeclName(const AScope: TScope; out ADeclaration: TIDDeclaration): TTokenID;
+
     function ParseArrayMember(Scope: TScope; var EContext: TEContext; ASTE: TASTExpression): TTokenID;
     //todo: call property accessors when needed
     //function ParsePropertyMember(var PMContext: TPMContext; Scope: TScope; Prop: TIDProperty; out Expression: TIDExpression;
@@ -859,19 +865,9 @@ begin
   var LTokenID := Lexer_TreatTokenAsToken(Result);
   case LTokenID of
     /////////////////////////////////////////////////////////////////////////
-    // type of
+    // new type
     /////////////////////////////////////////////////////////////////////////
-    token_type: begin
-      Lexer_NextToken(Scope);
-      var ResExpr: TIDExpression;
-      Result := ParseConstExpression(Scope, ResExpr, ExprRValue);
-      if ResExpr.ItemType = itType then
-      begin
-        Decl := TIDAliasType.CreateAlias(Scope, ID, ResExpr.AsType, {ANewType:} True);
-        Scope.AddType(Decl);
-      end;
-      Exit;
-    end;
+    token_type: Result := ParseNewTypeDeclaration(Scope, ID, {out} Decl);
     /////////////////////////////////////////////////////////////////////////
     // pointer type
     /////////////////////////////////////////////////////////////////////////
@@ -4255,8 +4251,9 @@ begin
     begin
       SrcDataType := NewSource.DataType.ActualDataType;
       Result := TIDCastExpression.Create(NewSource, DstDataType);
-    end;
-  end;
+    end else
+      Result := MatchImplicit3(SContext, Source, Destination);
+  end
 end;
 
 class procedure TASTDelphiUnit.CheckAndCallFuncImplicit(const EContext: TEContext);
@@ -5609,6 +5606,89 @@ begin
                               tokenD_public,
                               tokenD_published]) then
      Break;
+  end;
+end;
+
+function TASTDelphiUnit.ParseExistingDeclName(const AScope: TScope; out ADeclaration: TIDDeclaration): TTokenID;
+
+var
+  LUnitID: TIdentifier;
+
+  function ParseUnitID(const AStartID: TIdentifier; out AUnitDecl: TIDUnit): TTokenID;
+  begin
+    var LID := AStartID;
+    Result := Lexer_CurTokenID;
+    while Lexer_NotEof do
+    begin
+      LUnitID := TIdentifier.Combine(LUnitID, LID);
+      var LDecl := FindIDNoAbort(AScope, LUnitID);
+      if Assigned(LDecl) then
+      begin
+        AUnitDecl := LDecl as TIDUnit;
+        Exit;
+      end;
+
+      if Result = token_dot then
+      begin
+        Lexer_ReadNextIdentifier(AScope, LID);
+        Result := Lexer_NextToken(AScope);
+        continue;
+      end;
+
+      AUnitDecl := nil;
+      Exit;
+    end;
+  end;
+
+var
+  LID: TIdentifier;
+  LSearchScope: TScope;
+begin
+  LSearchScope := AScope;
+  Result := token_unknown;
+  while Lexer_NotEof do
+  begin
+    Lexer_ReadNextIdentifier(LSearchScope, {out} LID);
+    ADeclaration := FindIDNoAbort(LSearchScope, LID);
+    Result := Lexer_NextToken(LSearchScope);
+    // if declaration is not found, it may have an explicit unit spec
+    if not Assigned(ADeclaration) then
+    begin
+      // parse an explicit unit specification
+      if Result = token_dot then
+      begin
+        var LUnitDecl: TIDUnit;
+        Result := ParseUnitID(LID, {out} LUnitDecl);
+        if Assigned(LUnitDecl) then
+        begin
+          // if an unit found, continue parsing a declaration inside
+          LSearchScope := LUnitDecl.Members;
+          Lexer_MatchToken(Result, token_dot);
+          Continue;
+        end;
+      end;
+      ERRORS.E2003_UNDECLARED_IDENTIFIER(Self, LID);
+      ADeclaration := nil;
+      Exit;
+    end;
+    // declaration has a complex name like <name1>.<name2>.<etc>
+    if Result = token_dot then
+    begin
+      if ADeclaration is TIDUnit then
+      begin
+        LSearchScope := TIDUnit(ADeclaration).Members;
+        Continue;
+      end;
+      if ADeclaration.Original is TIDStructure then
+      begin
+        LSearchScope := TIDStructure(ADeclaration.Original).Members;
+        Continue;
+      end;
+      ERRORS.STRUCT_TYPE_REQUIRED(LID.TextPosition);
+      ADeclaration := nil;
+      Exit;
+    end else
+      Exit; // parsing is OK
   end;
 end;
 
@@ -8542,6 +8622,38 @@ begin
   end;
 end;
 
+function TASTDelphiUnit.ParseNewTypeDeclaration(Scope: TScope; const AID: TIdentifier; out Decl: TIDType): TTokenID;
+var
+  LSrcDecl: TIDDeclaration;
+  LSrcType: TIDType;
+  LCodePageExpr: TIDExpression;
+begin
+  Result := ParseExistingDeclName(Scope, {out} LSrcDecl);
+
+  if not Assigned(LSrcDecl) then
+    LSrcDecl := Sys._UnknownType
+  else
+  if LSrcDecl.ItemType <> itType then
+  begin
+    ERRORS.E2005_ID_IS_NOT_A_TYPE_IDENTIFIER(Self, LSrcDecl.ID);
+    Decl := Sys._UnknownType;
+  end;
+
+  LSrcType := LSrcDecl as TIDType;
+
+  Decl := TIDAliasType.CreateAlias(Scope, AID, LSrcType, {ANewType:} True);
+  Scope.AddType(Decl);
+
+  if (Result = token_openround) and (LSrcType.DataTypeID = dtAnsiString) then
+  begin
+    Lexer_NextToken(Scope);
+    Result := ParseConstExpression(Scope, {out} LCodePageExpr, TExpessionPosition.ExprNested);
+    // todo: use LCodePageExpr
+    Lexer_MatchToken(Result, token_closeround);
+    Result := Lexer_NextToken(Scope);
+  end;
+end;
+
 function TASTDelphiUnit.ParseProcName(AScope: TScope;
                                       AProcType: TProcType;
                                       out AID: TIdentifier;
@@ -10926,7 +11038,7 @@ end;
 procedure TASTDelphiUnit.CheckType(AExpression: TIDExpression);
 begin
   if AExpression.ItemType <> itType then
-    ERRORS.E2005_ID_IS_NOT_A_TYPE_IDENTIFIER(Self, AExpression);
+    ERRORS.E2005_ID_IS_NOT_A_TYPE_IDENTIFIER(Self, AExpression.DeclarationID);
 end;
 
 class procedure TASTDelphiUnit.CheckInterfaceType(Expression: TIDExpression);

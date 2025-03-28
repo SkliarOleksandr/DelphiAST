@@ -666,6 +666,15 @@ object frmTestAppMain: TfrmTestAppMain
           TabOrder = 5
           OnClick = StopIfErrorCheckClick
         end
+        object ParseRtlCommonCheck: TCheckBox
+          Left = 1054
+          Top = 3
+          Width = 82
+          Height = 17
+          Anchors = [akTop, akRight]
+          Caption = 'rtl\common'
+          TabOrder = 6
+        end
       end
     end
     object SettingsTabSheet: TTabSheet

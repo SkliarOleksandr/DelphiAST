@@ -538,7 +538,7 @@ uses
 procedure CheckType(const Ctx: TSysFunctionContext; AExpression: TIDExpression);
 begin
   if AExpression.ItemType <> itType then
-    TASTDelphiErrors.E2005_ID_IS_NOT_A_TYPE_IDENTIFIER(Ctx.Module, AExpression);
+    TASTDelphiErrors.E2005_ID_IS_NOT_A_TYPE_IDENTIFIER(Ctx.Module, AExpression.DeclarationID);
 end;
 
 {$HINTS OFF}

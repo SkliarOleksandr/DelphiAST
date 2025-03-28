@@ -148,6 +148,7 @@ type
     UnitsFullPathCheck: TCheckBox;
     ShowProgressCheck: TCheckBox;
     DelphiDirComboBox: TComboBox;
+    ParseRtlCommonCheck: TCheckBox;
     procedure ASTParseRTLButtonClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure SearchButtonClick(Sender: TObject);
@@ -431,7 +432,7 @@ procedure TfrmTestAppMain.ASTParseRTLButtonClick(Sender: TObject);
       //todo: implement parsing .dpk files and use BuildWinRTL.dpk here
       if IsExcluded(LUnitName) then
         continue;
-      AUsesList := AddStringSegment(AUsesList, LUnitName, ',');
+      AUsesList := AddStringSegment(AUsesList, LUnitName, ',' + sLineBreak);
     end;
   end;
 
@@ -448,7 +449,8 @@ begin
   var LUsesUntis: string := '';
 
   AddDelphiUnits({var} LUsesUntis, 'rtl\sys');
-  AddDelphiUnits({var} LUsesUntis, 'rtl\common');
+  if ParseRtlCommonCheck.Checked then
+    AddDelphiUnits({var} LUsesUntis, 'rtl\common');
 
   var RTLUsesSourceText :=
   'unit RTLParseTest; '#10#13 +

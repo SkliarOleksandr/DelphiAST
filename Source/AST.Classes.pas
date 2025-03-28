@@ -1332,10 +1332,7 @@ end;
 
 procedure TASTModule.PutError(const AMessage: string; const ATextPosition: TTextPosition; ACritical: Boolean);
 begin
-  if Project.StopCompileIfError or ACritical then
-    AbortWork(AMessage, ATextPosition)
-  else
-    Project.PutMessage(Self, cmtError, AMessage, ATextPosition);
+  PutError(AMessage, {AParams:} [], ATextPosition, ACritical);
 end;
 
 procedure TASTModule.SetFileName(const Value: string);
