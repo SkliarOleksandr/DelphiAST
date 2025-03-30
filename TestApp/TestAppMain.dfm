@@ -114,11 +114,11 @@ object frmTestAppMain: TfrmTestAppMain
               382
               35)
             object RunAllTestsButton: TButton
-              Left = 305
+              Left = 280
               Top = 4
-              Width = 75
+              Width = 100
               Height = 25
-              Action = TestsParseAllAction
+              Action = ParseAllTestsAction
               Anchors = [akTop, akRight]
               TabOrder = 0
             end
@@ -896,9 +896,9 @@ object frmTestAppMain: TfrmTestAppMain
       OnExecute = RenameTestActionExecute
       OnUpdate = RenameTestActionUpdate
     end
-    object TestsParseAllAction: TAction
-      Caption = 'Parse All'
-      OnExecute = TestsParseAllActionExecute
+    object ParseAllTestsAction: TAction
+      Caption = 'Parse All Tests'
+      OnExecute = ParseAllTestsActionExecute
     end
     object LoadLSPConfigAction: TAction
       Caption = 'Load from LSP Config'

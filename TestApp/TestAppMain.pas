@@ -35,7 +35,9 @@ type
     FFilePath: string;
     FModified: Boolean;
     FTestNode: PVirtualNode;
+    FFailed: Boolean;
     procedure SetFilePath(const Value: string);
+    function GetFailed: Boolean;
   public
     constructor Create(const AFileName: string; ANodeType: TNodeType);
     property NodeType: TNodeType read FNodeType;
@@ -43,6 +45,7 @@ type
     property FilePath: string read FFilePath write SetFilePath;
     property Modified: Boolean read FModified write FModified;
     property TestNode: PVirtualNode read FTestNode write FTestNode;
+    property Failed: Boolean read GetFailed write FFailed;
   end;
 
   TfrmTestAppMain = class(TForm)
@@ -121,7 +124,7 @@ type
     Rename1: TMenuItem;
     TestsTopPanel: TPanel;
     RunAllTestsButton: TButton;
-    TestsParseAllAction: TAction;
+    ParseAllTestsAction: TAction;
     LoadLSPConfigButton: TButton;
     LoadLSPConfigAction: TAction;
     FilesPopup: TPopupMenu;
@@ -181,7 +184,7 @@ type
     procedure CreateNewTestActionExecute(Sender: TObject);
     procedure RenameTestActionUpdate(Sender: TObject);
     procedure RenameTestActionExecute(Sender: TObject);
-    procedure TestsParseAllActionExecute(Sender: TObject);
+    procedure ParseAllTestsActionExecute(Sender: TObject);
     procedure LoadLSPConfigActionExecute(Sender: TObject);
     procedure FilesCheckAllActionUpdate(Sender: TObject);
     procedure FilesCheckAllActionExecute(Sender: TObject);
@@ -686,7 +689,9 @@ begin
   begin
     if DirectoryExists(LFileName) then
     begin
-      var LNode := VTTests.AddChild(ARootNode, TTestData.Create(LFileName, ntFolder));
+      var LTestData := TTestData.Create(LFileName, ntFolder);
+      var LNode := VTTests.AddChild(ARootNode, LTestData);
+      LTestData.TestNode := LNode;
       LoadTests(LNode, LFileName);
     end else begin
       if ExtractFileExt(LFileName) = '.pas' then
@@ -1091,7 +1096,7 @@ begin
   SaveSettings;
 end;
 
-procedure TfrmTestAppMain.TestsParseAllActionExecute(Sender: TObject);
+procedure TfrmTestAppMain.ParseAllTestsActionExecute(Sender: TObject);
 begin
   ErrMemo.Clear;
   LogMemo.Clear;
@@ -1113,6 +1118,8 @@ begin
     if ParseProject(LProject, {AClearOutput:} False, {AShowResults:} False) <> CompileSuccess then
       Inc(LFailCount);
 
+    LTestData.Failed := LProject.Messages.ErrorCount > 0;
+
     // do not clear implict units (RTL) between tests
     LProject.Clear({AClearImplicitUnits:} False);
 
@@ -1129,6 +1136,7 @@ begin
     Application.ProcessMessages;
   end;
   LProject.Clear({AClearImplicitUnits:} True);
+  VTTests.Repaint;
 end;
 
 procedure SetNodeChecked(Sender: TBaseVirtualTree; Node: PVirtualNode; CheckState: TCheckState);
@@ -1167,7 +1175,10 @@ procedure TfrmTestAppMain.VTTestsDrawText(Sender: TBaseVirtualTree; TargetCanvas
 begin
   var LTestData := Sender.GetNodeData<TTestData>(Node);
   if LTestData = FSelectedTest then
-    TargetCanvas.Font.Style := [fsBold];
+    TargetCanvas.Font.Style := [TFontStyle.fsUnderline];
+
+  if LTestData.Failed then
+    TargetCanvas.Font.Color := clRed;
 end;
 
 procedure TfrmTestAppMain.VTTestsGetImageIndex(Sender: TBaseVirtualTree; Node: PVirtualNode; Kind: TVTImageKind;
@@ -2120,6 +2131,23 @@ constructor TTestData.Create(const AFileName: string; ANodeType: TNodeType);
 begin
   FNodeType := ANodeType;
   SetFilePath(AFileName);
+end;
+
+function TTestData.GetFailed: Boolean;
+begin
+  Result := FFailed;
+  if (FNodeType = ntFolder) and Assigned(FTestNode) then
+  begin
+    var LChildNode := FTestNode.FirstChild;
+    while Assigned(LChildNode) do
+    begin
+      var LTestData := LChildNode.GetData<TTestData>;
+      Result := LTestData.Failed;
+      if Result then
+        Exit;
+      LChildNode := LChildNode.NextSibling;
+    end;
+  end;
 end;
 
 procedure TTestData.SetFilePath(const Value: string);
