@@ -253,6 +253,7 @@ begin
     if FileExists(LSystemUnitFileName) and fParseSystemUnit then
       fSysUnit.Compile(not fCompileAll);
 
+    fAllUnits.Add(fSysUnit);
     fImplicitUnits.Add(LowerCase(TPath.GetFileNameWithoutExtension(LSystemName)), fSysUnit);
   end;
   Result := fSysUnit;

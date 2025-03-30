@@ -6951,7 +6951,7 @@ var
   ASTE: TASTExpression;
 begin
   ArgsCount := 0;
-  ACanInstantiate := True;
+  ACanInstantiate := False;
   while true do begin
     InitEContext(EContext, SContext, ExprNestedGeneric);
     Lexer_NextToken(Scope);
@@ -6970,8 +6970,10 @@ begin
     SetLength(Args, ArgsCount);
     var AArgExpression := EContext.RPNPopExpression();
     var AArgType := AArgExpression.AsType;
-    if (AArgType is TIDGenericParam) or AArgType.IsGeneric then
-      ACanInstantiate := False;
+    // if an argument is not a generic, the instantiation is possible
+    if not (AArgType is TIDGenericParam) and
+       not (AArgType is TIDGenericInstantiation) then
+      ACanInstantiate := True;
 
     Args[ArgsCount - 1] := AArgExpression;
 

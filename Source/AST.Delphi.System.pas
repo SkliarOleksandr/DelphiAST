@@ -1189,14 +1189,8 @@ begin
   begin
     var coeffTypeType: TIDEnum := RegisterType('coeffType', TIDEnum, dtEnum) as TIDEnum;
     coeffTypeType.Items := TScope.Create(stLocal, ImplScope);
-    var Item := TIDIntConstant.Create(coeffTypeType.Items, TIdentifier.Make('cHi'));
-    Item.DataType := coeffTypeType;
-    Item.Value := 0;
-    InsertToScope(coeffTypeType.Items, Item);
-    Item := TIDIntConstant.Create(coeffTypeType.Items, TIdentifier.Make('cLo'));
-    Item.DataType := coeffTypeType;
-    Item.Value := 1;
-    InsertToScope(coeffTypeType.Items, Item);
+    coeffTypeType.AddItem('cHi', 0);
+    coeffTypeType.AddItem('cLo', 1);
     coeffTypeType.LowBound := 0;
     coeffTypeType.HighBound := 1;
   end;

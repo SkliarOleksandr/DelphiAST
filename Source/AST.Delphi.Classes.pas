@@ -59,6 +59,7 @@ type
   TIDArray = class;
   TIDConstant = class;
   TIDGuidConstant = class;
+  TIDEnumItemConstant = class;
   TIDStructure = class;
   TIDClass = class;
   TIDClassOf = class;
@@ -774,6 +775,7 @@ type
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
     function ToJson: TJsonASTDeclaration; override;
     function ASTJsonDeclClass: TASTJsonDeclClass; override;
+    function AddItem(const AName: string; AValue: Integer): TIDEnumItemConstant;
   end;
 
   TStructFlags = set of (StructCompleted);
@@ -6249,6 +6251,15 @@ begin
   CreateStandardOperators;
 end;
 
+function TIDEnum.AddItem(const AName: string; AValue: Integer): TIDEnumItemConstant;
+begin
+  Result := TIDEnumItemConstant.Create(Items, TIdentifier.Make(AName));
+  Result.DataType := Self;
+  Result.Value := 0;
+  if not Items.InsertID(Result) then
+    TASTDelphiErrors.E2004_IDENTIFIER_REDECLARED(DeclUnit, TIdentifier.Make(AName));
+end;
+
 function TIDEnum.ASTJsonDeclClass: TASTJsonDeclClass;
 begin
   Result := TASTJsonDelphiEnum;
@@ -9223,9 +9234,7 @@ begin
   Result := FExplicitParams[AIndex];
 end;
 
-
 { TIDGenericInstantiation }
-
 
 constructor TIDGenericInstantiation.CreateInstantiation(AScope: TScope;
                                                         AGenericType: TIDType;
