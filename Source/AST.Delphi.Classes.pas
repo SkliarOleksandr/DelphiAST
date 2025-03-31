@@ -615,14 +615,14 @@ type
   }
   TIDGenericInstantiation = class(TIDAliasType)
   private
-    FGenericArguments: TIDExpressions;
+    FGenericArgs: TIDTypeArray;
   protected
     function GetIsGeneric: Boolean; override;
     function GetDisplayName: string; override;
   public
     constructor CreateInstantiation(AScope: TScope;
                                     AGenericType: TIDType;
-                                    const AGenericArguments: TIDExpressions);
+                                    const AGenericArgs: TIDTypeArray);
 
     function DoesGenericUseParams(const AParams: TIDTypeArray): Boolean; override;
     function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
@@ -9238,17 +9238,17 @@ end;
 
 constructor TIDGenericInstantiation.CreateInstantiation(AScope: TScope;
                                                         AGenericType: TIDType;
-                                                        const AGenericArguments: TIDExpressions);
+                                                        const AGenericArgs: TIDTypeArray);
 begin
   inherited CreateAlias(AScope, AGenericType.ID, AGenericType);
-  FGenericArguments := AGenericArguments;
+  FGenericArgs := AGenericArgs;
 end;
 
 function TIDGenericInstantiation.DoesGenericUseParams(const AParams: TIDTypeArray): Boolean;
 begin
-  for var LArgIndex := 0 to Length(FGenericArguments) - 1 do
+  for var LArgIndex := 0 to Length(FGenericArgs) - 1 do
   begin
-    var LArg := FGenericArguments[LArgIndex].AsType;
+    var LArg := FGenericArgs[LArgIndex];
     if LArg is TIDGenericInstantiation then
     begin
       if LArg.DoesGenericUseParams(AParams) then
@@ -9265,7 +9265,7 @@ end;
 
 function TIDGenericInstantiation.GetDisplayName: string;
 begin
-  Result := Name + GenericArgsAsText(FGenericArguments);
+  Result := Name + GenericArgsAsText(FGenericArgs);
 end;
 
 function TIDGenericInstantiation.GetIsGeneric: Boolean;
@@ -9284,9 +9284,10 @@ begin
     SetLength(LNewContext.Args, LGParamsCount);
 
     var LStrSufix := '';
+    var LCanInstantiate := False;
     for var LIndex := 0 to LGParamsCount - 1 do
     begin
-      var LGArg := FGenericArguments[LIndex].AsType;
+      var LGArg := FGenericArgs[LIndex];
       // if an argument is a generic param from the outer context, find the related argument from that context
       if LGArg is TIDGenericParam then
         LGArg := AContext.GetArgByParam(TIDGenericParam(LGArg))
@@ -9294,6 +9295,11 @@ begin
       // if an argument is a generic instantiation, instantiate it
       if LGArg is TIDGenericInstantiation then
         LGArg := LGArg.InstantiateGeneric(ADstScope, ADstStruct, AContext) as TIDType;
+
+      // if at least one argument is NOT a generic param, we can instantiate (even partially) the original generic type
+      // otherwise we have to create another generic-instantiation with new arguments
+      if not LGArg.IsGeneric then
+        LCanInstantiate := True;
 
       LNewContext.Args[LIndex] := LGArg;
       LStrSufix := AddStringSegment(LStrSufix, LGArg.DisplayName, ', ');
@@ -9304,9 +9310,10 @@ begin
 
     if not Original.GenericDescriptor.TryGetInstance(LNewContext.Args, {out} Result) then
     begin
-      LogBegin('inst [type: %s, src: %s]', [ClassName, Original.DisplayName]);
-      Result := Original.InstantiateGeneric(ADstScope, ADstStruct, LNewContext);
-      LogEnd('inst [class: %s, dst: %s]', [ClassName, LNewContext.DstID.Name]);
+      if LCanInstantiate then
+        Result := Original.InstantiateGeneric(ADstScope, ADstStruct, LNewContext)
+      else
+        Result := TIDGenericInstantiation.CreateInstantiation(Scope, Original, LNewContext.Args);
     end;
   finally
     LNewContext.Free;
@@ -9316,7 +9323,7 @@ end;
 function TIDGenericInstantiation.SameType(AType: TIDGenericInstantiation): Boolean;
 begin
   Result := (Original = AType.Original) and
-            (Length(FGenericArguments) = Length(AType.FGenericArguments)); // todo: improve
+            (Length(FGenericArgs) = Length(AType.FGenericArgs)); // todo: improve
 end;
 
 { TIDParam }

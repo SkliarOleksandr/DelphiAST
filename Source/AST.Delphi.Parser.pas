@@ -159,7 +159,7 @@ type
     function ProcSpec_Message(Scope: TScope; var Flags: TProcFlags): TTokenID;
 
     function InstantiateGenericType(AScope: TScope; AGenericType: TIDType;
-                                    const AGenericArgs: TIDExpressions): TIDType;
+                                    const AGenericArgs: TIDTypeArray): TIDType;
     function InstantiateGenericProc(AScope: TScope; AGenericProc: TIDProcedure;
                                     const AGenericArgs: TIDExpressions): TIDProcedure;
     function GetWeakRefType(Scope: TScope; SourceDataType: TIDType): TIDWeekRef;
@@ -430,7 +430,6 @@ type
                            out AGenericParams: TIDTypeArray): TTokenID;
     function ParseProcBody(Proc: TASTDelphiProc): TTokenID;
     function ParseOperator(Scope: TScope; Struct: TIDStructure): TTokenID;
-    function ParseGenericMember(const PMContext: TPMContext; const SContext: TSContext; StrictSearch: Boolean; out Decl: TIDDeclaration; out WithExpression: TIDExpression): TTokenID;
     function ParseIfThenStatement(Scope: TScope; const SContext: TSContext): TTokenID;
     function ParseWhileStatement(Scope: TScope; const SContext: TSContext): TTokenID;
     function ParseRepeatStatement(Scope: TScope; const SContext: TSContext): TTokenID;
@@ -7148,6 +7147,14 @@ function TASTDelphiUnit.ParseGenericTypeSpec(Scope, ASearchScope: TScope; const 
     Result := ID.Name + '<' + LParamsStr + '>';
   end;
 
+  function GetTypesArray(const AExpressions: TIDExpressions): TIDTypeArray;
+  begin
+    var LCount := Length(AExpressions);
+    SetLength(Result, LCount);
+    for var LIndex := 0 to LCount - 1 do
+      Result[LIndex] := AExpressions[LIndex].AsType;
+  end;
+
 var
   LGenericArgs: TIDExpressions;
   LCanInstantiate: Boolean;
@@ -7176,14 +7183,15 @@ begin
       // if LType is assigned, we found proper declaration
       if Assigned(LType) then
       begin
+        var LTypesArray := GetTypesArray(LGenericArgs);
         if LCanInstantiate and not IsGenericTypeThisStruct(Scope, LType) then
         begin
-          DataType := InstantiateGenericType(Scope, LType, LGenericArgs);
+          DataType := InstantiateGenericType(Scope, LType, LTypesArray);
         end else
         begin
           // check if this type is not the current parsed type
           if not IsTheStructIsOwner(Scope, LType) then
-            DataType := TIDGenericInstantiation.CreateInstantiation(Scope, LType as TIDType, LGenericArgs)
+            DataType := TIDGenericInstantiation.CreateInstantiation(Scope, LType as TIDType, LTypesArray)
           else
             DataType := LType;
         end;
@@ -9165,23 +9173,16 @@ begin
 end;
 
 function TASTDelphiUnit.InstantiateGenericType(AScope: TScope; AGenericType: TIDType;
-                                               const AGenericArgs: TIDExpressions): TIDType;
+                                               const AGenericArgs: TIDTypeArray): TIDType;
 var
   GDescriptor: IGenericDescriptor;
   LContext: TGenericInstantiateContext;
-  LGArgs: TIDTypeArray;
-  LGArgsCount: Integer;
 begin
   GDescriptor := AGenericType.GenericDescriptor;
 
-  LGArgsCount := Length(AGenericArgs);
-  SetLength(LGArgs, LGArgsCount);
-  for var LIndex := 0 to LGArgsCount - 1 do
-    LGArgs[LIndex] := AGenericArgs[LIndex].AsType;
-
   {find in the pool first}
   var LDecl: TIDDeclaration;
-  if GDescriptor.TryGetInstance(LGArgs, {out} LDecl) then
+  if GDescriptor.TryGetInstance(AGenericArgs, {out} LDecl) then
   begin
     Result := LDecl as TIDType;
     Exit;
@@ -9191,13 +9192,10 @@ begin
   try
     var AStrSufix := '';
     var AArgsCount := Length(AGenericArgs);
-    LContext.Args := LGArgs;
+    LContext.Args := AGenericArgs;
     LContext.Params := GDescriptor.GenericParams;
     for var AIndex := 0 to AArgsCount - 1 do
-    begin
-      var AArgType := AGenericArgs[AIndex].AsType;
-      AStrSufix := AddStringSegment(AStrSufix, AArgType.Name, ', ');
-    end;
+      AStrSufix := AddStringSegment(AStrSufix, AGenericArgs[AIndex].Name, ', ');
     LContext.DstID.Name := AGenericType.Name + '<' + AStrSufix + '>';
     LContext.DstID.TextPosition := Lexer_Position;
 
@@ -9539,7 +9537,7 @@ begin
     Result := Lexer_NextToken(Scope);
 end;
 
-function TASTDelphiUnit.ParseGenericMember(const PMContext: TPMContext;
+(*function TASTDelphiUnit.ParseGenericMember(const PMContext: TPMContext;
                                            const SContext: TSContext;
                                            StrictSearch: Boolean;
                                            out Decl: TIDDeclaration;
@@ -9581,7 +9579,7 @@ begin
     else
       Decl := LGenericType;
   end;
-end;
+end; *)
 
 function TASTDelphiUnit.ParseUnknownID(Scope: TScope; const PrevExpr: TIDExpression;
   const AID: TIdentifier; out Decl: TIDDeclaration): TTokenID;
@@ -9656,8 +9654,8 @@ begin
 
   Result := Lexer_NextToken(Scope);
   if not Assigned(Decl) then begin
-    if Result = token_less then
-      Result := ParseGenericMember(PMContext, EContext.SContext, StrictSearch, Decl, Expr);
+//    if Result = token_less then
+//      Result := ParseGenericMember(PMContext, EContext.SContext, StrictSearch, Decl, Expr);
 
     if PMContext.ItemScope is TConditionalScope then
     begin

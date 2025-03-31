@@ -76,6 +76,8 @@ uses
   ASTTest.Generics.ImplicitCast2 in '..\TestScripts\Generics\ASTTest.Generics.ImplicitCast2.pas',
   ASTTest.Generics.RecursiveUsing1 in '..\TestScripts\Generics\ASTTest.Generics.RecursiveUsing1.pas',
   ASTTest.Generics.SmartRef1 in '..\TestScripts\Generics\ASTTest.Generics.SmartRef1.pas',
+  ASTTest.Generics.GenericInstantiation1 in '..\TestScripts\Generics\ASTTest.Generics.GenericInstantiation1.pas',
+  ASTTest.Generics.OverloadProc1 in '..\TestScripts\Generics\ASTTest.Generics.OverloadProc1.pas',
   ASTTest.Ordian.Enums.Init in '..\TestScripts\Ordinals\ASTTest.Ordian.Enums.Init.pas',
   ASTTest.Procs.External1 in '..\TestScripts\Procedures\ASTTest.Procs.External1.pas',
   ASTTest.Procs.External2 in '..\TestScripts\Procedures\ASTTest.Procs.External2.pas',
