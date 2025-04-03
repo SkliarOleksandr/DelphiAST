@@ -72,13 +72,14 @@
         <UWP_DelphiLogo44>$(BDS)\bin\Artwork\Windows\UWP\delphi_UwpDefault_44.png</UWP_DelphiLogo44>
         <UWP_DelphiLogo150>$(BDS)\bin\Artwork\Windows\UWP\delphi_UwpDefault_150.png</UWP_DelphiLogo150>
         <SanitizedProjectName>DASTTestApp</SanitizedProjectName>
-        <DCC_UnitSearchPath>..\Source\;..\Source\Lexers;..\RTLOverride;..\TestScripts;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_UnitSearchPath>..\Source\;..\Source\Lexers;..\TestScripts;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
         <DCC_DUPLICATE_CTOR_DTOR>false</DCC_DUPLICATE_CTOR_DTOR>
         <DCC_UNIT_PLATFORM>false</DCC_UNIT_PLATFORM>
         <DCC_SYMBOL_PLATFORM>false</DCC_SYMBOL_PLATFORM>
         <DCC_NO_RETVAL>error</DCC_NO_RETVAL>
+        <DCC_UNIT_DEPRECATED>false</DCC_UNIT_DEPRECATED>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win32)'!=''">
         <DCC_UsePackage>DBXSqliteDriver;IndyIPCommon;bindcompdbx;DBXInterBaseDriver;vcl;IndyIPServer;vclactnband;vclFireDAC;IndySystem;tethering;svnui;dsnapcon;FireDACADSDriver;FireDACMSAccDriver;fmxFireDAC;vclimg;DCAExpert;TeeDB;SPR_Components;vcltouch;vcldb;bindcompfmx;svn;cxPageControlVCLD7;FireDACPgDriver;DragDropDR102T;inetdb;cxExtEditorsVCLD7;FMXTee;cxDataD7;DbxCommonDriver;FmxTeeUI;fmx;fmxdae;xmlrtl;Tee;fmxobj;vclwinx;rtl;DbxClientDriver;CustomIPTransport;vcldsnap;dbexpress;IndyCore;vclx;bindcomp;appanalytics;dsnap;IndyIPClient;cxEditorsVCLD7;bindcompvcl;dxThemeD7;SynEdit_R;cxGridVCLD7;TeeUI;VCLRESTComponents;dbxcds;VclSmp;cxTreeListVCLD7;adortl;vclie;bindengine;DBXMySQLDriver;dsnapxml;FireDACMySQLDriver;dbrtl;IndyProtocols;inetdbxpress;FireDACCommonODBC;cxLibraryVCLD7;fmxase;$(DCC_UsePackage)</DCC_UsePackage>
@@ -203,6 +204,7 @@
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.RecursiveUsing1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.SmartRef1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenericInstantiation1.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.OverloadProc1.pas"/>
         <DCCReference Include="..\TestScripts\Ordinals\ASTTest.Ordian.Enums.Init.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.External1.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.External2.pas"/>
@@ -222,7 +224,6 @@
         <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.Assembler1.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.MixingDirectives1.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.ParamName1.pas"/>
-        <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.Deprecated1.pas"/>
         <DCCReference Include="..\TestScripts\Classes\Constructors\ASTTest.Classes.Construct1.pas"/>
         <DCCReference Include="..\TestScripts\Classes\Constructors\ASTTest.Classes.Construct2.pas"/>
         <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.Inherited1.pas"/>
@@ -269,14 +270,17 @@
         <DCCReference Include="..\TestScripts\Records\ASTTest.Records.StaticInit2.pas"/>
         <DCCReference Include="..\TestScripts\Built-ins\ASTTest.Builtins.High1.pas"/>
         <DCCReference Include="..\TestScripts\Built-ins\ASTTest.Builtins.Declared1.pas"/>
-        <DCCReference Include="..\TestScripts\Inline Vars\ASTTest.InlineVars.TypeInfer1.pas"/>
+        <DCCReference Include="..\TestScripts\Vars\ASTTest.Vars.TypeInfer1.pas"/>
+        <DCCReference Include="..\TestScripts\Vars\ASTTest.Vars.Absolute1.pas"/>
         <DCCReference Include="..\TestScripts\Enums\ASTTest.Enums.ReservedNames1.pas"/>
         <DCCReference Include="..\TestScripts\Enums\ASTTest.Enums.ForLowHigh.pas"/>
         <DCCReference Include="..\TestScripts\Include\ASTTest.Include1.pas"/>
         <DCCReference Include="..\TestScripts\Include\ASTTest.Include2.pas"/>
         <DCCReference Include="..\TestScripts\Aliases\ASTTest.Aliases.StringTypeWithCodepage1.pas"/>
         <DCCReference Include="..\TestScripts\Aliases\ASTTest.Aliases.Nested1.pas"/>
-        <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.OverloadProc1.pas"/>
+        <DCCReference Include="..\TestScripts\Other\ASTTest.Other.Deprecated1.pas"/>
+        <DCCReference Include="..\TestScripts\Other\ASTTest.Other.Platform1.pas"/>
+        <DCCReference Include="..\TestScripts\Other\ASTTest.Other.PlatformAndDeprecatedMix.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

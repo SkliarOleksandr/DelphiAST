@@ -49,6 +49,7 @@ uses
 // System.Contnrs
 // System.Character
 // System.SyncObjs
+// System.ObjAuto
 // System.Math
 // System.Math.Vectors
 // System.Messaging
@@ -336,7 +337,7 @@ type
     class function ConstDynArrayToSet(const SContext: TSContext; const CDynArray: TIDExpression; TargetSetType: TIDSet): TIDExpression; static;
     class function MatchSetImplicit(const SContext: TSContext; Source: TIDExpression; Destination: TIDSet): TIDExpression; static;
     function ParseUnitName(Scope: TScope; out ID: TIdentifier): TTokenID;
-    function ParseUnitDecl(Scope: TScope): Boolean;
+    function ParseUnitDecl(Scope: TScope): TTokenID;
     function ParseUsesSection(Scope: TScope): TTokenID;
     //=======================================================================================================================
     ///  Парсинг типов
@@ -471,7 +472,6 @@ type
     function ParseAttribute(Scope: TScope): TTokenID;
     function CheckAndParseAttribute(Scope: TScope): TTokenID;
     function CheckAndParseProcTypeCallConv(Scope: TScope; Token: TTokenID; TypeDecl: TIDProcType): TTokenID;
-    function CheckAndParsePlatform(Scope: TScope): TTokenID;
     function CheckAndParseAbsolute(Scope: TScope; out ADecl: TIDDeclaration): TTokenID;
     function ParseAsmSpecifier: TTokenID;
     property InitProc: TIDProcedure read FInitProc;
@@ -496,7 +496,7 @@ type
     procedure PostCompileChecks;
 
     property Source: string read GetSource;
-    function DoParse(Scope: TScope; ACompileIntfOnly: Boolean): TCompilerResult;
+    function DoParse(Scope: TScope; AFirstToken: TTokenID; ACompileIntfOnly: Boolean): TCompilerResult;
     function Compile(ACompileIntfOnly: Boolean; RunPostCompile: Boolean = True): TCompilerResult; override;
     function CompileIntfOnly: TCompilerResult; override;
     function CompileSource(Scope: TScope; const AFileName: string; const ASource: string): ICompilerMessages;
@@ -938,8 +938,9 @@ begin
     Decl.IsPacked := IsPacked;
     AddType(Decl);
   end;
-  Result := CheckAndParseDeprecated(Scope, {ASemicolonRequired:} False);
-  Result := CheckAndParsePlatform(Scope);
+  // "platform" or "deprecated" can be applied to named data types only
+  if not AInParameters and (ID.Name <> '') then
+    Result := CheckAndParseDeprecated(Scope, {ASemicolonRequired:} False);
 end;
 
 function TASTDelphiUnit.ParseTypeDeclOther(Scope: TScope; const ID: TIdentifier; out Decl: TIDType): TTokenID;
@@ -1237,25 +1238,24 @@ begin
     ERRORS.INVALID_TYPE_DECLARATION(Self, Lexer_Position);
 end;
 
-function TASTDelphiUnit.ParseUnitDecl(Scope: TScope): Boolean;
+function TASTDelphiUnit.ParseUnitDecl(Scope: TScope): TTokenID;
 var
   Decl: TIDUnit;
-  Token: TTokenID;
 begin
-  Token := Lexer_NextToken(Scope);
-  if Token in [token_unit, token_program] then
+  Result := Lexer_NextToken(Scope);
+  if Result in [token_unit, token_program] then
   begin
-    fIsPorgram := (Token = token_program);
-    Token := ParseUnitName(Scope, fUnitName);
-    Lexer_MatchSemicolon(Token);
+    fIsPorgram := (Result = token_program);
+    ParseUnitName(Scope, fUnitName);
+    // deprecated & platform
+    Result := CheckAndParseDeprecated(Scope, {ASemicolonRequired:} True);
     Decl := TIDUnit.Create(Scope, Self);
     // add itself to the intf scope
     InsertToScope(Scope, Decl);
-    Result := True;
   end else
   begin
     ERRORS.E2029_TOKEN_EXPECTED_BUT_ID_FOUND(Self, token_unit, Lexer_CurTokenAsID);
-    Result := False;
+    Result := token_eof;
   end;
 end;
 
@@ -2679,9 +2679,10 @@ end;
 
 function TASTDelphiUnit.Compile(ACompileIntfOnly: Boolean; RunPostCompile: Boolean): TCompilerResult;
 var
-  Token: TTokenID;
+  LToken: TTokenID;
   Scope: TScope;
 begin
+  LToken := token_unknown;
   var LStartedAt := TTickCounter.GetTicks;
   try
     Scope := nil;
@@ -2699,7 +2700,9 @@ begin
 
       Lexer.First;
       Scope := IntfScope;
-      if not ParseUnitDecl(Scope) then
+
+      LToken := ParseUnitDecl(Scope);
+      if LToken = token_eof then
         Exit(CompileFail);
 
       if fIsPorgram then
@@ -2708,10 +2711,11 @@ begin
     if UnitState = UnitIntfCompiled then
     begin
       Scope := ImplScope;
+      LToken := Lexer_NextToken(Scope);
     end else
       AbortWorkInternal('Invalid unit state');
 
-    Result := DoParse(Scope, ACompileIntfOnly);
+    Result := DoParse(Scope, LToken, ACompileIntfOnly);
     if ACompileIntfOnly then
     begin
       Progress(TASTStatusParseIntfSucess, TTickCounter.GetTicks - LStartedAt);
@@ -2741,12 +2745,12 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.DoParse(Scope: TScope; ACompileIntfOnly: Boolean): TCompilerResult;
+function TASTDelphiUnit.DoParse(Scope: TScope; AFirstToken: TTokenID; ACompileIntfOnly: Boolean): TCompilerResult;
 var
   Token: TTokenID;
 begin
+  Token := AFirstToken;
   Result := TCompilerResult.CompileSuccess;
-  Token := Lexer_NextToken(Scope);
   while true do begin
     // since this is a "root" of Delphi unit, all keywords should be treated as "reserved"
     case Lexer_AmbiguousId of
@@ -2886,7 +2890,7 @@ begin
   try
     Lexer.Source := ASource;
     Lexer.First;
-    DoParse(Scope, True);
+    DoParse(Scope, Lexer_NextToken(Scope), True);
   finally
     Lexer.Source := ParserSource;
     Lexer.LoadState(ParserState);
@@ -4425,22 +4429,39 @@ function TASTDelphiUnit.CheckAndParseDeprecated(Scope: TScope; ASemicolonRequire
 var
   MessageExpr: TIDExpression;
 begin
-  if Lexer_AmbiguousId = tokenD_deprecated then
+  while True do
   begin
-    Result := Lexer_NextToken(Scope);
-    if Result = token_identifier then
-    begin
-      Result := ParseConstExpression(Scope, MessageExpr, TExpessionPosition.ExprRValue);
-      CheckStringExpression(MessageExpr);
-    end;
+    case Lexer_AmbiguousId of
+      tokenD_platform: begin
+        // TODO: set a flag
+        Result := Lexer_NextToken(Scope);
+      end;
+      tokenD_deprecated: begin
+        Result := Lexer_NextToken(Scope);
+        
+        if Lexer_AmbiguousId in [tokenD_deprecated, tokenD_platform] then
+          continue;
 
-    if ASemicolonRequired then
-    begin
-      Lexer_MatchSemicolon(Result);
-      Result := Lexer_NextToken(Scope);
+        if Result = token_identifier then
+        begin
+          Result := ParseConstExpression(Scope, MessageExpr, TExpessionPosition.ExprRValue);
+          CheckStringExpression(MessageExpr);
+        end;
+        if ASemicolonRequired then
+        begin
+          Lexer_MatchSemicolon(Result);
+          Result := Lexer_NextToken(Scope);
+        end;
+      end;
+      token_semicolon: begin
+        Result := Lexer_NextToken(Scope);
+        Exit;
+      end;
+    else
+      Result := Lexer_CurTokenID;
+      Exit;
     end;
-  end else
-    Result := Lexer_CurTokenID;
+  end;
 end;
 
 function TASTDelphiUnit.CheckAndParseProcTypeCallConv(Scope: TScope; Token: TTokenID; TypeDecl: TIDProcType): TTokenID;
@@ -5586,17 +5607,13 @@ begin
     if not Assigned(LExplicitType) then
       LConst.DataType := CheckAndCorrectType(LExpr);
 
-    Result := CheckAndParsePlatform(Scope);
-
-    Result := CheckAndParseDeprecated(Scope, {ASemicolonRequired:} False);
-
-    Lexer_MatchToken(Result, token_semicolon);
+    // deprecated & platform
+    Result := CheckAndParseDeprecated(Scope{, ASemicolonRequired: False});
 
     Scope.AddConstant(LConst);
     // AddConstant() already called in ParseVector
     //AddConstant(LConst);
 
-    Result := Lexer_NextToken(Scope);
   until (Result <> token_identifier) or AInlineConst;
 end;
 
@@ -7588,15 +7605,6 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.CheckAndParsePlatform(Scope: TScope): TTokenID;
-begin
-  //TODO: parse deprecated text
-  if Lexer_IsCurrentToken(tokenD_platform) then
-    Result := Lexer_NextToken(Scope)
-  else
-    Result := Lexer_CurTokenID;
-end;
-
 function TASTDelphiUnit.GetPtrReferenceType(Decl: TIDRefType): TIDType;
 begin
   Result := Decl.ReferenceType;
@@ -7822,11 +7830,7 @@ begin
       tokenD_cdecl: Result := ProcSpec_CDecl(Scope, CallConv);
       tokenD_register: Result := ProcSpec_Register(Scope, CallConv);
       tokenD_dispid: Result := ProcSpec_DispId(Scope, Struct, ID);
-      tokenD_deprecated: Result := CheckAndParseDeprecated(Scope);
-      tokenD_platform: begin
-        CheckAndParsePlatform(Scope);
-        Result := Lexer_NextToken(Scope);
-      end;
+      tokenD_deprecated, tokenD_platform: Result := CheckAndParseDeprecated(Scope);
     else
       break;
     end;
@@ -8000,11 +8004,7 @@ begin
       tokenD_register: Result := ProcSpec_Register(Scope, CallConv);
       tokenD_dispid: Result := ProcSpec_DispId(Scope, Struct, ID);
       tokenD_message: Result := ProcSpec_Message(Scope, ProcFlags);
-      tokenD_deprecated: Result := CheckAndParseDeprecated(Scope);
-      tokenD_platform: begin
-        CheckAndParsePlatform(Scope);
-        Result := Lexer_NextToken(Scope);
-      end;
+      tokenD_deprecated, tokenD_platform: Result := CheckAndParseDeprecated(Scope);
     else
       break;
     end;
@@ -8261,12 +8261,7 @@ begin
         Lexer_ReadSemicolon(Scope);
         Result := Lexer_NextToken(Scope);
       end;
-      tokenD_deprecated: Result := CheckAndParseDeprecated(Scope);
-      tokenD_platform:
-      begin
-        CheckAndParsePlatform(Scope);
-        Result := Lexer_NextToken(Scope);
-      end;
+      tokenD_deprecated, tokenD_platform: Result := CheckAndParseDeprecated(Scope, {ASemicolonRequired:} False);
     else
       break;
     end;
@@ -8474,12 +8469,7 @@ begin
         Lexer_ReadSemicolon(Scope);
         Result := Lexer_NextToken(Scope);
       end;
-      tokenD_deprecated: Result := CheckAndParseDeprecated(Scope);
-      tokenD_platform:
-      begin
-        CheckAndParsePlatform(Scope);
-        Result := Lexer_NextToken(Scope);
-      end;
+      tokenD_deprecated, tokenD_platform: Result := CheckAndParseDeprecated(Scope, {ASemicolonRequired:} False);
     else
       break;
     end;
@@ -8949,11 +8939,11 @@ begin
       token_inline: Result := ProcSpec_Inline(Scope, ProcFlags);
       tokenD_external: Result := ProcSpec_External(Scope, ImportLib, ImportName, ProcFlags);
       tokenD_overload: Result := ProcSpec_Overload(Scope, ProcFlags);
-      tokenD_deprecated: Result := CheckAndParseDeprecated(Scope);
       tokenD_static: begin
         Lexer_ReadSemicolon(Scope);
         Result := Lexer_NextToken(Scope);
-      end
+      end;
+      tokenD_deprecated, tokenD_platform: Result := CheckAndParseDeprecated(Scope);
     else
       if (Scope.ScopeClass = scInterface) or (pfImport in ProcFlags) then
       begin
@@ -9112,8 +9102,6 @@ begin
     var AlignValueExpr: TIDExpression;
     Result := ParseConstExpression(Scope, {out} AlignValueExpr, ExprRValue);
   end;
-
-  Result := CheckAndParsePlatform(Scope);
 end;
 
 function TASTDelphiUnit.InstantiateGenericProc(AScope: TScope; AGenericProc: TIDProcedure;
@@ -10457,16 +10445,17 @@ begin
     DeclAbsolute := nil;
     DefaultValue := nil;
 
-    // platform declaration
-    Result := CheckAndParsePlatform(Scope);
-
     // absolute
     Result := CheckAndParseAbsolute(Scope, {out} DeclAbsolute);
+
+    // patform (can be before default value)
+    if Lexer_IsCurrentToken(tokenD_platform) then
+      Result := Lexer_NextToken(Scope);
 
     if Result = token_equal then
       Result := ParseVarDefaultValue(Scope, DataType.ActualDataType, {out} DefaultValue);
 
-    // deprecated
+    // deprecated & platform
     Result := CheckAndParseDeprecated(Scope, {ASemicolonRequired:} False);
 
     for i := 0 to c do begin
@@ -10478,9 +10467,6 @@ begin
       Variable.Flags := Variable.Flags + VarFlags;
       Scope.AddVariable(Variable);
     end;
-
-    if Result = token_semicolon then
-      Result := Lexer_NextToken(Scope);
 
     if Result in [token_identifier, token_openblock] then
     begin
@@ -10516,13 +10502,11 @@ begin
     end;
 
     Lexer_MatchToken(Result, token_colon);
-    // парсим тип
+
+    // parse the field type
     Result := ParseTypeSpec(Scope, DataType);
 
-    // platform declaration
-    Result := CheckAndParsePlatform(Scope);
-
-    // deprecated
+    // deprecated & platform
     Result := CheckAndParseDeprecated(Scope, {ASemicolonRequired:} False);
 
     for var LIndex := 0 to c do
@@ -10531,9 +10515,6 @@ begin
       LField.Visibility := Visibility;
       LField.Flags := LField.Flags + VarFlags;
     end;
-
-    if Result = token_semicolon then
-      Result := Lexer_NextToken(Scope);
 
     Exit;
   end;

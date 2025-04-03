@@ -97,7 +97,6 @@ uses
   ASTTest.Procs.Assembler1 in '..\TestScripts\Procedures\ASTTest.Procs.Assembler1.pas',
   ASTTest.Procs.MixingDirectives1 in '..\TestScripts\Procedures\ASTTest.Procs.MixingDirectives1.pas',
   ASTTest.Procs.ParamName1 in '..\TestScripts\Procedures\ASTTest.Procs.ParamName1.pas',
-  ASTTest.Procs.Deprecated1 in '..\TestScripts\Procedures\ASTTest.Procs.Deprecated1.pas',
   ASTTest.Classes.Construct1 in '..\TestScripts\Classes\Constructors\ASTTest.Classes.Construct1.pas',
   ASTTest.Classes.Construct2 in '..\TestScripts\Classes\Constructors\ASTTest.Classes.Construct2.pas',
   ASTTest.Classes.Inherited1 in '..\TestScripts\Classes\ASTTest.Classes.Inherited1.pas',
@@ -144,13 +143,17 @@ uses
   ASTTest.Records.StaticInit2 in '..\TestScripts\Records\ASTTest.Records.StaticInit2.pas',
   ASTTest.Builtins.High1 in '..\TestScripts\Built-ins\ASTTest.Builtins.High1.pas',
   ASTTest.Builtins.Declared1 in '..\TestScripts\Built-ins\ASTTest.Builtins.Declared1.pas',
-  ASTTest.InlineVars.TypeInfer1 in '..\TestScripts\Inline Vars\ASTTest.InlineVars.TypeInfer1.pas',
+  ASTTest.Vars.TypeInfer1 in '..\TestScripts\Vars\ASTTest.Vars.TypeInfer1.pas',
+  ASTTest.Vars.Absolute1 in '..\TestScripts\Vars\ASTTest.Vars.Absolute1.pas',
   ASTTest.Enums.ReservedNames1 in '..\TestScripts\Enums\ASTTest.Enums.ReservedNames1.pas',
   ASTTest.Enums.ForLowHigh in '..\TestScripts\Enums\ASTTest.Enums.ForLowHigh.pas',
   ASTTest.Include1 in '..\TestScripts\Include\ASTTest.Include1.pas',
   ASTTest.Include2 in '..\TestScripts\Include\ASTTest.Include2.pas',
   ASTTest.Aliases.StringTypeWithCodepage1 in '..\TestScripts\Aliases\ASTTest.Aliases.StringTypeWithCodepage1.pas',
-  ASTTest.Aliases.Nested1 in '..\TestScripts\Aliases\ASTTest.Aliases.Nested1.pas';
+  ASTTest.Aliases.Nested1 in '..\TestScripts\Aliases\ASTTest.Aliases.Nested1.pas',
+  ASTTest.Other.Deprecated1 in '..\TestScripts\Other\ASTTest.Other.Deprecated1.pas',
+  ASTTest.Other.Platform1 in '..\TestScripts\Other\ASTTest.Other.Platform1.pas',
+  ASTTest.Other.PlatformAndDeprecatedMix in '..\TestScripts\Other\ASTTest.Other.PlatformAndDeprecatedMix.pas';
 
 {$R *.res}
 

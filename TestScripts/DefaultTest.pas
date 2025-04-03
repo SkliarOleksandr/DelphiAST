@@ -2,7 +2,9 @@ unit DefaultTest;
 
 interface
 
-uses Vcl.ImgList;
+//uses System.Generics.Collections;
+//uses System.JSON.Converters;
+//uses Vcl.Graphics;
 //uses System.SysUtils;
 //uses System.Classes;
 //uses System.Json;

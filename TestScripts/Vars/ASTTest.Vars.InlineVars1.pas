@@ -1,4 +1,4 @@
-unit ASTTest.InlineVars.InlineVars1;
+unit ASTTest.Vars.InlineVars1;
 
 interface
 

@@ -1,4 +1,4 @@
-unit ASTTest.Procs.Deprecated1;
+unit ASTTest.Other.Deprecated1 deprecated 'do not use';
 
 interface
 
@@ -49,8 +49,8 @@ var
   DeprecatedVar1: Boolean deprecated;
   DeprecatedVar2: Boolean deprecated 'do not use';
 
-procedure DeprecatedProc1; deprecated;
-procedure DeprecatedProc2; deprecated 'do not use';
+procedure DeprecatedProc1; deprecated
+procedure DeprecatedProc2; deprecated 'do not use'
 
 implementation
 
@@ -76,6 +76,5 @@ procedure DeprecatedProc2;
 begin
 
 end;
-
 
 end.

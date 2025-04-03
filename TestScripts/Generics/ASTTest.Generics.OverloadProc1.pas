@@ -2,6 +2,8 @@ unit ASTTest.Generics.OverloadProc1;
 
 interface
 
+{$HINTS OFF}
+
 type
   TRec = record
     class function GetValue(AKey: string): Integer; overload; static;
