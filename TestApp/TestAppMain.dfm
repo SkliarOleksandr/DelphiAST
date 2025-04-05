@@ -900,6 +900,11 @@ object frmTestAppMain: TfrmTestAppMain
       Caption = 'Parse All Tests'
       OnExecute = ParseAllTestsActionExecute
     end
+    object ParseSelectedTestAction: TAction
+      Caption = 'Parse Selected'
+      OnExecute = ParseSelectedTestActionExecute
+      OnUpdate = ParseSelectedTestActionUpdate
+    end
     object LoadLSPConfigAction: TAction
       Caption = 'Load from LSP Config'
       OnExecute = LoadLSPConfigActionExecute
@@ -1198,6 +1203,12 @@ object frmTestAppMain: TfrmTestAppMain
   object TestsPopup: TPopupMenu
     Left = 88
     Top = 209
+    object ParseSelected1: TMenuItem
+      Action = ParseSelectedTestAction
+    end
+    object N4: TMenuItem
+      Caption = '-'
+    end
     object CreateNewTest1: TMenuItem
       Action = CreateNewTestAction
     end

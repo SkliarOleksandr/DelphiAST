@@ -152,6 +152,9 @@ type
     ShowProgressCheck: TCheckBox;
     DelphiDirComboBox: TComboBox;
     ParseRtlCommonCheck: TCheckBox;
+    ParseSelectedTestAction: TAction;
+    ParseSelected1: TMenuItem;
+    N4: TMenuItem;
     procedure ASTParseRTLButtonClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure SearchButtonClick(Sender: TObject);
@@ -194,6 +197,8 @@ type
     procedure ASTResultFormatComboBoxChange(Sender: TObject);
     procedure ASTParseActionUpdate(Sender: TObject);
     procedure DelphiDirComboBoxChange(Sender: TObject);
+    procedure ParseSelectedTestActionUpdate(Sender: TObject);
+    procedure ParseSelectedTestActionExecute(Sender: TObject);
   private
     { Private declarations }
     fSettings: IASTProjectSettings;
@@ -219,6 +224,7 @@ type
     function CreateProject(const AProjectFileName: string; AParseSystemUnit: Boolean): IASTDelphiProject;
     function FocusedTestData: TTestData;
     function GetTestSriptsPath: string;
+    procedure ParseTests(AParentNode: PVirtualNode);
     procedure LoadTests(ARootNode: PVirtualNode; const ARootPath: string);
     procedure SelectTest(ATestData: TTestData);
   public
@@ -1096,45 +1102,66 @@ begin
   SaveSettings;
 end;
 
-procedure TfrmTestAppMain.ParseAllTestsActionExecute(Sender: TObject);
-begin
-  ErrMemo.Clear;
-  LogMemo.Clear;
-  var LRunCount := 0;
-  var LFailCount := 0;
-  var LProject := CreateProject('', {AParseSystemUnit:} ParseSystemCheck.Checked);
-  LProject.AddUnitSearchPath(GetTestSriptsPath);
-  // todo: AST parser fails without explicit type specification here
-  for var LIndex := 0 to FAllTests.Count - 1 do
-  begin
-    var LTestData := FAllTests.Objects[LIndex] as TTestData;
-    TASTParserLog.Instance.ResetNestedLevel;
-    var LUnit := TASTDelphiUnit.Create(LProject, LTestData.FilePath);
-    LProject.ProjectFileName := LTestData.FilePath;
-    LProject.AddUnit(LUnit, nil);
-    // add source path for AST tests
-    LProject.AddUnitSearchPath(ExtractFilePath(LTestData.FilePath));
+procedure TfrmTestAppMain.ParseTests(AParentNode: PVirtualNode);
+var
+  LRunCount, LFailCount: Integer;
 
-    if ParseProject(LProject, {AClearOutput:} False, {AShowResults:} False) <> CompileSuccess then
+  procedure RunTest(ATestData: TTestData; const AProject: IASTDelphiProject);
+  begin
+    TASTParserLog.Instance.ResetNestedLevel;
+    var LUnit := TASTDelphiUnit.Create(AProject, ATestData.FilePath);
+    AProject.ProjectFileName := ATestData.FilePath;
+    AProject.AddUnit(LUnit, nil);
+    // add source path for AST tests
+    AProject.AddUnitSearchPath(ExtractFilePath(ATestData.FilePath));
+    // parse the project
+    if ParseProject(AProject, {AClearOutput:} False, {AShowResults:} False) <> CompileSuccess then
       Inc(LFailCount);
 
-    LTestData.Failed := LProject.Messages.ErrorCount > 0;
-
+    ATestData.Failed := AProject.Messages.ErrorCount > 0;
     // do not clear implict units (RTL) between tests
-    LProject.Clear({AClearImplicitUnits:} False);
-
+    AProject.Clear({AClearImplicitUnits:} False);
     // remove source path for AST tests
-    LProject.RemoveUnitSearchPath(ExtractFilePath(LTestData.FilePath));
+    AProject.RemoveUnitSearchPath(ExtractFilePath(ATestData.FilePath));
 
     Inc(LRunCount);
     TestRunProgressLabel.Caption := Format('Run Tests: %d from %d (Fail: %d)',
                                            [LRunCount, FAllTests.Count, LFailCount]);
 
-     if LIndex < FAllTests.Count then
-       ErrMemo.Lines.Add('===================================================================');
-
+    ErrMemo.Lines.Add('===================================================================');
     Application.ProcessMessages;
   end;
+
+  procedure ParseFolder(AParentNode: PVirtualNode; const AProject: IASTDelphiProject);
+  begin
+    for var LNode in VTTests.ChildNodes(AParentNode) do
+    begin
+      var LTestData := LNode.GetData<TTestData>;
+      if LTestData.NodeType = ntTest then
+        RunTest(LTestData, AProject)
+      else
+        ParseFolder(LNode, AProject);
+    end;
+  end;
+
+var
+  LProject: IASTDelphiProject;
+begin
+  ErrMemo.Clear;
+  LogMemo.Clear;
+
+  LRunCount := 0;
+  LFailCount := 0;
+
+  LProject := CreateProject('', {AParseSystemUnit:} ParseSystemCheck.Checked);
+  LProject.AddUnitSearchPath(GetTestSriptsPath);
+
+  var LTestData := AParentNode.GetData<TTestData>;
+  if Assigned(LTestData) and (LTestData.NodeType = ntTest) then
+    RunTest(LTestData, LProject)
+  else
+    ParseFolder(AParentNode, LProject);
+
   LProject.Clear({AClearImplicitUnits:} True);
   VTTests.Repaint;
 end;
@@ -1250,6 +1277,21 @@ begin
   finally
     Screen.Cursor := crDefault;
   end;
+end;
+
+procedure TfrmTestAppMain.ParseSelectedTestActionExecute(Sender: TObject);
+begin
+  ParseTests(VTTests.FocusedNode);
+end;
+
+procedure TfrmTestAppMain.ParseSelectedTestActionUpdate(Sender: TObject);
+begin
+  TAction(Sender).Enabled := Assigned(VTTests.FocusedNode);
+end;
+
+procedure TfrmTestAppMain.ParseAllTestsActionExecute(Sender: TObject);
+begin
+  ParseTests(VTTests.RootNode);
 end;
 
 procedure TfrmTestAppMain.ParseFilesActionExecute(Sender: TObject);
