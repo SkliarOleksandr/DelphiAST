@@ -196,7 +196,9 @@
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Enumerator1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Enumerator2.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Intf.Delegation.pas"/>
-        <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.ImplicitCall.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.ImplicitCall1.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.ImplicitCall2.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.ImplicitCall3.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Constr1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Constr2.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.ImplicitCast1.pas"/>
@@ -281,6 +283,8 @@
         <DCCReference Include="..\TestScripts\Other\ASTTest.Other.Deprecated1.pas"/>
         <DCCReference Include="..\TestScripts\Other\ASTTest.Other.Platform1.pas"/>
         <DCCReference Include="..\TestScripts\Other\ASTTest.Other.PlatformAndDeprecatedMix.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.ImplicitCall4.pas"/>
+        <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.ImplicitCall1.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

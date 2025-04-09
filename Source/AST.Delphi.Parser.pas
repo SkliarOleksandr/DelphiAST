@@ -231,7 +231,7 @@ type
     class function MatchOperatorIn(const SContext: TSContext; const Left, Right: TIDExpression): TIDDeclaration; static;
     class function CheckConstDynArrayImplicit(const SContext: TSContext; Source: TIDExpression; Destination: TIDType): TIDType; static;
     class function MatchDynArrayImplicit(Source: TIDExpression; Destination: TIDType): TIDType; static;
-    function MatchOverloadProc(const SContext: TSContext; Item: TIDExpression; const CallArgs: TIDExpressions; CallArgsCount: Integer): TIDProcedure;
+    function MatchOverloadProc(const SContext: TSContext; ACallExpr: TIDCallExpression; const CallArgs: TIDExpressions; CallArgsCount: Integer): TIDProcedure;
     class function MatchImplicitClassOf(Source: TIDExpression; Destination: TIDClassOf): TIDDeclaration; static;
     class function MatchProcedureTypes(Src: TIDProcType; Dst: TIDProcType): TIDType; static;
     class function MatchImplicit(Source, Destination: TIDType): TIDDeclaration; static; inline;
@@ -3947,7 +3947,7 @@ begin
   // пока без проверки на пользовательские операторы
 end;
 
-function TASTDelphiUnit.MatchOverloadProc(const SContext: TSContext; Item: TIDExpression; const CallArgs: TIDExpressions; CallArgsCount: Integer): TIDProcedure;
+function TASTDelphiUnit.MatchOverloadProc(const SContext: TSContext; ACallExpr: TIDCallExpression; const CallArgs: TIDExpressions; CallArgsCount: Integer): TIDProcedure;
 
   procedure AbortWithAmbiguousOverload(AmbiguousCnt: Integer; AmbiguousRate: Integer);
   var
@@ -3990,7 +3990,7 @@ var
 begin
   Result := nil;
   MatchedCount := 0;
-  Declaration := TIDProcedure(Item.Declaration);
+  Declaration := TIDProcedure(ACallExpr.Declaration);
 
   {$IFDEF DEBUG}
   FillChar(fProcMatches[0], SizeOf(TASTProcMatchItem)*Length(fProcMatches), #0);
@@ -4008,7 +4008,10 @@ begin
       SetLength(fProcMatches, MatchedCount + 4);
 
     curProcMatchItem := Addr(fProcMatches[MatchedCount]);
-    if CallArgsCount <= Declaration.ParamsCount then
+    // skip overloads with inappropriate number of params, as well as with inappropriate number of generic params
+    if (CallArgsCount <= Declaration.ParamsCount) and
+       (ACallExpr.GenericArgsCount <= Declaration.GenericParamsCount) and
+       (ACallExpr.GenericArgsCount >= Declaration.GenericRequiredParamsCount) then
     begin
       for i := 0 to Declaration.ParamsCount - 1 do begin
         Param := Declaration.ExplicitParams[i];
@@ -4037,13 +4040,19 @@ begin
               begin
                 curLevel := TASTArgMatchLevel.MatchImplicit;
                 curRate := 10;
-              end else begin
-                  var dataLoss: Boolean;
-                  curRate := GetImplicitRate(SrcDataTypeID, DstDataTypeID, {out} dataLoss);  // todo
+              end else
+              begin
+                var dataLoss: Boolean;
+                curRate := GetImplicitRate(SrcDataTypeID, DstDataTypeID, {out} dataLoss);  // todo
+// TODO: implicit rates logic must completely reworked
+//                if curRate > 0 then
+//                begin
                   if dataLoss then
                     curLevel := TASTArgMatchLevel.MatchImplicitAndDataLoss
                   else
                     curLevel := TASTArgMatchLevel.MatchImplicit;
+//                end else
+//                  curLevel := TASTArgMatchLevel.MatchNone;
               end;
             end;
 
@@ -4125,7 +4134,7 @@ begin
     if AmbiguousRate > 0 then
       AbortWithAmbiguousOverload(MatchedCount, AmbiguousRate);
   end else
-    ERRORS.NO_OVERLOAD(Item, CallArgs)
+    ERRORS.NO_OVERLOAD(ACallExpr, CallArgs)
 end;
 
 function TASTDelphiUnit.MatchBinarOperatorWithImplicit(const SContext: TSContext; Op: TOperatorID; var Left,
@@ -4332,7 +4341,7 @@ begin
     begin
       Result := LProc;
       Inc(LMatchedCount);
-      // if a procedure is overridden, add the inherited to skip-list
+      // if a procedure is overridden, add the inherited to the skip-list
       if Assigned(LProc.InheritedProc) then
         LSkipArray := LSkipArray + [LProc.InheritedProc];
     end;
@@ -4355,17 +4364,21 @@ begin
   WasCall := False;
   case Expr.ItemType of
     itProcedure: begin
-      // the procedure can be overloaded, we need to take the one that can be called without arguments
-      var LProc := GetOverloadProcForImplicitCall(Expr as TIDCallExpression);
-      var LResultType := LProc.ResultType;
-      if Assigned(LResultType) or (pfConstructor in LProc.Flags) then
+      // the procedure can be overloaded, we need to take the one that can be called without explicit arguments
+      if Expr is TIDCallExpression then
       begin
-        WasCall := True;
-        if (pfConstructor in LProc.Flags) then
-          LResultType := (Expr as TIDCallExpression).Instance.AsType;
+        var LProcExpr := TIDCallExpression(Expr);
+        var LProc := GetOverloadProcForImplicitCall(LProcExpr);
+        var LResultType := LProc.ResultType;
+        if Assigned(LResultType) or (pfConstructor in LProc.Flags) then
+        begin
+          WasCall := True;
+          if (pfConstructor in LProc.Flags) then
+            LResultType := LProcExpr.Instance.AsType;
 
-        Result := GetTMPVarExpr(SContext, LResultType, Expr.TextPosition);
-        Exit;
+          Result := GetTMPVarExpr(SContext, LResultType, Expr.TextPosition);
+          Exit;
+        end;
       end;
     end;
     itVar, itConst: begin
@@ -7344,7 +7357,8 @@ begin
       if not Assigned(DataType) then
       begin
         // resolve implicit call if right expression is a function
-        var LValueExpr := CheckAndCallFuncImplicit(EContext, EContext.Result);
+        var LWasCall: Boolean;
+        var LValueExpr := CheckAndCallFuncImplicit(EContext.SContext, EContext.Result, {out} LWasCall);
 
         DataType := LValueExpr.DataType;
         if DataType = Sys._Untyped then
@@ -9525,50 +9539,6 @@ begin
     Result := Lexer_NextToken(Scope);
 end;
 
-(*function TASTDelphiUnit.ParseGenericMember(const PMContext: TPMContext;
-                                           const SContext: TSContext;
-                                           StrictSearch: Boolean;
-                                           out Decl: TIDDeclaration;
-                                           out WithExpression: TIDExpression): TTokenID;
-var
-  Scope: TScope;
-  LGenericArgs: TIDExpressions;
-  ExprName: string;
-  LCanInstantiate: Boolean;
-  LGenericType: TIDDeclaration;
-begin
-  Scope := PMContext.ItemScope;
-
-  Result := ParseGenericsArgs(Scope, SContext, {out} LGenericArgs, {out} LCanInstantiate);
-  ExprName := format('%s<%d>', [PMContext.ID.Name, Length(LGenericArgs)]);
-
-  if not StrictSearch then
-    LGenericType := FindIDNoAbort(Scope, ExprName)
-  else
-    LGenericType := Scope.FindMembers(ExprName);
-
-  if not Assigned(LGenericType) then
-  begin
-    // for debug
-     if not StrictSearch then
-      LGenericType := FindIDNoAbort(Scope, ExprName)
-    else
-      LGenericType := Scope.FindMembers(ExprName);
-    Exit;
-    ERRORS.UNDECLARED_ID(ExprName, Lexer_PrevPosition);
-  end;
-
-  if LCanInstantiate then
-    Decl := InstantiateGenericType(Scope, LGenericType as TIDType, LGenericArgs)
-  else begin
-    // check if this type is not the current parsed type
-    if not IsTheStructIsOwner(Scope, (LGenericType as TIDType)) then
-      Decl := TIDGenericInstantiation.CreateInstantiation(Scope, LGenericType as TIDType, LGenericArgs)
-    else
-      Decl := LGenericType;
-  end;
-end; *)
-
 function TASTDelphiUnit.ParseUnknownID(Scope: TScope; const PrevExpr: TIDExpression;
   const AID: TIdentifier; out Decl: TIDDeclaration): TTokenID;
 var
@@ -9674,7 +9644,7 @@ begin
   var LCurProc := EContext.SContext.Proc;
 
   case Decl.ItemType of
-    {процедура/функция}
+    {procedure/function}
     itProcedure: begin
       var LGenericArgs: TIDExpressions;
       var LCallExpr := TIDCallExpression.Create(Decl, PMContext.ID.TextPosition);
@@ -9685,10 +9655,11 @@ begin
       begin
         var LCanInstantiate: Boolean;
         Result := ParseGenericsArgs(Scope, EContext.SContext, {out} LGenericArgs, {out} LCanInstantiate);
+        // it's not possible to instantiate a generic method here, since we have to resolve overloads first
         LCallExpr.GenericArgs := LGenericArgs;
         LCallExpr.CanInstantiate := LCanInstantiate;
       end;
-      // если есть открытая скобка, - значит вызов
+      // parse explicit proc arguments
       if Result = token_openround then
       begin
         Result := ParseEntryCall(Scope, LCallExpr, EContext, ASTE);
@@ -9722,20 +9693,33 @@ begin
         // process call operator
         Expression := EContext.RPNPopOperator();
       end else
-      // workaround for calling paramless constuctor
-      if TIDProcedure(Decl).IsConstructor then
       begin
-        // case when we call overload/inherited constructor as a method within a method
-        if not Assigned(LCallExpr.Instance) then
-          LCallExpr.Instance := LCurProc.SelfParamExpression;
+        // since there are no explicit arguments specified, the implicit call is possible
+        // in case of generic method, we have to instantiate it before (if possible)
+        if LCallExpr.CanInstantiate then
+        begin
+          var LProc := GetOverloadProcForImplicitCall(LCallExpr);
+          Decl := InstantiateGenericProc(Scope, LProc, LCallExpr.GenericArgs);
+          LCallExpr.Declaration := Decl;
+          //LCallExpr.GenericArgs := nil;
+          LCallExpr.CanInstantiate := False;
+        end;
 
-        Expression := process_CALL_constructor(EContext.SContext, LCallExpr, []);
-      end else
-      begin
-        // иначе создаем процедурный тип, если он отсутствовал
-        TIDProcedure(Decl).CreateProcedureTypeIfNeed(Scope);
-        PMContext.DataType := TIDProcedure(Decl).DataType;
-        AddType(TIDProcedure(Decl).DataType);
+        // workaround for calling paramless constuctor
+        if TIDProcedure(Decl).IsConstructor then
+        begin
+          // case when we call overload/inherited constructor as a method within a method
+          if not Assigned(LCallExpr.Instance) then
+            LCallExpr.Instance := LCurProc.SelfParamExpression;
+
+          Expression := process_CALL_constructor(EContext.SContext, LCallExpr, []);
+        end else
+        begin
+          // else create a procedural type (TODO: rework to use lazy initialization)
+          TIDProcedure(Decl).CreateProcedureTypeIfNeed(Scope);
+          PMContext.DataType := TIDProcedure(Decl).DataType;
+          AddType(TIDProcedure(Decl).DataType);
+        end;
       end;
     end;
     {built-in}

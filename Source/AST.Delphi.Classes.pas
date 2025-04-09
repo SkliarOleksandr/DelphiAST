@@ -1481,12 +1481,14 @@ type
     FGenericArgs: TIDExpressions;
     FCanInstantiate: Boolean;
     function GetProc: TIDProcedure; inline;
+    function GetGenericArgsCount: Integer;
   public
     property Proc: TIDProcedure read GetProc;
     property Arguments: TIDExpressions read FArguments write FArguments;
     property ArgumentsCount: Integer read FArgumentsCount write FArgumentsCount;
     property Instance: TIDExpression read FInstance write FInstance;
     property GenericArgs: TIDExpressions read FGenericArgs write FGenericArgs;
+    property GenericArgsCount: Integer read GetGenericArgsCount;
     // CanInstantiate means all generic arguments are real types (not outer generic params)
     property CanInstantiate: Boolean read FCanInstantiate write FCanInstantiate;
   end;
@@ -1786,7 +1788,7 @@ type
     FStruct: TIDStructure;          // struct-owner (when it's a method)
     FProcFlags: TProcFlags;         // proc flags (inline, overload, virtual, forward, etc...)
     FTempVars: TItemsStack;
-    FNextOverload: TIDProcedure;
+    FPrevOverload: TIDProcedure;
     FCallConv: TCallConvention;
     FResultType: TIDType;
     FResultParam: TIDParam;
@@ -1811,12 +1813,14 @@ type
     function GetIsConstructor: Boolean; inline;
     function GetIsDestructor: Boolean;
     function GetParamsScope: TParamsScope;
+    function GetGenericParamsCount: Integer;
   protected
     function GetDisplayName: string; override;
     function GetIndex: Integer; override;
     function GetParamsCount: Integer; virtual;
     function GetIsGeneric: Boolean; override;
     function GetASTKind: string; override;
+    function GetGenericRequiredParamsCount: Integer;
   public
     constructor Create(Scope: TScope; const ID: TIdentifier); override;
     constructor CreateAsAnonymous(Scope: TScope); override;
@@ -1844,7 +1848,7 @@ type
     function GetTMPRef(AScope: TScope; DataType: TIDType): TIDVariable;
     property TempVars: TItemsStack read FTempVars;
 
-    property PrevOverload: TIDProcedure read FNextOverload write FNextOverload;
+    property PrevOverload: TIDProcedure read FPrevOverload write FPrevOverload;
     property EntryScope: TProcScope read FEntryScope write SetEntryScope;
     property ParamsScope: TParamsScope read GetParamsScope;
     property ParamsCount: Integer read GetParamsCount;
@@ -1854,6 +1858,11 @@ type
     property SelfParam: TIDParam read GetSelfParam;
     property SelfParamExpression: TIDExpression read GetSelfParamExpression;
     property InheritedProc: TIDProcedure read FInherited write FInherited;
+    // returns count of explicit generic params (declared in <...>) that must be explicitly specified
+    // and can not be inferrend from argument types
+    property GenericRequiredParamsCount: Integer read GetGenericRequiredParamsCount;
+    // returns count of explicit generic params (declared in <...>)
+    property GenericParamsCount: Integer read GetGenericParamsCount;
 
     property ResultParamExpression: TIDExpression read GetResultParamExpression;
 
@@ -1897,7 +1906,7 @@ type
 
     function InstantiateGenericProc(ADstScope: TScope; ADstStruct: TIDStructure;
                                     ANextOverload: TIDProcedure;
-                                    AContext: TGenericInstantiateContext): TIDDeclaration;
+                                    AContext: TGenericInstantiateContext): TIDProcedure;
 
     function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                 AContext: TGenericInstantiateContext): TIDDeclaration; override;
@@ -2996,8 +3005,12 @@ begin
 
   var LGenericParamsCount := 0;
   if Assigned(GenericDescriptor) then
-    LGenericParamsCount := GenericDescriptor.ParamsCount;
-
+    LGenericParamsCount := GenericDescriptor.ParamsCount
+  else
+  // if the procedure is a generic instance, let's take the original prototype,
+  // since we have to compare generic params, that are always empty for an instance
+  if Assigned(GenericPrototype) then
+    LGenericParamsCount := GenericPrototype.GenericParamsCount;
 
   // simple check for generic params match
   Result := LGenericParamsCount = Length(AGenericArgs);
@@ -3240,6 +3253,36 @@ begin
     Result := Result + ': ' + FResultType.DisplayName;
 end;
 
+function TIDProcedure.GetGenericRequiredParamsCount: Integer;
+begin
+  Result := 0;
+  if Assigned(GenericDescriptor) then
+  begin
+    for var LGenericParamIndex := 0 to GenericDescriptor.ParamsCount - 1 do
+    begin
+      var LFound := False;
+      var LGenericParam := GenericDescriptor.GenericParams[LGenericParamIndex];
+      for var LParamIndex := 0 to ParamsCount - 1 do
+        if LGenericParam = ExplicitParams[LParamIndex].DataType then
+        begin
+          LFound := True;
+          Break;
+        end;
+
+      if not LFound then
+        Inc(Result);
+    end;
+  end;
+end;
+
+function TIDProcedure.GetGenericParamsCount: Integer;
+begin
+  if Assigned(fGenericDescriptor) then
+    Result := fGenericDescriptor.ParamsCount
+  else
+    Result := 0;
+end;
+
 function TIDProcedure.GetIndex: Integer;
 begin
   Result := MethodIndex;
@@ -3289,6 +3332,12 @@ function TIDProcedure.GetProcKindName: string;
 begin
   if pfOperator in Flags then
     Result := 'operator'
+  else
+  if pfConstructor in Flags then
+    Result := 'constructor'
+  else
+  if pfDestructor in Flags then
+    Result := 'destructor'
   else
   if Assigned(FResultType) then
     Result := 'function'
@@ -3467,7 +3516,7 @@ end;
 
 function TIDProcedure.InstantiateGenericProc(ADstScope: TScope; ADstStruct: TIDStructure;
                                              ANextOverload: TIDProcedure;
-                                             AContext: TGenericInstantiateContext): TIDDeclaration;
+                                             AContext: TGenericInstantiateContext): TIDProcedure;
 
   function InstantiateParams(ANewScope: TScope;
                              const AProcParams: TIDParamArray;
@@ -3518,17 +3567,12 @@ begin
   LNewProc.FLastBodyLine := FLastBodyLine;
   LNewProc.FFinalSection := FFinalSection;
   LNewProc.FInherited := FInherited;
+  LNewProc.PrevOverload := PrevOverload; // will be instantiated later (if needed)
   Result := LNewProc;
 
   if not Assigned(ADstStruct) then
     LNewProc.ID := AContext.DstID;
 
-  // instantiate overloads
-  if Assigned(PrevOverload) and (PrevOverload.Struct = Struct) then
-  begin
-    WriteLog('overload:', [ClassName, Result.Name]);
-    LNewProc.PrevOverload := PrevOverload.InstantiateGenericProc(ADstScope, ADstStruct, LNewProc, AContext) as TIDProcedure;
-  end;
 
   LogEnd('inst [type: %s, dst: %s]', [ClassName, Result.Name]);
 end;
@@ -5187,6 +5231,18 @@ end;
 
 function TIDStructure.InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                          AContext: TGenericInstantiateContext): TIDDeclaration;
+
+  procedure InstantiateOverloads(ANewStruct: TIDStructure; AProc: TIDProcedure);
+  begin
+    var APrevOverload := AProc.PrevOverload;
+    while Assigned(APrevOverload) and  (APrevOverload.Struct = Self) do
+    begin
+      AProc.PrevOverload := APrevOverload.InstantiateGenericProc(ADstScope, ANewStruct, nil, AContext);
+      AProc := AProc.PrevOverload;
+      APrevOverload := APrevOverload.PrevOverload;
+    end;
+  end;
+
 begin
   Result := inherited;
   if Assigned(Result) then
@@ -5224,7 +5280,10 @@ begin
         var LNewMember := LMember.InstantiateGeneric(LNewStruct.Members, LNewStruct, AContext);
         case LMember.ItemType of
           itVar: LNewStruct.Members.AddVariable(TIDVariable(LNewMember));
-          itProcedure: LNewStruct.Members.AddProcedure(TIDProcedure(LNewMember));
+          itProcedure: begin
+            LNewStruct.Members.AddProcedure(TIDProcedure(LNewMember));
+            InstantiateOverloads(LNewStruct, TIDProcedure(LNewMember));
+          end;
           itProperty: LNewStruct.Members.AddProperty(TIDProperty(LNewMember));
           itConst: LNewStruct.Members.AddConstant(TIDConstant(LNewMember));
           itType: LNewStruct.Members.AddType(TIDType(LNewMember));
@@ -9423,6 +9482,11 @@ begin
 end;
 
 { TIDCallExpression }
+
+function TIDCallExpression.GetGenericArgsCount: Integer;
+begin
+  Result := Length(FGenericArgs);
+end;
 
 function TIDCallExpression.GetProc: TIDProcedure;
 begin

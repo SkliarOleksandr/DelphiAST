@@ -398,6 +398,7 @@ begin
   Rate(dtAnsiChar, [dtAnsiChar, dtAnsiString, dtUntypedRef, dtVariant]);
   // Char /////////////////////////////////////////
   Rate(dtChar, [dtChar, dtString, dtUntypedRef, dtVariant]);
+  RateWDL(dtChar, [dtAnsiChar]);
   // ShortString /////////////////////////////////////////
   Rate(dtShortString, [dtShortString, dtAnsiString, dtUntypedRef, dtVariant, dtString, dtWideString]);
   // AnsiString /////////////////////////////////////////
@@ -413,7 +414,8 @@ begin
   Rate(dtPWideChar, [dtPWideChar, dtPointer, dtUntypedRef, dtWideString, dtString, dtAnsiString]);
   // Variant /////////////////////////////////////////
   Rate(dtVariant, [dtVariant]); // todo
-  // Variant /////////////////////////////////////////
+  // Pointer /////////////////////////////////////////
+  Rate(dtPointer, [dtPAnsiChar, dtPWideChar]);
 end;
 
 initialization

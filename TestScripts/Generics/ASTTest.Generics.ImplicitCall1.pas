@@ -1,4 +1,4 @@
-unit ASTTest.Generics.ImplicitCall;
+unit ASTTest.Generics.ImplicitCall1;
 
 interface
 
@@ -15,7 +15,7 @@ implementation
 procedure Main(ARecord: TRecord);
 begin
   var LPtr: Pointer := ARecord.GetData;
-  var LStr: string :=  ARecord.GetData<string>;
+  var LStr: string := ARecord.GetData<string>;
 end;
 
 { TRecord }
