@@ -1066,9 +1066,10 @@ end;
 function TASTDelphiUnit.ParseTypeMember(Scope: TScope; Struct: TIDStructure): TTokenID;
 begin
   Result := Lexer_NextToken(Scope);
-  case Result of
+  case Lexer_AmbiguousId  of
     token_procedure: Result := ParseProcedure(Struct.Members, ptClassProc, Struct);
     token_function: Result := ParseProcedure(Struct.Members, ptClassFunc, Struct);
+    tokenD_operator: Result := ParseOperator(Struct.Operators, Struct);
     token_property: Result := ParseProperty(Struct.Members, Struct);
     token_constructor: Result := ParseProcedure(Struct.Members, ptClassConstructor, Struct);
     token_destructor: Result := ParseProcedure(Struct.Members, ptClassDestructor, Struct);
@@ -8921,26 +8922,30 @@ begin
       //Struct.Operators.ProcSpace.Add(Proc);
     end;
 
+    var LTargetType: TIDType := Struct;
+    if Struct is TDlphHelper then
+      LTargetType := TDlphHelper(Struct).Target;
+
     case LOperatorDef.OpID of
       opImplicit: begin
-      if ResultType = Struct then
-        Struct.OverloadImplicitFrom(Proc.ExplicitParams[0].DataType, Proc)
+      if ResultType = LTargetType then
+        LTargetType.OverloadImplicitFrom(Proc.ExplicitParams[0].DataType, Proc)
       else
-        Struct.OverloadImplicitTo(ResultType, Proc);
+        LTargetType.OverloadImplicitTo(ResultType, Proc);
       end;
       opExplicit: begin
-        if ResultType = Struct then
-          Struct.OverloadExplicitFrom(Proc.ExplicitParams[0].DataType, Proc)
+        if ResultType = LTargetType then
+          LTargetType.OverloadExplicitFrom(Proc.ExplicitParams[0].DataType, Proc)
         else
-          Struct.OverloadExplicitTo(ResultType, Proc);
+          LTargetType.OverloadExplicitTo(ResultType, Proc);
       end;
     else
       if LOperatorDef.OpID < opIn then
-        Struct.OverloadUnarOperator(LOperatorDef.OpID, Proc)
+        LTargetType.OverloadUnarOperator(LOperatorDef.OpID, Proc)
       else begin
         var LLeftType := Proc.ExplicitParams[0].DataType;
         var LRightType := Proc.ExplicitParams[1].DataType;
-        Struct.OverloadBinarOperator(LOperatorDef.OpID, LLeftType, LRightType, TIDOperator(Proc));
+        LTargetType.OverloadBinarOperator(LOperatorDef.OpID, LLeftType, LRightType, TIDOperator(Proc));
       end;
     end;
   end;
@@ -9070,23 +9075,7 @@ begin
     case Result of
       token_openblock: Result := ParseAttribute(Scope);
       token_case: Result := ParseCaseRecord(ARecord.Members, ARecord, Visibility);
-      token_class: begin
-        Result := Lexer_NextReseredToken(scope);
-        case Result of
-          token_procedure: Result := ParseProcedure(ARecord.Members, ptClassProc, ARecord);
-          token_function: Result := ParseProcedure(ARecord.Members, ptClassFunc, ARecord);
-          tokenD_operator: Result := ParseOperator(ARecord.Operators, ARecord);
-          token_property: Result := ParseProperty(ARecord.Members, ARecord);
-          token_constructor: Result := ParseProcedure(ARecord.Members, ptClassConstructor, ARecord);
-          token_destructor: Result := ParseProcedure(ARecord.Members, ptClassDestructor, ARecord);
-          token_var: begin
-             Lexer_NextToken(Scope);
-             Result := ParseFieldsSection(ARecord.Members, Visibility, ARecord, {IsClassVar:} True);
-          end;
-        else
-          AbortWork('Class members can be: PROCEDURE, FUNCTION, OPERATOR, CONSTRUCTOR, DESTRUCTOR, PROPERTY, VAR', Lexer_Position);
-        end;
-      end;
+      token_class: ParseTypeMember(Scope, ARecord);
       token_procedure: Result := ParseProcedure(ARecord.Members, ptProc, ARecord);
       token_function: Result := ParseProcedure(ARecord.Members, ptFunc, ARecord);
       token_constructor: Result := ParseProcedure(ARecord.Members, ptConstructor, ARecord);
