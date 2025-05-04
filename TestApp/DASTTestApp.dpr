@@ -146,6 +146,7 @@ uses
   ASTTest.Intf.RefToProcAsInterface1 in '..\TestScripts\Interfaces\ASTTest.Intf.RefToProcAsInterface1.pas',
   ASTTest.Intf.MethodDelegation1 in '..\TestScripts\Interfaces\ASTTest.Intf.MethodDelegation1.pas',
   ASTTest.Intf.MethodDelegation2 in '..\TestScripts\Interfaces\ASTTest.Intf.MethodDelegation2.pas',
+  ASTTest.Intf.Implements1 in '..\TestScripts\Interfaces\ASTTest.Intf.Implements1.pas',
   ASTTest.Records.CaseRecord2 in '..\TestScripts\Records\ASTTest.Records.CaseRecord2.pas',
   ASTTest.Records.CaseRecord1 in '..\TestScripts\Records\ASTTest.Records.CaseRecord1.pas',
   ASTTest.Records.StaticInit1 in '..\TestScripts\Records\ASTTest.Records.StaticInit1.pas',

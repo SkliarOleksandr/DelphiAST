@@ -77,7 +77,7 @@ type
     token_dispinterface,            // keyword: dispinterface
     tokenD_dispid,                  // directive: dispid
     token_implementation,           // keyword: implementation
-    token_implement,                // keyword: implementation
+    tokenD_implements,              // directive: implements
     token_initialization,           // keyword: initialization
     token_finalization,             // keyword: finalization
     token_begin,                    // keyword: begin
@@ -498,7 +498,7 @@ begin
   RegisterToken('inline', token_inline);
   RegisterToken('initialization', token_initialization);
   RegisterToken('implementation', token_Implementation);
-  RegisterToken('implement', token_implement);
+  RegisterToken('implements', tokenD_implements, tcWeakKeyword);
   RegisterToken('library', token_library);
   RegisterToken('label', token_label);
   RegisterToken('mod', token_mod);

@@ -351,7 +351,6 @@ type
     fDefaultReference: TIDType; // дефолтный анонимный указатель на этот тип
     fWeakType: TIDWeekRef;
     fDataTypeID: TDataTypeID;
-    fTypeKind: TTypeKind;
     // lists of implicit operators
     fImplicitsTo: TIDPairList;      // self -> dest
     fImplicitsFrom: TIDPairList;    // src -> self

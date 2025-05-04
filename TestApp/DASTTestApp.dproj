@@ -206,6 +206,7 @@
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.ImplicitCast1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.ImplicitCast2.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.RecursiveUsing1.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.RecursiveUsing2.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.SmartRef1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenericInstantiation1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.OverloadProc1.pas"/>
@@ -290,7 +291,7 @@
         <DCCReference Include="..\TestScripts\Other\ASTTest.Other.Platform1.pas"/>
         <DCCReference Include="..\TestScripts\Other\ASTTest.Other.PlatformAndDeprecatedMix.pas"/>
         <DCCReference Include="..\TestScripts\Consts\ASTTest.Consts.DateTime1.pas"/>
-        <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.RecursiveUsing2.pas"/>
+        <DCCReference Include="..\TestScripts\Interfaces\ASTTest.Intf.Implements1.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -276,7 +276,7 @@ type
     procedure CheckClassOrIntfType(Expression: TIDExpression); overload;
     procedure CheckClassOrClassOfOrIntfType(Expression: TIDExpression); overload;
     procedure CheckClassOrIntfType(DataType: TIDType; const TextPosition: TTextPosition); overload;
-    class procedure CheckInterfaceType(Expression: TIDExpression); static; inline;
+    procedure CheckInterfaceType(Expression: TIDExpression); inline;
     procedure CheckIncompleteType(Fields: TScope);
     class procedure CheckAccessMember(SContext: PSContext; Decl: TIDDeclaration; const ID: TIdentifier);
     class procedure CheckIntConstInRange(const Expr: TIDExpression; HiBount, LowBound: Int64); static;
@@ -450,6 +450,7 @@ type
     function ParsePropertyGetter(Scope: TScope; AProp: TIDProperty): TTokenID;
     function ParsePropertySetter(Scope: TScope; AProp: TIDProperty): TTokenID;
     function ParsePropertyStored(Scope: TScope; AProp: TIDProperty): TTokenID;
+    function ParsePropertyImplements(Scope: TScope; AProp: TIDProperty): TTokenID;
     function ParseVarDefaultValue(Scope: TScope; DataType: TIDType; out DefaultValue: TIDExpression): TTokenID;
     function ParseVarStaticArrayDefaultValue(Scope: TScope; ArrType: TIDArray; out DefaultValue: TIDExpression): TTokenID;
     function ParseVarRecordDefaultValue(Scope: TScope; Struct: TIDStructure; out DefaultValue: TIDExpression): TTokenID;
@@ -4992,6 +4993,10 @@ begin
     end;
   end;
 
+  // implements
+  if Lexer_IsCurrentToken(tokenD_implements) then
+    Result := ParsePropertyImplements(Scope, Prop);
+
   // stored propery (note: stored is ambiguous keyword)
   if Lexer_IsCurrentToken(tokenD_stored) then
     Result := ParsePropertyStored(Scope, Prop);
@@ -5087,6 +5092,30 @@ begin
   end;
 
   AProp.Getter := LExpr.Declaration;
+end;
+
+function TASTDelphiUnit.ParsePropertyImplements(Scope: TScope; AProp: TIDProperty): TTokenID;
+var
+  LIntfID: TIdentifier;
+  LIntfDecl: TIDDeclaration;
+  LCasetedIntfDecl: TIDInterface;
+begin
+  if AProp.Struct.DataTypeID <> dtClass then
+    ERRORS.E2258_IMPLEMENTS_CLAUSE_ONLY_ALLOWED_WITHIN_CLASS_TYPES(Self, Lexer_Position);
+
+  Lexer_ReadNextIdentifier(Scope, {out} LIntfID);
+  LIntfDecl := FindID(Scope, LIntfID);
+
+  if (LIntfDecl.ItemType <> itType) or
+     (TIDType(LIntfDecl).DataTypeID <> dtInterface) then
+    ERRORS.E2205_INTERFACE_TYPE_REQUIRED(Self, LIntfID.TextPosition);
+
+  LCasetedIntfDecl := (LIntfDecl as TIDType).ActualDataType as TIDInterface;
+
+  if not (AProp.Struct as TIDClass).FindInterface(LCasetedIntfDecl) then
+    ERRORS.E2265_INTERFACE_NOT_MENTIONED_IN_INTERFACE_LIST(Self, LIntfID);
+
+  Result := Lexer_NextToken(Scope);
 end;
 
 function TASTDelphiUnit.ParsePropertySetter(Scope: TScope; AProp: TIDProperty): TTokenID;
@@ -11000,14 +11029,14 @@ begin
     ERRORS.E2005_ID_IS_NOT_A_TYPE_IDENTIFIER(Self, AExpression.DeclarationID);
 end;
 
-class procedure TASTDelphiUnit.CheckInterfaceType(Expression: TIDExpression);
+procedure TASTDelphiUnit.CheckInterfaceType(Expression: TIDExpression);
 var
   Decl: TIDDeclaration;
 begin
   Decl := Expression.Declaration;
   if (Decl.ItemType <> itType) or
      (TIDType(Decl).DataTypeID <> dtInterface) then
-    AbortWork(sInterfaceTypeRequired, Expression.TextPosition);
+    ERRORS.E2205_INTERFACE_TYPE_REQUIRED(Self, Expression.TextPosition);
 end;
 
 procedure TASTDelphiUnit.CheckClassOrIntfType(Expression: TIDExpression);
