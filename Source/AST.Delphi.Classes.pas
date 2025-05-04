@@ -310,8 +310,6 @@ type
   TTypeSpace = TSpace<TIDType>;
   PTypeSpace = ^TTypeSpace;
 
-  TTypeKind = (tkType, tkAlias, tkRefernce);
-
   {namespace}
   TIDNameSpace = class(TIDDeclaration)
   private
@@ -349,7 +347,6 @@ type
     TSysBinaryOperators = array [opIn..High(TOperatorID)] of TIDOperator;
     TExplistIDList = TAVLTree<TDataTypeId, TIDDeclaration>;
   private
-    fElementary: Boolean;
     fIsPooled: Boolean;         // если это анонимный тип, то флаг показывает находится ли этот тип в пуле
     fDefaultReference: TIDType; // дефолтный анонимный указатель на этот тип
     fWeakType: TIDWeekRef;
@@ -377,15 +374,14 @@ type
     fPacked: Boolean;
     fNeedForward: Boolean;
     fForwardID: TIdentifier;
-    fInitProc: TIDProcedure;
-    fCopyProc: TIDProcedure;
-    fFinalProc: TIDProcedure;
+
     function GetOperators(const Op: TOperatorID): TBinaryOperatorsArray;
     function GetIsUntypedPointer: Boolean; inline;
     function GetIsClass: Boolean; virtual;
     function GetIsInterface: Boolean; inline;
     function GetIsChar: Boolean;
   protected
+    function GetIsElementary: Boolean;
     function GetIsReferenced: Boolean; virtual;
     function GetDataSize: Integer; virtual;
     function GetIsOrdinal: Boolean; virtual;
@@ -409,7 +405,7 @@ type
     property DefaultReference: TIDType read fDefaultReference write fDefaultReference;
     property WeakRefType: TIDWeekRef read FWeakType write FWeakType;
     property DataTypeID: TDataTypeID read FDataTypeID write FDataTypeID;
-    property Elementary: Boolean read FElementary write FElementary;
+    property Elementary: Boolean read GetIsElementary;
     property BinarOperators[const Op: TOperatorID]: TBinaryOperatorsArray read GetOperators;
     property IsOrdinal: Boolean read GetIsOrdinal;
     property IsInteger: Boolean read GetIsInteger;
@@ -444,7 +440,7 @@ type
 
     function UnarOperator(Op: TOperatorID; Right: TIDType): TIDType; overload; inline;
     property ActualDataType: TIDType read GetActualDataType;
-    property TypeKind: TTypeKind read FTypeKind write FTypeKind;
+
     property DataSize: Integer read GetDataSize;
     property Managed: Boolean read GetIsManaged;
     property IsPooled: Boolean read FIsPooled write FIsPooled;
@@ -486,9 +482,6 @@ type
     procedure CreateStandardOperators; virtual;
 
     property GenericNextOverload: TIDType read FGenericNextOverload write FGenericNextOverload;
-    property InitProc: TIDProcedure read FInitProc write FInitProc;
-    property CopyProc: TIDProcedure read FCopyProc write FCopyProc;
-    property FinalProc: TIDProcedure read FFinalProc write FFinalProc;
 
     property SysExplicitToAny: TIDOperator read fSysExplicitToAny;
     property SysExplicitFromAny: TIDOperator read fSysExplicitFromAny;
@@ -747,6 +740,7 @@ type
     constructor CreateAsAnonymous(Scope: TScope); override;
     constructor Create(Scope: TScope; const Identifier: TIdentifier); override;
     procedure CreateStandardOperators; override;
+    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
     property BaseType: TIDOrdinal read fBaseType write fBaseType;
     property LoDecl: TIDConstant read fLoDecl write SetLoDecl;
     property HiDecl: TIDConstant read fHiDecl write SetHiDecl;
@@ -1087,6 +1081,8 @@ type
     function GetHelperScope: TScope;
     function MatchImplicitFrom(ASrc: TIDType): Boolean; override;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
+    function SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType; override;
+    function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
   end;
 
   {ancestor of all string types}
@@ -1994,7 +1990,8 @@ type
     constructor Create(ScopeType: TScopeType; Parent: TScope; DeclUnit: TASTModule); overload;
     destructor Destroy; override;
     //////////////////////////////////////////////////////////////////////
-    procedure AddType(ADeclaration: TIDType); virtual;
+    procedure AddType(ADeclaration: TIDType); overload; virtual;
+    procedure AddType(const AID: TIdentifier; ADeclaration: TIDType); overload;
     procedure AddVariable(ADeclaration: TIDVariable); virtual;
     procedure AddProcedure(ADeclaration: TIDProcedure; AddOverload: Boolean = False); virtual;
     procedure AddAnonymousProcedure(ADeclaration: TIDProcedure); virtual;
@@ -2508,6 +2505,14 @@ begin
   c := Length(FAdditionalScopes);
   SetLength(FAdditionalScopes, c + 1);
   FAdditionalScopes[c] := Scope;
+end;
+
+procedure TScope.AddType(const AID: TIdentifier; ADeclaration: TIDType);
+begin
+  if InsertNode(AID.Name, ADeclaration) <> nil then
+    AbortWork(sIdentifierRedeclaredFmt, [AID.Name], AID.TextPosition);
+
+  Inc(FTypeCount);
 end;
 
 procedure TScope.AddType(ADeclaration: TIDType);
@@ -3610,6 +3615,7 @@ begin
   FImplicitsTo := TIDPairList.Create;
   FImplicitsFrom := TIDPairList.Create;
   FExplicitsTo := TIDPairList.Create;
+  fExplicitsFrom := TIDPairList.Create;
   FDataType := SYSUnit._MetaType;
 end;
 
@@ -3969,6 +3975,11 @@ end;
 function TIDType.GetIsClass: Boolean;
 begin
   Result := DataTypeID = dtClass;
+end;
+
+function TIDType.GetIsElementary: Boolean;
+begin
+  Result := False; // TODO:
 end;
 
 function TIDType.GetIsFloat: Boolean;
@@ -5970,15 +5981,8 @@ end;
 
 procedure TIDOrdinal.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
-  ABuilder.Append(' ', ANestedLevel*2);
-  ABuilder.Append('type ');
-  if Name <> '' then
-    ABuilder.Append(Name)
-  else begin
-    ABuilder.Append(LowBound.ToString);
-    ABuilder.Append('..');
-    ABuilder.Append(HighBound.ToString);
-  end;
+  inherited;
+
 end;
 
 function TIDOrdinal.GetElementsCount: UInt64;
@@ -6031,20 +6035,19 @@ end;
 constructor TIDRefType.Create(Scope: TScope; const ID: TIdentifier);
 begin
   inherited;
-  TypeKind := tkRefernce;
+
 end;
 
 constructor TIDRefType.CreateAsAnonymous(Scope: TScope; ReferenceType: TIDType);
 begin
   inherited CreateAsAnonymous(Scope);
-  TypeKind := tkRefernce;
   FReferenceType := ReferenceType;
 end;
 
 constructor TIDRefType.CreateAsSystem(Scope: TScope; const Name: string);
 begin
   inherited;
-  TypeKind := tkRefernce;
+
 end;
 
 procedure TIDRefType.CreateStandardOperators;
@@ -6121,7 +6124,6 @@ constructor TIDPointer.Create(Scope: TScope; const ID: TIdentifier);
 begin
   inherited Create(Scope, ID);
   fDataTypeID := dtPointer;
-  TypeKind := tkRefernce;
   CreateStandardOperators;
 end;
 
@@ -6471,8 +6473,6 @@ end;
 procedure TIDDynArray.CreateStandardOperators;
 begin
   inherited;
-  AddBinarySysOperator(opEqual, SYSUnit.Operators.Equal_DynArray);
-  AddBinarySysOperator(opAdd, SYSUnit.Operators.Add_DynArray);
   OverloadExplicitToAny(SYSUnit.Operators.ExplicitDynArrayToAny);
 end;
 
@@ -6512,6 +6512,26 @@ begin
   Result :=
     (ASrc.DataTypeID = dtSet) and ASrc.IsAnonymous and
     ((ASrc as TIDSet).BaseType = ElementDataType);
+end;
+
+function TIDDynArray.SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType;
+begin
+  if ARight is TIDDynArray then
+  begin
+    case AOpID of
+      opEqual, opNotEqual: Exit(SYSUnit._Boolean);
+      opAdd: begin
+        if TIDDynArray(ARight).ElementDataType.ActualDataType = ElementDataType.ActualDataType then
+          Exit(Self);
+      end;
+    end
+  end;
+  Result := inherited;
+end;
+
+function TIDDynArray.SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType;
+begin
+  Result := SysBinarOperatorLeft(AOpID, ALeft);
 end;
 
 function TIDSet.ASTJsonDeclClass: TASTJsonDeclClass;
@@ -6912,9 +6932,8 @@ constructor TIDAliasType.CreateAlias(Scope: TScope;
 begin
   inherited Create(Scope, ID);
   FItemType := itType;
-  FTypeKind := tkAlias;
   FLinkedType := OriginalType;
-  FOriginalType := OriginalType;
+  FOriginalType := OriginalType.ActualDataType;
   FDataTypeID := FOriginalType.DataTypeID;
   FNewType := ANewType;
 end;
@@ -6923,7 +6942,6 @@ constructor TIDAliasType.CreateAliasAsSystem(Scope: TScope; const ID: string; Sr
 begin
   inherited CreateAsSystem(Scope, ID);
   FItemType := itType;
-  FTypeKind := tkAlias;
   FLinkedType := SrcType;
   FOriginalType := SrcType.ActualDataType;
   FDataTypeID := FOriginalType.DataTypeID;
@@ -6931,7 +6949,7 @@ end;
 
 function TIDAliasType.GetActualDataType: TIDType;
 begin
-  Result := FOriginalType.ActualDataType;
+  Result := FOriginalType;
 end;
 
 function TIDAliasType.GetASTTypeKind: string;
@@ -7314,6 +7332,14 @@ begin
   OverloadExplicitFromAny(SYSUnit.Operators.ExplicitRangeFromAny);
   OverloadImplicitFromAny(SYSUnit.Operators.ImplicitRangeFromAny);
   OverloadImplicitToAny(SYSUnit.Operators.ImplicitRangeToAny);
+end;
+
+procedure TIDRangeType.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
+begin
+  inherited;
+  ABuilder.Append(LowBound.ToString);
+  ABuilder.Append('..');
+  ABuilder.Append(HighBound.ToString);
 end;
 
 function TIDRangeType.GetDisplayName: string;
@@ -9229,10 +9255,9 @@ begin
     else
     if (ASrcType is TIDArray) and (ADstType is TIDArray) then
     begin
-      if (ADstType.DataTypeID = dtOpenArray) or
-         (ASrcType.DataTypeID = ADstType.DataTypeID) then
-        Result := SameProcSignTypes(TIDArray(ASrcType).ElementDataType,
-                                    TIDArray(ADstType).ElementDataType);
+      Result := (ASrcType.DataTypeID = ADstType.DataTypeID) and
+        SameProcSignTypes(TIDArray(ASrcType).ElementDataType,
+                          TIDArray(ADstType).ElementDataType);
     end;
   end;
 end;

@@ -137,24 +137,21 @@ object frmTestAppMain: TfrmTestAppMain
               Left = 3
               Top = 3
               Width = 66
-              Height = 20
+              Height = 13
               Align = alLeft
               Caption = 'Total Tests: 0'
               Layout = tlCenter
-              ExplicitHeight = 13
             end
             object TestRunProgressLabel: TLabel
               AlignWithMargins = True
-              Left = 75
+              Left = 316
               Top = 3
-              Width = 304
-              Height = 20
+              Width = 63
+              Height = 13
               Align = alClient
               Alignment = taRightJustify
               Caption = 'Test Not Run'
               Layout = tlCenter
-              ExplicitWidth = 63
-              ExplicitHeight = 13
             end
           end
         end

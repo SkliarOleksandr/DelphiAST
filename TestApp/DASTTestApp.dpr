@@ -131,6 +131,7 @@ uses
   ASTTest.Variants.TypeCast2 in '..\TestScripts\Variants\ASTTest.Variants.TypeCast2.pas',
   ASTTest.RTL.TDictionaty1 in '..\TestScripts\RTL\ASTTest.RTL.TDictionaty1.pas',
   ASTTest.RTL.IEnumerable1 in '..\TestScripts\RTL\ASTTest.RTL.IEnumerable1.pas',
+  ASTTest.RTL.SysUtils1 in '..\TestScripts\RTL\ASTTest.RTL.SysUtils1.pas',
   ASTTest.NamesOverloading1 in '..\TestScripts\Names Overloading\ASTTest.NamesOverloading1.pas',
   ASTTest.NamesOverloading2 in '..\TestScripts\Names Overloading\ASTTest.NamesOverloading2.pas',
   ASTTest.NamesOverloading.Prop1 in '..\TestScripts\Names Overloading\ASTTest.NamesOverloading.Prop1.pas',
@@ -160,7 +161,8 @@ uses
   ASTTest.Aliases.Nested1 in '..\TestScripts\Aliases\ASTTest.Aliases.Nested1.pas',
   ASTTest.Other.Deprecated1 in '..\TestScripts\Other\ASTTest.Other.Deprecated1.pas',
   ASTTest.Other.Platform1 in '..\TestScripts\Other\ASTTest.Other.Platform1.pas',
-  ASTTest.Other.PlatformAndDeprecatedMix in '..\TestScripts\Other\ASTTest.Other.PlatformAndDeprecatedMix.pas';
+  ASTTest.Other.PlatformAndDeprecatedMix in '..\TestScripts\Other\ASTTest.Other.PlatformAndDeprecatedMix.pas',
+  ASTTest.Consts.DateTime1 in '..\TestScripts\Consts\ASTTest.Consts.DateTime1.pas';
 
 {$R *.res}
 

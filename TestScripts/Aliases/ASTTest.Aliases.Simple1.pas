@@ -1,4 +1,4 @@
-unit ASTTest.Aliases1;
+unit ASTTest.Aliases.Simple1;
 
 interface
 

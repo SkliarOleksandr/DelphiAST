@@ -14,13 +14,13 @@ begin
   var LValue1: Integer;
  
   for LValue1 in Arr do
-    LTotal := LTotal + LValue1;      
+    LTotal := LTotal + LValue1;
   
   for var LValue2 in Arr do
     LTotal := LTotal + LValue2;
     
   for var LValue3: Integer in Arr do
-    LTotal := LTotal + LValue3;      
+    LTotal := LTotal + LValue3;
 end;
 
 end.

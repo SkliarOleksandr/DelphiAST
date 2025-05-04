@@ -181,6 +181,7 @@
         <DCCReference Include="..\TestScripts\Operators\Compare\ASTTest.Cmp.Pointers.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Neg\ASTTest.Operators.Neg1.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadWithImplicitCast.pas"/>
+        <DCCReference Include="..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadInHelper1.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Overload\ASTTest.Ops.ImplicitAsExplicit1.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Addr\ASTTest.AddrOp.Addr1.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Addr\ASTTest.AddrOp.Addr2.pas"/>
@@ -257,6 +258,7 @@
         <DCCReference Include="..\TestScripts\Variants\ASTTest.Variants.TypeCast2.pas"/>
         <DCCReference Include="..\TestScripts\RTL\ASTTest.RTL.TDictionaty1.pas"/>
         <DCCReference Include="..\TestScripts\RTL\ASTTest.RTL.IEnumerable1.pas"/>
+        <DCCReference Include="..\TestScripts\RTL\ASTTest.RTL.SysUtils1.pas"/>
         <DCCReference Include="..\TestScripts\Names Overloading\ASTTest.NamesOverloading1.pas"/>
         <DCCReference Include="..\TestScripts\Names Overloading\ASTTest.NamesOverloading2.pas"/>
         <DCCReference Include="..\TestScripts\Names Overloading\ASTTest.NamesOverloading.Prop1.pas"/>
@@ -287,7 +289,7 @@
         <DCCReference Include="..\TestScripts\Other\ASTTest.Other.Deprecated1.pas"/>
         <DCCReference Include="..\TestScripts\Other\ASTTest.Other.Platform1.pas"/>
         <DCCReference Include="..\TestScripts\Other\ASTTest.Other.PlatformAndDeprecatedMix.pas"/>
-        <DCCReference Include="..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadInHelper1.pas"/>
+        <DCCReference Include="..\TestScripts\Consts\ASTTest.Consts.DateTime1.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

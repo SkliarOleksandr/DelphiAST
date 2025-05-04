@@ -959,16 +959,19 @@ begin
     end;
     token_identifier: begin
       Result := ParseConstExpression(Scope, Expr, ExprType);
-      {alias type}
-      if Expr.ItemType = itType then begin
-        Decl := TIDAliasType.CreateAlias(Scope, ID, Expr.AsType);
-      end else
+      {simple alias type}
+      if Expr.ItemType = itType then
+        // insert the same data type with a new name into the scope
+        // TODO: add a list of aliases to pull them into common declaration list
+        // since an alias doesn't have its own declaration now
+        Decl := Expr.AsType
+      else
       {range type}
       begin
         ParseRangeType(Scope, Expr, ID, TIDRangeType(Decl));
       end;
       if not IsAnonimous then
-        Scope.AddType(Decl);
+        Scope.AddType(ID, Decl);
     end;
   else
     Decl := nil;
@@ -1000,15 +1003,7 @@ function TASTDelphiUnit.ParseTypeHelper(Scope, GenericScope: TScope; AIsClassHel
     else
       LHelpers := fImplHelpers;
 
-    // A helper must be assigned for all parent aliased types (until a new type)
-    while True do
-    begin
-      LHelpers.AddOrUpdate(ATarget, AHelper);
-      if (ATarget is TIDAliasType) and not TIDAliasType(ATarget).NewType then
-        ATarget := TIDAliasType(ATarget).LinkedType
-      else
-        Break;
-    end;
+    LHelpers.AddOrUpdate(ATarget, AHelper);
   end;
 
 var
@@ -1164,7 +1159,10 @@ begin
             Lexer_NextToken(Scope);
             Continue;
           end else
-            ERRORS.UNDECLARED_ID(ID);
+          begin
+            ERRORS.E2003_UNDECLARED_IDENTIFIER(Self, ID);
+            Decl := Sys._UnknownType;
+          end;
         end;
 
         // workaround for a case when param or field or property can be named as type
@@ -5604,7 +5602,8 @@ begin
       end;
       itConst: LConst := LExpr.AsConst;
     else
-      ERRORS.E2026_CONSTANT_EXPRESSION_EXPECTED(Self, LExpr.TextPosition)
+      ERRORS.E2026_CONSTANT_EXPRESSION_EXPECTED(Self, LExpr.TextPosition);
+      LConst := Sys._UnknownConstant;
     end;
 
     if LConst.IsAnonymous then
@@ -8073,8 +8072,11 @@ begin
         if Decl.SameDeclaration(ProcScope.ExplicitParams, GenericParams, {ACheckNames:} True) then
         begin
           if Decl.Scope = Scope then
-            ERRORS.THE_SAME_METHOD_EXISTS(ID)
-          else
+          begin
+            // for debug:
+            Decl.SameDeclaration(ProcScope.ExplicitParams, GenericParams, {ACheckNames:} True);
+            ERRORS.THE_SAME_METHOD_EXISTS(ID);
+          end else
           if (Decl.Scope.ScopeClass = scInterface) and
              (Scope.ScopeClass = scImplementation) then
           begin
@@ -8354,7 +8356,14 @@ begin
           if (Decl.Scope = Scope) and not (pfForward in Decl.Flags) then
             ERRORS.E2004_IDENTIFIER_REDECLARED(Self, ID);
 
-          Proc := Decl;
+          // proc doesn't overload, it's a new declaration
+          if not (pfOveload in Decl.Flags) and (Decl.Module <> Self) then
+          begin
+            ForwardDecl := nil;
+            Proc := nil
+          end else
+            Proc := Decl;
+
           Break;
         end;
         if not Assigned(Decl.PrevOverload) then
@@ -8652,6 +8661,7 @@ begin
   LSrcType := LSrcDecl as TIDType;
 
   Decl := TIDAliasType.CreateAlias(Scope, AID, LSrcType, {ANewType:} True);
+  //Decl := LSrcType.CreateAsNewType(Scope, AID);
   Scope.AddType(Decl);
 
   if (Result = token_openround) and (LSrcType.DataTypeID = dtAnsiString) then
@@ -8737,7 +8747,9 @@ begin
       end else
       if Assigned(AStruct) and (AStruct.DataTypeID = dtClass) then
       begin
-        var LIntf := TIDClass(AStruct).FindInterface(AID.Name, AGenericParams);
+        // since an interface can be an alias (like IUnknown), we have to find original interface and take its name
+        var LDecl := FindID(AStruct.Scope, AID);
+        var LIntf := TIDClass(AStruct).FindInterface(LDecl.Name, AGenericParams);
         if Assigned(LIntf) then
         begin
           LIntfMathedDelegation := True;
@@ -9554,6 +9566,8 @@ begin
     Break;
   end;
 
+  // for debug
+  FindIDNoAbort(Scope, FullID);
   ERRORS.E2003_UNDECLARED_IDENTIFIER(Self, AID);
   // return "unknown" to "keep parsing"
   Decl := Sys._UnknownConstant;
@@ -10251,15 +10265,14 @@ begin
     end;
     CheckEmptyExpression(DefaultValue);
 
-    if CheckImplicit(SContext, DefaultValue, DataType) = nil then
-    begin
+    if CheckImplicit(SContext, DefaultValue, DataType) <> nil then
+      DefaultValue := MatchImplicit3(SContext, DefaultValue, DataType)
+    else begin
       // for debug:
       CheckImplicit(SContext, DefaultValue, DataType);
-
       ERRORS.E2010_INCOMPATIBLE_TYPES(Self, DefaultValue.DataType, DataType, DefaultValue.TextPosition);
     end;
 
-    DefaultValue := MatchImplicit3(SContext, DefaultValue, DataType);
 
     //todo: do we still need it?
     // // replace actual anonymous constant type to the required

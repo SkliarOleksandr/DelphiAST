@@ -2,6 +2,8 @@ unit ASTTest.Ops.OverloadInHelper1;
 
 interface
 
+{$HINTS OFF}
+
 type
 
   TOrigin = record
