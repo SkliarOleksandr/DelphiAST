@@ -4689,13 +4689,9 @@ var
   DataType: TIDType;
 begin
   ArrExpr := EContext.RPNPopExpression();
-  ArrDecl := ArrExpr.Declaration;
   // auto resolve function call when missed parentheses
-  if (ArrDecl.ItemType = itProcedure) and Assigned(TIDProcedure(ArrDecl).ResultType) then
-  begin
-    ArrDecl := EContext.Proc.GetTMPVar(Scope, TIDProcedure(ArrDecl).ResultType);
-    ArrExpr := TIDExpression.Create(ArrDecl, ArrExpr.TextPosition);
-  end;
+  ArrExpr := CheckAndCallFuncImplicit(EContext, ArrExpr);
+  ArrDecl := ArrExpr.Declaration;
   ArrType := ArrExpr.ActualDataType;
   DataType := nil;
   DimensionsCount := 0;
@@ -9747,7 +9743,8 @@ begin
 
         Expression := TIDCallExpression.Create(Decl, PMContext.ID.TextPosition);
         Result := ParseEntryCall(Scope, TIDCallExpression(Expression), EContext, ASTE);
-        Expression := nil;
+        // process call operator
+        Expression := EContext.RPNPopOperator();
       end else
         Expression := TIDExpression.Create(Decl, PMContext.ID.TextPosition);
     end;

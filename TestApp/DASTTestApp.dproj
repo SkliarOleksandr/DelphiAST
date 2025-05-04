@@ -290,6 +290,7 @@
         <DCCReference Include="..\TestScripts\Other\ASTTest.Other.Platform1.pas"/>
         <DCCReference Include="..\TestScripts\Other\ASTTest.Other.PlatformAndDeprecatedMix.pas"/>
         <DCCReference Include="..\TestScripts\Consts\ASTTest.Consts.DateTime1.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.RecursiveUsing2.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

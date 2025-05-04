@@ -79,6 +79,7 @@ uses
   ASTTest.Generics.ImplicitCast1 in '..\TestScripts\Generics\ASTTest.Generics.ImplicitCast1.pas',
   ASTTest.Generics.ImplicitCast2 in '..\TestScripts\Generics\ASTTest.Generics.ImplicitCast2.pas',
   ASTTest.Generics.RecursiveUsing1 in '..\TestScripts\Generics\ASTTest.Generics.RecursiveUsing1.pas',
+  ASTTest.Generics.RecursiveUsing2 in '..\TestScripts\Generics\ASTTest.Generics.RecursiveUsing2.pas',
   ASTTest.Generics.SmartRef1 in '..\TestScripts\Generics\ASTTest.Generics.SmartRef1.pas',
   ASTTest.Generics.GenericInstantiation1 in '..\TestScripts\Generics\ASTTest.Generics.GenericInstantiation1.pas',
   ASTTest.Generics.OverloadProc1 in '..\TestScripts\Generics\ASTTest.Generics.OverloadProc1.pas',

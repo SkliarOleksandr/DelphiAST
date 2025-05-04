@@ -6,7 +6,8 @@ interface
 //uses System.Generics.Collections;
 //uses System.JSON.Converters;
 //uses Vcl.Graphics;
-uses System.SysUtils;
+//uses System.SysUtils;
+uses System.Rtti;
 //uses System.Classes;
 //uses System.Json;
 //uses System.Hash;

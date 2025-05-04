@@ -447,6 +447,7 @@ type
     property NeedForward: Boolean read FNeedForward write FNeedForward;
     ///<summary> ForwardID points to the target type that is not already defined (in the same scope) </summary>
     property ForwardID: TIdentifier read FForwardID write FForwardID;
+    ///<summary> Parent is the top-level structure that this structure is nested within. </summary>
     property Parent: TIDType read GetParent;
 
     {переопределенным оператором может быть как функция так и тип, для простейших операций}
@@ -3519,26 +3520,28 @@ begin
 //    ResultType.IncRefCount(RCPath);
 end;
 
+function InstantiateParams(ANewScope: TScope;
+                           ADstStruct: TIDStructure;
+                           const AProcParams: TIDParamArray;
+                           AContext: TGenericInstantiateContext): TIDParamArray;
+begin
+  var AParamCount := Length(AProcParams);
+  SetLength(Result, AParamCount);
+  for var AIndex := 0 to AParamCount - 1 do
+  begin
+    var AParam := AProcParams[AIndex].MakeCopy as TIDParam;
+    var LParamType := AParam.DataType;
+    // if a param data type is generic and belongs current context, instantiate it
+    if LParamType.DoesGenericUseParams(AContext.Params) then
+      AParam.DataType := LParamType.InstantiateGeneric(ANewScope, ADstStruct, AContext) as TIDType;
+    Result[AIndex] := AParam;
+  end;
+end;
+
 function TIDProcedure.InstantiateGenericProc(ADstScope: TScope; ADstStruct: TIDStructure;
                                              ANextOverload: TIDProcedure;
                                              AContext: TGenericInstantiateContext): TIDProcedure;
 
-  function InstantiateParams(ANewScope: TScope;
-                             const AProcParams: TIDParamArray;
-                             AContext: TGenericInstantiateContext): TIDParamArray;
-  begin
-    var AParamCount := Length(AProcParams);
-    SetLength(Result, AParamCount);
-    for var AIndex := 0 to AParamCount - 1 do
-    begin
-      var AParam := AProcParams[AIndex].MakeCopy as TIDParam;
-      var LParamType := AParam.DataType;
-      // if a param data type is generic and belongs current context, instantiate it
-      if LParamType.DoesGenericUseParams(AContext.Params) then
-        AParam.DataType := LParamType.InstantiateGeneric(ANewScope, ADstStruct, AContext) as TIDType;
-      Result[AIndex] := AParam;
-    end;
-  end;
 
 begin
   LogBegin('inst [type: %s, src: %s]', [ClassName, Name]);
@@ -3548,7 +3551,7 @@ begin
   LNewProc.FEntryScope := TProcScopeClass(EntryScope.ClassType).CreateInDecl(ADstScope, LNewProc);
 
   // todo: what about implicit params (self, open array len, etc)?
-  LNewProc.ExplicitParams := InstantiateParams(ParamsScope, ExplicitParams, AContext);
+  LNewProc.ExplicitParams := InstantiateParams(ParamsScope, ADstStruct, ExplicitParams, AContext);
   if Assigned(ResultType) and ResultType.DoesGenericUseParams(AContext.Params) then
     LNewProc.ResultType := ResultType.InstantiateGeneric(ADstScope, ADstStruct, AContext) as TIDType
   else
@@ -5395,7 +5398,7 @@ function TIDStructure.DoesGenericUseParams(const AParams: TIDTypeArray): Boolean
   end;
 
 begin
-  if Assigned(Parent) then
+  if Assigned(Parent) or IsGeneric then
   begin
     if Assigned(fAncestorDecl) and fAncestorDecl.DoesGenericUseParams(AParams) then
       Exit(True);
@@ -7526,17 +7529,12 @@ begin
       GenericDescriptor.AddGenericInstance(LNewType, AContext.Args);
     end;
 
-    var LParamCnt := Length(Params);
-    SetLength(LNewType.fParams, LParamCnt);
-
-    for var LParamIndex := 0 to LParamCnt - 1 do
-    begin
-      var LNewParam := Params[LParamIndex].InstantiateGeneric(ADstScope, ADstStruct, AContext) as TIDParam;
-      LNewType.Params[LParamIndex] := LNewParam;
-    end;
-
-    if Assigned(ResultType) then
-      LNewType.ResultType := ResultType.InstantiateGeneric(ADstScope, ADstStruct, AContext) as TIDType;
+    // instantiate params and result type
+    LNewType.Params := InstantiateParams(ADstScope, ADstStruct, Params, AContext);
+    if Assigned(ResultType) and ResultType.DoesGenericUseParams(AContext.Params) then
+      LNewType.ResultType := ResultType.InstantiateGeneric(ADstScope, ADstStruct, AContext) as TIDType
+    else
+      LNewType.ResultType := ResultType;
 
     Result := LNewType;
     LogEnd('inst [type: %s, dst: %s]', [ClassName, Result.DisplayName]);
@@ -9360,6 +9358,8 @@ end;
 function TIDGenericInstantiation.InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                                     AContext: TGenericInstantiateContext): TIDDeclaration;
 begin
+  if AContext.DstID.TextPosition.Row = 6017 then
+    sleep(1);
   // Original - is the generic type that needs to be instantiated
   var LNewContext := TGenericInstantiateContext.Create(AContext, Original);
   try
