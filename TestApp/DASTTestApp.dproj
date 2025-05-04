@@ -273,6 +273,7 @@
         <DCCReference Include="..\TestScripts\Interfaces\ASTTest.Intf.RefToProcAsInterface1.pas"/>
         <DCCReference Include="..\TestScripts\Interfaces\ASTTest.Intf.MethodDelegation1.pas"/>
         <DCCReference Include="..\TestScripts\Interfaces\ASTTest.Intf.MethodDelegation2.pas"/>
+        <DCCReference Include="..\TestScripts\Interfaces\ASTTest.Intf.Implements1.pas"/>
         <DCCReference Include="..\TestScripts\Records\ASTTest.Records.CaseRecord2.pas"/>
         <DCCReference Include="..\TestScripts\Records\ASTTest.Records.CaseRecord1.pas"/>
         <DCCReference Include="..\TestScripts\Records\ASTTest.Records.StaticInit1.pas"/>
@@ -291,7 +292,7 @@
         <DCCReference Include="..\TestScripts\Other\ASTTest.Other.Platform1.pas"/>
         <DCCReference Include="..\TestScripts\Other\ASTTest.Other.PlatformAndDeprecatedMix.pas"/>
         <DCCReference Include="..\TestScripts\Consts\ASTTest.Consts.DateTime1.pas"/>
-        <DCCReference Include="..\TestScripts\Interfaces\ASTTest.Intf.Implements1.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.MixedConstr.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

@@ -62,6 +62,7 @@ uses
   ASTTest.Generics.GenResult in '..\TestScripts\Generics\ASTTest.Generics.GenResult.pas',
   ASTTest.Generics.Methods in '..\TestScripts\Generics\ASTTest.Generics.Methods.pas',
   ASTTest.Generics.MethodWithConstr in '..\TestScripts\Generics\ASTTest.Generics.MethodWithConstr.pas',
+  ASTTest.Generics.MixedConstr in '..\TestScripts\Generics\ASTTest.Generics.MixedConstr.pas',
   ASTTest.Generics.Mixed in '..\TestScripts\Generics\ASTTest.Generics.Mixed.pas',
   ASTTest.Generics.Arrays in '..\TestScripts\Generics\ASTTest.Generics.Arrays.pas',
   ASTTest.Generics.Nested1 in '..\TestScripts\Generics\ASTTest.Generics.Nested1.pas',

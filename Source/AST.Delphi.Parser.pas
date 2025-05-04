@@ -7115,6 +7115,11 @@ begin
         Result := Lexer_NextToken(Scope);
         Continue;
       end;
+      token_semicolon: begin
+        if AConstraint = gsNone then
+          ERRORS.E2029_ID_EXPECTED_BUT_FOUND(Self, Lexer_Original, Lexer_Position);
+        Exit;
+      end
     else
       ERRORS.GENERIC_INVALID_CONSTRAINT(Result);
     end;
