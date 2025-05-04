@@ -419,18 +419,6 @@ type
     function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; override;
   end;
 
-  {operator [...] = [...]}
-  TSys_Equal_DynArray = class(TSysOpBinary)
-  public
-    function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; override;
-  end;
-
-  {operator [...] + [...]}
-  TSys_Add_DynArray = class(TSysOpBinary)
-  public
-    function Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression; override;
-  end;
-
   {operator any = nullptr}
   TSys_Equal_NullPtr = class(TSysOpBinary)
   public
@@ -1101,31 +1089,6 @@ function TSys_NotEqual_Set.Match(const SContext: TSContext; const Left, Right: T
 begin
   // todo:
   Result := SYSUnit._TrueExpression;
-end;
-
-{ TSys_Equal_DynArray }
-
-function TSys_Equal_DynArray.Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression;
-begin
-  // todo:
-  Result := SYSUnit._TrueExpression;
-end;
-
-{ TSys_Add_DynArray }
-
-function TSys_Add_DynArray.Match(const SContext: TSContext; const Left, Right: TIDExpression): TIDExpression;
-begin
-  var LLeftDataType := Left.ActualDataType;
-  var LRightDataType := Right.ActualDataType;
-  if (LLeftDataType is TIDDynArray) and (LLeftDataType is TIDDynArray) and
-     (TIDDynArray(LLeftDataType).ElementDataType.ActualDataType =
-      TIDDynArray(LRightDataType).ElementDataType.ActualDataType) then
-  begin
-    var LResult := SContext.Proc.GetTMPVar(SContext.Scope, LLeftDataType);
-    // todo: implement arrays concatination
-    Result := TIDExpression.Create(LResult, Left.TextPosition);
-  end else
-    Result := nil;
 end;
 
 { TSysImplicitTVarRecToAny }

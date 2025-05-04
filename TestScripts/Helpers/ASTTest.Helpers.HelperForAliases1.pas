@@ -9,7 +9,7 @@ type
 
   TMyInteger = TInteger;
 
-  // this helper actually extends the original type as well as all weak aliases
+  // this helper actually extends the original type instead of the actual alias
   TMyIntegerHelper = record helper for TMyInteger
     function ToStr: string;
   end;

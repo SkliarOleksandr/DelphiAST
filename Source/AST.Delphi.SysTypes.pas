@@ -159,6 +159,8 @@ type
     function SysBinOperator(ALeft, ARight: TIDType): TIDType;
     function SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType; override;
     function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
+    function MatchImplicitTo(ADst: TIDType): Boolean; override;
+    function MatchImplicitFrom(ASrc: TIDType): Boolean; override;
   end;
 
   TBuiltin_FltType = class(TIDType)
@@ -168,11 +170,15 @@ type
     procedure SetupOperators(ADecls: PDelphiSystemDeclarations); virtual; abstract;
     function SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType; override;
     function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
+    function MatchImplicitTo(ADst: TIDType): Boolean; override;
+    function MatchImplicitFrom(ASrc: TIDType): Boolean; override;
   end;
 
   TBuiltin_StrType = class(TIDString)
   public
     procedure SetupOperators(ADecls: PDelphiSystemDeclarations); virtual; abstract;
+    function SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType; override;
+    function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
   end;
 
   TBuiltin_TypedPointer = class(TIDPointer)
@@ -241,6 +247,15 @@ type
   public
     function MatchImplicitTo(ADst: TIDType): Boolean; override;
     function MatchImplicitFrom(ASrc: TIDType): Boolean; override;
+  end;
+
+  TBuiltin_UnicodeString = class(TBuiltin_StrType)
+  public
+    function MatchImplicitTo(ADst: TIDType): Boolean; override;
+    function MatchImplicitFrom(ASrc: TIDType): Boolean; override;
+  end;
+
+  TBuiltin_WideString = class(TBuiltin_StrType)
   end;
 
   TBuiltin_ShortString = class(TBuiltin_AnsiString)
@@ -334,6 +349,28 @@ begin
 
 end;
 
+{ TBuiltin_StrType }
+
+function TBuiltin_StrType.SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType;
+begin
+  case AOpID of
+    opEqual, opNotEqual: Result := SYSUnit._Boolean;
+    opAdd: begin
+      if ARight.DataTypeID in [dtString, dtAnsiString, dtWideString, dtChar, dtAnsiChar] then
+        Result := Self
+      else
+        Result := nil;
+    end;
+  else
+    Result := inherited;
+  end;
+end;
+
+function TBuiltin_StrType.SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType;
+begin
+  Result := SysBinarOperatorLeft(AOpID, ALeft);
+end;
+
 { TBuiltin_OpenString }
 
 procedure TBuiltin_OpenString.SetupOperators(ADecls: PDelphiSystemDeclarations);
@@ -347,13 +384,25 @@ end;
 
 function TBuiltin_AnsiString.MatchImplicitFrom(ASrc: TIDType): Boolean;
 begin
-  Result := (ASrc.DataTypeID in [dtAnsiChar]);
+  Result := (ASrc.DataTypeID in [dtString, dtWideString, dtAnsiString, dtAnsiChar, dtChar]);
 end;
 
 function TBuiltin_AnsiString.MatchImplicitTo(ADst: TIDType): Boolean;
 begin
-  Result := (ADSt.DataTypeID = dtString) or
+  Result := (ADst.DataTypeID in [dtString, dtWideString, dtAnsiString]) or
             ((ADst.DataTypeID = dtStaticArray) and (TIDStaticArray(ADst).ElementDataType.DataTypeID = dtAnsiChar));
+end;
+
+{ TBuiltin_UnicodeString }
+
+function TBuiltin_UnicodeString.MatchImplicitFrom(ASrc: TIDType): Boolean;
+begin
+  Result := (ASrc.DataTypeID in [dtAnsiString, dtAnsiChar, dtChar]);
+end;
+
+function TBuiltin_UnicodeString.MatchImplicitTo(ADst: TIDType): Boolean;
+begin
+  Result := (ADst.DataTypeID in [dtString, dtAnsiString]);
 end;
 
 { TBuiltin_IntType }
@@ -361,6 +410,16 @@ end;
 function TBuiltin_IntType.GetIsInteger: Boolean;
 begin
   Result := True;
+end;
+
+function TBuiltin_IntType.MatchImplicitFrom(ASrc: TIDType): Boolean;
+begin
+  Result := ASrc.IsInteger;
+end;
+
+function TBuiltin_IntType.MatchImplicitTo(ADst: TIDType): Boolean;
+begin
+  Result := ADst.IsInteger or ADst.IsFloat;
 end;
 
 function TBuiltin_IntType.SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType;
@@ -414,6 +473,16 @@ end;
 function TBuiltin_FltType.GetIsFloat: Boolean;
 begin
   Result := True;
+end;
+
+function TBuiltin_FltType.MatchImplicitFrom(ASrc: TIDType): Boolean;
+begin
+  Result := ASrc.IsFloat or ASrc.IsInteger;
+end;
+
+function TBuiltin_FltType.MatchImplicitTo(ADst: TIDType): Boolean;
+begin
+  Result := ADst.IsFloat;
 end;
 
 function TBuiltin_FltType.SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType;
@@ -738,7 +807,7 @@ end;
 
 function _IsStrType(AType: TIDType): Boolean;
 begin
-  Result := AType.DataTypeID in [dtShortString, dtString, dtAnsiString];
+  Result := AType.DataTypeID in [dtShortString, dtString, dtWideString, dtAnsiString];
 end;
 
 function _IsChrType(AType: TIDType): Boolean;

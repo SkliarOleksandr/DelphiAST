@@ -133,9 +133,6 @@ type
     Subtract_Set: TIDOperator;
     Equal_Set: TIDOperator;
     NotEqual_Set: TIDOperator;
-    // DynArray
-    Add_DynArray,
-    Equal_DynArray: TIDOperator;
     Equal_NullPtr: TIDOperator;
     NotEqual_NullPtr: TIDOperator;
     procedure Init(Scope: TScope);
@@ -175,7 +172,7 @@ type
     function RegisterType(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
     function RegisterOrdinal(const TypeName: string; DataType: TDataTypeID; LowBound: Int64; HighBound: UInt64;
                              ATypeClass: TIDOrdinalTypeClass): TIDType;
-    function RegisterTypeAlias(const TypeName: string; OriginalType: TIDType): TIDAliasType;
+    function RegisterTypeAlias(const TypeName: string; OriginalType: TIDType): TIDType;
     function RegisterPointer(const TypeName: string; TargetType: TIDType): TIDPointer;
     function RegisterConstInt(const Name: string; DataType: TIDType; Value: Int64): TIDIntConstant;
     function RegisterConstStr(Scope: TScope; const Name: string; const Value: string ): TIDStringConstant;
@@ -976,7 +973,6 @@ end;
 function TSYSTEMUnit.RegisterType(const TypeName: string; TypeClass: TIDTypeClass; DataType: TDataTypeID): TIDType;
 begin
   Result := TypeClass.CreateAsSystem(IntfScope, TypeName);
-  Result.Elementary := True;
   Result.DataTypeID := DataType;
   Result.ItemType := itType;
   InsertToScope(Result);
@@ -1019,13 +1015,13 @@ begin
   fDecls._AnsiString := RegisterType('AnsiString', TBuiltin_AnsiString, dtAnsiString);
   TIDString(_AnsiString).ElementDataType := _AnsiChar;
   //===============================================================
-  fDecls._UnicodeString := RegisterType('String', TIDString, dtString);
+  fDecls._UnicodeString := RegisterType('String', TBuiltin_UnicodeString, dtString);
   TIDString(_UnicodeString).ElementDataType := _WideChar;
   //===============================================================
   fDecls._Variant := RegisterType('Variant', TBuiltin_Variant, dtVariant);
   fDecls._OleVariant := RegisterType('OleVariant', TBuiltin_OleVariant, dtVariant);
   //===============================================================
-  fDecls._WideString := RegisterType('WideString', TIDString, dtWideString);
+  fDecls._WideString := RegisterType('WideString', TBuiltin_WideString, dtWideString);
   TIDString(_WideString).ElementDataType := _WideChar;
   //===============================================================
   fDecls._OpenString := RegisterType('OpenString', TBuiltin_OpenString, dtAnsiString) as TIDString;
@@ -1667,12 +1663,12 @@ begin
   Result := Compile({ACompileIntfOnly:} True);
 end;
 
-function TSYSTEMUnit.RegisterTypeAlias(const TypeName: string; OriginalType: TIDType): TIDAliasType;
+function TSYSTEMUnit.RegisterTypeAlias(const TypeName: string; OriginalType: TIDType): TIDType;
 begin
-  Result := TIDAliasType.CreateAliasAsSystem(IntfScope, TypeName, OriginalType);
-  Result.Elementary := True;
-  InsertToScope(Result);
-  AddType(Result);
+  if Assigned(IntfScope.InsertNode(TypeName, OriginalType)) then
+    raise Exception.CreateFmt('Unit SYSTEM: ' + sIdentifierRedeclaredFmt, [TypeName]);
+
+  Result := OriginalType;
 end;
 
 function TSYSTEMUnit.RegisterConstInt(const Name: string; DataType: TIDType; Value: Int64): TIDIntConstant;
@@ -1768,8 +1764,6 @@ begin
   Equal_Set := TSys_Equal_Set.CreateAsSystem(Scope);
   NotEqual_Set := TSys_NotEqual_Set.CreateAsSystem(Scope);
 
-  Add_DynArray := TSys_Add_DynArray.CreateAsSystem(Scope);
-  Equal_DynArray := TSys_Equal_DynArray.CreateAsSystem(Scope);
   Equal_NullPtr := TSys_Equal_NullPtr.CreateAsSystem(Scope);
   NotEqual_NullPtr := TSys_NotEqual_NullPtr.CreateAsSystem(Scope);
 end;

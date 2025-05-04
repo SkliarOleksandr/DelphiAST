@@ -54,6 +54,7 @@ uses
   ASTTest.Cmp.Pointers in '..\TestScripts\Operators\Compare\ASTTest.Cmp.Pointers.pas',
   ASTTest.Operators.Neg1 in '..\TestScripts\Operators\Neg\ASTTest.Operators.Neg1.pas',
   ASTTest.Ops.OverloadWithImplicitCast in '..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadWithImplicitCast.pas',
+  ASTTest.Ops.OverloadInHelper1 in '..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadInHelper1.pas',
   ASTTest.Ops.ImplicitAsExplicit1 in '..\TestScripts\Operators\Overload\ASTTest.Ops.ImplicitAsExplicit1.pas',
   ASTTest.AddrOp.Addr1 in '..\TestScripts\Operators\Addr\ASTTest.AddrOp.Addr1.pas',
   ASTTest.AddrOp.Addr2 in '..\TestScripts\Operators\Addr\ASTTest.AddrOp.Addr2.pas',
@@ -130,6 +131,7 @@ uses
   ASTTest.Variants.TypeCast2 in '..\TestScripts\Variants\ASTTest.Variants.TypeCast2.pas',
   ASTTest.RTL.TDictionaty1 in '..\TestScripts\RTL\ASTTest.RTL.TDictionaty1.pas',
   ASTTest.RTL.IEnumerable1 in '..\TestScripts\RTL\ASTTest.RTL.IEnumerable1.pas',
+  ASTTest.RTL.SysUtils1 in '..\TestScripts\RTL\ASTTest.RTL.SysUtils1.pas',
   ASTTest.NamesOverloading1 in '..\TestScripts\Names Overloading\ASTTest.NamesOverloading1.pas',
   ASTTest.NamesOverloading2 in '..\TestScripts\Names Overloading\ASTTest.NamesOverloading2.pas',
   ASTTest.NamesOverloading.Prop1 in '..\TestScripts\Names Overloading\ASTTest.NamesOverloading.Prop1.pas',
@@ -141,6 +143,8 @@ uses
   ASTTest.Sets.ExplicitCast2 in '..\TestScripts\Sets\ASTTest.Sets.ExplicitCast2.pas',
   ASTTest.Intf.MethodRedeclaration in '..\TestScripts\Interfaces\ASTTest.Intf.MethodRedeclaration.pas',
   ASTTest.Intf.RefToProcAsInterface1 in '..\TestScripts\Interfaces\ASTTest.Intf.RefToProcAsInterface1.pas',
+  ASTTest.Intf.MethodDelegation1 in '..\TestScripts\Interfaces\ASTTest.Intf.MethodDelegation1.pas',
+  ASTTest.Intf.MethodDelegation2 in '..\TestScripts\Interfaces\ASTTest.Intf.MethodDelegation2.pas',
   ASTTest.Records.CaseRecord2 in '..\TestScripts\Records\ASTTest.Records.CaseRecord2.pas',
   ASTTest.Records.CaseRecord1 in '..\TestScripts\Records\ASTTest.Records.CaseRecord1.pas',
   ASTTest.Records.StaticInit1 in '..\TestScripts\Records\ASTTest.Records.StaticInit1.pas',
@@ -157,7 +161,8 @@ uses
   ASTTest.Aliases.Nested1 in '..\TestScripts\Aliases\ASTTest.Aliases.Nested1.pas',
   ASTTest.Other.Deprecated1 in '..\TestScripts\Other\ASTTest.Other.Deprecated1.pas',
   ASTTest.Other.Platform1 in '..\TestScripts\Other\ASTTest.Other.Platform1.pas',
-  ASTTest.Other.PlatformAndDeprecatedMix in '..\TestScripts\Other\ASTTest.Other.PlatformAndDeprecatedMix.pas';
+  ASTTest.Other.PlatformAndDeprecatedMix in '..\TestScripts\Other\ASTTest.Other.PlatformAndDeprecatedMix.pas',
+  ASTTest.Consts.DateTime1 in '..\TestScripts\Consts\ASTTest.Consts.DateTime1.pas';
 
 {$R *.res}
 
