@@ -416,6 +416,7 @@ begin
   Prj.AddUnit(UN, nil);
 
   ParseProject(Prj, {AClearOutput:} True, {AShowResults:} True);
+  Prj.ClearEvents;
 end;
 
 procedure TfrmTestAppMain.ASTParseActionUpdate(Sender: TObject);
