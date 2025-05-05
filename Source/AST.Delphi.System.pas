@@ -1264,6 +1264,8 @@ begin
   RegisterBuiltin(TSF_ReturnAddress);
   RegisterBuiltin(TSF_VarCast);
   RegisterBuiltin(TSF_VarClear);
+  RegisterBuiltin(TSF_Write);
+  RegisterBuiltin(TSF_Writeln);
 
   if Project.Target = TWINX64_Target then
   begin
@@ -1275,7 +1277,7 @@ begin
     RegisterBuiltin(TSF_VarArgEnd);
   end;
 
-  CompileSource(IntfScope, '', 'procedure VarArrayRedim(var V: Variant; HighBound: Integer);');
+  CompileSource(IntfScope, 'procedure VarArrayRedim(var V: Variant; HighBound: Integer);');
 
   RegisterVariable(ImplScope, 'ReturnAddress', _Pointer);
   RegisterConstStr(ImplScope, 'libmmodulename', '');

@@ -526,6 +526,20 @@ type
     class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
   end;
 
+  {Write}
+  TSF_Write = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
+  {Writeln}
+  TSF_Writeln = class(TIDSysRuntimeFunction)
+  public
+    function Process(var EContext: TEContext): TIDExpression; override;
+    class function CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction; override;
+  end;
+
 implementation
 
 uses
@@ -2026,6 +2040,42 @@ end;
 function TSF_VarArgEnd.Process(var EContext: TEContext): TIDExpression;
 begin
   EContext.RPNPopExpression();
+  Result := nil;
+end;
+
+{ TSF_Write }
+
+class function TSF_Write.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Write', SYSUnit._Void);
+  Result.Flags := Result.Flags + [pfVarArgs];
+  Result.AddParam('Args', SysUnit._Untyped, [VarIn]);
+end;
+
+function TSF_Write.Process(var EContext: TEContext): TIDExpression;
+begin
+  // read all args, since it's "varargs"
+  while EContext.RPNExprCount > 0 do
+    EContext.RPNPopExpression();
+
+  Result := nil;
+end;
+
+{ TSF_Writeln }
+
+class function TSF_Writeln.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
+begin
+  Result := Self.Create(Scope, 'Writeln', SYSUnit._Void);
+  Result.Flags := Result.Flags + [pfVarArgs];
+  Result.AddParam('Args', SysUnit._Untyped, [VarIn]);
+end;
+
+function TSF_Writeln.Process(var EContext: TEContext): TIDExpression;
+begin
+  // read all args, since it's "varargs"
+  while EContext.RPNExprCount > 0 do
+    EContext.RPNPopExpression();
+
   Result := nil;
 end;
 

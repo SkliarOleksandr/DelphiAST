@@ -427,7 +427,11 @@ procedure TfrmTestAppMain.ASTParseRTLButtonClick(Sender: TObject);
   function IsExcluded(const AFileName: string): Boolean;
   begin
     Result :=
-      SameText(AFileName, 'System.Internal.MachExceptions')
+      SameText(AFileName, 'System.Internal.MachExceptions') or
+      AFileName.StartsWith('System.Mac.') or
+      AFileName.StartsWith('System.Linux.') or
+      AFileName.StartsWith('Posix.') or
+      AFileName.StartsWith('Macapi.')
       ;
   end;
 

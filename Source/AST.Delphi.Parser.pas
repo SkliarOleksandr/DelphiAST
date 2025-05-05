@@ -34,7 +34,9 @@ uses
 // System.SysConst
 // system.Classes
 // System.DateUtils
+// System.Devices
 // System.IOUtils
+// System.Internal.DebugUtils
 // system.Rtti
 // System.JSON
 // System.JSON.Types
@@ -500,7 +502,8 @@ type
     function DoParse(Scope: TScope; AFirstToken: TTokenID; ACompileIntfOnly: Boolean): TCompilerResult;
     function Compile(ACompileIntfOnly: Boolean; RunPostCompile: Boolean = True): TCompilerResult; override;
     function CompileIntfOnly: TCompilerResult; override;
-    function CompileSource(Scope: TScope; const AFileName: string; const ASource: string): ICompilerMessages;
+    function CompileSource(Scope: TScope; const AFileName: string; const ASource: string): ICompilerMessages; overload;
+    function CompileSource(Scope: TScope; const ASource: string): ICompilerMessages; overload;
     constructor Create(const Project: IASTProject; const FileName: string; const Source: string = ''); override;
     destructor Destroy; override;
   end;
@@ -1572,7 +1575,7 @@ begin
     {check args count}
     if LBuiltin.ParamsCount >= 0 then
     begin
-      if ArgsCount > LBuiltin.ParamsCount then
+      if (ArgsCount > LBuiltin.ParamsCount) and not LBuiltin.IsVarArgs then
         ERRORS.E2034_TOO_MANY_ACTUAL_PARAMETERS(Self, CallExpr.TextPosition)
       else
       if ArgsCount < LBuiltin.ParamsCount then
@@ -2874,6 +2877,11 @@ end;
 function TASTDelphiUnit.CompileIntfOnly: TCompilerResult;
 begin
   Result := Compile({ACompileIntfOnly:} True);
+end;
+
+function TASTDelphiUnit.CompileSource(Scope: TScope; const ASource: string): ICompilerMessages;
+begin
+  Result := CompileSource(Scope, {AFileName:} '', ASource);
 end;
 
 function TASTDelphiUnit.CompileSource(Scope: TScope; const AFileName: string; const ASource: string): ICompilerMessages;

@@ -1768,7 +1768,8 @@ type
     pfFinal,
     pfClass,
     pfStatic,
-    pfForward
+    pfForward,
+    pfVarArgs
   );
 
   TProcFlags = set of TProcFlag;
@@ -1810,6 +1811,7 @@ type
     function GetIsDestructor: Boolean;
     function GetParamsScope: TParamsScope;
     function GetGenericParamsCount: Integer;
+    function GetIsVarArgs: Boolean;
   protected
     function GetDisplayName: string; override;
     function GetIndex: Integer; override;
@@ -1883,6 +1885,7 @@ type
     property IsCompleted: Boolean read GetIsCompleted;
     property IsStatic: Boolean read GetIsStatic;
     property IsClassMethod: Boolean read GetIsClassMethod;
+    property IsVarArgs: Boolean read GetIsVarArgs;
     property ProcKindName: string read GetProcKindName;
     property DefaultParamsCount: Integer read GetDefaultParamsCount;
     property VirtualIndex: Integer read FVirtualIndex write FVirtualIndex;
@@ -3316,6 +3319,11 @@ end;
 function TIDProcedure.GetIsStatic: Boolean;
 begin
   Result := (pfOperator in Flags) or (pfStatic in Flags);
+end;
+
+function TIDProcedure.GetIsVarArgs: Boolean;
+begin
+  Result := (pfVarArgs in Flags);
 end;
 
 function TIDProcedure.GetIsClassMethod: Boolean;
