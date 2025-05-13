@@ -51,14 +51,14 @@ type
   private
     fName: string;
     fOnProgress: TASTProgressEvent;
-    fOnConsoleProc: TASTRrojectConsoleWriteEvent;
+    fOnConsoleProc: TASTProjectConsoleWriteEvent;
     fStopIfErrors: Boolean;
     procedure SetName(const Value: string);
     procedure SetOnProgress(const Value: TASTProgressEvent);
-    procedure SetOnConsoleWrite(const Value: TASTRrojectConsoleWriteEvent);
+    procedure SetOnConsoleWrite(const Value: TASTProjectConsoleWriteEvent);
     procedure SetStopCompileIfError(const Value: Boolean);
     function GetOnProgress: TASTProgressEvent;
-    function GetOnConsoleWrite: TASTRrojectConsoleWriteEvent;
+    function GetOnConsoleWrite: TASTProjectConsoleWriteEvent;
   protected
     function GetName: string;
     function GetUnitClass: TASTUnitClass; virtual; abstract;
@@ -74,6 +74,7 @@ type
     procedure PutMessage(const AModule: IASTModule; AMsgType: TCompilerMessageType; const AMessage: string;
                          const ATextPostition: TTextPosition; ACritical: Boolean); overload; virtual;
   public
+    procedure ClearEvents;
     constructor Create(const AName: string); virtual;
     property Name: string read GetName write SetName;
     property OnProgress: TASTProgressEvent read GetOnProgress write SetOnProgress;
@@ -1363,7 +1364,13 @@ begin
   Result := fName;
 end;
 
-function TASTProject.GetOnConsoleWrite: TASTRrojectConsoleWriteEvent;
+procedure TASTProject.ClearEvents;
+begin
+  fOnConsoleProc := nil;
+  fOnProgress := nil;
+end;
+
+function TASTProject.GetOnConsoleWrite: TASTProjectConsoleWriteEvent;
 begin
   Result := fOnConsoleProc;
 end;
@@ -1409,7 +1416,7 @@ begin
   fName := Value;
 end;
 
-procedure TASTProject.SetOnConsoleWrite(const Value: TASTRrojectConsoleWriteEvent);
+procedure TASTProject.SetOnConsoleWrite(const Value: TASTProjectConsoleWriteEvent);
 begin
   fOnConsoleProc := Value;
 end;

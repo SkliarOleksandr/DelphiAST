@@ -63,7 +63,7 @@ type
   TCompilerMessageType = (cmtHint, cmtWarning, cmtError, cmtInteranlError);
 
   TASTProgressEvent = reference to procedure (const Module: IASTModule; Status: TASTProcessStatusClass; AElapsedTime: Int64);
-  TASTRrojectConsoleWriteEvent = reference to procedure (const Module: IASTModule; Line: Integer; const Message: string);
+  TASTProjectConsoleWriteEvent = reference to procedure (const Module: IASTModule; Line: Integer; const Message: string);
 
   IASTParserMessage = interface
     ['{50649C47-C46C-45B6-B87D-D9779484E227}']
@@ -93,12 +93,14 @@ type
 
   IASTProject = interface
     ['{AE77D75A-4F7F-445B-ADF9-47CF5C2F0A14}']
+    procedure ClearEvents;
+
     procedure SetName(const Value: string);
     procedure SetOnProgress(const Value: TASTProgressEvent);
-    procedure SetOnConsoleWrite(const Value: TASTRrojectConsoleWriteEvent);
+    procedure SetOnConsoleWrite(const Value: TASTProjectConsoleWriteEvent);
     procedure SetStopCompileIfError(const Value: Boolean);
     function GetOnProgress: TASTProgressEvent;
-    function GetOnConsoleWrite: TASTRrojectConsoleWriteEvent;
+    function GetOnConsoleWrite: TASTProjectConsoleWriteEvent;
 
     function GetName: string;
     function GetPointerSize: Integer;
@@ -117,7 +119,7 @@ type
     property TotalUnitsIntfOnlyParsed: Integer read GetTotalUnitsIntfOnlyParsed;
     property StopCompileIfError: Boolean read GetStopCompileIfError write SetStopCompileIfError;
     property OnProgress: TASTProgressEvent read GetOnProgress write SetOnProgress;
-    property OnConsoleWrite: TASTRrojectConsoleWriteEvent read GetOnConsoleWrite write SetOnConsoleWrite;
+    property OnConsoleWrite: TASTProjectConsoleWriteEvent read GetOnConsoleWrite write SetOnConsoleWrite;
 
     procedure CosoleWrite(const Module: IASTModule; Line: Integer; const Message: string);
 
