@@ -125,6 +125,7 @@ uses
   ASTTest.Helpers.Main in '..\TestScripts\Helpers\ASTTest.Helpers.Main.pas',
   ASTTest.Helpers.ClassVar in '..\TestScripts\Helpers\ASTTest.Helpers.ClassVar.pas',
   ASTTest.Helpers.ClassCtor in '..\TestScripts\Helpers\ASTTest.Helpers.ClassCtor.pas',
+  ASTTest.Helpers.GenericTypeInHelper1 in '..\TestScripts\Helpers\ASTTest.Helpers.GenericTypeInHelper1.pas',
   ASTTest.Loops.For1 in '..\TestScripts\Loops\ASTTest.Loops.For1.pas',
   ASTTest.Loops.ForIn1 in '..\TestScripts\Loops\ASTTest.Loops.ForIn1.pas',
   ASTTest.Variants.Variant1 in '..\TestScripts\Variants\ASTTest.Variants.Variant1.pas',

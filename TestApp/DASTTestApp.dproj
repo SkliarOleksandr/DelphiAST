@@ -189,6 +189,7 @@
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenResult.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Methods.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.MethodWithConstr.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.MixedConstr.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Mixed.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Arrays.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Nested1.pas"/>
@@ -292,7 +293,7 @@
         <DCCReference Include="..\TestScripts\Other\ASTTest.Other.Platform1.pas"/>
         <DCCReference Include="..\TestScripts\Other\ASTTest.Other.PlatformAndDeprecatedMix.pas"/>
         <DCCReference Include="..\TestScripts\Consts\ASTTest.Consts.DateTime1.pas"/>
-        <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.MixedConstr.pas"/>
+        <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.GenericTypeInHelper1.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

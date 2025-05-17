@@ -3378,11 +3378,11 @@ end;
 function TASTDelphiUnit.FindAll(Scope: TScope; const ID: TIdentifier): TIDDeclArray;
 begin
   Result := [];
-  Scope.FindIDRecurcive(ID.Name, {var} Result);
+  Scope.FindIDRecurcive(ID.Name, fImplHelpers, {var} Result);
   if not Assigned(Result) then
   begin
     // for debug:
-    Scope.FindIDRecurcive(ID.Name, {var} Result);
+    Scope.FindIDRecurcive(ID.Name, fImplHelpers, {var} Result);
     ERRORS.UNDECLARED_ID(ID);
   end;
 end;
