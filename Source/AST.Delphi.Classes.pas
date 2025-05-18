@@ -7969,7 +7969,7 @@ begin
   if Assigned(Result) then
     Exit;
 
-  // serach in ancestor scopes
+  // serach in parent struct members
   Result := FParent.FindMembers(ID, AHelperTree);
   if Assigned(Result) then
     Exit;
@@ -8001,11 +8001,11 @@ begin
   if Assigned(LDecl) then
     ADeclArray := ADeclArray + [LDecl];
 
-  // search in additional scopes
-  FindInAdditionalScopes(ID, {var} ADeclArray);
+  // search in parent struct members
+  FParent.FindMembers(ID, {var} ADeclArray);
 
   // search in the all impl uses scopes
-  fOuterScope.FindIDRecurcive(ID, AHelperTree, ADeclArray);
+  fOuterScope.FindIDRecurcive(ID, AHelperTree, {var} ADeclArray);
 
   // search in the all intf uses scopes
   FParent.FindIDRecurcive(ID, AHelperTree, {var} ADeclArray);
