@@ -1199,7 +1199,7 @@ var
   ArgStr: string;
 begin
   for var Item in CallArgs do
-    ArgStr := AddStringSegment(ArgStr, Item.DataTypeName, ',');
+    ArgStr := AddStringSegment(ArgStr, Item.DataTypeName, ', ');
 
   AbortWork(sErrorOverload + #13#10 + 'Call argumensts: ' + ArgStr +
                              #13#10 + CallExpr.AsProcedure.GetAllOverloadSignatures,

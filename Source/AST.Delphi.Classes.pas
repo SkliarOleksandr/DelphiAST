@@ -3169,7 +3169,7 @@ begin
   SetLength(LJsonObj.params, ParamsCount);
   for var LIndex := 0 to ParamsCount - 1 do
   begin
-    var LParam := ParamsScope.Items[LIndex];
+    var LParam := FExplicitParams[LIndex];
     var LParamJson := LParam.ToJson as TASTJsonParam;
     LJsonObj.params[LIndex] := LParamJson;
   end;
@@ -4628,8 +4628,15 @@ function TIDVariable.ToJson: TJsonASTDeclaration;
 begin
   Result := inherited;
   var LJsonObj := Result as TASTJsonVariable;
-  LJsonObj.dataTypeName := DataType.Name;
-  LJsonObj.dataTypeHandle := DataType.ASTHandle;
+  if Assigned(DataType) then
+  begin
+    LJsonObj.dataTypeName := DataType.Name;
+    LJsonObj.dataTypeHandle := DataType.ASTHandle;
+  end else
+  begin
+    LJsonObj.dataTypeName := '<unknown>';
+    LJsonObj.dataTypeHandle := 0;
+  end;
 end;
 
 constructor TIDXXXConstant<T>.CreateAsSystem(AScope: TScope; const AName: string; ADataType: TIDType);

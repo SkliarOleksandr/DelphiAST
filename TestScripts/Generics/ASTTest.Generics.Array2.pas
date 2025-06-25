@@ -1,4 +1,4 @@
-unit ASTTest.Generics.Arrays;
+unit ASTTest.Generics.Array2;
 
 interface
 
