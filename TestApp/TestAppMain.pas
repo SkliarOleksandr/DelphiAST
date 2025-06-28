@@ -155,6 +155,8 @@ type
     ParseSelectedTestAction: TAction;
     ParseSelected1: TMenuItem;
     N4: TMenuItem;
+    CheckBox1: TCheckBox;
+    SaveASTCheckBox: TCheckBox;
     procedure ASTParseRTLButtonClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure SearchButtonClick(Sender: TObject);
@@ -212,7 +214,8 @@ type
     procedure ShowASTResultAsJSON(const Project: IASTDelphiProject; ASynEdit: TSynEdit); overload;
     procedure ShowASTResultAsJSON(const AModule: IASTModule; ASynEdit: TSynEdit); overload;
     procedure ShowASTResults(const AProject: IASTDelphiProject);
-    function ParseProject(const Project: IASTDelphiProject; AClearOutput, AShowResults: Boolean): TCompilerResult;
+    procedure SaveASTFiles(const AProject: IASTDelphiProject);
+    function ParseProject(const Project: IASTDelphiProject; AClearOutput, AShowResults, ASaveAST: Boolean): TCompilerResult;
     procedure CompilerMessagesToStrings(const Project: IASTDelphiProject; AShowFailUnit: Boolean);
     procedure SetDefines(const APrj: IASTDelphiProject);
     procedure SaveSettings;
@@ -414,7 +417,7 @@ begin
   UN := TASTDelphiUnit.Create(Prj, 'test', edUnit.Text);
   Prj.AddUnit(UN, nil);
 
-  ParseProject(Prj, {AClearOutput:} True, {AShowResults:} True);
+  ParseProject(Prj, {AClearOutput:} True, {AShowResults:} True, {ASaveAST:} False);
 end;
 
 procedure TfrmTestAppMain.ASTParseActionUpdate(Sender: TObject);
@@ -476,7 +479,7 @@ begin
   UN := TASTDelphiUnit.Create(FLastProject, 'RTLParseTest', RTLUsesSourceText);
   FLastProject.AddUnit(UN, nil);
 
-  ParseProject(FLastProject, {AClearOutput:} True, {AShowResults:} True);
+  ParseProject(FLastProject, {AClearOutput:} True, {AShowResults:} True, SaveASTCheckBox.Checked);
 end;
 
 procedure TfrmTestAppMain.ASTResultFormatComboBoxChange(Sender: TObject);
@@ -519,6 +522,7 @@ begin
       LINI.WriteInteger(SGeneral, 'LEFT_ACTIVE_TAB', LeftPageControl.ActivePageIndex);
       LINI.WriteBool(SGeneral, 'UNITS_FULL_PATH', UnitsFullPathCheck.Checked);
       LINI.WriteBool(SGeneral, 'SHOW_PROGRESS', ShowProgressCheck.Checked);
+      LINI.WriteBool(SGeneral, 'SAVE_AST', SaveASTCheckBox.Checked);
 
       LINI.WriteString(SGeneral, 'PLATFORM', cbPlatform.Text);
       LINI.WriteString(SGeneral, 'DELPHI_BDS', DelphiDirComboBox.Text);
@@ -670,6 +674,7 @@ begin
     LeftPageControl.ActivePageIndex := LINI.ReadInteger(SGeneral, 'LEFT_ACTIVE_TAB', 0);
     UnitsFullPathCheck.Checked := LINI.ReadBool(SGeneral, 'UNITS_FULL_PATH', False);
     ShowProgressCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_PROGRESS', True);
+    SaveASTCheckBox.Checked := LINI.ReadBool(SGeneral, 'SAVE_AST', False);
 
     cbPlatform.Text := LINI.ReadString(SGeneral, 'PLATFORM', 'WIN32');
     ProjectNameEdit.Text := LINI.ReadString(SGeneral, 'PROJECT_NAME', ProjectNameEdit.Text);
@@ -1096,6 +1101,25 @@ begin
   FLastProject := AProject;
 end;
 
+procedure TfrmTestAppMain.SaveASTFiles(const AProject: IASTDelphiProject);
+begin
+  for var LIndex := 0 to AProject.UnitsCount - 1  do
+  begin
+    var LUnit := AProject.Units[LIndex];
+    var LASTObject := LUnit.ToJson;
+    try
+      var LJSON := TJson.ObjectToJsonObject(LASTObject);
+      try
+        TFile.WriteAllText(LUnit.FileName + '.astjson', LJSON.Format());
+      finally
+        LJSON.Free;
+      end;
+    finally
+      LASTObject.Free;
+    end;
+  end;
+end;
+
 procedure TfrmTestAppMain.ShowMemLeaksCheckClick(Sender: TObject);
 begin
   ReportMemoryLeaksOnShutdown := ShowMemLeaksCheck.Checked;
@@ -1119,7 +1143,7 @@ var
     // add source path for AST tests
     AProject.AddUnitSearchPath(ExtractFilePath(ATestData.FilePath));
     // parse the project
-    if ParseProject(AProject, {AClearOutput:} False, {AShowResults:} False) <> CompileSuccess then
+    if ParseProject(AProject, {AClearOutput:} False, {AShowResults:} False, {ASaveAST:} False) <> CompileSuccess then
       Inc(LFailCount);
 
     ATestData.Failed := AProject.Messages.ErrorCount > 0;
@@ -1241,7 +1265,7 @@ begin
     SelectTest(LTestData);
 end;
 
-function TfrmTestAppMain.ParseProject(const Project: IASTDelphiProject; AClearOutput, AShowResults: Boolean): TCompilerResult;
+function TfrmTestAppMain.ParseProject(const Project: IASTDelphiProject; AClearOutput, AShowResults, ASaveAST : Boolean): TCompilerResult;
 begin
   if AClearOutput then
   begin
@@ -1260,6 +1284,9 @@ begin
 
     if AShowResults then
       ShowASTResults(Project);
+
+    if ASaveAST then
+      SaveASTFiles(Project);
 
     CompilerMessagesToStrings(Project, AShowResults);
 
@@ -1320,7 +1347,7 @@ begin
         ErrMemo.Lines.Add(Format('Warning: File ''%s'' is not found', [LFilePath]));
   end;
 
-  ParseProject(Prj, {AClearOutput:} False, {AShowResults:} True);
+  ParseProject(Prj, {AClearOutput:} False, {AShowResults:} True, SaveASTCheckBox.Checked);
 
   Prj.Clear({AClearImplicitUnits:} True);
 end;
@@ -1374,7 +1401,7 @@ procedure TfrmTestAppMain.FilesParseFocusedActionExecute(Sender: TObject);
 begin
   var LProject := CreateProject(ProjectNameEdit.Text, {AParseSystemUnit:} True);
   LProject.AddUnit(lbFiles.Items[lbFiles.ItemIndex], {AModule:} nil);
-  ParseProject(LProject, {AClearOutput:} True, {AShowResults:} True);
+  ParseProject(LProject, {AClearOutput:} True, {AShowResults:} True, SaveASTCheckBox.Checked);
   LProject.Clear({AClearImplicitUnits:} True);
 end;
 

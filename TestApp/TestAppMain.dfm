@@ -205,6 +205,20 @@ object frmTestAppMain: TfrmTestAppMain
                 Action = RemoveFilesAction
                 TabOrder = 2
               end
+              object SaveASTCheckBox: TCheckBox
+                Left = 228
+                Top = 10
+                Width = 71
+                Height = 17
+                Hint = 
+                  'Saves the AST as a JSON files in the same directories as the original PAS' +
+                  ' files'
+                Anchors = [akTop, akRight]
+                Caption = 'Save AST'
+                ParentShowHint = False
+                ShowHint = True
+                TabOrder = 3
+              end
             end
             object lbFiles: TCheckListBox
               Left = 0

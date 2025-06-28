@@ -108,11 +108,13 @@ uses
   ASTTest.Procs.MixingDirectives1 in '..\TestScripts\Procedures\ASTTest.Procs.MixingDirectives1.pas',
   ASTTest.Procs.ParamName1 in '..\TestScripts\Procedures\ASTTest.Procs.ParamName1.pas',
   ASTTest.Procs.ImplicitCall1 in '..\TestScripts\Procedures\ASTTest.Procs.ImplicitCall1.pas',
+  ASTTest.Classes.Base in '..\TestScripts\Classes\ASTTest.Classes.Base.pas',
   ASTTest.Classes.Construct1 in '..\TestScripts\Classes\Constructors\ASTTest.Classes.Construct1.pas',
   ASTTest.Classes.Construct2 in '..\TestScripts\Classes\Constructors\ASTTest.Classes.Construct2.pas',
   ASTTest.Classes.Inherited1 in '..\TestScripts\Classes\ASTTest.Classes.Inherited1.pas',
   ASTTest.Classes.Inherited2 in '..\TestScripts\Classes\ASTTest.Classes.Inherited2.pas',
   ASTTest.Classes.Inherited3 in '..\TestScripts\Classes\ASTTest.Classes.Inherited3.pas',
+  ASTTest.Classes.Inherited4 in '..\TestScripts\Classes\ASTTest.Classes.Inherited4.pas',
   ASTTest.Classes.MethodsRedefine1 in '..\TestScripts\Classes\ASTTest.Classes.MethodsRedefine1.pas',
   ASTTest.Classes.MethodsRedefine2 in '..\TestScripts\Classes\ASTTest.Classes.MethodsRedefine2.pas',
   ASTTest.Classes.VirtualsOverlod1 in '..\TestScripts\Classes\ASTTest.Classes.VirtualsOverlod1.pas',
@@ -170,7 +172,8 @@ uses
   ASTTest.Other.Deprecated1 in '..\TestScripts\Other\ASTTest.Other.Deprecated1.pas',
   ASTTest.Other.Platform1 in '..\TestScripts\Other\ASTTest.Other.Platform1.pas',
   ASTTest.Other.PlatformAndDeprecatedMix in '..\TestScripts\Other\ASTTest.Other.PlatformAndDeprecatedMix.pas',
-  ASTTest.Consts.DateTime1 in '..\TestScripts\Consts\ASTTest.Consts.DateTime1.pas';
+  ASTTest.Consts.DateTime1 in '..\TestScripts\Consts\ASTTest.Consts.DateTime1.pas',
+  ASTTest.RTL.FileTypes1 in '..\TestScripts\RTL\ASTTest.RTL.FileTypes1.pas';
 
 {$R *.res}
 

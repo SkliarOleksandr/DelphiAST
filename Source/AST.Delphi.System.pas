@@ -1264,8 +1264,8 @@ begin
   RegisterBuiltin(TSF_ReturnAddress);
   RegisterBuiltin(TSF_VarCast);
   RegisterBuiltin(TSF_VarClear);
-  RegisterBuiltin(TSF_Write);
-  RegisterBuiltin(TSF_Writeln);
+//  RegisterBuiltin(TSF_Write);  // not needed for now
+//  RegisterBuiltin(TSF_Writeln); // not needed for now
 
   if Project.Target = TWINX64_Target then
   begin
@@ -1278,6 +1278,36 @@ begin
   end;
 
   CompileSource(IntfScope, 'procedure VarArrayRedim(var V: Variant; HighBound: Integer);');
+
+  // initial stuff for File/Text file functionality
+  CompileSource(IntfScope, 'type File = pointer;');
+  CompileSource(IntfScope, 'type TextFile = pointer;');
+
+  CompileSource(IntfScope, 'procedure AssignFile(var F; const FileName: string);');
+  CompileSource(IntfScope, 'procedure Reset(var F; RecordSize: Word = 0);');
+  CompileSource(IntfScope, 'procedure Rewrite(var F; RecordSize: Word = 0);');
+  CompileSource(IntfScope, 'procedure Append(var F: Text);');
+  CompileSource(IntfScope, 'procedure CloseFile(var F);');
+
+  CompileSource(IntfScope, 'procedure BlockRead(var F; var Buf; Count: Integer; var Result: Integer); overload;');
+  CompileSource(IntfScope, 'procedure BlockRead(var F; var Buf; Count: Integer); overload;');
+  CompileSource(IntfScope, 'procedure BlockWrite(var F; const Buf; Count: Integer; var Result: Integer); overload;');
+  CompileSource(IntfScope, 'procedure BlockWrite(var F; const Buf; Count: Integer); overload;');
+
+  CompileSource(IntfScope, 'procedure Read(var F: Text; var V1); cdecl; varargs;');
+  CompileSource(IntfScope, 'procedure ReadLn(var F: Text; var V1); cdecl; varargs;');
+  CompileSource(IntfScope, 'procedure Write(var F: Text; var V1); cdecl; varargs;');
+  CompileSource(IntfScope, 'procedure WriteLn(var F: Text; var V1); cdecl; varargs;');
+
+  CompileSource(IntfScope, 'procedure Seek(var F; N: Integer);');
+  CompileSource(IntfScope, 'function FilePos(var F): Integer;');
+  CompileSource(IntfScope, 'function FileSize(var F): Integer;');
+  CompileSource(IntfScope, 'function Eof(var F: Text): Boolean; overload;');
+  CompileSource(IntfScope, 'function Eof(var F): Boolean; overload;');
+  CompileSource(IntfScope, 'function Eoln(var F: Text): Boolean; overload;');
+  CompileSource(IntfScope, 'function Eoln: Boolean; overload;');
+  CompileSource(IntfScope, 'procedure Erase(var F);');
+  CompileSource(IntfScope, 'procedure Rename(var F; const NewName: string);');
 
   RegisterVariable(ImplScope, 'ReturnAddress', _Pointer);
   RegisterConstStr(ImplScope, 'libmmodulename', '');
