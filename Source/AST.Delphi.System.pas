@@ -1264,8 +1264,8 @@ begin
   RegisterBuiltin(TSF_ReturnAddress);
   RegisterBuiltin(TSF_VarCast);
   RegisterBuiltin(TSF_VarClear);
-//  RegisterBuiltin(TSF_Write);  // not needed for now
-//  RegisterBuiltin(TSF_Writeln); // not needed for now
+  RegisterBuiltin(TSF_Write);  // not needed for now
+  RegisterBuiltin(TSF_Writeln); // not needed for now
 
   if Project.Target = TWINX64_Target then
   begin
@@ -1296,8 +1296,13 @@ begin
 
   CompileSource(IntfScope, 'procedure Read(var F: Text; var V1); cdecl; varargs;');
   CompileSource(IntfScope, 'procedure ReadLn(var F: Text; var V1); cdecl; varargs;');
-  CompileSource(IntfScope, 'procedure Write(var F: Text; var V1); cdecl; varargs;');
-  CompileSource(IntfScope, 'procedure WriteLn(var F: Text; var V1); cdecl; varargs;');
+
+  // declared as BuiltIn since it has such declarations:
+  //   procedure Write([var F: File]; P1; [ ..., PN]); overload;
+  //   procedure Writeln([var F: File]; [ P1; [ ..., PN] ]); overload;
+  //
+  //  CompileSource(IntfScope, 'procedure Write(var F: Text; var V1); cdecl; varargs;');
+  //  CompileSource(IntfScope, 'procedure WriteLn(var F: Text; var V1); cdecl; varargs;');
 
   CompileSource(IntfScope, 'procedure Seek(var F; N: Integer);');
   CompileSource(IntfScope, 'function FilePos(var F): Integer;');

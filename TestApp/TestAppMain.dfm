@@ -276,7 +276,6 @@ object frmTestAppMain: TfrmTestAppMain
                 Width = 3
               end>
             ReadOnly = True
-            SelectedColor.Alpha = 0.400000005960464500
             WordWrap = True
           end
           object Panel1: TPanel
@@ -353,7 +352,6 @@ object frmTestAppMain: TfrmTestAppMain
               Width = 3
             end>
           ReadOnly = True
-          SelectedColor.Alpha = 0.400000005960464500
           WordWrap = True
         end
         object Panel6: TPanel
@@ -456,7 +454,6 @@ object frmTestAppMain: TfrmTestAppMain
                   Width = 3
                 end>
               Highlighter = SynPasSyn1
-              SelectedColor.Alpha = 0.400000005960464500
               OnChange = edUnitChange
               OnSpecialLineColors = edUnitSpecialLineColors
             end

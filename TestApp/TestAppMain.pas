@@ -155,7 +155,6 @@ type
     ParseSelectedTestAction: TAction;
     ParseSelected1: TMenuItem;
     N4: TMenuItem;
-    CheckBox1: TCheckBox;
     SaveASTCheckBox: TCheckBox;
     procedure ASTParseRTLButtonClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
