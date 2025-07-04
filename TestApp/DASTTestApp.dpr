@@ -108,6 +108,7 @@ uses
   ASTTest.Procs.MixingDirectives1 in '..\TestScripts\Procedures\ASTTest.Procs.MixingDirectives1.pas',
   ASTTest.Procs.ParamName1 in '..\TestScripts\Procedures\ASTTest.Procs.ParamName1.pas',
   ASTTest.Procs.ImplicitCall1 in '..\TestScripts\Procedures\ASTTest.Procs.ImplicitCall1.pas',
+  ASTTest.Procs.ClosureWithInherited1 in '..\TestScripts\Procedures\Closures\ASTTest.Procs.ClosureWithInherited1.pas',
   ASTTest.Classes.Base in '..\TestScripts\Classes\ASTTest.Classes.Base.pas',
   ASTTest.Classes.Construct1 in '..\TestScripts\Classes\Constructors\ASTTest.Classes.Construct1.pas',
   ASTTest.Classes.Construct2 in '..\TestScripts\Classes\Constructors\ASTTest.Classes.Construct2.pas',

@@ -156,6 +156,9 @@ type
     ParseSelected1: TMenuItem;
     N4: TMenuItem;
     SaveASTCheckBox: TCheckBox;
+    FilesEditAction: TAction;
+    Edit1: TMenuItem;
+    N5: TMenuItem;
     procedure ASTParseRTLButtonClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure SearchButtonClick(Sender: TObject);
@@ -200,6 +203,9 @@ type
     procedure DelphiDirComboBoxChange(Sender: TObject);
     procedure ParseSelectedTestActionUpdate(Sender: TObject);
     procedure ParseSelectedTestActionExecute(Sender: TObject);
+    procedure FilesEditActionUpdate(Sender: TObject);
+    procedure lbFilesDblClick(Sender: TObject);
+    procedure FilesEditActionExecute(Sender: TObject);
   private
     { Private declarations }
     fSettings: IASTProjectSettings;
@@ -353,6 +359,12 @@ begin
       ErrMemo.Lines.Add(Dict.Items[FileName].FullPath);
     end;
   end;
+end;
+
+procedure TfrmTestAppMain.lbFilesDblClick(Sender: TObject);
+begin
+  if FilesEditAction.Enabled then
+    FilesEditAction.Execute;
 end;
 
 function GetDeclName(const Decl: TASTDeclaration): string;
@@ -548,16 +560,27 @@ end;
 
 procedure TfrmTestAppMain.SaveSourceActionExecute(Sender: TObject);
 begin
-  edUnit.Lines.SaveToFile(FSelectedTest.FilePath);
-  edUnit.Modified := False;
-  FSelectedTest.Modified := False;
-  VTTests.Invalidate;
+  if LeftPageControl.ActivePage = tsTestScripts then
+  begin
+    edUnit.Lines.SaveToFile(FSelectedTest.FilePath);
+    edUnit.Modified := False;
+    FSelectedTest.Modified := False;
+    VTTests.Invalidate;
+  end else
+  if LeftPageControl.ActivePage = tsFiles then
+  begin
+    var LFileName := lbFiles.Items[lbFiles.ItemIndex];
+    edUnit.Lines.SaveToFile(LFileName);
+    edUnit.Modified := False;
+  end;
 end;
 
 procedure TfrmTestAppMain.SaveSourceActionUpdate(Sender: TObject);
 begin
-  TAction(Sender).Enabled := (LeftPageControl.ActivePage = tsTestScripts) and
-    Assigned(FSelectedTest) and edUnit.Modified;
+  TAction(Sender).Enabled := edUnit.Modified and (
+    ((LeftPageControl.ActivePage = tsTestScripts) and Assigned(FSelectedTest)) or
+    ((LeftPageControl.ActivePage = tsFiles) and (lbFiles.ItemIndex >= 0))
+  );
 end;
 
 function FileURLDecode(const AFileURL: string): string;
@@ -1394,6 +1417,18 @@ end;
 procedure TfrmTestAppMain.FilesCheckAllActionUpdate(Sender: TObject);
 begin
   TAction(Sender).Enabled := lbFiles.Count > 0;
+end;
+
+procedure TfrmTestAppMain.FilesEditActionExecute(Sender: TObject);
+begin
+  var LFileName := lbFiles.Items[lbFiles.ItemIndex];
+  edUnit.Text := TFile.ReadAllText(LFileName);
+  edUnit.Modified := False;
+end;
+
+procedure TfrmTestAppMain.FilesEditActionUpdate(Sender: TObject);
+begin
+  TAction(Sender).Enabled := lbFiles.ItemIndex >= 0;
 end;
 
 procedure TfrmTestAppMain.FilesParseFocusedActionExecute(Sender: TObject);

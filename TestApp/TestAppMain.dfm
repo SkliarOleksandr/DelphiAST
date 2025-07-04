@@ -229,6 +229,7 @@ object frmTestAppMain: TfrmTestAppMain
               ItemHeight = 17
               PopupMenu = FilesPopup
               TabOrder = 1
+              OnDblClick = lbFilesDblClick
             end
           end
         end
@@ -931,6 +932,11 @@ object frmTestAppMain: TfrmTestAppMain
       Caption = 'Remove All'
       OnExecute = FilesRemoveAllActionExecute
     end
+    object FilesEditAction: TAction
+      Caption = 'Edit'
+      OnExecute = FilesEditActionExecute
+      OnUpdate = FilesEditActionUpdate
+    end
   end
   object ImageList1: TImageList
     ColorDepth = cd32Bit
@@ -1233,6 +1239,12 @@ object frmTestAppMain: TfrmTestAppMain
   object FilesPopup: TPopupMenu
     Left = 160
     Top = 209
+    object Edit1: TMenuItem
+      Action = FilesEditAction
+    end
+    object N5: TMenuItem
+      Caption = '-'
+    end
     object ParseFocused1: TMenuItem
       Action = FilesParseFocusedAction
     end

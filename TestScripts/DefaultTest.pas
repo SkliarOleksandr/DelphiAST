@@ -9,7 +9,8 @@ interface
 //uses System.SysUtils;
 //uses System.Rtti;
 // uses System.Devices;
-uses System.Win.ScktComp;
+//uses System.Win.ScktComp;
+uses System.AnsiStrings;
 // uses System.Internal.DebugUtils;
 //uses System.Classes;
 //uses System.Json;

@@ -33,6 +33,8 @@ uses
 // System.SysUtils
 // System.SysConst
 // system.Classes
+// system.StrUtils
+// System.AnsiStrings
 // System.DateUtils
 // System.Devices
 // System.IOUtils
@@ -4662,7 +4664,7 @@ begin
   end else
     ResultType := nil;
 
-  ProcDecl := TASTDelphiProc.CreateAsAnonymous(ImplScope);
+  ProcDecl := TASTDelphiProc.CreateAsAnonymous(Scope);
   ProcDecl.EntryScope := ProcScope;
   ProcDecl.ResultType := ResultType;
   ProcDecl.CreateProcedureTypeIfNeed(Scope);
@@ -8414,7 +8416,8 @@ begin
     FwdDeclState := dsNew;
 
   {create a new declaration}
-  if not Assigned(Proc) then
+  {even if a declaration with the same name has been found in another unit}
+  if not Assigned(Proc) or (Proc.Module <> Self) then
   begin
     Proc := TASTDelphiProc.Create(Scope, ID);
     Proc.EntryScope := ProcScope;
@@ -9606,7 +9609,7 @@ begin
   end;
 
   // for debug
-  FindIDNoAbort(Scope, FullID);
+  FindIDNoAbort(Scope, AID);
   ERRORS.E2003_UNDECLARED_IDENTIFIER(Self, AID);
   // return "unknown" to "keep parsing"
   Decl := Sys._UnknownConstant;
@@ -10085,8 +10088,20 @@ var
 begin
   Proc := EContext.SContext.Proc;
 
-  if not Assigned(Proc.Struct) then
-    ERRORS.E2075_THIS_FORM_OF_METHOD_CALL_ONLY_ALLOWED_IN_METHODS_OF_DERIVED_TYPES(Self, Lexer_Position);
+  while not Assigned(Proc.Struct) and Lexer_NotEof do
+  begin
+    // in case of an anonymous proc, find parent named procedure
+    if Proc.IsAnonymous then
+    begin
+      Proc := (Proc.Scope as TProcScope).Proc;
+      continue;
+    end else
+    begin
+      ERRORS.E2075_THIS_FORM_OF_METHOD_CALL_ONLY_ALLOWED_IN_METHODS_OF_DERIVED_TYPES(Self, Lexer_Position);
+      Result := Lexer_SkipTo(Scope, token_semicolon);
+      Exit;
+    end;
+  end;
 
   KW := EContext.SContext.Add(TASTKWInheritedCall) as TASTKWInheritedCall;
   Result := Lexer_NextToken(Scope);
