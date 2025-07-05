@@ -159,6 +159,9 @@ type
     FilesEditAction: TAction;
     Edit1: TMenuItem;
     N5: TMenuItem;
+    EditorPopup: TPopupMenu;
+    GoToLineAction: TAction;
+    GoToLine1: TMenuItem;
     procedure ASTParseRTLButtonClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure SearchButtonClick(Sender: TObject);
@@ -206,6 +209,8 @@ type
     procedure FilesEditActionUpdate(Sender: TObject);
     procedure lbFilesDblClick(Sender: TObject);
     procedure FilesEditActionExecute(Sender: TObject);
+    procedure GoToLineActionUpdate(Sender: TObject);
+    procedure GoToLineActionExecute(Sender: TObject);
   private
     { Private declarations }
     fSettings: IASTProjectSettings;
@@ -1500,6 +1505,21 @@ begin
   Result := TestScriptsPathEdit.Text;
   if IsRelativePath(Result) then
     Result := TPath.GetFullPath(TPath.Combine(ExtractFilePath(Application.ExeName), Result));
+end;
+
+procedure TfrmTestAppMain.GoToLineActionExecute(Sender: TObject);
+var
+  LValue: string;
+  LLineNum: Integer;
+begin
+  if InputQuery('Go To Line Number', 'Enter a Line Number:', {var} LValue) then
+    if TryStrToInt(LValue, {ot} LLineNum) then
+      edUnit.GotoLineAndCenter(LLineNum);
+end;
+
+procedure TfrmTestAppMain.GoToLineActionUpdate(Sender: TObject);
+begin
+  TAction(Sender).Enabled := edUnit.Focused;
 end;
 
 //procedure TestSetImplicit;

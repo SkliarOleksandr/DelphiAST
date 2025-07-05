@@ -937,6 +937,12 @@ object frmTestAppMain: TfrmTestAppMain
       OnExecute = FilesEditActionExecute
       OnUpdate = FilesEditActionUpdate
     end
+    object GoToLineAction: TAction
+      Caption = 'Go To Line Number...'
+      ShortCut = 16455
+      OnExecute = GoToLineActionExecute
+      OnUpdate = GoToLineActionUpdate
+    end
   end
   object ImageList1: TImageList
     ColorDepth = cd32Bit
@@ -1264,5 +1270,12 @@ object frmTestAppMain: TfrmTestAppMain
   object SynJSONSyn1: TSynJSONSyn
     Left = 128
     Top = 417
+  end
+  object EditorPopup: TPopupMenu
+    Left = 637
+    Top = 261
+    object GoToLine1: TMenuItem
+      Action = GoToLineAction
+    end
   end
 end

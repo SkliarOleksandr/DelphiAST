@@ -8937,8 +8937,8 @@ begin
       ERRORS.E2004_IDENTIFIER_REDECLARED(Self, ID);
     // ищем подходящую декларацию в списке перегруженных:
     while True do begin
-      // check only explicit parameters, the result type does not matter here
-      if ForwardDecl.SameDeclaration(ProcScope.ExplicitParams) then
+      // check only explicit parameters, result type also does matter here
+      if ForwardDecl.SameDeclaration(ProcScope.ExplicitParams, ResultType) then
       begin
         // нашли подходящую декларацию
         FwdDeclState := dsSame;
