@@ -174,7 +174,8 @@ uses
   ASTTest.Other.Platform1 in '..\TestScripts\Other\ASTTest.Other.Platform1.pas',
   ASTTest.Other.PlatformAndDeprecatedMix in '..\TestScripts\Other\ASTTest.Other.PlatformAndDeprecatedMix.pas',
   ASTTest.Consts.DateTime1 in '..\TestScripts\Consts\ASTTest.Consts.DateTime1.pas',
-  ASTTest.RTL.FileTypes1 in '..\TestScripts\RTL\ASTTest.RTL.FileTypes1.pas';
+  ASTTest.RTL.FileTypes1 in '..\TestScripts\RTL\ASTTest.RTL.FileTypes1.pas',
+  ASTTest.RTL.StrHelper1 in '..\TestScripts\RTL\ASTTest.RTL.StrHelper1.pas';
 
 {$R *.res}
 

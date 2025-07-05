@@ -78,6 +78,7 @@ uses
 // AnsiStrings
 // Character
 // Data.DB
+// Data.FmtBcd
 // Vcl.Forms
 // Vcl.ImgList
 // Vcl.ActnList

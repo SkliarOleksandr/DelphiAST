@@ -182,7 +182,8 @@ type
   end;
 
   TBuiltin_TypedPointer = class(TIDPointer)
-
+    function SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType; override;
+    function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
   end;
 
   TBuiltin_Variant = class(TIDVariant)
@@ -923,6 +924,28 @@ end;
 function TBuiltin_Real48.GetDataSize: Integer;
 begin
   Result := 6;
+end;
+
+{ TBuiltin_TypedPointer }
+
+function TBuiltin_TypedPointer.SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType;
+begin
+  case AOpID of
+    // pointer subtraction returns the length (integer)
+    opSubtract: Result := SYSUnit._NativeInt;
+  else
+    Result := inherited;
+  end;
+end;
+
+function TBuiltin_TypedPointer.SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType;
+begin
+  case AOpID of
+    // pointer subtraction returns the length (integer)
+    opSubtract: Result := SYSUnit._NativeInt;
+  else
+    Result := inherited;
+  end;
 end;
 
 end.
