@@ -223,6 +223,9 @@
         <DCCReference Include="..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.Generics2.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.ImplicitCall1.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.ImplicitCall2.pas"/>
+        <DCCReference Include="..\TestScripts\Procedures\Overloads\ASTTest.Procs.OverloadDecl1.pas"/>
+        <DCCReference Include="..\TestScripts\Procedures\Overloads\ASTTest.Procs.OverloadDecl2.pas"/>
+        <DCCReference Include="..\TestScripts\Procedures\Overloads\ASTTest.Procs.OverloadDecl3.pas"/>
         <DCCReference Include="..\TestScripts\Properties\ASTTest.Props.ArrayProp1.pas"/>
         <DCCReference Include="..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload1.pas"/>
         <DCCReference Include="..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload2.pas"/>
@@ -248,6 +251,8 @@
         <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.VirtualsOverlod1.pas"/>
         <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.DiffSigns1.pas"/>
         <DCCReference Include="..\TestScripts\Classes\Inheritance\ASTTest.Classes.Inheritance.Generics1.pas"/>
+        <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.OverloadMethodNoParams1.pas"/>
+        <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.OverloadMethodNoParams2.pas"/>
         <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.Helper1.pas"/>
         <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.Helper2.pas"/>
         <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.InheritedHelper.pas"/>

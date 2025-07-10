@@ -8206,9 +8206,14 @@ begin
       else
         Scope.AddProcedure(Proc);
       end;
-    end else begin
+    end else
+    begin
+      // special case when a method overloads method in the base class with no params
+      // in this case we have to not link to the base method
+      var LNoParams := (ForwardDecl.Struct <> Struct) and (Proc.ParamsCount = 0) and (ForwardDecl.ParamsCount = 0) ;
+
       // add to the overloads linked-list (if marked overload or override an overload proc)
-      if (pfOveload in ProcFlags) or (Assigned(Proc.InheritedProc) {and (pfOveload in ForwardDecl.Flags)}) then
+      if ((pfOveload in ProcFlags) and not LNoParams) or Assigned(Proc.InheritedProc) then
         Proc.PrevOverload := ForwardDecl;
 
       // override the declaration if the scope the same
