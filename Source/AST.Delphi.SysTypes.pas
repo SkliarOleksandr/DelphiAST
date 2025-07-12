@@ -80,7 +80,7 @@ type
     _OneExpression: TIDExpression;
     _MaxIntConstant: TIDIntConstant;
     _MaxIntExpression: TIDExpression;
-    _NullPtrConstant: TIDIntConstant;
+    _NullPtrConstant: TIDNullPtrConstant;
     _NullPtrExpression: TIDExpression;
     _EmptyStrConstant: TIDStringConstant;
     _EmptyStrExpression: TIDExpression;

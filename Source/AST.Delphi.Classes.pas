@@ -215,6 +215,7 @@ type
     function GetDeclUnitName: string; inline;
   protected
     function GetIsGeneric: Boolean; virtual;
+    function GetIsNullPtr: Boolean; virtual;
     function GetOriginalDecl: TIDDeclaration; virtual;
     function GetIndex: Integer; virtual;
     function GetCValue: TIDConstant; virtual;
@@ -246,6 +247,7 @@ type
     property IsAnonymous: Boolean read GetIsAnonymous;
     property IsGeneric: Boolean read GetIsGeneric;
     property IsSystem: Boolean read FSystemDecl;
+    property IsNullPtr: Boolean read GetIsNullPtr;
     property SpaceIndex: Integer read GetIndex;
     procedure IncRefCount(RCPath: UInt32); virtual; // добавляет зависимость
     procedure DecRefCount(RCPath: UInt32); virtual; // удаляет зависимость
@@ -1153,6 +1155,14 @@ type
     property Value: T read FValue write FValue;
   end;
 
+  TIDNullPtrConstant = class(TIDXXXConstant<Pointer>)
+  protected
+    function GetIsNullPtr: Boolean; override;
+  public
+    function AsInt64: Int64; override;
+    function AsString: string; override;
+  end;
+
   {int constant}
   TIDIntConstant = class(TIDXXXConstant<Int64>)
   protected
@@ -1392,6 +1402,7 @@ type
     function GetIsAnonymousConst: Boolean;
     function GetIsStaticVar: Boolean;
     function GetDeclarationID: TIdentifier;
+    function GetIsNullPtr: Boolean;
   protected
     function GetDataType: TIDType; virtual;
   public
@@ -1429,7 +1440,7 @@ type
     property IsParam: Boolean read GetIsParam;
     property IsNonAnonimousVariable: Boolean read GetIsNonAnonimousVariable;
     property IsUnknown: Boolean read GetIsUnknown;
-    //property IsNullableVariable: Boolean read GetIsNullableVariable;
+    property IsNullPtr: Boolean read GetIsNullPtr;
     property AsType: TIDType read GetAsType;
     property AsConst: TIDConstant read GetAsConst;
     property AsIntConst: TIDIntConstant read GetAsIntConst;
@@ -2822,6 +2833,11 @@ end;
 function TIDDeclaration.GetIsGeneric: Boolean;
 begin
   Result := DataTypeID = dtGeneric;
+end;
+
+function TIDDeclaration.GetIsNullPtr: Boolean;
+begin
+  Result := False;
 end;
 
 function TIDDeclaration.GetOriginalDecl: TIDDeclaration;
@@ -4859,7 +4875,7 @@ end;
 
 function TIDExpression.GetIsAnonymous: Boolean;
 begin
-  Result := FDeclaration.ID.Name = '';
+  Result := (FDeclaration.ID.Name = '');
 end;
 
 function TIDExpression.GetIsAnonymousConst: Boolean;
@@ -4900,6 +4916,11 @@ function TIDExpression.GetIsNonAnonimousVariable: Boolean;
 begin
   Result := (FDeclaration.ItemType = itVar) and
             (FDeclaration.ID.Name <> '');
+end;
+
+function TIDExpression.GetIsNullPtr: Boolean;
+begin
+  Result := fDeclaration.IsNullPtr;
 end;
 
 function TIDExpression.GetIsParam: Boolean;
@@ -9666,6 +9687,23 @@ end;
 function TIDProceduralConstant.AsString: string;
 begin
   Result := FValue.Name;
+end;
+
+{ TIDNullPtrConstant }
+
+function TIDNullPtrConstant.AsInt64: Int64;
+begin
+  Result := 0;
+end;
+
+function TIDNullPtrConstant.AsString: string;
+begin
+  Result := 'nil';
+end;
+
+function TIDNullPtrConstant.GetIsNullPtr: Boolean;
+begin
+  Result := True;
 end;
 
 initialization

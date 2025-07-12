@@ -1,4 +1,4 @@
-unit ASTTest.Consts.ProcTypeAsConst;
+unit ASTTest.Consts.ProcType1;
 
 interface
 
@@ -14,11 +14,12 @@ implementation
 
 procedure Test;
 begin
+  // do smth 
 end;
 
 procedure Main;
 begin
-  //CProc();
+  CProc();
 end;
 
 

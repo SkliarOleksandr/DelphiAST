@@ -213,6 +213,7 @@ type
   TSysImplicitNullPtrToAny = class(TSysOpImplicit)
   public
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
+    function Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; override;
   end;
 
   {implicit TVarRec -> Any}
@@ -1007,6 +1008,14 @@ end;
 function TSysImplicitNullPtrToAny.Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean;
 begin
   Result := Dst.IsReferenced or (Dst.DataTypeID = dtProcType);
+end;
+
+function TSysImplicitNullPtrToAny.Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
+begin
+  if Check(SContext, Src, Dst) <> nil then
+    Result := Src
+  else
+    Result := nil;
 end;
 
 { TSysImplicitPointerFromAny }

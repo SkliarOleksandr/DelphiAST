@@ -2061,7 +2061,7 @@ begin
 
   {если вызов был коссвенным, инлайн невозможен}
   Decl := PExpr.Declaration;
-  if Decl.ItemType = itVar then
+  if Decl.ItemType in [itVar, itConst] then
   begin
     {если переменная - поле класа, получаем ссылку на поле}
     //
@@ -5604,6 +5604,14 @@ begin
     if Assigned(LExplicitType) then
     begin
       Result := ParseVarDefaultValue(Scope, LExplicitType, {out} LExpr);
+      // if this is a constant with null (nil) value, we have to create a new constant with explicit type
+      if LExpr.IsNullPtr then
+      begin
+        // use TIDPointerConstant for now
+        LConst := TIDPointerConstant.Create(Scope, LConstID);
+        LConst.DataType := LExplicitType;
+        LExpr.Declaration := LConst;
+      end else
       if LExpr.IsAnonymous then
       begin
         LExpr.Declaration.DataType := LExplicitType;
@@ -5651,6 +5659,7 @@ begin
       LNewConst.ID := LConstID;
       LNewConst.DataType := LConst.DataType;
       LNewConst.AssignValue(LConst);
+      LNewConst.ExplicitDataType := LExplicitType;
       LConst := LNewConst;
     end;
 
@@ -9937,7 +9946,7 @@ begin
       Result := ParseBuiltinCall(Scope, Expr, EContext);
       Exit;
     end else
-    if (Expr.ItemType = itVar) and (Expr.ActualDataType is TIDProcType) then
+    if (Expr.ItemType in [itVar, itConst]) and (Expr.ActualDataType is TIDProcType) then
     begin
       CallExpr := TIDCastedCallExpression.Create(Expr.Declaration, Expr.TextPosition);
       TIDCastedCallExpression(CallExpr).DataType := Expr.DataType;

@@ -225,7 +225,7 @@ type
     function Get_EmptyStrExpression: TIDExpression;
     function Get_False: TIDBooleanConstant;
     function Get_FalseExpression: TIDExpression;
-    function Get_NullPtrConstant: TIDIntConstant;
+    function Get_NullPtrConstant: TIDNullPtrConstant;
     function Get_NullPtrExpression: TIDExpression;
     function Get_OneConstant: TIDIntConstant;
     function Get_OneExpression: TIDExpression;
@@ -285,7 +285,7 @@ type
     property _ZeroFloatExpression: TIDExpression read Get_ZeroFloatExpression;
     property _OneConstant: TIDIntConstant read Get_OneConstant;
     property _OneExpression: TIDExpression read Get_OneExpression;
-    property _NullPtrConstant: TIDIntConstant read Get_NullPtrConstant;
+    property _NullPtrConstant: TIDNullPtrConstant read Get_NullPtrConstant;
     property _NullPtrExpression: TIDExpression read Get_NullPtrExpression;
     property _EmptyStrExpression: TIDExpression read Get_EmptyStrExpression;
     property _Pointer: TIDPointer read Get_PointerType;
@@ -1045,7 +1045,7 @@ begin
   // null ptr type (special type for "nil" constant)
   fDecls._NullPtrType := TIDNullPointerType.CreateAsSystem(IntfScope, 'null ptr');
   // null ptr type constant
-  fDecls._NullPtrConstant := TIDIntConstant.Create(IntfScope, Identifier('nil'), fDecls._NullPtrType, 0);
+  fDecls._NullPtrConstant := TIDNullPtrConstant.Create(IntfScope, Identifier('nil'), fDecls._NullPtrType, nil);
   fDecls._NullPtrExpression := TIDExpression.Create(fDecls._NullPtrConstant);
   IntfScope.InsertID(fDecls._NullPtrConstant);
 
@@ -1519,7 +1519,7 @@ begin
   Result := fDecls._NativeUInt;
 end;
 
-function TSYSTEMUnit.Get_NullPtrConstant: TIDIntConstant;
+function TSYSTEMUnit.Get_NullPtrConstant: TIDNullPtrConstant;
 begin
   Result := fDecls._NullPtrConstant;
 end;
