@@ -144,6 +144,7 @@ uses
   ASTTest.Variants.Cmp in '..\TestScripts\Variants\ASTTest.Variants.Cmp.pas',
   ASTTest.Variants.TypeCast1 in '..\TestScripts\Variants\ASTTest.Variants.TypeCast1.pas',
   ASTTest.Variants.TypeCast2 in '..\TestScripts\Variants\ASTTest.Variants.TypeCast2.pas',
+  ASTTest.Variants.DynArray1 in '..\TestScripts\Variants\ASTTest.Variants.DynArray1.pas',
   ASTTest.RTL.TDictionaty1 in '..\TestScripts\RTL\ASTTest.RTL.TDictionaty1.pas',
   ASTTest.RTL.IEnumerable1 in '..\TestScripts\RTL\ASTTest.RTL.IEnumerable1.pas',
   ASTTest.RTL.SysUtils1 in '..\TestScripts\RTL\ASTTest.RTL.SysUtils1.pas',

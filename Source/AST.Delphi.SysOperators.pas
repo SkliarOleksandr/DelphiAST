@@ -588,7 +588,7 @@ function TSysImplicitVariantFromAny.Check(const SContext: TSContext; const Src: 
 begin
   if Src.DataTypeID in [dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean,
                         dtFloat32, dtFloat64, dtFloat80, dtCurrency, dtComp, dtNativeInt, dtNativeUInt, dtChar, dtAnsiChar,
-                        dtString, dtWideString, dtAnsiString, dtInterface] then
+                        dtString, dtWideString, dtAnsiString, dtInterface, dtDynArray] then
     Result := Self
   else
     Result := nil;

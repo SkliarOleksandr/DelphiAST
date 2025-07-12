@@ -271,6 +271,7 @@
         <DCCReference Include="..\TestScripts\Variants\ASTTest.Variants.Cmp.pas"/>
         <DCCReference Include="..\TestScripts\Variants\ASTTest.Variants.TypeCast1.pas"/>
         <DCCReference Include="..\TestScripts\Variants\ASTTest.Variants.TypeCast2.pas"/>
+        <DCCReference Include="..\TestScripts\Variants\ASTTest.Variants.DynArray1.pas"/>
         <DCCReference Include="..\TestScripts\RTL\ASTTest.RTL.TDictionaty1.pas"/>
         <DCCReference Include="..\TestScripts\RTL\ASTTest.RTL.IEnumerable1.pas"/>
         <DCCReference Include="..\TestScripts\RTL\ASTTest.RTL.SysUtils1.pas"/>
