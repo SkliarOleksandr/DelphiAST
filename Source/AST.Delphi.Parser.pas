@@ -4353,9 +4353,13 @@ begin
     begin
       Result := LProc;
       Inc(LMatchedCount);
-      // if a procedure is overridden, add the inherited to the skip-list
-      if Assigned(LProc.InheritedProc) then
-        LSkipArray := LSkipArray + [LProc.InheritedProc];
+      // if a procedure is overridden, add its inherited-s to the skip-list
+      var LInherited := LProc.InheritedProc;
+      while Assigned(LInherited) do
+      begin
+        LSkipArray := LSkipArray + [LInherited];
+        LInherited := LInherited.PrevOverload;
+      end;
     end;
     LProc := LProc.PrevOverload;
   until not Assigned(LProc);
