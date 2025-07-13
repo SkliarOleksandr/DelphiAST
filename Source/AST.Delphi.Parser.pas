@@ -9111,8 +9111,15 @@ begin
   CheckConstExpression(BoundExpr);
   HB := TIDConstant(BoundExpr.Declaration).AsInt64;
 
-  RDataTypeID := GetValueDataType(HB - LB);
-  RDataType := Sys.DataTypes[RDataTypeID];
+  if CRange.DataTypeID = dtRange then
+  begin
+    RDataTypeID := dtRange;
+    RDataType := (CRange.DataType as TIDRangeType).BaseType;
+  end else
+  begin
+    RDataTypeID := GetValueDataType(HB - LB);
+    RDataType := Sys.DataTypes[RDataTypeID];
+  end;
 
   Decl := TIDRangeType.Create(Scope, ID);
   Decl.LoDecl := CRange.Value.LBExpression.AsConst;

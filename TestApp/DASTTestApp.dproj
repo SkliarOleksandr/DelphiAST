@@ -309,6 +309,7 @@
         <DCCReference Include="..\TestScripts\Consts\ASTTest.Consts.DateTime1.pas"/>
         <DCCReference Include="..\TestScripts\RTL\ASTTest.RTL.FileTypes1.pas"/>
         <DCCReference Include="..\TestScripts\RTL\ASTTest.RTL.StrHelper1.pas"/>
+        <DCCReference Include="..\TestScripts\Ranges\ASTTest.Ranges.EnumRange1.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

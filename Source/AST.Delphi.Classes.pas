@@ -734,6 +734,7 @@ type
     fHiDecl: TIDConstant;
     procedure SetHiDecl(const Value: TIDConstant);
     procedure SetLoDecl(const Value: TIDConstant);
+    procedure SetBaseType(const Value: TIDOrdinal);
   protected
     function GetDisplayName: string; override;
     function GetIsInteger: Boolean; override;
@@ -743,12 +744,15 @@ type
     constructor Create(Scope: TScope; const Identifier: TIdentifier); override;
     procedure CreateStandardOperators; override;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
-    property BaseType: TIDOrdinal read fBaseType write fBaseType;
+    property BaseType: TIDOrdinal read fBaseType write SetBaseType;
     property LoDecl: TIDConstant read fLoDecl write SetLoDecl;
     property HiDecl: TIDConstant read fHiDecl write SetHiDecl;
     function ASTJsonDeclClass: TASTJsonDeclClass; override;
     function ToJson: TJsonASTDeclaration; override;
     function SysUnarOperator(AOpID: TOperatorID): TIDType; override;
+
+    function SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType; override;
+    function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
   end;
 
   {enum type}
@@ -7362,12 +7366,6 @@ end;
 procedure TIDRangeType.CreateStandardOperators;
 begin
   inherited;
-  OverloadBinarOperator2(opEqual, Self, SYSUnit._Boolean);
-  OverloadBinarOperator2(opNotEqual, Self, SYSUnit._Boolean);
-  OverloadBinarOperator2(opLess, Self, SYSUnit._Boolean);
-  OverloadBinarOperator2(opLessOrEqual, Self, SYSUnit._Boolean);
-  OverloadBinarOperator2(opGreater, Self, SYSUnit._Boolean);
-  OverloadBinarOperator2(opGreaterOrEqual, Self, SYSUnit._Boolean);
   OverloadExplicitFromAny(SYSUnit.Operators.ExplicitRangeFromAny);
   OverloadImplicitFromAny(SYSUnit.Operators.ImplicitRangeFromAny);
   OverloadImplicitToAny(SYSUnit.Operators.ImplicitRangeToAny);
@@ -7394,6 +7392,11 @@ begin
   Result := fBaseType.IsInteger;
 end;
 
+procedure TIDRangeType.SetBaseType(const Value: TIDOrdinal);
+begin
+  fBaseType := Value;
+end;
+
 procedure TIDRangeType.SetHiDecl(const Value: TIDConstant);
 begin
   fHiDecl := Value;
@@ -7404,6 +7407,42 @@ procedure TIDRangeType.SetLoDecl(const Value: TIDConstant);
 begin
   fLoDecl := Value;
   LowBound := Value.AsInt64;
+end;
+
+function TIDRangeType.SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType;
+begin
+  Result := nil;
+  case AOpID of
+    opEqual,
+    opNotEqual,
+    opLess,
+    opLessOrEqual,
+    opGreater,
+    opGreaterOrEqual: begin
+      if (ARight = Self) or (ARight = fBaseType) then
+        Result := SYSUnit._Boolean;
+    end;
+  else
+    Result := inherited;
+  end;
+end;
+
+function TIDRangeType.SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType;
+begin
+  Result := nil;
+  case AOpID of
+    opEqual,
+    opNotEqual,
+    opLess,
+    opLessOrEqual,
+    opGreater,
+    opGreaterOrEqual: begin
+      if (ALeft = Self) or (ALeft = fBaseType) then
+        Result := SYSUnit._Boolean;
+    end;
+  else
+    Result := inherited;
+  end;
 end;
 
 function TIDRangeType.SysUnarOperator(AOpID: TOperatorID): TIDType;
