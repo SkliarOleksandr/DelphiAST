@@ -1176,7 +1176,8 @@ begin
         // workaround for a case when param or field or property can be named as type
         if Decl.ItemType in [itVar, itProperty] then
         begin
-          var OuterDecl := FindIDNoAbort(Scope.Parent, ID);
+          // let's find it again in the more "earlier" scope
+          var OuterDecl := FindIDNoAbort(Decl.Scope.Parent, ID);
           if Assigned(OuterDecl) then
             Decl := OuterDecl;
         end;
