@@ -1019,7 +1019,7 @@ begin
   TIDString(_UnicodeString).ElementDataType := _WideChar;
   //===============================================================
   fDecls._Variant := RegisterType('Variant', TBuiltin_Variant, dtVariant);
-  fDecls._OleVariant := RegisterType('OleVariant', TBuiltin_OleVariant, dtVariant);
+  fDecls._OleVariant := RegisterTypeAlias('OleVariant', fDecls._Variant);
   //===============================================================
   fDecls._WideString := RegisterType('WideString', TBuiltin_WideString, dtWideString);
   TIDString(_WideString).ElementDataType := _WideChar;

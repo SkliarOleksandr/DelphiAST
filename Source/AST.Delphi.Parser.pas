@@ -2157,7 +2157,7 @@ begin
     case LInstanceEpr.ItemType of
       // case #1: TMyClass.Create()
       itType: LInstanceType := LInstanceEpr.AsType;
-      itVar: begin
+      itVar, itProperty: begin
         // case #2: <class_of variable>.Create()
         if LInstanceEpr.DataType is TIDClassOf then
           LInstanceType := TIDClassOf(LInstanceEpr.DataType).ReferenceType
@@ -4787,6 +4787,7 @@ begin
   IdxCount := 0;
   InitEContext(InnerEContext, EContext.SContext, ExprNested);
   var Indexes: TIDExpressions := [];
+  // parse array indexes
   while True do begin
     Lexer_NextToken(Scope);
     var ASTExpr: TASTExpression := nil;
@@ -4831,11 +4832,11 @@ begin
   if (IdxCount > DimensionsCount) and ((ArrType.DataTypeID <> dtVariant) and (ArrType <> Sys._UnknownType)) then
     ERRORS.NEED_SPECIFY_NINDEXES(ArrDecl);
 
-  var ATmpVar := GetTMPVar(EContext, DataType);
-  var AExpr := TIDArrayExpression.Create(ATmpVar, ArrExpr.TextPosition);
-  AExpr.DataType := DataType;
-  AExpr.Indexes := Indexes;
-  EContext.RPNPushExpression(AExpr);
+  var LTmpVar := GetTMPVar(EContext, DataType);
+  var LResultExpr := TIDArrayExpression.Create(LTmpVar, ArrExpr.TextPosition);
+  LResultExpr.DataType := DataType;
+  LResultExpr.Indexes := Indexes;
+  EContext.RPNPushExpression(LResultExpr);
 end;
 
 function TASTDelphiUnit.ParseAsmSpecifier: TTokenID;
@@ -5043,18 +5044,20 @@ begin
 
     // first default property
     var LExistingProp := Struct.DefaultProperty;
-    if not Assigned(LExistingProp) then
-    begin
-      Struct.DefaultProperty := Prop;
-      Prop.DefaultIndexedProperty := True;
-    end else
+
+    Struct.DefaultProperty := Prop;
+    Prop.DefaultIndexedProperty := True;
+
+    if Assigned(LExistingProp) then
     begin
       // overloading array property
       if not SameParams(Prop.Params.ExplicitParams,
                         LExistingProp.Params.ExplicitParams) or (LExistingProp.Struct <> Struct) then
       begin
         Prop.PrevOverload := LExistingProp;
-        Exit;
+        // don't add a new overloaded property in the same struct
+        if LExistingProp.Struct = Struct then
+          Exit;
       end else
         ERRORS.DEFAULT_PROP_ALREADY_EXIST(Prop);
     end;
