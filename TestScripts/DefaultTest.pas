@@ -10,7 +10,8 @@ interface
 //uses System.Rtti;
 // uses System.Devices;
 //uses System.Win.ScktComp;
-uses System.AnsiStrings;
+  uses FireDac.Comp.Client;
+
 // uses System.Internal.DebugUtils;
 //uses System.Classes;
 //uses System.Json;
