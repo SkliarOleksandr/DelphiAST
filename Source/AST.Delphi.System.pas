@@ -68,8 +68,6 @@ type
   TSystemOperatos = record
   public
     // implicits
-    ImplicitVariantToAny,
-    ImplicitVariantFromAny,
     ImplicitStringFromAny,
     ImplicitCharToAnsiChar,
     ImplicitCharToString,
@@ -402,14 +400,15 @@ end;
 { TSYSTEMUnit }
 
 procedure TSYSTEMUnit.AddImplicists;
+
   procedure AddBaseImplicits(DataType: TIDType);
   var
     i: TDataTypeID;
   begin
     for i := dtInt8 to dtComp do
       DataType.OverloadImplicitTo(DataTypes[i]);
-    DataType.OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   end;
+
 var
   i: TDataTypeID;
 begin
@@ -425,13 +424,6 @@ begin
   AddBaseImplicits(_NativeInt);
   AddBaseImplicits(_NativeUInt);
 
-  // Variant
-  for i := dtInt8 to dtVariant do
-    _Variant.OverloadImplicitTo(DataTypes[i], Operators.ImplicitVariantToAny);
-
-  _Variant.OverloadImplicitToAny(Operators.ImplicitVariantToAny);
-  _Variant.OverloadImplicitFromAny(Operators.ImplicitVariantFromAny);
-
   // float32
   with _Float32 do begin
     OverloadImplicitTo(_Float32);
@@ -439,7 +431,6 @@ begin
     OverloadImplicitTo(_Float80);
     OverloadImplicitTo(_Currency);
     OverloadImplicitTo(_Comp);
-    OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   end;
 
   // Float64
@@ -449,7 +440,6 @@ begin
     OverloadImplicitTo(_Float80);
     OverloadImplicitTo(_Currency);
     OverloadImplicitTo(_Comp);
-    OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   end;
 
   // Float80
@@ -458,7 +448,6 @@ begin
     OverloadImplicitTo(_Float64);
     OverloadImplicitTo(_Currency);
     OverloadImplicitTo(_Comp);
-    OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   end;
 
   // Currency
@@ -467,7 +456,6 @@ begin
     OverloadImplicitTo(_Float64);
     OverloadImplicitTo(_Float80);
     OverloadImplicitTo(_Comp);
-    OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   end;
 
   // Comp
@@ -476,11 +464,9 @@ begin
     OverloadImplicitTo(_Float64);
     OverloadImplicitTo(_Float80);
     OverloadImplicitTo(_Currency);
-    OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   end;
 
   // UnicodeString
-  _UnicodeString.OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   _UnicodeString.OverloadImplicitTo(_AnsiString, Operators.ImplicitStringToAnsiString);
   _UnicodeString.OverloadImplicitTo(_TGuid, Operators.ImplicitStringToGUID);
   _UnicodeString.OverloadImplicitTo(_PWideChar, Operators.ImplicitStringToPChar);
@@ -491,7 +477,6 @@ begin
 
   // ShortString
   _ShortString.OverloadImplicitTo(_AnsiString);
-  _ShortString.OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   _ShortString.OverloadImplicitTo(_PWideChar, Operators.ImplicitStringToPChar);
   _ShortString.OverloadImplicitTo(_PAnsiChar, Operators.ImplicitStringToPChar);
   _ShortString.OverloadImplicitTo(_UnicodeString, Operators.ImplicitAnsiStringToString);
@@ -499,7 +484,6 @@ begin
   _ShortString.OverloadImplicitFrom(_PAnsiChar);
 
   // AnsiString
-  _AnsiString.OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   _AnsiString.OverloadImplicitTo(_PWideChar, Operators.ImplicitStringToPChar);
   _AnsiString.OverloadImplicitTo(_PAnsiChar, Operators.ImplicitStringToPChar);
   _AnsiString.OverloadImplicitTo(_UnicodeString, Operators.ImplicitAnsiStringToString);
@@ -510,7 +494,6 @@ begin
   _AnsiString.OverloadImplicitFromAny(Operators.ImplicitAnsiStringFromAny);
 
   // WideString
-  _WideString.OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   _WideString.OverloadImplicitTo(_PWideChar, Operators.ImplicitStringToPChar);
   _WideString.OverloadImplicitTo(_PAnsiChar, Operators.ImplicitStringToPChar);
   _WideString.OverloadImplicitTo(_AnsiString);
@@ -525,7 +508,6 @@ begin
   _WideChar.OverloadImplicitTo(_UnicodeString, Operators.ImplicitCharToString);
   _WideChar.OverloadImplicitTo(_AnsiString, Operators.ImplicitCharToAnsiString);
   _WideChar.OverloadImplicitTo(_AnsiChar, Operators.ImplicitCharToAnsiChar);
-  _WideChar.OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   _WideChar.OverloadImplicitTo(_WideString);
 
   // AnsiChar
@@ -534,13 +516,11 @@ begin
   _AnsiChar.OverloadImplicitTo(_AnsiString, Operators.ImplicitAnsiCharToAnsiString);
   _AnsiChar.OverloadImplicitTo(_UnicodeString, Operators.ImplicitAnsiCharToString);
   _AnsiChar.OverloadImplicitTo(_WideChar, Operators.ImplicitAnsiCharToWideChar);
-  _AnsiChar.OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
 
   _MetaType.OverloadImplicitTo(_TGuid, Operators.ImplicitMetaClassToGUID);
 
   // Boolean
   _Boolean.OverloadImplicitTo(_Boolean);
-  _Boolean.OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
 end;
 
 procedure TSYSTEMUnit.AddStandardExplicitsTo(const Sources: array of TDataTypeID; Dest: TIDType);
@@ -1735,8 +1715,6 @@ end;
 procedure TSystemOperatos.Init(Scope: TScope);
 begin
   // implicit
-  ImplicitVariantToAny := TSysImplicitVariantToAny.CreateAsSystem(Scope);
-  ImplicitVariantFromAny := TSysImplicitVariantFromAny.CreateAsSystem(Scope);
   ImplicitStringFromAny := TSysImplicitStringFromAny.CreateAsSystem(Scope);
   ImplicitCharToAnsiChar := TSysImplicitCharToAnsiChar.CreateAsSystem(Scope);
   ImplicitCharToString := TSysImplicitCharToString.CreateAsSystem(Scope);

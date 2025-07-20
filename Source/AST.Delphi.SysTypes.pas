@@ -191,6 +191,8 @@ type
     function SysUnarOperator(AOpID: TOperatorID): TIDType; override;
     function SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType; override;
     function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
+    function MatchImplicitTo(ADst: TIDType): Boolean; override;
+    function MatchImplicitFrom(ASrc: TIDType): Boolean; override;
     function MatchExplicitTo(ADst: TIDType): Boolean; override;
     function MatchExplicitFrom(ASrc: TIDType): Boolean; override;
   end;
@@ -894,6 +896,22 @@ end;
 function TBuiltin_Variant.MatchExplicitTo(ADst: TIDType): Boolean;
 begin
   Result := MatchExplicitFrom(ADst);
+end;
+
+function TBuiltin_Variant.MatchImplicitFrom(ASrc: TIDType): Boolean;
+begin
+  Result := (ASrc.DataTypeID in
+    [dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean, dtEnum,
+     dtFloat32, dtFloat64, dtFloat80, dtCurrency, dtComp, dtNativeInt, dtNativeUInt, dtChar, dtAnsiChar, dtEnum,
+     dtString, dtAnsiString, dtWideString, dtVariant, dtInterface, dtDynArray]);
+end;
+
+function TBuiltin_Variant.MatchImplicitTo(ADst: TIDType): Boolean;
+begin
+  Result := (ADst.DataTypeID in
+    [dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean, dtEnum,
+     dtFloat32, dtFloat64, dtFloat80, dtCurrency, dtComp, dtNativeInt, dtNativeUInt, dtChar, dtAnsiChar, dtEnum,
+     dtString, dtAnsiString, dtWideString, dtVariant, dtInterface, dtDynArray]);
 end;
 
 function TBuiltin_Variant.SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType;
