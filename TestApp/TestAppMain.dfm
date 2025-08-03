@@ -97,6 +97,7 @@ object frmTestAppMain: TfrmTestAppMain
             OnClick = VTTestsClick
             OnDrawText = VTTestsDrawText
             OnGetText = VTTestsGetText
+            OnFreeNode = VTTestsFreeNode
             OnGetImageIndex = VTTestsGetImageIndex
             OnNodeClick = VTTestsNodeClick
             OnNodeDblClick = VTTestsNodeDblClick

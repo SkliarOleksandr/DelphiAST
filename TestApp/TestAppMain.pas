@@ -208,6 +208,7 @@ type
     procedure DelphiDirComboBoxChange(Sender: TObject);
     procedure ParseSelectedTestActionUpdate(Sender: TObject);
     procedure ParseSelectedTestActionExecute(Sender: TObject);
+    procedure VTTestsFreeNode(Sender: TBaseVirtualTree; Node: PVirtualNode);
     procedure FilesEditActionUpdate(Sender: TObject);
     procedure lbFilesDblClick(Sender: TObject);
     procedure FilesEditActionExecute(Sender: TObject);
@@ -436,6 +437,7 @@ begin
   Prj.AddUnit(UN, nil);
 
   ParseProject(Prj, {AClearOutput:} True, {AShowResults:} True, {ASaveAST:} False);
+  Prj.ClearEvents;
 end;
 
 procedure TfrmTestAppMain.ASTParseActionUpdate(Sender: TObject);
@@ -1264,6 +1266,14 @@ begin
 
   if LTestData.Failed then
     TargetCanvas.Font.Color := clRed;
+end;
+
+procedure TfrmTestAppMain.VTTestsFreeNode(Sender: TBaseVirtualTree; Node: PVirtualNode);
+var
+  LTestData: TTestData;
+begin
+  LTestData := Node.GetData<TTestData>;
+  LTestData.Free;
 end;
 
 procedure TfrmTestAppMain.VTTestsGetImageIndex(Sender: TBaseVirtualTree; Node: PVirtualNode; Kind: TVTImageKind;
