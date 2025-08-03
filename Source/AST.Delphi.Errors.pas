@@ -288,6 +288,7 @@ type
     class procedure E2021_CLASS_TYPE_REQUIRED(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2022_CLASS_HELPER_TYPE_REQUIRED(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2026_CONSTANT_EXPRESSION_EXPECTED(const AModule: IASTModule; const APosition: TTextPosition);
+    class procedure E2029_ID_EXPECTED_BUT_FOUND(const AModule: IASTModule; const AActual: string; const APosition: TTextPosition);
     class procedure E2029_TOKEN_EXPECTED_BUT_ID_FOUND(const AModule: IASTModule; AExpectedToken: TTokenID; const AID: TIdentifier);
     class procedure E2029_EXPECTED_BUT_FOUND(const AModule: IASTModule; const AExpected, AActual: string; const APosition: TTextPosition);
     class procedure E2033_TYPES_OF_ACTUAL_AND_FORMAL_VAR_PARAMETER_MUST_BE_IDENTICAL(const AModule: IASTModule; const APosition: TTextPosition);
@@ -310,6 +311,8 @@ type
     class procedure E2205_INTERFACE_TYPE_REQUIRED(const AModule: IASTModule; const APosition: TTextPosition); static;
     class procedure E2250_THERE_IS_NO_OVERLOADED_VERSION_THAT_CAN_BE_CALLED_WITH_THESE_ARGUMENTS(const AModule: IASTModule; AExpression: TIDExpression);
     class procedure E2251_AMBIGUOUS_OVERLOADED_CALL(const AModule: IASTModule; AExpression: TIDExpression);
+    class procedure E2258_IMPLEMENTS_CLAUSE_ONLY_ALLOWED_WITHIN_CLASS_TYPES(const AModule: IASTModule; const APosition: TTextPosition);
+    class procedure E2265_INTERFACE_NOT_MENTIONED_IN_INTERFACE_LIST(const AModule: IASTModule; const AID: TIdentifier);
     class procedure E2232_INTERFACE_HAS_NO_INTERFACE_IDENTIFICATION(const AModule: IASTModule; ADecl: TIDDeclaration);
     class procedure E2430_FOR_IN_STATEMENT_CANNOT_OPERATE_ON_COLLECTION_TYPE(const AModule: IASTModule; const ATypeName: string; const ATextPosition: TTextPosition);
     class procedure E2436_TYPE_NOT_ALLOWED_IN_ANONYMOUS_OR_LOCAL_RECORD_TYPE(const AModule: IASTModule; const ATextPosition: TTextPosition);
@@ -642,6 +645,12 @@ begin
   AModule.PutError('E2029 ''%s'' expected but ''%s'' found', [AExpected, AActual], APosition, {ACritical:} True);
 end;
 
+class procedure TASTDelphiErrors.E2029_ID_EXPECTED_BUT_FOUND(const AModule: IASTModule; const AActual: string;
+  const APosition: TTextPosition);
+begin
+  AModule.PutError('E2029 Identifier expected but ''%s'' found', [AActual], APosition, {ACritical:} True);
+end;
+
 class procedure TASTDelphiErrors.E2029_TOKEN_EXPECTED_BUT_ID_FOUND(const AModule: IASTModule; AExpectedToken: TTokenID; const AID: TIdentifier);
 begin
   E2029_EXPECTED_BUT_FOUND(AModule, AModule.Lexer_TokenText(Ord(AExpectedToken)), AID.Name, AID.TextPosition);
@@ -762,6 +771,18 @@ end;
 class procedure TASTDelphiErrors.E2251_AMBIGUOUS_OVERLOADED_CALL(const AModule: IASTModule; AExpression: TIDExpression);
 begin
   AModule.PutError('E2251 Ambiguous overloaded call to ''%s''', [AExpression.Declaration.Name], AExpression.TextPosition);
+end;
+
+class procedure TASTDelphiErrors.E2258_IMPLEMENTS_CLAUSE_ONLY_ALLOWED_WITHIN_CLASS_TYPES(const AModule: IASTModule;
+  const APosition: TTextPosition);
+begin
+  AModule.PutError('E2258 Implements clause only allowed within class types', APosition);
+end;
+
+class procedure TASTDelphiErrors.E2265_INTERFACE_NOT_MENTIONED_IN_INTERFACE_LIST(const AModule: IASTModule;
+  const AID: TIdentifier);
+begin
+  AModule.PutError('E2265 Interface ''%s'' not mentioned in interface list', [AID.Name], AID.TextPosition);
 end;
 
 class procedure TASTDelphiErrors.E2430_FOR_IN_STATEMENT_CANNOT_OPERATE_ON_COLLECTION_TYPE(const AModule: IASTModule;
@@ -1178,7 +1199,7 @@ var
   ArgStr: string;
 begin
   for var Item in CallArgs do
-    ArgStr := AddStringSegment(ArgStr, Item.DataTypeName, ',');
+    ArgStr := AddStringSegment(ArgStr, Item.DataTypeName, ', ');
 
   AbortWork(sErrorOverload + #13#10 + 'Call argumensts: ' + ArgStr +
                              #13#10 + CallExpr.AsProcedure.GetAllOverloadSignatures,

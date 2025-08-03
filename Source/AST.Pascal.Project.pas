@@ -124,7 +124,7 @@ type
     function GetStringConstant(const Value: string): Integer; overload;
     function GetStringConstant(const StrConst: TIDStringConstant): Integer; overload;
     function FindUnitFile(const AUnitName: string; const AModule: IASTModule; const AFileExt: string = ''): string;
-    function FindParsedUnit(const AUnitName: string): IASTPascalUnit;
+    function FindParsedUnit(const AUnitName: string; AErrorIfNotFound: Boolean = True): IASTPascalUnit;
     function UsesUnit(const AUnitName, AUnitPath: string; const AModule: IASTModule): IASTPascalUnit;
     function FindType(const AUnitName, ATypeName: string): TASTDeclaration;
     function GetMessages: ICompilerMessages;
@@ -353,16 +353,9 @@ begin
     Result := AnsiCompareStr(Left.StrValue, Right.StrValue);
 end;
 
-function TPascalProject.FindParsedUnit(const AUnitName: string): IASTPascalUnit;
+function TPascalProject.FindParsedUnit(const AUnitName: string; AErrorIfNotFound: Boolean): IASTPascalUnit;
 begin
-  for var LIndex := 0 to FUnits.Count - 1 do
-  begin
-    var LUnitName := TPascalUnit(FUnits[LIndex]).Name;
-    if AnsiCompareText(LUnitName, AUnitName) = 0 then
-      Exit(FUnits[LIndex]);
-  end;
-
-  if not fImplicitUnits.TryGetValue(LowerCase(AUnitName), {out} Result) then
+  if not fImplicitUnits.TryGetValue(LowerCase(AUnitName), {out} Result) and AErrorIfNotFound then
     raise Exception.CreateFmt('Unit ''%s'' not found', [AUnitName]);
 end;
 
@@ -404,12 +397,17 @@ begin
   SUnitName := FindUnitFile(AUnitName, AModule, '.pas');
   if SUnitName <> '' then
   begin
-    Result := OpenUnit(SUnitName);
-    // add a unit to implicit unit list
-    if not fImplicitUnits.TryAdd(LowerCase(AUnitName), Result) then
-      raise ECompilerInternalError.CreateFmt(sUnitAlreadyExistFmt, [AUnitName]);
+    var LUnitFileNameOnly := TPath.GetFileNameWithoutExtension(SUnitName);
+    Result := FindParsedUnit(LUnitFileNameOnly, {AErrorIfNotFound:} False);
+    if not Assigned(Result) then
+    begin
+      Result := OpenUnit(SUnitName);
+      // add a unit to implicit unit list
+      if not fImplicitUnits.TryAdd(LowerCase(AUnitName), Result) then
+        raise ECompilerInternalError.CreateFmt(sUnitAlreadyExistFmt, [AUnitName]);
 
-    fAllUnits.Add(Result);
+      fAllUnits.Add(Result);
+    end;
   end else
     Result := nil;
 end;

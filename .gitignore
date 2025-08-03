@@ -66,3 +66,4 @@ __recovery/
 *.stat
 *.delphilsp.json
 *.ini
+*.astjson

@@ -2,6 +2,8 @@ unit ASTTest.Generics.MixedConstr;
 
 interface
 
+{$HINTS OFF}
+
 type
 
   TMyClass1<T: class, constructor> = class

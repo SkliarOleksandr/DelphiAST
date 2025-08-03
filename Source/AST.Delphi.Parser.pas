@@ -33,12 +33,17 @@ uses
 // System.SysUtils
 // System.SysConst
 // system.Classes
+// system.StrUtils
+// System.AnsiStrings
 // System.DateUtils
+// System.Devices
 // System.IOUtils
+// System.Internal.DebugUtils
 // system.Rtti
 // System.JSON
 // System.JSON.Types
 // System.JSON.Converters
+// System.Win.ScktComp
 // REST.JsonReflect
 // system.Types
 // system.TypInfo
@@ -73,6 +78,7 @@ uses
 // AnsiStrings
 // Character
 // Data.DB
+// Data.FmtBcd
 // Vcl.Forms
 // Vcl.ImgList
 // Vcl.ActnList
@@ -276,7 +282,7 @@ type
     procedure CheckClassOrIntfType(Expression: TIDExpression); overload;
     procedure CheckClassOrClassOfOrIntfType(Expression: TIDExpression); overload;
     procedure CheckClassOrIntfType(DataType: TIDType; const TextPosition: TTextPosition); overload;
-    class procedure CheckInterfaceType(Expression: TIDExpression); static; inline;
+    procedure CheckInterfaceType(Expression: TIDExpression); inline;
     procedure CheckIncompleteType(Fields: TScope);
     class procedure CheckAccessMember(SContext: PSContext; Decl: TIDDeclaration; const ID: TIdentifier);
     class procedure CheckIntConstInRange(const Expr: TIDExpression; HiBount, LowBound: Int64); static;
@@ -450,6 +456,7 @@ type
     function ParsePropertyGetter(Scope: TScope; AProp: TIDProperty): TTokenID;
     function ParsePropertySetter(Scope: TScope; AProp: TIDProperty): TTokenID;
     function ParsePropertyStored(Scope: TScope; AProp: TIDProperty): TTokenID;
+    function ParsePropertyImplements(Scope: TScope; AProp: TIDProperty): TTokenID;
     function ParseVarDefaultValue(Scope: TScope; DataType: TIDType; out DefaultValue: TIDExpression): TTokenID;
     function ParseVarStaticArrayDefaultValue(Scope: TScope; ArrType: TIDArray; out DefaultValue: TIDExpression): TTokenID;
     function ParseVarRecordDefaultValue(Scope: TScope; Struct: TIDStructure; out DefaultValue: TIDExpression): TTokenID;
@@ -499,7 +506,8 @@ type
     function DoParse(Scope: TScope; AFirstToken: TTokenID; ACompileIntfOnly: Boolean): TCompilerResult;
     function Compile(ACompileIntfOnly: Boolean; RunPostCompile: Boolean = True): TCompilerResult; override;
     function CompileIntfOnly: TCompilerResult; override;
-    function CompileSource(Scope: TScope; const AFileName: string; const ASource: string): ICompilerMessages;
+    function CompileSource(Scope: TScope; const AFileName: string; const ASource: string): ICompilerMessages; overload;
+    function CompileSource(Scope: TScope; const ASource: string): ICompilerMessages; overload;
     constructor Create(const Project: IASTProject; const FileName: string; const Source: string = ''); override;
     destructor Destroy; override;
   end;
@@ -1168,7 +1176,8 @@ begin
         // workaround for a case when param or field or property can be named as type
         if Decl.ItemType in [itVar, itProperty] then
         begin
-          var OuterDecl := FindIDNoAbort(Scope.Parent, ID);
+          // let's find it again in the more "earlier" scope
+          var OuterDecl := FindIDNoAbort(Decl.Scope.Parent, ID);
           if Assigned(OuterDecl) then
             Decl := OuterDecl;
         end;
@@ -1571,7 +1580,7 @@ begin
     {check args count}
     if LBuiltin.ParamsCount >= 0 then
     begin
-      if ArgsCount > LBuiltin.ParamsCount then
+      if (ArgsCount > LBuiltin.ParamsCount) and not LBuiltin.IsVarArgs then
         ERRORS.E2034_TOO_MANY_ACTUAL_PARAMETERS(Self, CallExpr.TextPosition)
       else
       if ArgsCount < LBuiltin.ParamsCount then
@@ -2053,7 +2062,7 @@ begin
 
   {если вызов был коссвенным, инлайн невозможен}
   Decl := PExpr.Declaration;
-  if Decl.ItemType = itVar then
+  if Decl.ItemType in [itVar, itConst] then
   begin
     {если переменная - поле класа, получаем ссылку на поле}
     //
@@ -2148,7 +2157,7 @@ begin
     case LInstanceEpr.ItemType of
       // case #1: TMyClass.Create()
       itType: LInstanceType := LInstanceEpr.AsType;
-      itVar: begin
+      itVar, itProperty: begin
         // case #2: <class_of variable>.Create()
         if LInstanceEpr.DataType is TIDClassOf then
           LInstanceType := TIDClassOf(LInstanceEpr.DataType).ReferenceType
@@ -2875,6 +2884,11 @@ begin
   Result := Compile({ACompileIntfOnly:} True);
 end;
 
+function TASTDelphiUnit.CompileSource(Scope: TScope; const ASource: string): ICompilerMessages;
+begin
+  Result := CompileSource(Scope, {AFileName:} '', ASource);
+end;
+
 function TASTDelphiUnit.CompileSource(Scope: TScope; const AFileName: string; const ASource: string): ICompilerMessages;
 var
   ParserState: TParserPosition;
@@ -3369,11 +3383,11 @@ end;
 function TASTDelphiUnit.FindAll(Scope: TScope; const ID: TIdentifier): TIDDeclArray;
 begin
   Result := [];
-  Scope.FindIDRecurcive(ID.Name, {var} Result);
+  Scope.FindIDRecurcive(ID.Name, fImplHelpers, {var} Result);
   if not Assigned(Result) then
   begin
     // for debug:
-    Scope.FindIDRecurcive(ID.Name, {var} Result);
+    Scope.FindIDRecurcive(ID.Name, fImplHelpers, {var} Result);
     ERRORS.UNDECLARED_ID(ID);
   end;
 end;
@@ -4340,9 +4354,13 @@ begin
     begin
       Result := LProc;
       Inc(LMatchedCount);
-      // if a procedure is overridden, add the inherited to the skip-list
-      if Assigned(LProc.InheritedProc) then
-        LSkipArray := LSkipArray + [LProc.InheritedProc];
+      // if a procedure is overridden, add its inherited-s to the skip-list
+      var LInherited := LProc.InheritedProc;
+      while Assigned(LInherited) do
+      begin
+        LSkipArray := LSkipArray + [LInherited];
+        LInherited := LInherited.PrevOverload;
+      end;
     end;
     LProc := LProc.PrevOverload;
   until not Assigned(LProc);
@@ -4652,7 +4670,7 @@ begin
   end else
     ResultType := nil;
 
-  ProcDecl := TASTDelphiProc.CreateAsAnonymous(ImplScope);
+  ProcDecl := TASTDelphiProc.CreateAsAnonymous(Scope);
   ProcDecl.EntryScope := ProcScope;
   ProcDecl.ResultType := ResultType;
   ProcDecl.CreateProcedureTypeIfNeed(Scope);
@@ -4689,13 +4707,9 @@ var
   DataType: TIDType;
 begin
   ArrExpr := EContext.RPNPopExpression();
-  ArrDecl := ArrExpr.Declaration;
   // auto resolve function call when missed parentheses
-  if (ArrDecl.ItemType = itProcedure) and Assigned(TIDProcedure(ArrDecl).ResultType) then
-  begin
-    ArrDecl := EContext.Proc.GetTMPVar(Scope, TIDProcedure(ArrDecl).ResultType);
-    ArrExpr := TIDExpression.Create(ArrDecl, ArrExpr.TextPosition);
-  end;
+  ArrExpr := CheckAndCallFuncImplicit(EContext, ArrExpr);
+  ArrDecl := ArrExpr.Declaration;
   ArrType := ArrExpr.ActualDataType;
   DataType := nil;
   DimensionsCount := 0;
@@ -4773,6 +4787,7 @@ begin
   IdxCount := 0;
   InitEContext(InnerEContext, EContext.SContext, ExprNested);
   var Indexes: TIDExpressions := [];
+  // parse array indexes
   while True do begin
     Lexer_NextToken(Scope);
     var ASTExpr: TASTExpression := nil;
@@ -4817,11 +4832,11 @@ begin
   if (IdxCount > DimensionsCount) and ((ArrType.DataTypeID <> dtVariant) and (ArrType <> Sys._UnknownType)) then
     ERRORS.NEED_SPECIFY_NINDEXES(ArrDecl);
 
-  var ATmpVar := GetTMPVar(EContext, DataType);
-  var AExpr := TIDArrayExpression.Create(ATmpVar, ArrExpr.TextPosition);
-  AExpr.DataType := DataType;
-  AExpr.Indexes := Indexes;
-  EContext.RPNPushExpression(AExpr);
+  var LTmpVar := GetTMPVar(EContext, DataType);
+  var LResultExpr := TIDArrayExpression.Create(LTmpVar, ArrExpr.TextPosition);
+  LResultExpr.DataType := DataType;
+  LResultExpr.Indexes := Indexes;
+  EContext.RPNPushExpression(LResultExpr);
 end;
 
 function TASTDelphiUnit.ParseAsmSpecifier: TTokenID;
@@ -4996,6 +5011,10 @@ begin
     end;
   end;
 
+  // implements
+  if Lexer_IsCurrentToken(tokenD_implements) then
+    Result := ParsePropertyImplements(Scope, Prop);
+
   // stored propery (note: stored is ambiguous keyword)
   if Lexer_IsCurrentToken(tokenD_stored) then
     Result := ParsePropertyStored(Scope, Prop);
@@ -5025,18 +5044,20 @@ begin
 
     // first default property
     var LExistingProp := Struct.DefaultProperty;
-    if not Assigned(LExistingProp) then
-    begin
-      Struct.DefaultProperty := Prop;
-      Prop.DefaultIndexedProperty := True;
-    end else
+
+    Struct.DefaultProperty := Prop;
+    Prop.DefaultIndexedProperty := True;
+
+    if Assigned(LExistingProp) then
     begin
       // overloading array property
       if not SameParams(Prop.Params.ExplicitParams,
                         LExistingProp.Params.ExplicitParams) or (LExistingProp.Struct <> Struct) then
       begin
         Prop.PrevOverload := LExistingProp;
-        Exit;
+        // don't add a new overloaded property in the same struct
+        if LExistingProp.Struct = Struct then
+          Exit;
       end else
         ERRORS.DEFAULT_PROP_ALREADY_EXIST(Prop);
     end;
@@ -5091,6 +5112,30 @@ begin
   end;
 
   AProp.Getter := LExpr.Declaration;
+end;
+
+function TASTDelphiUnit.ParsePropertyImplements(Scope: TScope; AProp: TIDProperty): TTokenID;
+var
+  LIntfID: TIdentifier;
+  LIntfDecl: TIDDeclaration;
+  LCasetedIntfDecl: TIDInterface;
+begin
+  if AProp.Struct.DataTypeID <> dtClass then
+    ERRORS.E2258_IMPLEMENTS_CLAUSE_ONLY_ALLOWED_WITHIN_CLASS_TYPES(Self, Lexer_Position);
+
+  Lexer_ReadNextIdentifier(Scope, {out} LIntfID);
+  LIntfDecl := FindID(Scope, LIntfID);
+
+  if (LIntfDecl.ItemType <> itType) or
+     (TIDType(LIntfDecl).DataTypeID <> dtInterface) then
+    ERRORS.E2205_INTERFACE_TYPE_REQUIRED(Self, LIntfID.TextPosition);
+
+  LCasetedIntfDecl := (LIntfDecl as TIDType).ActualDataType as TIDInterface;
+
+  if not (AProp.Struct as TIDClass).FindInterface(LCasetedIntfDecl) then
+    ERRORS.E2265_INTERFACE_NOT_MENTIONED_IN_INTERFACE_LIST(Self, LIntfID);
+
+  Result := Lexer_NextToken(Scope);
 end;
 
 function TASTDelphiUnit.ParsePropertySetter(Scope: TScope; AProp: TIDProperty): TTokenID;
@@ -5567,6 +5612,14 @@ begin
     if Assigned(LExplicitType) then
     begin
       Result := ParseVarDefaultValue(Scope, LExplicitType, {out} LExpr);
+      // if this is a constant with null (nil) value, we have to create a new constant with explicit type
+      if LExpr.IsNullPtr then
+      begin
+        // use TIDPointerConstant for now
+        LConst := TIDPointerConstant.Create(Scope, LConstID);
+        LConst.DataType := LExplicitType;
+        LExpr.Declaration := LConst;
+      end else
       if LExpr.IsAnonymous then
       begin
         LExpr.Declaration.DataType := LExplicitType;
@@ -5614,6 +5667,7 @@ begin
       LNewConst.ID := LConstID;
       LNewConst.DataType := LConst.DataType;
       LNewConst.AssignValue(LConst);
+      LNewConst.ExplicitDataType := LExplicitType;
       LConst := LNewConst;
     end;
 
@@ -7090,6 +7144,11 @@ begin
         Result := Lexer_NextToken(Scope);
         Continue;
       end;
+      token_semicolon: begin
+        if AConstraint = gsNone then
+          ERRORS.E2029_ID_EXPECTED_BUT_FOUND(Self, Lexer_Original, Lexer_Position);
+        Exit;
+      end
     else
       ERRORS.GENERIC_INVALID_CONSTRAINT(Result);
     end;
@@ -8134,6 +8193,16 @@ begin
           Proc.InheritedProc := Struct.FindVirtualProcInAncestor(Proc);
           ERRORS.E2170_CANNOT_OVERRIDE_A_NON_VIRTUAL_METHOD(Self, ID.TextPosition);
         end;
+
+        // note, that InheritedProc points to the actual inherited procedue (with the same params),
+        // while, ForwardDecl points to the latest declared procedure with the same name,
+        // which can be either inherited or overloaded.
+        if Assigned(ForwardDecl.PrevOverload) then
+          Proc.PrevOverload := ForwardDecl;
+
+        // add current procedure to the scope, if ForwardDecl declared in a base class
+        if ForwardDecl.Struct <> Struct then
+          ForwardDecl := nil;
       end;
 
       if Assigned(ForwardDecl) and (Struct = ForwardDecl.Struct) and
@@ -8164,9 +8233,14 @@ begin
       else
         Scope.AddProcedure(Proc);
       end;
-    end else begin
+    end else
+    begin
+      // special case when a method overloads method in the base class with no params
+      // in this case we have to not link to the base method
+      var LNoParams := (ForwardDecl.Struct <> Struct) and (Proc.ParamsCount = 0) and (ForwardDecl.ParamsCount = 0) ;
+
       // add to the overloads linked-list (if marked overload or override an overload proc)
-      if (pfOveload in ProcFlags) or (Assigned(Proc.InheritedProc) {and (pfOveload in ForwardDecl.Flags)}) then
+      if (pfOveload in ProcFlags) and not LNoParams then
         Proc.PrevOverload := ForwardDecl;
 
       // override the declaration if the scope the same
@@ -8188,22 +8262,11 @@ begin
     end;
   end;
 
-  if (Scope.ScopeClass <> scInterface) and not (pfImport in ProcFlags)
-                                       and not (pfForward in ProcFlags) then
+  if (Scope.ScopeClass = scImplementation) then
   begin
     // use initial EntryScope (declared parameters)
     // just set Implementation scope as outer scope for the Entry
     Proc.EntryScope.OuterScope := ProcScope.OuterScope;
-
-    if (FwdDeclState = dsDifferent) and
-       (ForwardDecl.DeclUnit = Self) and
-       not (pfOveload in ProcFlags) then
-    begin
-      if Proc.IsCompleted then
-        ERRORS.OVERLOADED_MUST_BE_MARKED(ID)
-      else
-        ERRORS.E2037_DECLARATION_OF_DIFFERS_FROM_PREVIOUS_DECLARATION(Self, ID);
-    end;
 
     Result := ParseProcBody(Proc);
     if Result = token_eof then
@@ -8375,7 +8438,8 @@ begin
     FwdDeclState := dsNew;
 
   {create a new declaration}
-  if not Assigned(Proc) then
+  {even if a declaration with the same name has been found in another unit}
+  if not Assigned(Proc) or (Proc.Module <> Self) then
   begin
     Proc := TASTDelphiProc.Create(Scope, ID);
     Proc.EntryScope := ProcScope;
@@ -8895,8 +8959,8 @@ begin
       ERRORS.E2004_IDENTIFIER_REDECLARED(Self, ID);
     // ищем подходящую декларацию в списке перегруженных:
     while True do begin
-      // check only explicit parameters, the result type does not matter here
-      if ForwardDecl.SameDeclaration(ProcScope.ExplicitParams) then
+      // check only explicit parameters, result type also does matter here
+      if ForwardDecl.SameDeclaration(ProcScope.ExplicitParams, ResultType) then
       begin
         // нашли подходящую декларацию
         FwdDeclState := dsSame;
@@ -9054,8 +9118,15 @@ begin
   CheckConstExpression(BoundExpr);
   HB := TIDConstant(BoundExpr.Declaration).AsInt64;
 
-  RDataTypeID := GetValueDataType(HB - LB);
-  RDataType := Sys.DataTypes[RDataTypeID];
+  if CRange.DataTypeID = dtRange then
+  begin
+    RDataTypeID := dtRange;
+    RDataType := (CRange.DataType as TIDRangeType).BaseType;
+  end else
+  begin
+    RDataTypeID := GetValueDataType(HB - LB);
+    RDataType := Sys.DataTypes[RDataTypeID];
+  end;
 
   Decl := TIDRangeType.Create(Scope, ID);
   Decl.LoDecl := CRange.Value.LBExpression.AsConst;
@@ -9567,7 +9638,7 @@ begin
   end;
 
   // for debug
-  FindIDNoAbort(Scope, FullID);
+  FindIDNoAbort(Scope, AID);
   ERRORS.E2003_UNDECLARED_IDENTIFIER(Self, AID);
   // return "unknown" to "keep parsing"
   Decl := Sys._UnknownConstant;
@@ -9747,7 +9818,8 @@ begin
 
         Expression := TIDCallExpression.Create(Decl, PMContext.ID.TextPosition);
         Result := ParseEntryCall(Scope, TIDCallExpression(Expression), EContext, ASTE);
-        Expression := nil;
+        // process call operator
+        Expression := EContext.RPNPopOperator();
       end else
         Expression := TIDExpression.Create(Decl, PMContext.ID.TextPosition);
     end;
@@ -9888,7 +9960,7 @@ begin
       Result := ParseBuiltinCall(Scope, Expr, EContext);
       Exit;
     end else
-    if (Expr.ItemType = itVar) and (Expr.ActualDataType is TIDProcType) then
+    if (Expr.ItemType in [itVar, itConst]) and (Expr.ActualDataType is TIDProcType) then
     begin
       CallExpr := TIDCastedCallExpression.Create(Expr.Declaration, Expr.TextPosition);
       TIDCastedCallExpression(CallExpr).DataType := Expr.DataType;
@@ -10045,8 +10117,20 @@ var
 begin
   Proc := EContext.SContext.Proc;
 
-  if not Assigned(Proc.Struct) then
-    ERRORS.E2075_THIS_FORM_OF_METHOD_CALL_ONLY_ALLOWED_IN_METHODS_OF_DERIVED_TYPES(Self, Lexer_Position);
+  while not Assigned(Proc.Struct) and Lexer_NotEof do
+  begin
+    // in case of an anonymous proc, find parent named procedure
+    if Proc.IsAnonymous then
+    begin
+      Proc := (Proc.Scope as TProcScope).Proc;
+      continue;
+    end else
+    begin
+      ERRORS.E2075_THIS_FORM_OF_METHOD_CALL_ONLY_ALLOWED_IN_METHODS_OF_DERIVED_TYPES(Self, Lexer_Position);
+      Result := Lexer_SkipTo(Scope, token_semicolon);
+      Exit;
+    end;
+  end;
 
   KW := EContext.SContext.Add(TASTKWInheritedCall) as TASTKWInheritedCall;
   Result := Lexer_NextToken(Scope);
@@ -11003,14 +11087,14 @@ begin
     ERRORS.E2005_ID_IS_NOT_A_TYPE_IDENTIFIER(Self, AExpression.DeclarationID);
 end;
 
-class procedure TASTDelphiUnit.CheckInterfaceType(Expression: TIDExpression);
+procedure TASTDelphiUnit.CheckInterfaceType(Expression: TIDExpression);
 var
   Decl: TIDDeclaration;
 begin
   Decl := Expression.Declaration;
   if (Decl.ItemType <> itType) or
      (TIDType(Decl).DataTypeID <> dtInterface) then
-    AbortWork(sInterfaceTypeRequired, Expression.TextPosition);
+    ERRORS.E2205_INTERFACE_TYPE_REQUIRED(Self, Expression.TextPosition);
 end;
 
 procedure TASTDelphiUnit.CheckClassOrIntfType(Expression: TIDExpression);

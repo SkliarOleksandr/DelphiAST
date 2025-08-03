@@ -68,8 +68,6 @@ type
   TSystemOperatos = record
   public
     // implicits
-    ImplicitVariantToAny,
-    ImplicitVariantFromAny,
     ImplicitStringFromAny,
     ImplicitCharToAnsiChar,
     ImplicitCharToString,
@@ -225,7 +223,7 @@ type
     function Get_EmptyStrExpression: TIDExpression;
     function Get_False: TIDBooleanConstant;
     function Get_FalseExpression: TIDExpression;
-    function Get_NullPtrConstant: TIDIntConstant;
+    function Get_NullPtrConstant: TIDNullPtrConstant;
     function Get_NullPtrExpression: TIDExpression;
     function Get_OneConstant: TIDIntConstant;
     function Get_OneExpression: TIDExpression;
@@ -285,7 +283,7 @@ type
     property _ZeroFloatExpression: TIDExpression read Get_ZeroFloatExpression;
     property _OneConstant: TIDIntConstant read Get_OneConstant;
     property _OneExpression: TIDExpression read Get_OneExpression;
-    property _NullPtrConstant: TIDIntConstant read Get_NullPtrConstant;
+    property _NullPtrConstant: TIDNullPtrConstant read Get_NullPtrConstant;
     property _NullPtrExpression: TIDExpression read Get_NullPtrExpression;
     property _EmptyStrExpression: TIDExpression read Get_EmptyStrExpression;
     property _Pointer: TIDPointer read Get_PointerType;
@@ -402,14 +400,15 @@ end;
 { TSYSTEMUnit }
 
 procedure TSYSTEMUnit.AddImplicists;
+
   procedure AddBaseImplicits(DataType: TIDType);
   var
     i: TDataTypeID;
   begin
     for i := dtInt8 to dtComp do
       DataType.OverloadImplicitTo(DataTypes[i]);
-    DataType.OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   end;
+
 var
   i: TDataTypeID;
 begin
@@ -425,13 +424,6 @@ begin
   AddBaseImplicits(_NativeInt);
   AddBaseImplicits(_NativeUInt);
 
-  // Variant
-  for i := dtInt8 to dtVariant do
-    _Variant.OverloadImplicitTo(DataTypes[i], Operators.ImplicitVariantToAny);
-
-  _Variant.OverloadImplicitToAny(Operators.ImplicitVariantToAny);
-  _Variant.OverloadImplicitFromAny(Operators.ImplicitVariantFromAny);
-
   // float32
   with _Float32 do begin
     OverloadImplicitTo(_Float32);
@@ -439,7 +431,6 @@ begin
     OverloadImplicitTo(_Float80);
     OverloadImplicitTo(_Currency);
     OverloadImplicitTo(_Comp);
-    OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   end;
 
   // Float64
@@ -449,7 +440,6 @@ begin
     OverloadImplicitTo(_Float80);
     OverloadImplicitTo(_Currency);
     OverloadImplicitTo(_Comp);
-    OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   end;
 
   // Float80
@@ -458,7 +448,6 @@ begin
     OverloadImplicitTo(_Float64);
     OverloadImplicitTo(_Currency);
     OverloadImplicitTo(_Comp);
-    OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   end;
 
   // Currency
@@ -467,7 +456,6 @@ begin
     OverloadImplicitTo(_Float64);
     OverloadImplicitTo(_Float80);
     OverloadImplicitTo(_Comp);
-    OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   end;
 
   // Comp
@@ -476,11 +464,9 @@ begin
     OverloadImplicitTo(_Float64);
     OverloadImplicitTo(_Float80);
     OverloadImplicitTo(_Currency);
-    OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   end;
 
   // UnicodeString
-  _UnicodeString.OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   _UnicodeString.OverloadImplicitTo(_AnsiString, Operators.ImplicitStringToAnsiString);
   _UnicodeString.OverloadImplicitTo(_TGuid, Operators.ImplicitStringToGUID);
   _UnicodeString.OverloadImplicitTo(_PWideChar, Operators.ImplicitStringToPChar);
@@ -491,7 +477,6 @@ begin
 
   // ShortString
   _ShortString.OverloadImplicitTo(_AnsiString);
-  _ShortString.OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   _ShortString.OverloadImplicitTo(_PWideChar, Operators.ImplicitStringToPChar);
   _ShortString.OverloadImplicitTo(_PAnsiChar, Operators.ImplicitStringToPChar);
   _ShortString.OverloadImplicitTo(_UnicodeString, Operators.ImplicitAnsiStringToString);
@@ -499,7 +484,6 @@ begin
   _ShortString.OverloadImplicitFrom(_PAnsiChar);
 
   // AnsiString
-  _AnsiString.OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   _AnsiString.OverloadImplicitTo(_PWideChar, Operators.ImplicitStringToPChar);
   _AnsiString.OverloadImplicitTo(_PAnsiChar, Operators.ImplicitStringToPChar);
   _AnsiString.OverloadImplicitTo(_UnicodeString, Operators.ImplicitAnsiStringToString);
@@ -510,7 +494,6 @@ begin
   _AnsiString.OverloadImplicitFromAny(Operators.ImplicitAnsiStringFromAny);
 
   // WideString
-  _WideString.OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   _WideString.OverloadImplicitTo(_PWideChar, Operators.ImplicitStringToPChar);
   _WideString.OverloadImplicitTo(_PAnsiChar, Operators.ImplicitStringToPChar);
   _WideString.OverloadImplicitTo(_AnsiString);
@@ -525,7 +508,6 @@ begin
   _WideChar.OverloadImplicitTo(_UnicodeString, Operators.ImplicitCharToString);
   _WideChar.OverloadImplicitTo(_AnsiString, Operators.ImplicitCharToAnsiString);
   _WideChar.OverloadImplicitTo(_AnsiChar, Operators.ImplicitCharToAnsiChar);
-  _WideChar.OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
   _WideChar.OverloadImplicitTo(_WideString);
 
   // AnsiChar
@@ -534,13 +516,11 @@ begin
   _AnsiChar.OverloadImplicitTo(_AnsiString, Operators.ImplicitAnsiCharToAnsiString);
   _AnsiChar.OverloadImplicitTo(_UnicodeString, Operators.ImplicitAnsiCharToString);
   _AnsiChar.OverloadImplicitTo(_WideChar, Operators.ImplicitAnsiCharToWideChar);
-  _AnsiChar.OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
 
   _MetaType.OverloadImplicitTo(_TGuid, Operators.ImplicitMetaClassToGUID);
 
   // Boolean
   _Boolean.OverloadImplicitTo(_Boolean);
-  _Boolean.OverloadImplicitTo(_Variant, Operators.ImplicitVariantFromAny);
 end;
 
 procedure TSYSTEMUnit.AddStandardExplicitsTo(const Sources: array of TDataTypeID; Dest: TIDType);
@@ -1019,7 +999,7 @@ begin
   TIDString(_UnicodeString).ElementDataType := _WideChar;
   //===============================================================
   fDecls._Variant := RegisterType('Variant', TBuiltin_Variant, dtVariant);
-  fDecls._OleVariant := RegisterType('OleVariant', TBuiltin_OleVariant, dtVariant);
+  fDecls._OleVariant := RegisterTypeAlias('OleVariant', fDecls._Variant);
   //===============================================================
   fDecls._WideString := RegisterType('WideString', TBuiltin_WideString, dtWideString);
   TIDString(_WideString).ElementDataType := _WideChar;
@@ -1045,7 +1025,7 @@ begin
   // null ptr type (special type for "nil" constant)
   fDecls._NullPtrType := TIDNullPointerType.CreateAsSystem(IntfScope, 'null ptr');
   // null ptr type constant
-  fDecls._NullPtrConstant := TIDIntConstant.Create(IntfScope, Identifier('nil'), fDecls._NullPtrType, 0);
+  fDecls._NullPtrConstant := TIDNullPtrConstant.Create(IntfScope, Identifier('nil'), fDecls._NullPtrType, nil);
   fDecls._NullPtrExpression := TIDExpression.Create(fDecls._NullPtrConstant);
   IntfScope.InsertID(fDecls._NullPtrConstant);
 
@@ -1264,6 +1244,8 @@ begin
   RegisterBuiltin(TSF_ReturnAddress);
   RegisterBuiltin(TSF_VarCast);
   RegisterBuiltin(TSF_VarClear);
+  RegisterBuiltin(TSF_Write);  // not needed for now
+  RegisterBuiltin(TSF_Writeln); // not needed for now
 
   if Project.Target = TWINX64_Target then
   begin
@@ -1275,7 +1257,42 @@ begin
     RegisterBuiltin(TSF_VarArgEnd);
   end;
 
-  CompileSource(IntfScope, '', 'procedure VarArrayRedim(var V: Variant; HighBound: Integer);');
+  CompileSource(IntfScope, 'procedure VarArrayRedim(var V: Variant; HighBound: Integer);');
+
+  // initial stuff for File/Text file functionality
+  CompileSource(IntfScope, 'type File = pointer;');
+  CompileSource(IntfScope, 'type TextFile = pointer;');
+
+  CompileSource(IntfScope, 'procedure AssignFile(var F; const FileName: string);');
+  CompileSource(IntfScope, 'procedure Reset(var F; RecordSize: Word = 0);');
+  CompileSource(IntfScope, 'procedure Rewrite(var F; RecordSize: Word = 0);');
+  CompileSource(IntfScope, 'procedure Append(var F: Text);');
+  CompileSource(IntfScope, 'procedure CloseFile(var F);');
+
+  CompileSource(IntfScope, 'procedure BlockRead(var F; var Buf; Count: Integer; var Result: Integer); overload;');
+  CompileSource(IntfScope, 'procedure BlockRead(var F; var Buf; Count: Integer); overload;');
+  CompileSource(IntfScope, 'procedure BlockWrite(var F; const Buf; Count: Integer; var Result: Integer); overload;');
+  CompileSource(IntfScope, 'procedure BlockWrite(var F; const Buf; Count: Integer); overload;');
+
+  CompileSource(IntfScope, 'procedure Read(var F: Text; var V1); cdecl; varargs;');
+  CompileSource(IntfScope, 'procedure ReadLn(var F: Text; var V1); cdecl; varargs;');
+
+  // declared as BuiltIn since it has such declarations:
+  //   procedure Write([var F: File]; P1; [ ..., PN]); overload;
+  //   procedure Writeln([var F: File]; [ P1; [ ..., PN] ]); overload;
+  //
+  //  CompileSource(IntfScope, 'procedure Write(var F: Text; var V1); cdecl; varargs;');
+  //  CompileSource(IntfScope, 'procedure WriteLn(var F: Text; var V1); cdecl; varargs;');
+
+  CompileSource(IntfScope, 'procedure Seek(var F; N: Integer);');
+  CompileSource(IntfScope, 'function FilePos(var F): Integer;');
+  CompileSource(IntfScope, 'function FileSize(var F): Integer;');
+  CompileSource(IntfScope, 'function Eof(var F: Text): Boolean; overload;');
+  CompileSource(IntfScope, 'function Eof(var F): Boolean; overload;');
+  CompileSource(IntfScope, 'function Eoln(var F: Text): Boolean; overload;');
+  CompileSource(IntfScope, 'function Eoln: Boolean; overload;');
+  CompileSource(IntfScope, 'procedure Erase(var F);');
+  CompileSource(IntfScope, 'procedure Rename(var F; const NewName: string);');
 
   RegisterVariable(ImplScope, 'ReturnAddress', _Pointer);
   RegisterConstStr(ImplScope, 'libmmodulename', '');
@@ -1482,7 +1499,7 @@ begin
   Result := fDecls._NativeUInt;
 end;
 
-function TSYSTEMUnit.Get_NullPtrConstant: TIDIntConstant;
+function TSYSTEMUnit.Get_NullPtrConstant: TIDNullPtrConstant;
 begin
   Result := fDecls._NullPtrConstant;
 end;
@@ -1698,8 +1715,6 @@ end;
 procedure TSystemOperatos.Init(Scope: TScope);
 begin
   // implicit
-  ImplicitVariantToAny := TSysImplicitVariantToAny.CreateAsSystem(Scope);
-  ImplicitVariantFromAny := TSysImplicitVariantFromAny.CreateAsSystem(Scope);
   ImplicitStringFromAny := TSysImplicitStringFromAny.CreateAsSystem(Scope);
   ImplicitCharToAnsiChar := TSysImplicitCharToAnsiChar.CreateAsSystem(Scope);
   ImplicitCharToString := TSysImplicitCharToString.CreateAsSystem(Scope);

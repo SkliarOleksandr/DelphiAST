@@ -80,7 +80,9 @@ object frmTestAppMain: TfrmTestAppMain
             Colors.UnfocusedSelectionColor = clWhite
             Colors.UnfocusedSelectionBorderColor = clWhite
             CustomCheckImages = ImageList1
+            DefaultNodeHeight = 17
             Header.AutoSizeIndex = -1
+            Header.Height = 13
             Header.MainColumn = -1
             Images = ImageList1
             IncrementalSearch = isAll
@@ -97,6 +99,7 @@ object frmTestAppMain: TfrmTestAppMain
             OnGetText = VTTestsGetText
             OnFreeNode = VTTestsFreeNode
             OnGetImageIndex = VTTestsGetImageIndex
+            OnNodeClick = VTTestsNodeClick
             OnNodeDblClick = VTTestsNodeDblClick
             Touch.InteractiveGestures = [igPan, igPressAndTap]
             Touch.InteractiveGestureOptions = [igoPanSingleFingerHorizontal, igoPanSingleFingerVertical, igoPanInertia, igoPanGutter, igoParentPassthrough]
@@ -206,6 +209,20 @@ object frmTestAppMain: TfrmTestAppMain
                 Action = RemoveFilesAction
                 TabOrder = 2
               end
+              object SaveASTCheckBox: TCheckBox
+                Left = 228
+                Top = 10
+                Width = 71
+                Height = 17
+                Hint = 
+                  'Saves the AST as a JSON files in the same directories as the original PAS' +
+                  ' files'
+                Anchors = [akTop, akRight]
+                Caption = 'Save AST'
+                ParentShowHint = False
+                ShowHint = True
+                TabOrder = 3
+              end
             end
             object lbFiles: TCheckListBox
               Left = 0
@@ -216,6 +233,7 @@ object frmTestAppMain: TfrmTestAppMain
               ItemHeight = 17
               PopupMenu = FilesPopup
               TabOrder = 1
+              OnDblClick = lbFilesDblClick
             end
           end
         end
@@ -263,7 +281,6 @@ object frmTestAppMain: TfrmTestAppMain
                 Width = 3
               end>
             ReadOnly = True
-            SelectedColor.Alpha = 0.400000005960464500
             WordWrap = True
           end
           object Panel1: TPanel
@@ -340,7 +357,6 @@ object frmTestAppMain: TfrmTestAppMain
               Width = 3
             end>
           ReadOnly = True
-          SelectedColor.Alpha = 0.400000005960464500
           WordWrap = True
         end
         object Panel6: TPanel
@@ -443,7 +459,6 @@ object frmTestAppMain: TfrmTestAppMain
                   Width = 3
                 end>
               Highlighter = SynPasSyn1
-              SelectedColor.Alpha = 0.400000005960464500
               OnChange = edUnitChange
               OnSpecialLineColors = edUnitSpecialLineColors
             end
@@ -921,6 +936,17 @@ object frmTestAppMain: TfrmTestAppMain
       Caption = 'Remove All'
       OnExecute = FilesRemoveAllActionExecute
     end
+    object FilesEditAction: TAction
+      Caption = 'Edit'
+      OnExecute = FilesEditActionExecute
+      OnUpdate = FilesEditActionUpdate
+    end
+    object GoToLineAction: TAction
+      Caption = 'Go To Line Number...'
+      ShortCut = 16455
+      OnExecute = GoToLineActionExecute
+      OnUpdate = GoToLineActionUpdate
+    end
   end
   object ImageList1: TImageList
     ColorDepth = cd32Bit
@@ -1223,6 +1249,12 @@ object frmTestAppMain: TfrmTestAppMain
   object FilesPopup: TPopupMenu
     Left = 160
     Top = 209
+    object Edit1: TMenuItem
+      Action = FilesEditAction
+    end
+    object N5: TMenuItem
+      Caption = '-'
+    end
     object ParseFocused1: TMenuItem
       Action = FilesParseFocusedAction
     end
@@ -1242,5 +1274,12 @@ object frmTestAppMain: TfrmTestAppMain
   object SynJSONSyn1: TSynJSONSyn
     Left = 128
     Top = 417
+  end
+  object EditorPopup: TPopupMenu
+    Left = 637
+    Top = 261
+    object GoToLine1: TMenuItem
+      Action = GoToLineAction
+    end
   end
 end

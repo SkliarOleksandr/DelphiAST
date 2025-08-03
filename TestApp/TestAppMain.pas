@@ -7,7 +7,8 @@ uses
   Winapi.Messages, Vcl.Graphics, Vcl.ComCtrls, System.Types, Vcl.ExtCtrls, Vcl.CheckLst, System.Actions, Vcl.ActnList,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.Menus, System.ImageList, Vcl.ImgList, System.UITypes,
   SynEdit, SynEditMiscClasses, SynEditSearch, SynEditHighlighter, SynEditCodeFolding, SynHighlighterPas, SynHighlighterJSON,
-  VirtualTrees, VirtualTrees.Types, VirtualTrees.Classes,
+  VirtualTrees, VirtualTrees.Types, VirtualTrees.Classes, VirtualTrees.BaseAncestorVCL, VirtualTrees.BaseTree,
+  VirtualTrees.AncestorVCL,
   AST.Intf,
   AST.Classes,
   AST.Pascal.Project,
@@ -16,7 +17,7 @@ uses
   AST.Pascal.Intf,
   AST.Pascal.Parser,
   AST.Parser.Messages,
-  AST.Parser.ProcessStatuses;   // system
+  AST.Parser.ProcessStatuses;
 
 type
   TSourceFileInfo = record
@@ -155,6 +156,13 @@ type
     ParseSelectedTestAction: TAction;
     ParseSelected1: TMenuItem;
     N4: TMenuItem;
+    SaveASTCheckBox: TCheckBox;
+    FilesEditAction: TAction;
+    Edit1: TMenuItem;
+    N5: TMenuItem;
+    EditorPopup: TPopupMenu;
+    GoToLineAction: TAction;
+    GoToLine1: TMenuItem;
     procedure ASTParseRTLButtonClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure SearchButtonClick(Sender: TObject);
@@ -184,6 +192,7 @@ type
     procedure CreateNewDirActionUpdate(Sender: TObject);
     procedure CreateNewDirActionExecute(Sender: TObject);
     procedure VTTestsClick(Sender: TObject);
+    procedure VTTestsNodeClick(Sender: TBaseVirtualTree; const HitInfo: THitInfo);
     procedure CreateNewTestActionExecute(Sender: TObject);
     procedure RenameTestActionUpdate(Sender: TObject);
     procedure RenameTestActionExecute(Sender: TObject);
@@ -200,6 +209,11 @@ type
     procedure ParseSelectedTestActionUpdate(Sender: TObject);
     procedure ParseSelectedTestActionExecute(Sender: TObject);
     procedure VTTestsFreeNode(Sender: TBaseVirtualTree; Node: PVirtualNode);
+    procedure FilesEditActionUpdate(Sender: TObject);
+    procedure lbFilesDblClick(Sender: TObject);
+    procedure FilesEditActionExecute(Sender: TObject);
+    procedure GoToLineActionUpdate(Sender: TObject);
+    procedure GoToLineActionExecute(Sender: TObject);
   private
     { Private declarations }
     fSettings: IASTProjectSettings;
@@ -213,7 +227,8 @@ type
     procedure ShowASTResultAsJSON(const Project: IASTDelphiProject; ASynEdit: TSynEdit); overload;
     procedure ShowASTResultAsJSON(const AModule: IASTModule; ASynEdit: TSynEdit); overload;
     procedure ShowASTResults(const AProject: IASTDelphiProject);
-    function ParseProject(const Project: IASTDelphiProject; AClearOutput, AShowResults: Boolean): TCompilerResult;
+    procedure SaveASTFiles(const AProject: IASTDelphiProject);
+    function ParseProject(const Project: IASTDelphiProject; AClearOutput, AShowResults, ASaveAST: Boolean): TCompilerResult;
     procedure CompilerMessagesToStrings(const Project: IASTDelphiProject; AShowFailUnit: Boolean);
     procedure SetDefines(const APrj: IASTDelphiProject);
     procedure SaveSettings;
@@ -354,6 +369,12 @@ begin
   end;
 end;
 
+procedure TfrmTestAppMain.lbFilesDblClick(Sender: TObject);
+begin
+  if FilesEditAction.Enabled then
+    FilesEditAction.Execute;
+end;
+
 function GetDeclName(const Decl: TASTDeclaration): string;
 begin
   try
@@ -415,7 +436,7 @@ begin
   UN := TASTDelphiUnit.Create(Prj, 'test', edUnit.Text);
   Prj.AddUnit(UN, nil);
 
-  ParseProject(Prj, {AClearOutput:} True, {AShowResults:} True);
+  ParseProject(Prj, {AClearOutput:} True, {AShowResults:} True, {ASaveAST:} False);
   Prj.ClearEvents;
 end;
 
@@ -429,7 +450,12 @@ procedure TfrmTestAppMain.ASTParseRTLButtonClick(Sender: TObject);
   function IsExcluded(const AFileName: string): Boolean;
   begin
     Result :=
-      SameText(AFileName, 'System.Internal.MachExceptions')
+      SameText(AFileName, 'System.Internal.MachExceptions') or
+      AFileName.StartsWith('System.Mac.') or
+      AFileName.StartsWith('System.Linux.') or
+      AFileName.StartsWith('Posix.') or
+      AFileName.StartsWith('Macapi.') or
+      AFileName.Equals('System.Internal.ICU')
       ;
   end;
 
@@ -474,7 +500,7 @@ begin
   UN := TASTDelphiUnit.Create(FLastProject, 'RTLParseTest', RTLUsesSourceText);
   FLastProject.AddUnit(UN, nil);
 
-  ParseProject(FLastProject, {AClearOutput:} True, {AShowResults:} True);
+  ParseProject(FLastProject, {AClearOutput:} True, {AShowResults:} True, SaveASTCheckBox.Checked);
 end;
 
 procedure TfrmTestAppMain.ASTResultFormatComboBoxChange(Sender: TObject);
@@ -517,6 +543,7 @@ begin
       LINI.WriteInteger(SGeneral, 'LEFT_ACTIVE_TAB', LeftPageControl.ActivePageIndex);
       LINI.WriteBool(SGeneral, 'UNITS_FULL_PATH', UnitsFullPathCheck.Checked);
       LINI.WriteBool(SGeneral, 'SHOW_PROGRESS', ShowProgressCheck.Checked);
+      LINI.WriteBool(SGeneral, 'SAVE_AST', SaveASTCheckBox.Checked);
 
       LINI.WriteString(SGeneral, 'PLATFORM', cbPlatform.Text);
       LINI.WriteString(SGeneral, 'DELPHI_BDS', DelphiDirComboBox.Text);
@@ -543,16 +570,27 @@ end;
 
 procedure TfrmTestAppMain.SaveSourceActionExecute(Sender: TObject);
 begin
-  edUnit.Lines.SaveToFile(FSelectedTest.FilePath);
-  edUnit.Modified := False;
-  FSelectedTest.Modified := False;
-  VTTests.Invalidate;
+  if LeftPageControl.ActivePage = tsTestScripts then
+  begin
+    edUnit.Lines.SaveToFile(FSelectedTest.FilePath);
+    edUnit.Modified := False;
+    FSelectedTest.Modified := False;
+    VTTests.Invalidate;
+  end else
+  if LeftPageControl.ActivePage = tsFiles then
+  begin
+    var LFileName := lbFiles.Items[lbFiles.ItemIndex];
+    edUnit.Lines.SaveToFile(LFileName);
+    edUnit.Modified := False;
+  end;
 end;
 
 procedure TfrmTestAppMain.SaveSourceActionUpdate(Sender: TObject);
 begin
-  TAction(Sender).Enabled := (LeftPageControl.ActivePage = tsTestScripts) and
-    Assigned(FSelectedTest) and edUnit.Modified;
+  TAction(Sender).Enabled := edUnit.Modified and (
+    ((LeftPageControl.ActivePage = tsTestScripts) and Assigned(FSelectedTest)) or
+    ((LeftPageControl.ActivePage = tsFiles) and (lbFiles.ItemIndex >= 0))
+  );
 end;
 
 function FileURLDecode(const AFileURL: string): string;
@@ -668,6 +706,7 @@ begin
     LeftPageControl.ActivePageIndex := LINI.ReadInteger(SGeneral, 'LEFT_ACTIVE_TAB', 0);
     UnitsFullPathCheck.Checked := LINI.ReadBool(SGeneral, 'UNITS_FULL_PATH', False);
     ShowProgressCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_PROGRESS', True);
+    SaveASTCheckBox.Checked := LINI.ReadBool(SGeneral, 'SAVE_AST', False);
 
     cbPlatform.Text := LINI.ReadString(SGeneral, 'PLATFORM', 'WIN32');
     ProjectNameEdit.Text := LINI.ReadString(SGeneral, 'PROJECT_NAME', ProjectNameEdit.Text);
@@ -1094,6 +1133,25 @@ begin
   FLastProject := AProject;
 end;
 
+procedure TfrmTestAppMain.SaveASTFiles(const AProject: IASTDelphiProject);
+begin
+  for var LIndex := 0 to AProject.UnitsCount - 1  do
+  begin
+    var LUnit := AProject.Units[LIndex];
+    var LASTObject := LUnit.ToJson;
+    try
+      var LJSON := TJson.ObjectToJsonObject(LASTObject);
+      try
+        TFile.WriteAllText(LUnit.FileName + '.astjson', LJSON.Format());
+      finally
+        LJSON.Free;
+      end;
+    finally
+      LASTObject.Free;
+    end;
+  end;
+end;
+
 procedure TfrmTestAppMain.ShowMemLeaksCheckClick(Sender: TObject);
 begin
   ReportMemoryLeaksOnShutdown := ShowMemLeaksCheck.Checked;
@@ -1117,7 +1175,7 @@ var
     // add source path for AST tests
     AProject.AddUnitSearchPath(ExtractFilePath(ATestData.FilePath));
     // parse the project
-    if ParseProject(AProject, {AClearOutput:} False, {AShowResults:} False) <> CompileSuccess then
+    if ParseProject(AProject, {AClearOutput:} False, {AShowResults:} False, {ASaveAST:} False) <> CompileSuccess then
       Inc(LFailCount);
 
     ATestData.Failed := AProject.Messages.ErrorCount > 0;
@@ -1210,8 +1268,7 @@ begin
     TargetCanvas.Font.Color := clRed;
 end;
 
-procedure TfrmTestAppMain.VTTestsFreeNode(Sender: TBaseVirtualTree;
-  Node: PVirtualNode);
+procedure TfrmTestAppMain.VTTestsFreeNode(Sender: TBaseVirtualTree; Node: PVirtualNode);
 var
   LTestData: TTestData;
 begin
@@ -1241,6 +1298,18 @@ begin
     CellText := CellText + '*';
 end;
 
+procedure TfrmTestAppMain.VTTestsNodeClick(Sender: TBaseVirtualTree; const HitInfo: THitInfo);
+begin
+  // clear focused node if clicked outside node
+  if not (hiOnItemLabel in HitInfo.HitPositions) and Assigned(Sender.FocusedNode) then
+  begin
+    FSelectedTest := nil;
+    Sender.Selected[Sender.FocusedNode] := False;
+    Sender.FocusedNode := nil;
+    Sender.Repaint;
+  end;
+end;
+
 procedure TfrmTestAppMain.VTTestsNodeDblClick(Sender: TBaseVirtualTree; const HitInfo: THitInfo);
 begin
   var LTestData := Sender.GetNodeData<TTestData>(HitInfo.HitNode);
@@ -1248,7 +1317,7 @@ begin
     SelectTest(LTestData);
 end;
 
-function TfrmTestAppMain.ParseProject(const Project: IASTDelphiProject; AClearOutput, AShowResults: Boolean): TCompilerResult;
+function TfrmTestAppMain.ParseProject(const Project: IASTDelphiProject; AClearOutput, AShowResults, ASaveAST : Boolean): TCompilerResult;
 begin
   if AClearOutput then
   begin
@@ -1267,6 +1336,9 @@ begin
 
     if AShowResults then
       ShowASTResults(Project);
+
+    if ASaveAST then
+      SaveASTFiles(Project);
 
     CompilerMessagesToStrings(Project, AShowResults);
 
@@ -1327,7 +1399,7 @@ begin
         ErrMemo.Lines.Add(Format('Warning: File ''%s'' is not found', [LFilePath]));
   end;
 
-  ParseProject(Prj, {AClearOutput:} False, {AShowResults:} True);
+  ParseProject(Prj, {AClearOutput:} False, {AShowResults:} True, SaveASTCheckBox.Checked);
 
   Prj.Clear({AClearImplicitUnits:} True);
 end;
@@ -1377,11 +1449,23 @@ begin
   TAction(Sender).Enabled := lbFiles.Count > 0;
 end;
 
+procedure TfrmTestAppMain.FilesEditActionExecute(Sender: TObject);
+begin
+  var LFileName := lbFiles.Items[lbFiles.ItemIndex];
+  edUnit.Text := TFile.ReadAllText(LFileName);
+  edUnit.Modified := False;
+end;
+
+procedure TfrmTestAppMain.FilesEditActionUpdate(Sender: TObject);
+begin
+  TAction(Sender).Enabled := lbFiles.ItemIndex >= 0;
+end;
+
 procedure TfrmTestAppMain.FilesParseFocusedActionExecute(Sender: TObject);
 begin
   var LProject := CreateProject(ProjectNameEdit.Text, {AParseSystemUnit:} True);
   LProject.AddUnit(lbFiles.Items[lbFiles.ItemIndex], {AModule:} nil);
-  ParseProject(LProject, {AClearOutput:} True, {AShowResults:} True);
+  ParseProject(LProject, {AClearOutput:} True, {AShowResults:} True, SaveASTCheckBox.Checked);
   LProject.Clear({AClearImplicitUnits:} True);
 end;
 
@@ -1446,6 +1530,21 @@ begin
   Result := TestScriptsPathEdit.Text;
   if IsRelativePath(Result) then
     Result := TPath.GetFullPath(TPath.Combine(ExtractFilePath(Application.ExeName), Result));
+end;
+
+procedure TfrmTestAppMain.GoToLineActionExecute(Sender: TObject);
+var
+  LValue: string;
+  LLineNum: Integer;
+begin
+  if InputQuery('Go To Line Number', 'Enter a Line Number:', {var} LValue) then
+    if TryStrToInt(LValue, {ot} LLineNum) then
+      edUnit.GotoLineAndCenter(LLineNum);
+end;
+
+procedure TfrmTestAppMain.GoToLineActionUpdate(Sender: TObject);
+begin
+  TAction(Sender).Enabled := edUnit.Focused;
 end;
 
 //procedure TestSetImplicit;

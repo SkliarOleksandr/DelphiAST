@@ -147,18 +147,6 @@ type
     function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
   end;
 
-  {implicit Variant <- Any}
-  TSysImplicitVariantFromAny = class(TSysOpImplicit)
-  public
-    function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
-  end;
-
-  {implicit Variant -> Any}
-  TSysImplicitVariantToAny = class(TSysOpImplicit)
-  public
-    function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
-  end;
-
   {implicit Untyped <- Any}
   TSysImplicitUntypedFromAny = class(TSysOpImplicit)
   public
@@ -213,6 +201,7 @@ type
   TSysImplicitNullPtrToAny = class(TSysOpImplicit)
   public
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
+    function Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression; override;
   end;
 
   {implicit TVarRec -> Any}
@@ -579,30 +568,6 @@ end;
 function TSysImplicitClosureToTMethod.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
   Result := nil;
-end;
-
-{ TSysImplicitVariantFromAny }
-
-function TSysImplicitVariantFromAny.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
-begin
-  if Src.DataTypeID in [dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean,
-                        dtFloat32, dtFloat64, dtFloat80, dtCurrency, dtComp, dtNativeInt, dtNativeUInt, dtChar, dtAnsiChar,
-                        dtString, dtWideString, dtAnsiString, dtInterface] then
-    Result := Self
-  else
-    Result := nil;
-end;
-
-{ TSysImplicitVariantToAny }
-
-function TSysImplicitVariantToAny.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
-begin
-  if (Dst.DataTypeID in [dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean,
-                         dtFloat32, dtFloat64, dtFloat80, dtCurrency, dtNativeInt, dtNativeUInt, dtChar, dtAnsiChar,
-                         dtString, dtAnsiString, dtWideString, dtVariant, dtInterface]) {or (Dst = SYSUnit._TVarData)} then
-    Result := Self
-  else
-    Result := nil;
 end;
 
 { TSysExplicitEnumFromAny }
@@ -1007,6 +972,14 @@ end;
 function TSysImplicitNullPtrToAny.Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean;
 begin
   Result := Dst.IsReferenced or (Dst.DataTypeID = dtProcType);
+end;
+
+function TSysImplicitNullPtrToAny.Match(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDExpression;
+begin
+  if Check(SContext, Src, Dst) <> nil then
+    Result := Src
+  else
+    Result := nil;
 end;
 
 { TSysImplicitPointerFromAny }

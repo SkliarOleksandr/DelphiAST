@@ -34,7 +34,7 @@ type
     function GetTarget: TASTTargetClass;
     function GetDefines: TDefines;
     function FindUnitFile(const AUnitName: string; const AModule: IASTModule; const AFileExt: string = ''): string;
-    function FindParsedUnit(const AUnitName: string): IASTPascalUnit;
+    function FindParsedUnit(const AUnitName: string; AErrorIfNotFound: Boolean = True): IASTPascalUnit;
     function GetUnit(const AUnitName: string): TObject; overload;
     function UsesUnit(const AUnitName: string; const AUnitPath: string; const AModule: IASTModule): IASTPascalUnit;
     function GetSysUnit: IASTPascalUnit;

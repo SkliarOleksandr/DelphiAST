@@ -80,7 +80,7 @@ type
     _OneExpression: TIDExpression;
     _MaxIntConstant: TIDIntConstant;
     _MaxIntExpression: TIDExpression;
-    _NullPtrConstant: TIDIntConstant;
+    _NullPtrConstant: TIDNullPtrConstant;
     _NullPtrExpression: TIDExpression;
     _EmptyStrConstant: TIDStringConstant;
     _EmptyStrExpression: TIDExpression;
@@ -182,7 +182,8 @@ type
   end;
 
   TBuiltin_TypedPointer = class(TIDPointer)
-
+    function SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType; override;
+    function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
   end;
 
   TBuiltin_Variant = class(TIDVariant)
@@ -190,6 +191,8 @@ type
     function SysUnarOperator(AOpID: TOperatorID): TIDType; override;
     function SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType; override;
     function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
+    function MatchImplicitTo(ADst: TIDType): Boolean; override;
+    function MatchImplicitFrom(ASrc: TIDType): Boolean; override;
     function MatchExplicitTo(ADst: TIDType): Boolean; override;
     function MatchExplicitFrom(ASrc: TIDType): Boolean; override;
   end;
@@ -895,6 +898,22 @@ begin
   Result := MatchExplicitFrom(ADst);
 end;
 
+function TBuiltin_Variant.MatchImplicitFrom(ASrc: TIDType): Boolean;
+begin
+  Result := (ASrc.DataTypeID in
+    [dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean, dtEnum,
+     dtFloat32, dtFloat64, dtFloat80, dtCurrency, dtComp, dtNativeInt, dtNativeUInt, dtChar, dtAnsiChar, dtEnum,
+     dtString, dtAnsiString, dtWideString, dtVariant, dtInterface, dtDynArray]);
+end;
+
+function TBuiltin_Variant.MatchImplicitTo(ADst: TIDType): Boolean;
+begin
+  Result := (ADst.DataTypeID in
+    [dtInt8, dtInt16, dtInt32, dtInt64, dtUInt8, dtUInt16, dtUInt32, dtUInt64, dtBoolean, dtEnum,
+     dtFloat32, dtFloat64, dtFloat80, dtCurrency, dtComp, dtNativeInt, dtNativeUInt, dtChar, dtAnsiChar, dtEnum,
+     dtString, dtAnsiString, dtWideString, dtVariant, dtInterface, dtDynArray]);
+end;
+
 function TBuiltin_Variant.SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType;
 begin
   case AOpID of
@@ -923,6 +942,28 @@ end;
 function TBuiltin_Real48.GetDataSize: Integer;
 begin
   Result := 6;
+end;
+
+{ TBuiltin_TypedPointer }
+
+function TBuiltin_TypedPointer.SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType;
+begin
+  case AOpID of
+    // pointer subtraction returns the length (integer)
+    opSubtract: Result := SYSUnit._NativeInt;
+  else
+    Result := inherited;
+  end;
+end;
+
+function TBuiltin_TypedPointer.SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType;
+begin
+  case AOpID of
+    // pointer subtraction returns the length (integer)
+    opSubtract: Result := SYSUnit._NativeInt;
+  else
+    Result := inherited;
+  end;
 end;
 
 end.

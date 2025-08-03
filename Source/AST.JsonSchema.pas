@@ -56,6 +56,7 @@ type
     params: TArray<TASTJsonParam>;
     isVirtual: Boolean;
     isOverload: Boolean;
+    prevOverload: TASTHandle;
     body: TASTJsonFunctionBody;
   end;
 

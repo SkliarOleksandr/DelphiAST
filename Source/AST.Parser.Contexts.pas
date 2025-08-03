@@ -11,7 +11,7 @@ uses
 
 type
 
-  TASTSContext<TProcType> = record
+  TASTSContext<TProcType: class> = record
   private
     fModule: IASTModule;
     fScope: TScope;
@@ -39,7 +39,7 @@ type
   TRPNStatus = (rprOk, rpOperand, rpOperation);
 
   {expression context - use RPN (Reverse Polish Notation) stack}
-  TASTEContext<TProcType> = record
+  TASTEContext<TProcType: class> = record
   type
     TRPNItems = array of TOperatorID;
     TRPNError = (reDublicateOperation, reUnnecessaryClosedBracket, reUnclosedOpenBracket);
