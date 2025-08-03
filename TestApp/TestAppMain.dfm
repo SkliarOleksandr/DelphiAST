@@ -80,7 +80,9 @@ object frmTestAppMain: TfrmTestAppMain
             Colors.UnfocusedSelectionColor = clWhite
             Colors.UnfocusedSelectionBorderColor = clWhite
             CustomCheckImages = ImageList1
+            DefaultNodeHeight = 17
             Header.AutoSizeIndex = -1
+            Header.Height = 13
             Header.MainColumn = -1
             Images = ImageList1
             IncrementalSearch = isAll
@@ -96,6 +98,7 @@ object frmTestAppMain: TfrmTestAppMain
             OnDrawText = VTTestsDrawText
             OnGetText = VTTestsGetText
             OnGetImageIndex = VTTestsGetImageIndex
+            OnNodeClick = VTTestsNodeClick
             OnNodeDblClick = VTTestsNodeDblClick
             Touch.InteractiveGestures = [igPan, igPressAndTap]
             Touch.InteractiveGestureOptions = [igoPanSingleFingerHorizontal, igoPanSingleFingerVertical, igoPanInertia, igoPanGutter, igoParentPassthrough]

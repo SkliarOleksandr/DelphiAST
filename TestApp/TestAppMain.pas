@@ -7,7 +7,8 @@ uses
   Winapi.Messages, Vcl.Graphics, Vcl.ComCtrls, System.Types, Vcl.ExtCtrls, Vcl.CheckLst, System.Actions, Vcl.ActnList,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.Menus, System.ImageList, Vcl.ImgList, System.UITypes,
   SynEdit, SynEditMiscClasses, SynEditSearch, SynEditHighlighter, SynEditCodeFolding, SynHighlighterPas, SynHighlighterJSON,
-  VirtualTrees, VirtualTrees.Types, VirtualTrees.Classes,
+  VirtualTrees, VirtualTrees.Types, VirtualTrees.Classes, VirtualTrees.BaseAncestorVCL, VirtualTrees.BaseTree,
+  VirtualTrees.AncestorVCL,
   AST.Intf,
   AST.Classes,
   AST.Pascal.Project,
@@ -16,7 +17,7 @@ uses
   AST.Pascal.Intf,
   AST.Pascal.Parser,
   AST.Parser.Messages,
-  AST.Parser.ProcessStatuses;   // system
+  AST.Parser.ProcessStatuses;
 
 type
   TSourceFileInfo = record
@@ -191,6 +192,7 @@ type
     procedure CreateNewDirActionUpdate(Sender: TObject);
     procedure CreateNewDirActionExecute(Sender: TObject);
     procedure VTTestsClick(Sender: TObject);
+    procedure VTTestsNodeClick(Sender: TBaseVirtualTree; const HitInfo: THitInfo);
     procedure CreateNewTestActionExecute(Sender: TObject);
     procedure RenameTestActionUpdate(Sender: TObject);
     procedure RenameTestActionExecute(Sender: TObject);
@@ -450,7 +452,8 @@ procedure TfrmTestAppMain.ASTParseRTLButtonClick(Sender: TObject);
       AFileName.StartsWith('System.Mac.') or
       AFileName.StartsWith('System.Linux.') or
       AFileName.StartsWith('Posix.') or
-      AFileName.StartsWith('Macapi.')
+      AFileName.StartsWith('Macapi.') or
+      AFileName.Equals('System.Internal.ICU')
       ;
   end;
 
@@ -1283,6 +1286,18 @@ begin
   CellText := LTestData.Caption;
   if LTestData.Modified then
     CellText := CellText + '*';
+end;
+
+procedure TfrmTestAppMain.VTTestsNodeClick(Sender: TBaseVirtualTree; const HitInfo: THitInfo);
+begin
+  // clear focused node if clicked outside node
+  if not (hiOnItemLabel in HitInfo.HitPositions) and Assigned(Sender.FocusedNode) then
+  begin
+    FSelectedTest := nil;
+    Sender.Selected[Sender.FocusedNode] := False;
+    Sender.FocusedNode := nil;
+    Sender.Repaint;
+  end;
 end;
 
 procedure TfrmTestAppMain.VTTestsNodeDblClick(Sender: TBaseVirtualTree; const HitInfo: THitInfo);

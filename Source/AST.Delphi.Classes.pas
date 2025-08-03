@@ -3195,6 +3195,8 @@ begin
   end;
   LJsonObj.isVirtual := (pfVirtual in Flags);
   LJsonObj.isOverload := (pfOveload in Flags);
+  if Assigned(PrevOverload) then
+    LJsonObj.prevOverload := PrevOverload.ASTHandle;
   LJsonObj.body := BodyToJson;
 end;
 
@@ -5469,12 +5471,18 @@ begin
     LJsonObj.ansestorHandle := Ancestor.ASTHandle;
   end;
 
-  SetLength(LJsonObj.members, Members.Count);
   for var LIndex := 0 to Members.Count - 1 do
   begin
     var LMember := Members.Items[LIndex];
-    var LMemberJson := LMember.ToJson;
-    LJsonObj.members[LIndex] := LMemberJson;
+    LJsonObj.members := LJsonObj.members + [LMember.ToJson];
+    // serialize overload methods
+    while (LMember is TIDProcedure) and
+          Assigned(TIDProcedure(LMember).PrevOverload) and
+          (TIDProcedure(LMember).PrevOverload.Struct = Self) do
+    begin
+      LMember := TIDProcedure(LMember).PrevOverload;
+      LJsonObj.members := LJsonObj.members + [LMember.ToJson];
+    end;
   end;
 end;
 

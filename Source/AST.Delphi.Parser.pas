@@ -8193,6 +8193,16 @@ begin
           Proc.InheritedProc := Struct.FindVirtualProcInAncestor(Proc);
           ERRORS.E2170_CANNOT_OVERRIDE_A_NON_VIRTUAL_METHOD(Self, ID.TextPosition);
         end;
+
+        // note, that InheritedProc points to the actual inherited procedue (with the same params),
+        // while, ForwardDecl points to the latest declared procedure with the same name,
+        // which can be either inherited or overloaded.
+        if Assigned(ForwardDecl.PrevOverload) then
+          Proc.PrevOverload := ForwardDecl;
+
+        // add current procedure to the scope, if ForwardDecl declared in a base class
+        if ForwardDecl.Struct <> Struct then
+          ForwardDecl := nil;
       end;
 
       if Assigned(ForwardDecl) and (Struct = ForwardDecl.Struct) and
@@ -8230,7 +8240,7 @@ begin
       var LNoParams := (ForwardDecl.Struct <> Struct) and (Proc.ParamsCount = 0) and (ForwardDecl.ParamsCount = 0) ;
 
       // add to the overloads linked-list (if marked overload or override an overload proc)
-      if ((pfOveload in ProcFlags) and not LNoParams) or Assigned(Proc.InheritedProc) then
+      if (pfOveload in ProcFlags) and not LNoParams then
         Proc.PrevOverload := ForwardDecl;
 
       // override the declaration if the scope the same
@@ -8252,22 +8262,11 @@ begin
     end;
   end;
 
-  if (Scope.ScopeClass <> scInterface) and not (pfImport in ProcFlags)
-                                       and not (pfForward in ProcFlags) then
+  if (Scope.ScopeClass = scImplementation) then
   begin
     // use initial EntryScope (declared parameters)
     // just set Implementation scope as outer scope for the Entry
     Proc.EntryScope.OuterScope := ProcScope.OuterScope;
-
-    if (FwdDeclState = dsDifferent) and
-       (ForwardDecl.DeclUnit = Self) and
-       not (pfOveload in ProcFlags) then
-    begin
-      if Proc.IsCompleted then
-        ERRORS.OVERLOADED_MUST_BE_MARKED(ID)
-      else
-        ERRORS.E2037_DECLARATION_OF_DIFFERS_FROM_PREVIOUS_DECLARATION(Self, ID);
-    end;
 
     Result := ParseProcBody(Proc);
     if Result = token_eof then
