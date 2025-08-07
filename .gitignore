@@ -67,3 +67,4 @@ __recovery/
 *.delphilsp.json
 *.ini
 *.astjson
+/Tmp/

@@ -212,13 +212,13 @@ type
 //    constructor CreateAsBuiltin(ASystem: TASTModule); override;
 //    procedure CreateStandardOperators; override;
 //  end;
-   TBuiltin_Boolean = class(TBuiltin_IntType)
+   TBuiltin_Boolean = class(TIDOrdinal)
    end;
 
-   TBuiltin_UnicodeChar = class(TBuiltin_IntType)
+   TBuiltin_UnicodeChar = class(TIDOrdinal)
    end;
 
-   TBuiltin_AnsiChar = class(TBuiltin_IntType)
+   TBuiltin_AnsiChar = class(TIDOrdinal)
    end;
 
   TBuiltin_Extended = class(TBuiltin_FltType)

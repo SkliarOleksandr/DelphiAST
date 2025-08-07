@@ -2,11 +2,11 @@ unit ASTTest.Procs.OverloadDecl2;
 
 interface
 
-function GetValue(AValue: Double): Double; overload;
+function GetValue(AValue: string): string; overload;
 
 implementation
 
-function GetValue(AValue: Double): Double;
+function GetValue(AValue: string): string;
 begin
   Result := AValue;
 end;

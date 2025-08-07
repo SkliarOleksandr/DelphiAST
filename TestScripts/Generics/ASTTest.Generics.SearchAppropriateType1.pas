@@ -16,7 +16,7 @@ implementation
 uses
   ASTTest.Generics.TListDecl2; // TList<T> declaration
 
-constructor TMyClass.Create
+constructor TMyClass.Create;
 begin
   FList := TList.Create; // E2010 Incompatible types: 'TList' and 'TList<T>'
 end;

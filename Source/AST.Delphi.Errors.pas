@@ -240,7 +240,6 @@ type
     class procedure CANNOT_MODIFY_READONLY_PROPERTY(const Expr: TIDExpression); static;
     class procedure PROPERTY_DOES_NOT_EXIST_IN_BASE_CLASS(const AID: TIdentifier); static;
 
-    class procedure NO_OVERLOAD(CallExpr: TIDExpression; const CallArgs: TIDExpressions); static;
     class procedure AMBIGUOUS_OVERLOAD_CALL(CallExpr: TIDExpression); overload; static;
     class procedure INCOMPLETE_PROC(Decl: TIDDeclaration); static;
     class procedure TYPE_NOT_COMPLETELY_DEFINED(Decl: TIDDeclaration); static;
@@ -309,7 +308,8 @@ type
     class procedure E2196_CANNOT_INIT_MULTIPLE_VARS(const ATextPosition: TTextPosition); static;
     class procedure E2197_CONSTANT_OBJECT_CANNOT_BE_PASSED_AS_VAR_PARAMETER(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2205_INTERFACE_TYPE_REQUIRED(const AModule: IASTModule; const APosition: TTextPosition); static;
-    class procedure E2250_THERE_IS_NO_OVERLOADED_VERSION_THAT_CAN_BE_CALLED_WITH_THESE_ARGUMENTS(const AModule: IASTModule; AExpression: TIDExpression);
+    class procedure E2250_NO_OVERLOADED_PROC_FOR_THESE_ARGUMENTS(const AModule: IASTModule; AExpression: TIDExpression); overload;
+    class procedure E2250_NO_OVERLOADED_PROC_FOR_THESE_ARGUMENTS(const AModule: IASTModule; ACallExpr: TIDCallExpression); overload;
     class procedure E2251_AMBIGUOUS_OVERLOADED_CALL(const AModule: IASTModule; AExpression: TIDExpression);
     class procedure E2258_IMPLEMENTS_CLAUSE_ONLY_ALLOWED_WITHIN_CLASS_TYPES(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2265_INTERFACE_NOT_MENTIONED_IN_INTERFACE_LIST(const AModule: IASTModule; const AID: TIdentifier);
@@ -761,11 +761,26 @@ begin
   AModule.PutError('E2232 Interface ''%s'' has no interface identification', [ADecl.Name], ADecl.TextPosition);
 end;
 
-class procedure TASTDelphiErrors.E2250_THERE_IS_NO_OVERLOADED_VERSION_THAT_CAN_BE_CALLED_WITH_THESE_ARGUMENTS(
+class procedure TASTDelphiErrors.E2250_NO_OVERLOADED_PROC_FOR_THESE_ARGUMENTS(
   const AModule: IASTModule; AExpression: TIDExpression);
 begin
   AModule.PutError('E2250 There is no overloaded version of ''%s'' that can be called with these arguments',
     [AExpression.Declaration.Name], AExpression.TextPosition);
+end;
+
+class procedure TASTDelphiErrors.E2250_NO_OVERLOADED_PROC_FOR_THESE_ARGUMENTS(const AModule: IASTModule;
+  ACallExpr: TIDCallExpression);
+var
+  LArgsStr: string;
+begin
+  for var LArg in ACallExpr.Arguments do
+    LArgsStr := AddStringSegment(LArgsStr, LArg.DataTypeName, ', ');
+
+  AModule.PutError('E2250 There is no overloaded version of ''%s'' that can be called with these arguments' +
+                    sLineBreak + 'Call argumensts: (' + LArgsStr + ')' +
+                    sLineBreak + ACallExpr.AsProcedure.GetAllOverloadSignatures,
+
+    [ACallExpr.Declaration.Name], ACallExpr.TextPosition);
 end;
 
 class procedure TASTDelphiErrors.E2251_AMBIGUOUS_OVERLOADED_CALL(const AModule: IASTModule; AExpression: TIDExpression);
@@ -1192,18 +1207,6 @@ end;
 procedure TASTDelphiErrors.IDENTIFIER_HAS_NO_MEMBERS(const Decl: TIDDeclaration);
 begin
   AbortWork(sIdentifierHasNoMembersFmt, [Decl.DisplayName], Lexer.PrevPosition);
-end;
-
-class procedure TASTDelphiErrors.NO_OVERLOAD(CallExpr: TIDExpression; const CallArgs: TIDExpressions);
-var
-  ArgStr: string;
-begin
-  for var Item in CallArgs do
-    ArgStr := AddStringSegment(ArgStr, Item.DataTypeName, ', ');
-
-  AbortWork(sErrorOverload + #13#10 + 'Call argumensts: ' + ArgStr +
-                             #13#10 + CallExpr.AsProcedure.GetAllOverloadSignatures,
-    [CallExpr.Declaration.Name], CallExpr.TextPosition);
 end;
 
 class procedure TASTDelphiErrors.AMBIGUOUS_OVERLOAD_CALL(CallExpr: TIDExpression);

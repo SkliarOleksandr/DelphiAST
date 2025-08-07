@@ -4147,7 +4147,7 @@ begin
     if AmbiguousRate > 0 then
       AbortWithAmbiguousOverload(MatchedCount, AmbiguousRate);
   end else
-    ERRORS.NO_OVERLOAD(ACallExpr, CallArgs)
+    ERRORS.E2250_NO_OVERLOADED_PROC_FOR_THESE_ARGUMENTS(Self, ACallExpr);
 end;
 
 function TASTDelphiUnit.MatchBinarOperatorWithImplicit(const SContext: TSContext; Op: TOperatorID; var Left,
@@ -4371,7 +4371,7 @@ begin
   if LMatchedCount > 1 then
     TASTDelphiErrors.E2251_AMBIGUOUS_OVERLOADED_CALL(Self, ACallExpr)
   else
-    TASTDelphiErrors.E2250_THERE_IS_NO_OVERLOADED_VERSION_THAT_CAN_BE_CALLED_WITH_THESE_ARGUMENTS(Self, ACallExpr);
+    TASTDelphiErrors.E2250_NO_OVERLOADED_PROC_FOR_THESE_ARGUMENTS(Self, ACallExpr);
 
   Result := Sys._UnknownProcedure;
 end;
@@ -5102,7 +5102,7 @@ begin
       if not LFound then
       begin
         if LHasOverload then
-          ERRORS.E2250_THERE_IS_NO_OVERLOADED_VERSION_THAT_CAN_BE_CALLED_WITH_THESE_ARGUMENTS(Self, LExpr)
+          ERRORS.E2250_NO_OVERLOADED_PROC_FOR_THESE_ARGUMENTS(Self, LExpr)
         else
           ERRORS.E2008_INCOMPATIBLE_TYPES(Self, LExpr.TextPosition);
       end;
@@ -5177,7 +5177,7 @@ begin
       if not LFound then
       begin
         if LHasOverload then
-          ERRORS.E2250_THERE_IS_NO_OVERLOADED_VERSION_THAT_CAN_BE_CALLED_WITH_THESE_ARGUMENTS(Self, LExpr)
+          ERRORS.E2250_NO_OVERLOADED_PROC_FOR_THESE_ARGUMENTS(Self, LExpr)
         else
           ERRORS.E2008_INCOMPATIBLE_TYPES(Self, LExpr.TextPosition);
       end;
