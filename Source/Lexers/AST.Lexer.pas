@@ -108,7 +108,6 @@ type
     fSrcPos: Integer;                  // Current position in the source string
 
     fCutToken: PCharToken;             // The current token structure
-    fAmbiguousTokenId: Integer;        // The current ambiguous token Id
 
     fRow: Integer;                     // Номер строки текущей позиции (начинается с единицы)
     fLastEnterPos: Integer;            // Позиция последнего переноса строки (необходим для определения позиции формата (row,col))
@@ -117,7 +116,6 @@ type
 
     fIdentifireId: Integer;            // Id for an identifier
     fEofId: Integer;                   // Id for the and of file
-    fAmbiguousId: Integer;             // Id for ambiguous tokens
 
     fTokenCaptions: TStrings;          // Название токоенов
     fSeparators: string;
@@ -136,7 +134,7 @@ type
     fCurrentToken: string;
     fCurrentTokenId: Integer;          // The current token Id
     fIdentifireType: TIdentifierType;  // Тип идентификатора (литерал/строка/число/символ)
-    property AmbiguousId: Integer read fAmbiguousId write fAmbiguousId;
+    fAmbiguousTokenId: Integer;        // The current ambiguous token Id
     procedure RegisterToken(const Token: string; ATokenID: Integer; ATokenType: TTokenType; const TokenCaption: string = ''); overload;
     procedure RegisterToken(const Token: string; ATokenID: Integer; ATokenType: TTokenType;
                             ATokenClass: TTokenClass; const TokenCaption: string = ''); overload;
@@ -848,8 +846,6 @@ function TGenericLexer.TokenLexem(TokenID: Integer): string;
 var
   i: Integer;
 begin
-  if TokenID = fAmbiguousId then
-    TokenID := fAmbiguousTokenId;
   i := fTokenCaptions.IndexOfObject(TObject(TokenID));
   if i <> -1 then
     Result := fTokenCaptions[i]

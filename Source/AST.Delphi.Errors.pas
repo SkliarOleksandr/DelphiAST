@@ -318,6 +318,7 @@ type
     class procedure E2436_TYPE_NOT_ALLOWED_IN_ANONYMOUS_OR_LOCAL_RECORD_TYPE(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2529_TYPE_PARAMETERS_NOT_ALLOWED_ON_OPERATOR(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2530_TYPE_PARAMETERS_NOT_ALLOWED_ON_GLOBAL_PROCEDURE_OR_FUNCTION(const AModule: IASTModule; const ATextPosition: TTextPosition);
+    class procedure E2531_METHOD_REQUIRES_EXPLICIT_TYPE_ARGUMENTS(const AModule: IASTModule; const AName: string; const APosition: TTextPosition);
     class procedure E2535_INTERFACE_METHODS_MUST_NOT_HAVE_PARAMETERIZED_METHODS(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2599_FIELD_DEFINITION_NOT_ALLOWED_IN_HELPER_TYPE(const AModule: IASTModule; const APosition: TTextPosition);
 
@@ -823,6 +824,12 @@ class procedure TASTDelphiErrors.E2530_TYPE_PARAMETERS_NOT_ALLOWED_ON_GLOBAL_PRO
   const AModule: IASTModule; const ATextPosition: TTextPosition);
 begin
   AModule.PutError('E2530 Type parameters not allowed on global procedure or function', ATextPosition);
+end;
+
+class procedure TASTDelphiErrors.E2531_METHOD_REQUIRES_EXPLICIT_TYPE_ARGUMENTS(const AModule: IASTModule;
+  const AName: string; const APosition: TTextPosition);
+begin
+  AModule.PutError('E2531 Method ''%s'' requires explicit type argument(s)', [AName], APosition);
 end;
 
 class procedure TASTDelphiErrors.E2535_INTERFACE_METHODS_MUST_NOT_HAVE_PARAMETERIZED_METHODS(

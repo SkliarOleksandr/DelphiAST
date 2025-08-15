@@ -127,6 +127,7 @@ type
     fForwardTypes: TList<TIDType>;
     fIntfHelpers: THelperTree;
     fImplHelpers: THelperTree;
+    fCurrentHelpers: THelperTree; // points to fIntfHelpers or fImplHelpers
     fIsPorgram: Boolean;
     property Sys: PDelphiSystemDeclarations read fSysDecls;
     procedure CheckLeftOperand(const Status: TRPNStatus);
@@ -330,7 +331,7 @@ type
     procedure Warning(const Message: string; const Params: array of const; const TextPosition: TTextPosition);
     procedure Hint(const Message: string; const Params: array of const; const TextPosition: TTextPosition); overload;
 
-    function FindAll(Scope: TScope; const ID: TIdentifier): TIDDeclArray; overload;
+    // FindID is used to find any declarations, except generics
     function FindID(Scope: TScope; const ID: TIdentifier): TIDDeclaration; overload; inline;
     function FindIDNoAbort(Scope: TScope; const ID: TIdentifier): TIDDeclaration; overload; inline;
     function FindIDNoAbort(Scope: TScope; const ID: string): TIDDeclaration; overload; inline;
@@ -389,15 +390,22 @@ type
     function ParseGenericsHeader(Scope: TScope; out Args: TIDTypeArray): TTokenID;
     function ParseGenericsConstraint(Scope: TScope; out AConstraint: TGenericConstraint;
                                                     out AConstraintType: TIDType): TTokenID;
+    function ParseGenericMember(AScope: TScope;
+                                var PMContext: TPMContext;
+                                const SContext: TSContext;
+                                StrictSearch: Boolean;
+                                out Decl: TIDDeclaration): TTokenID;
+
     function ParseGenericsArgs(Scope: TScope;
                                const SContext: TSContext;
                                out Args: TIDExpressions;
                                out ACanInstantiate: Boolean): TTokenID;
 
-    function ParseGenericTypeDecl(Scope: TScope;
-                                  GDescriptor: IGenericDescriptor;
-                                  const ID: TIdentifier;
-                                  ATypeClass: TIDTypeClass): TIDType;
+    function CreateType(Scope: TScope; const ID: TIdentifier; ATypeClass: TIDTypeClass): TIDType;
+    function CreateGenericType(Scope: TScope;
+                               GDescriptor: IGenericDescriptor;
+                               const ID: TIdentifier;
+                               ATypeClass: TIDTypeClass): TIDType;
 
     function ParseStatements(Scope: TScope; const SContext: TSContext; IsBlock: Boolean): TTokenID; overload;
     function GetPtrReferenceType(Decl: TIDRefType): TIDType;
@@ -542,6 +550,23 @@ type
     property ERRORS: TASTDelphiErrors read GetErrors;
   end;
 
+function GetSearchName(const AName: string; const AGenericParams: TIDTypeArray): string;
+begin
+  var LArrayLen := Length(AGenericParams);
+  if LArrayLen > 0 then
+    Result := AName + '@' + LArrayLen.ToString
+  else
+    Result := AName;
+end;
+
+function GetSearchNameID(const AID: TIdentifier; const AGenericParams: TIDTypeArray): TIdentifier;
+begin
+  var LArrayLen := Length(AGenericParams);
+  if LArrayLen > 0 then
+    Result.Name := AID.Name + '@' + LArrayLen.ToString
+  else
+    Result := AID;
+end;
 
 function GetUnit(const SContext: PSContext): TASTDelphiUnit;
 begin
@@ -826,7 +851,11 @@ begin
   if Result = token_openblock then
   begin
     {static array}
-    Decl := ParseGenericTypeDecl(Scope, GDescriptor, ID, TIDStaticArray);
+    if not Assigned(GDescriptor) then
+      Decl := CreateType(Scope, ID, TIDStaticArray)
+    else
+      Decl := CreateGenericType(Scope, GDescriptor, ID, TIDStaticArray);
+
     Result := ParseStaticArrayType(TypeScope, TIDArray(Decl));
   end else begin
     {dynamic array}
@@ -834,9 +863,18 @@ begin
 
     // "array of <type>" declared as a param type must be an open array
     if AInParameters and (ID.Name = '') then
-      Decl := ParseGenericTypeDecl(Scope, GDescriptor, ID, TIDOpenArray)
-    else
-      Decl := ParseGenericTypeDecl(Scope, GDescriptor, ID, TIDDynArray);
+    begin
+      if not Assigned(GDescriptor) then
+        Decl := CreateType(Scope, ID, TIDOpenArray)
+      else
+        Decl := CreateGenericType(Scope, GDescriptor, ID, TIDOpenArray)
+    end else
+    begin
+      if not Assigned(GDescriptor) then
+        Decl := CreateType(Scope, ID, TIDDynArray)
+      else
+        Decl := CreateGenericType(Scope, GDescriptor, ID, TIDDynArray);
+    end;
 
     Result := ParseTypeSpec(TypeScope, DataType);
     // case: array of const
@@ -989,31 +1027,6 @@ end;
 function TASTDelphiUnit.ParseTypeHelper(Scope, GenericScope: TScope; AIsClassHelper: Boolean; const ID: TIdentifier;
   out Decl: TDlphHelper): TTokenID;
 
-  function IsInterfaceSection(AScope: TScope): Boolean;
-  begin
-    repeat
-      if AScope = IntfScope then
-        Exit(True);
-      if AScope = ImplScope then
-        Exit(False);
-      AScope := AScope.Parent;
-    until AScope = nil;
-    Result := False;
-    Assert(False);
-  end;
-
-  procedure AddHelper(ATarget: TIDType; AHelper: TDlphHelper);
-  var
-    LHelpers: THelperTree;
-  begin
-    if IsInterfaceSection(Scope) then
-      LHelpers := fIntfHelpers
-    else
-      LHelpers := fImplHelpers;
-
-    LHelpers.AddOrUpdate(ATarget, AHelper);
-  end;
-
 var
   LAncestor: TIDType;
   TargetDecl: TIDType;
@@ -1043,8 +1056,8 @@ begin
   Decl.AncestorDecl := LAncestor;
   Decl.Target := TargetDecl;
 
-  // in case this is an alias, set helper for the original type
-  AddHelper(TargetDecl, Decl);
+  // register new helper for the target type
+  fCurrentHelpers.AddOrUpdate(TargetDecl, Decl);
 
   // insert the helper as a normal type declaration
   Scope.AddType(Decl);
@@ -1101,19 +1114,10 @@ begin
     Exit;
   end;
 
-  // try to find forward declaration first (for system types)
-  var FForwardDecl := FindIDNoAbort(Scope, ID);
-  if Assigned(FForwardDecl) and (FForwardDecl is TIDRecord) and TIDType(FForwardDecl).NeedForward then
-    Decl := TIDRecord(FForwardDecl)
-  else begin
-    Decl := TIDRecord.Create(Scope, ID);
-    Decl.GenericDescriptor := GDescriptor;
-    if Assigned(GenericScope) then
-      TIDRecord(Decl).Members.AddScope(GenericScope);
-
-    if ID.Name <> '' then
-      Scope.AddType(Decl);
-  end;
+  if not Assigned(GDescriptor) then
+    Decl := TIDRecord(CreateType(Scope, ID, TIDRecord))
+  else
+    Decl := TIDRecord(CreateGenericType(Scope, GDescriptor, ID, TIDRecord));
 
   Result := ParseRecordType(Scope, TIDRecord(Decl));
 end;
@@ -1188,10 +1192,16 @@ begin
           DataType := TIDType(Decl);
           if Result = token_dot then
           begin
-            var LActualDataType := DataType.ActualDataType;
-            if not (LActualDataType is TIDStructure) then
-              ERRORS.STRUCT_TYPE_REQUIRED(Lexer_PrevPosition);
-            SearchScope := TIDStructure(LActualDataType).Members;
+            // try to find a helper first
+            var LHelper := fCurrentHelpers.FindHelper(DataType);
+            if Assigned(LHelper) then
+              SearchScope := LHelper.Members
+            else begin
+              var LActualDataType := DataType.ActualDataType;
+              if not (LActualDataType is TIDStructure) then
+                ERRORS.STRUCT_TYPE_REQUIRED(Lexer_PrevPosition);
+              SearchScope := TIDStructure(LActualDataType).Members;
+            end;
             Lexer_NextToken(Scope);
             continue;
           end else
@@ -1910,6 +1920,12 @@ begin
     {match proper generic/overload declaration}
     if Assigned(ProcDecl.PrevOverload) then begin
       ProcDecl := MatchOverloadProc(EContext.SContext, PExpr, UserArguments, ArgsCount);
+      // handle "keep parsing"
+      if not Assigned(ProcDecl) then
+      begin
+        Result := TIDExpression.Create(Sys._UnknownVariable, PExpr.TextPosition);
+        Exit;
+      end;
       ProcParams := ProcDecl.ExplicitParams;
       PExpr.Declaration := ProcDecl;
     end else begin
@@ -2702,12 +2718,20 @@ begin
       fSysDecls := TSYSTEMUnit(SysUnit).SystemDeclarations;
       fCCalc := TExpressionCalculator.Create(Self);
       Package.DoBeforeCompileUnit(Self);
+      fCurrentHelpers := fIntfHelpers;
 
       Messages.Clear;
       FRCPathCount := 1;
 
       Lexer.First;
       Scope := IntfScope;
+
+      // add system unit to the intf scope
+      if Self <> TASTModule(SysUnit) then
+      begin
+        var LSystemUnitDecl := TIDUnit.Create(Scope, TASTModule(SysUnit));
+        InsertToScope(Scope, LSystemUnitDecl);
+      end;
 
       LToken := ParseUnitDecl(Scope);
       if LToken = token_eof then
@@ -2719,6 +2743,7 @@ begin
     if UnitState = UnitIntfCompiled then
     begin
       Scope := ImplScope;
+      fCurrentHelpers := fImplHelpers;
       LToken := Lexer_NextToken(Scope);
     end else
       AbortWorkInternal('Invalid unit state');
@@ -3380,18 +3405,6 @@ begin
   PutMessage(cmtHint, Format(Message, Params), TextPosition);
 end;
 
-function TASTDelphiUnit.FindAll(Scope: TScope; const ID: TIdentifier): TIDDeclArray;
-begin
-  Result := [];
-  Scope.FindIDRecurcive(ID.Name, fImplHelpers, {var} Result);
-  if not Assigned(Result) then
-  begin
-    // for debug:
-    Scope.FindIDRecurcive(ID.Name, fImplHelpers, {var} Result);
-    ERRORS.UNDECLARED_ID(ID);
-  end;
-end;
-
 function TASTDelphiUnit.FindID(Scope: TScope; const ID: TIdentifier{; out Expression: TIDExpression}): TIDDeclaration;
 var
   i: Integer;
@@ -3815,7 +3828,7 @@ procedure TASTDelphiUnit.MatchProc(const SContext: TSContext; CallExpr: TIDExpre
                                    const ProcParams: TIDParamArray;
                                    var CallArgs: TIDExpressions);
 var
-  i, ArgIdx, pc: Integer;
+  LParamIndex, ArgIdx, pc: Integer;
   Param: TIDVariable;
   Arg: TIDExpression;
   Implicit: TIDDeclaration;
@@ -3827,8 +3840,8 @@ begin
     ERRORS.E2034_TOO_MANY_ACTUAL_PARAMETERS(Self, CallExpr.TextPosition);
 
   ArgIdx := 0;
-  for i := 0 to pc - 1 do begin
-    Param := ProcParams[i];
+  for LParamIndex := 0 to pc - 1 do begin
+    Param := ProcParams[LParamIndex];
     if VarHiddenParam in Param.Flags then
       Continue; // пропускаем скрытые параметры
 
@@ -6148,29 +6161,58 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.ParseGenericTypeDecl(Scope: TScope;
-                                             GDescriptor: IGenericDescriptor;
-                                             const ID: TIdentifier;
-                                             ATypeClass: TIDTypeClass): TIDType;
-var
-  LFwdDecl: TIDType;
+function TASTDelphiUnit.CreateType(Scope: TScope; const ID: TIdentifier; ATypeClass: TIDTypeClass): TIDType;
 begin
-  Result := nil;
-
   if ID.Name <> '' then
   begin
     // search for forward declarations first
-    LFwdDecl := TIDType(Scope.FindID(ID.Name));
+    var LFwdDecl := TIDType(Scope.FindID(ID.Name));
 
-    // TODO: accept forward declarations in the same scope only
-    if Assigned(LFwdDecl) then
+    if Assigned(LFwdDecl) and (LFwdDecl.Scope = Scope) then
     begin
       // check existing declration is a forward declaration (none: can be an alias)
       if (LFwdDecl.Original is ATypeClass) then
       begin
-        while True do
+        if LFwdDecl.NeedForward then
         begin
-          var LFwdGDescriptor := TIDClass(LFwdDecl).GenericDescriptor;
+          // the forward declaration found
+          LFwdDecl.NeedForward := False;
+          fForwardTypes.Remove(LFwdDecl);
+          Exit(LFwdDecl);
+        end;
+      end;
+      ERRORS.E2004_IDENTIFIER_REDECLARED(Self, ID);
+    end;
+  end;
+
+  Result := ATypeClass.Create(Scope, ID);
+  if ID.Name <> '' then
+    Scope.AddType(ID, Result);
+end;
+
+function TASTDelphiUnit.CreateGenericType(Scope: TScope;
+                                          GDescriptor: IGenericDescriptor;
+                                          const ID: TIdentifier;
+                                          ATypeClass: TIDTypeClass): TIDType;
+var
+  LNewID: TIdentifier;
+  LFwdDecl: TIDType;
+begin
+  LNewID := TIdentifier.Empty;
+  if ID.Name <> '' then
+  begin
+    LNewID := GetSearchNameID(ID, GDescriptor.GenericParams);
+
+    // search for forward declarations first
+    LFwdDecl := TIDType(Scope.FindID(LNewID.Name));
+
+    if Assigned(LFwdDecl) and (LFwdDecl.Scope = Scope) then
+    begin
+      // check existing declration is a forward declaration (none: can be an alias)
+      if (LFwdDecl.Original is ATypeClass) then
+      begin
+
+          var LFwdGDescriptor := TIDType(LFwdDecl).GenericDescriptor;
           var LSameGenericParams :=
             (not Assigned(LFwdGDescriptor) and not Assigned(GDescriptor)) or
             (Assigned(LFwdGDescriptor) and Assigned(GDescriptor) and LFwdGDescriptor.IsEqual(GDescriptor));
@@ -6182,40 +6224,24 @@ begin
               // the forward declaration found
               LFwdDecl.NeedForward := False;
               fForwardTypes.Remove(LFwdDecl);
-              Result := LFwdDecl;
-              Break;
-            end else
-              ERRORS.E2004_IDENTIFIER_REDECLARED(Self, ID);
+              Exit(LFwdDecl);
+            end;
           end;
-          if Assigned(LFwdDecl.NextGenericOverload) then
-            LFwdDecl := TIDType(LFwdDecl.NextGenericOverload)
-          else
-            Break;
-        end;
-      end else
-        ERRORS.E2004_IDENTIFIER_REDECLARED(Self, ID);
-    end;
-  end else
-    LFwdDecl := nil;
-
-  if not Assigned(Result) then
-  begin
-    Result := ATypeClass.Create(Scope, ID);
-    // for generic types, we need to move all generic params into static-members scope
-    if Assigned(GDescriptor) and (Result is TIDStructure) then
-      TIDStructure(Result).Members.AssingFrom(GDescriptor.Scope);
-
-    Result.GenericDescriptor := GDescriptor;
-
-    if ID.Name <> '' then
-    begin
-      // if this is a first declaration with this name, add to scope, otherwise - add to overloads
-      if not Assigned(LFwdDecl) then
-        Scope.AddType(Result)
-      else
-        LFwdDecl.AddGenecricOverload(Result);
+      end;
+      ERRORS.E2004_IDENTIFIER_REDECLARED(Self, ID);
     end;
   end;
+
+  Result := ATypeClass.Create(Scope, LNewID);
+
+  // for generic types, we need to move all generic params into members scope
+  if Result is TIDStructure then
+    TIDStructure(Result).Members.AssingFrom(GDescriptor.Scope);
+
+  Result.GenericDescriptor := GDescriptor;
+
+  if LNewID.Name <> '' then
+    Scope.AddType(LNewID, Result);
 end;
 
 function TASTDelphiUnit.ParseVisibilityModifiers(Scope: TScope; var AVisibility: TVisibility; AIsClass: Boolean): TTokenID;
@@ -6285,11 +6311,13 @@ begin
     Exit;
   end;
 
-  Decl := TIDClass(ParseGenericTypeDecl(Scope, GDescriptor, ID, TIDClass));
+  if not Assigned(GDescriptor) then
+    Decl := TIDClass(CreateType(Scope, ID, TIDClass))
+  else
+    Decl := TIDClass(CreateGenericType(Scope, GDescriptor, ID, TIDClass));
 
   if (Self = TObject(SYSUnit)) and (ID.Name = 'TObject') then
     Sys._TObject := Decl;
-
 
   // semicolon means this is forward declaration
   if Result = token_semicolon then
@@ -7226,6 +7254,14 @@ begin
   Result := False;
 end;
 
+function GetTypesArray(const AExpressions: TIDExpressions): TIDTypeArray;
+begin
+  var LCount := Length(AExpressions);
+  SetLength(Result, LCount);
+  for var LIndex := 0 to LCount - 1 do
+    Result[LIndex] := AExpressions[LIndex].AsType;
+end;
+
 function TASTDelphiUnit.ParseGenericTypeSpec(Scope, ASearchScope: TScope; const ID: TIdentifier; out DataType: TIDType): TTokenID;
 
   function MakeGenericName(const AGenericArgs: TIDExpressions): string;
@@ -7236,59 +7272,36 @@ function TASTDelphiUnit.ParseGenericTypeSpec(Scope, ASearchScope: TScope; const 
     Result := ID.Name + '<' + LParamsStr + '>';
   end;
 
-  function GetTypesArray(const AExpressions: TIDExpressions): TIDTypeArray;
-  begin
-    var LCount := Length(AExpressions);
-    SetLength(Result, LCount);
-    for var LIndex := 0 to LCount - 1 do
-      Result[LIndex] := AExpressions[LIndex].AsType;
-  end;
-
 var
   LGenericArgs: TIDExpressions;
   LCanInstantiate: Boolean;
+  LNewID: TIdentifier;
 begin
   DataType := nil;
   Result := ParseGenericsArgs(Scope, fUnitSContext, {out} LGenericArgs, {out} LCanInstantiate);
   // find all types with the same name
-  var LDeclArray := FindAll(ASearchScope, ID);
-  for var LIndex := 0 to Length(LDeclArray) - 1 do
+  LNewID := ID;
+
+  if Length(LGenericArgs) > 0 then
+    LNewID.Name := ID.Name + '@' + Length(LGenericArgs).ToString;
+
+  var LDecl := FindID(ASearchScope, LNewID);
+  if Assigned(LDecl) and (LDecl is TIDType) then
   begin
-    var LDecl := LDeclArray[LIndex];
-    if LDecl.ItemType = itType then
+    var LType := LDecl as TIDType;
+    var LTypesArray := GetTypesArray(LGenericArgs);
+    if LCanInstantiate and not IsGenericTypeThisStruct(Scope, LType) then
     begin
-      var LType := TIDType(LDecl);
-      // each generic types can have overloads, find proper one
-      while Assigned(LType) do
-      begin
-        // searching proper generic declaration
-        if Assigned(LType.GenericDescriptor) and
-          (LType.GenericDescriptor.ParamsCount = Length(LGenericArgs)) then
-         Break;
-
-        LType := TIDType(LType.NextGenericOverload);
-      end;
-
-      // if LType is assigned, we found proper declaration
-      if Assigned(LType) then
-      begin
-        var LTypesArray := GetTypesArray(LGenericArgs);
-        if LCanInstantiate and not IsGenericTypeThisStruct(Scope, LType) then
-        begin
-          DataType := InstantiateGenericType(Scope, LType, LTypesArray);
-        end else
-        begin
-          // check if this type is not the current parsed type
-          if not IsTheStructIsOwner(Scope, LType) then
-            DataType := TIDGenericInstantiation.CreateInstantiation(Scope, LType as TIDType, LTypesArray)
-          else
-            DataType := LType;
-        end;
-        Break;
-      end;
+      DataType := InstantiateGenericType(Scope, LType, LTypesArray);
+    end else
+    begin
+      // check if this type is not the current parsed type
+      if not IsTheStructIsOwner(Scope, LType) then
+        DataType := TIDGenericInstantiation.CreateInstantiation(Scope, LType as TIDType, LTypesArray)
+      else
+        DataType := LType;
     end;
-  end;
-  if not Assigned(DataType) then
+  end else
     ERRORS.UNDECLARED_ID(MakeGenericName(LGenericArgs), ID.TextPosition);
 end;
 
@@ -7795,18 +7808,19 @@ function SearchInstanceMethodDecl(Struct: TIDStructure;
                                   out ForwardDeclNode: TIDList.PAVLNode): TASTDelphiProc;
 begin
   Result := nil;
-  ForwardDeclNode := Struct.Members.Find(ID.Name);
+  var LSearchName := ID.Name;
+  ForwardDeclNode := Struct.Members.Find(LSearchName);
   if not Assigned(ForwardDeclNode) then
   begin
     // second, search the decl including ancestors
-    var LDecl := Struct.Members.FindMembers(ID.Name);
+    var LDecl := Struct.Members.FindMembers(LSearchName);
     if LDecl is TASTDelphiProc then
       Result := TASTDelphiProc(LDecl)
     else
     // third, if this is a helper, search the decl in the helper's target
     if (Struct is TDlphHelper) and
        (TDlphHelper(Struct).Target is TIDStructure) then
-      ForwardDeclNode := TIDStructure(TDlphHelper(Struct).Target).Members.Find(ID.Name);
+      ForwardDeclNode := TIDStructure(TDlphHelper(Struct).Target).Members.Find(LSearchName);
   end;
 end;
 
@@ -7815,16 +7829,17 @@ function SearchClassMethodDecl(Struct: TIDStructure;
                                out ForwardDeclNode: TIDList.PAVLNode): TASTDelphiProc;
 begin
   Result := nil;
+  var LSearchName := ID.Name;
   ForwardDeclNode := Struct.Members.Find(ID.Name);
   if not Assigned(ForwardDeclNode) then
   begin
     // second, search the decl including ancestors
-    Result := Struct.Members.FindMembers(ID.Name) as TASTDelphiProc;
+    Result := Struct.Members.FindMembers(LSearchName) as TASTDelphiProc;
     // third, if this is a helper, search the decl in the helper's target
     if not Assigned(Result) and
        (Struct is TDlphHelper) and
        (TDlphHelper(Struct).Target is TIDStructure) then
-    ForwardDeclNode := TIDStructure(TDlphHelper(Struct).Target).Members.Find(ID.Name);
+    ForwardDeclNode := TIDStructure(TDlphHelper(Struct).Target).Members.Find(LSearchName);
   end;
 end;
 
@@ -8787,21 +8802,12 @@ begin
       var LGenericParamsCnt := Length(AGenericParams);
       if AScope.ScopeClass <> scInterface then
       begin
-        var LDecl := SearchScope.FindID(AID.Name);
-        CheckStructType(LDecl);
-        LTypeDecl := LDecl as TIDType;
-        // each generic types can have overloads, find proper one
-        while Assigned(LTypeDecl) do
+        var LDecl := SearchScope.FindID(GetSearchName(AID.Name, AGenericParams));
+        if Assigned(LDecl) then
         begin
-          // searching proper generic declaration
-          if (Assigned(LTypeDecl.GenericDescriptor) and
-               (LTypeDecl.GenericDescriptor.ParamsCount = LGenericParamsCnt)
-             ) or (LGenericParamsCnt = 0) then
-           Break;
-
-          LTypeDecl := TIDType(LTypeDecl.NextGenericOverload);
+          CheckStructType(LDecl);
+          LTypeDecl := LDecl as TIDType;
         end;
-
         if not Assigned(LTypeDecl) then
         begin
           // for debug:
@@ -8809,24 +8815,26 @@ begin
           ERRORS.UNDECLARED_ID(AID, AGenericParams);
         end;
       end else
-      if Assigned(AStruct) and (AStruct.DataTypeID = dtClass) then
       begin
-        // since an interface can be an alias (like IUnknown), we have to find original interface and take its name
-        var LDecl := FindID(AStruct.Scope, AID);
-        var LIntf := TIDClass(AStruct).FindInterface(LDecl.Name, AGenericParams);
-        if Assigned(LIntf) then
+        if Assigned(AStruct) and (AStruct.DataTypeID = dtClass) then
         begin
-          LIntfMathedDelegation := True;
-          SearchScope := LIntf.Members;
-          Continue;
-        end else
-        begin
-          // for debug:
-          TIDClass(AStruct).FindInterface(AID.Name, AGenericParams);
-          ERRORS.UNDECLARED_ID(AID, AGenericParams);
+          // since an interface can be an alias (like IUnknown), we have to find original interface and take its name
+          var LDecl := FindIDNoAbort(AStruct.Scope, GetSearchName(AID.Name, AGenericParams));
+          if Assigned(LDecl) then
+          begin
+            var LIntf := TIDClass(AStruct).FindInterface(LDecl.Name, AGenericParams);
+            if Assigned(LIntf) then
+            begin
+              LIntfMathedDelegation := True;
+              SearchScope := LIntf.Members;
+              Continue;
+            end
+          end;
         end;
-      end else
+        // for debug:
+        TIDClass(AStruct).FindInterface(AID.Name, AGenericParams);
         ERRORS.UNDECLARED_ID(AID, AGenericParams);
+      end;
 
       if LTypeDecl is TIDStructure then
       begin
@@ -8879,7 +8887,10 @@ begin
   end;
   Result := Lexer_NextToken(Scope);
 
-  Decl := TIDProcType(ParseGenericTypeDecl(Scope, GDescriptor, ID, TIDProcType));
+  if not Assigned(GDescriptor) then
+    Decl := TIDProcType(CreateType(Scope, ID, TIDProcType))
+  else
+    Decl := TIDProcType(CreateGenericType(Scope, GDescriptor, ID, TIDProcType));
 
   if Assigned(GDescriptor) then
     ParentScope := GDescriptor.Scope
@@ -9208,8 +9219,12 @@ begin
   for var LIndex := 0 to LGArgsCount - 1 do
     if Assigned( AGenericArgs[LIndex]) then
       LGArgs[LIndex] := AGenericArgs[LIndex].AsType
-    else
-      AbortWorkInternal('Generic argument is not initialized', Lexer_Position);
+    else begin
+      ERRORS.E2531_METHOD_REQUIRES_EXPLICIT_TYPE_ARGUMENTS(Self, AGenericProc.Name, Lexer_Position);
+      Result := AGenericProc;
+      Exit;
+    end;
+
 
   {find in the pool first}
   var LDecl: TIDDeclaration;
@@ -9233,7 +9248,7 @@ begin
     LContext.DstID.Name := AGenericProc.Name + '<' + AStrSufix + '>';
     LContext.DstID.TextPosition := Lexer_Position;
     try
-      WriteLog('# (%s: %d): %s', [Name, Lexer_Line, LContext.DstID.Name]);
+      WriteLog('# INSTANTIATE PROC (%s: %d): %s', [Name, Lexer_Line, LContext.DstID.Name]);
       Result := AGenericProc.InstantiateGeneric(AScope, {ADstStruct:} nil, LContext) as TIDProcedure;
       {add new instance to the pool}
       GDescriptor.AddGenericInstance(Result, LGArgs);
@@ -9274,7 +9289,7 @@ begin
     LContext.DstID.TextPosition := Lexer_Position;
 
     try
-      WriteLog('# (%s: %d): %s', [Name, Lexer_Line, LContext.DstID.Name]);
+      WriteLog('# INSTANTIATE TYPE (%s: %d): %s', [Name, Lexer_Line, LContext.DstID.Name]);
       Result := AGenericType.InstantiateGeneric(AScope, {ADstStruct:} nil, LContext) as TIDType;
     except
       Error('Generic Instantiation Error: %s', [LContext.DstID.Name], LContext.DstID.TextPosition);
@@ -9656,40 +9671,118 @@ begin
   Result := False;
 end;
 
+function TASTDelphiUnit.ParseGenericMember(AScope: TScope;
+                                           var PMContext: TPMContext;
+                                           const SContext: TSContext;
+                                           StrictSearch: Boolean;
+                                           out Decl: TIDDeclaration): TTokenID;
+var
+  Scope: TScope;
+  ExprName: string;
+  LGenericDecl: TIDDeclaration;
+begin
+  Scope := PMContext.ItemScope;
+
+  Result := ParseGenericsArgs(AScope, SContext, {out} PMContext.GenericArgs, {out} PMContext.CanInstantiate);
+  ExprName := PMContext.ID.Name + '@' + Length(PMContext.GenericArgs).ToString;
+
+  if not StrictSearch then
+    LGenericDecl := FindIDNoAbort(Scope, ExprName)
+  else
+    LGenericDecl := Scope.FindMembers(ExprName);
+
+  if not Assigned(LGenericDecl) then
+  begin
+    // for debug
+     if not StrictSearch then
+      LGenericDecl := FindIDNoAbort(Scope, ExprName)
+    else
+      LGenericDecl := Scope.FindMembers(ExprName);
+    Exit;
+    ERRORS.UNDECLARED_ID(ExprName, Lexer_PrevPosition);
+  end;
+
+  if PMContext.CanInstantiate then
+  begin
+    if LGenericDecl is TIDType then
+      Decl := InstantiateGenericType(Scope, LGenericDecl as TIDType, GetTypesArray(PMContext.GenericArgs))
+    else
+      Decl := InstantiateGenericProc(Scope, LGenericDecl as TIDProcedure, PMContext.GenericArgs);
+
+    PMContext.CanInstantiate := False;
+    //PMContext.GenericArgs := nil;
+  end else
+  begin
+    // check if this type is not the current parsed type
+    if (LGenericDecl is TIDType) and not IsTheStructIsOwner(Scope, TIDType(LGenericDecl)) then
+      Decl := TIDGenericInstantiation.CreateInstantiation(Scope, TIDType(LGenericDecl), GetTypesArray(PMContext.GenericArgs))
+    else
+      Decl := LGenericDecl;
+  end;
+end;
+
 function TASTDelphiUnit.ParseIdentifier(Scope, SearchScope: TScope;
                                         out Expression: TIDExpression;
                                         var EContext: TEContext;
                                         const PrevExpr: TIDExpression;
                                         const ASTE: TASTExpression): TTokenID;
+
+  function IsGenericTypeSpecification(Scope: TScope; ASContext: TSContext): Boolean;
+  var
+    LParserPosition: TParserPosition;
+    LASTExpr: TASTExpression;
+    LEContext: TEContext;
+    LToken: TTokenID;
+  begin
+    Lexer.SaveState(LParserPosition);
+    try
+      Lexer_NextToken(Scope);
+      InitEContext(LEContext, EContext.SContext, ExprNestedGeneric);
+      LToken := ParseExpression(Scope, ASContext, LEContext, {out} LASTExpr);
+      Result := LToken in [token_coma, token_above];
+    finally
+      Lexer.LoadState(LParserPosition);
+    end;
+  end;
+
 var
   Decl: TIDDeclaration;
   Indexes: TIDExpressions;
-  i: Integer;
   Expr, NExpr: TIDExpression;
   PMContext: TPMContext;
   StrictSearch: Boolean;
 begin
   PMContext.Init;
-  PMContext.ItemScope := Scope;
 
   Lexer_ReadCurrIdentifier(PMContext.ID);
 
   Expr := nil; // todo: with
   if not Assigned(SearchScope) then
-    Decl := FindIDNoAbort(Scope, PMContext.ID)
-
-  else begin
+  begin
+    PMContext.ItemScope := Scope;
+    Decl := FindIDNoAbort(Scope, PMContext.ID);
+  end else
+  begin
+    PMContext.ItemScope := SearchScope;
     Decl := SearchScope.FindMembers(PMContext.ID.Name, fImplHelpers);
   end;
 
   StrictSearch := Assigned(SearchScope);
 
   Result := Lexer_NextToken(Scope);
-  if not Assigned(Decl) then begin
-//    if Result = token_less then
-//      Result := ParseGenericMember(PMContext, EContext.SContext, StrictSearch, Decl, Expr);
 
-    if PMContext.ItemScope is TConditionalScope then
+  if Result = token_less then
+  begin
+    // Expression like Exr1 < Expr2 ... can have two options:
+    //   1. simple bollean expression: if Expr1<Expr2 then...
+    //   2. gneric type instantiation: if GenericType<Integer>... then...
+    // There is no simple way to select the right option, than try to parse first expression and then get back
+    if not Assigned(Decl) or IsGenericTypeSpecification(Scope, EContext.SContext) then
+      Result := ParseGenericMember(Scope, PMContext, EContext.SContext, StrictSearch, {out} Decl);
+  end;
+
+  if not Assigned(Decl) then begin
+    if Scope is TConditionalScope then
     begin
       Decl := TIDStringConstant.CreateAsAnonymous(PMContext.ItemScope, Sys._UnicodeString, PMContext.ID.Name);
     end;
@@ -9705,8 +9798,8 @@ begin
       PMContext.Add(Expr);
     end else begin
       Indexes := TIDMultiExpression(Expr).Items;
-      for i := 0 to Length(Indexes) - 1 do
-        PMContext.Add(Indexes[i]);
+      for var LIndex := 0 to Length(Indexes) - 1 do
+        PMContext.Add(Indexes[LIndex]);
     end;
   end;
 
@@ -9723,16 +9816,9 @@ begin
       var LGenericArgs: TIDExpressions;
       var LCallExpr := TIDCallExpression.Create(Decl, PMContext.ID.TextPosition);
       LCallExpr.Instance := PrevExpr;
+      LCallExpr.GenericArgs := PMContext.GenericArgs;
+      LCallExpr.CanInstantiate := PMContext.CanInstantiate;
       Expression := LCallExpr;
-      // parse explicit generic arguments
-      if (Result = token_less) and ProcCanBeGeneric(TIDProcedure(Decl)) then
-      begin
-        var LCanInstantiate: Boolean;
-        Result := ParseGenericsArgs(Scope, EContext.SContext, {out} LGenericArgs, {out} LCanInstantiate);
-        // it's not possible to instantiate a generic method here, since we have to resolve overloads first
-        LCallExpr.GenericArgs := LGenericArgs;
-        LCallExpr.CanInstantiate := LCanInstantiate;
-      end;
       // parse explicit proc arguments
       if Result = token_openround then
       begin
@@ -10223,7 +10309,11 @@ function TASTDelphiUnit.ParseInterfaceType(Scope, GenericScope: TScope; GDescrip
 var
   Expr: TIDExpression;
 begin
-  Decl := TIDInterface(ParseGenericTypeDecl(Scope, GDescriptor, ID, TIDInterface));
+  if not Assigned(GDescriptor) then
+    Decl := TIDInterface(CreateType(Scope, ID, TIDInterface))
+  else
+    Decl := TIDInterface(CreateGenericType(Scope, GDescriptor, ID, TIDInterface));
+
   Decl.IsDisp := ADispInterface;
 
   Result := Lexer_NextToken(Scope);

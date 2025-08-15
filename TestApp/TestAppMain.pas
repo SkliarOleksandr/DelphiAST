@@ -1057,7 +1057,7 @@ begin
   try
     var LJSON := TJson.ObjectToJsonObject(LJSONProject);
     try
-      ASynEdit.Text := LJSON.Format();
+      ASynEdit.Text := LJSON.Format(2);
     finally
       LJSON.Free;
     end;
@@ -1072,7 +1072,7 @@ begin
   try
     var LJSON := TJson.ObjectToJsonObject(LJSONProject);
     try
-      ASynEdit.Text := LJSON.Format();
+      ASynEdit.Text := LJSON.Format(2);
     finally
       LJSON.Free;
     end;
@@ -1095,6 +1095,7 @@ procedure TfrmTestAppMain.ShowASTResults(const AProject: IASTDelphiProject);
     Result.SearchEngine := SynEditSearch1;
     Result.Options := Result.Options + [eoTabsToSpaces];
     Result.Gutter.ShowLineNumbers := True;
+    Result.Font.Size := Result.Font.Size - 1;
     LTab.SynEdit := Result;
     case ASTResultFormatComboBox.ItemIndex of
       0: Result.Highlighter := SynPasSyn1;
@@ -1175,10 +1176,12 @@ var
     // add source path for AST tests
     AProject.AddUnitSearchPath(ExtractFilePath(ATestData.FilePath));
     // parse the project
-    if ParseProject(AProject, {AClearOutput:} False, {AShowResults:} False, {ASaveAST:} False) <> CompileSuccess then
-      Inc(LFailCount);
+    ATestData.Failed :=
+      (ParseProject(AProject, {AClearOutput:} False, {AShowResults:} False, {ASaveAST:} False) <> CompileSuccess) or
+      (AProject.Messages.ErrorCount > 0);
 
-    ATestData.Failed := AProject.Messages.ErrorCount > 0;
+    if ATestData.Failed then
+      Inc(LFailCount);
     // do not clear implict units (RTL) between tests
     AProject.Clear({AClearImplicitUnits:} False);
     // remove source path for AST tests

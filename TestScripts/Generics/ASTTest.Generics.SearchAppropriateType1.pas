@@ -18,7 +18,7 @@ uses
 
 constructor TMyClass.Create;
 begin
-  FList := TList.Create; // E2010 Incompatible types: 'TList' and 'TList<T>'
+  FList := TList.Create;
 end;
 
 end.

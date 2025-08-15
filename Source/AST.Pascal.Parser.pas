@@ -36,6 +36,8 @@ type
     ID: TIdentifier;        // текущий идентификатор
     ItemScope: TScope;      // текущий scope
     DataType: TIDType;      // результатирующий тип цепочки выражений
+    GenericArgs: TIDExpressions;
+    CanInstantiate: Boolean;
     property Items: TIDExpressions read FItems;
     property Count: Integer read FCnt;
     property Last: TIDExpression read GetLast;
@@ -435,6 +437,8 @@ procedure TPMContext.Init;
 begin
   FCnt := 0;
   DataType := nil;
+  ItemScope := nil;
+  CanInstantiate := False;
 end;
 
 function TPascalUnit.GetDefinesAsString: string;

@@ -272,16 +272,13 @@ type
   private
     fGenericDescriptor: IGenericDescriptor;
     fGenericOrigin: TIDDeclaration;
-    fNextOverload: TIDDeclarationGeneric;
     procedure SetGenericDescriptor(const Value: IGenericDescriptor); virtual;
   protected
     procedure GenericInstances2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
-    procedure GenericOverloads2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
+    function GetPrettyName: string;
   public
     property GenericDescriptor: IGenericDescriptor read FGenericDescriptor write SetGenericDescriptor;
     property GenericOrigin: TIDDeclaration read fGenericOrigin write fGenericOrigin;
-    procedure AddGenecricOverload(ADecl: TIDDeclarationGeneric);
-    property NextGenericOverload: TIDDeclarationGeneric read fNextOverload;
     function ToJson: TJsonASTDeclaration; override;
   end;
 
@@ -370,7 +367,6 @@ type
     fBinarOperators: TBinarOperators;
     fSysBinaryOperators: TSysBinaryOperators;
 
-    fGenericNextOverload: TIDType;
     /////////////////////////////////////////////////////////
     fPacked: Boolean;
     fNeedForward: Boolean;
@@ -482,8 +478,6 @@ type
     procedure AddBinarySysOperator(Op: TOperatorID; Decl: TIDOperator);
 
     procedure CreateStandardOperators; virtual;
-
-    property GenericNextOverload: TIDType read FGenericNextOverload write FGenericNextOverload;
 
     property SysExplicitToAny: TIDOperator read fSysExplicitToAny;
     property SysExplicitFromAny: TIDOperator read fSysExplicitFromAny;
@@ -1919,7 +1913,6 @@ type
     function GetAllOverloadSignatures(const LineSeparator: string = #13#10): string;
 
     function InstantiateGenericProc(ADstScope: TScope; ADstStruct: TIDStructure;
-                                    ANextOverload: TIDProcedure;
                                     AContext: TGenericInstantiateContext): TIDProcedure;
 
     function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
@@ -2020,7 +2013,6 @@ type
     function FindInAdditionalScopes(const ID: string): TIDDeclaration; overload;
     procedure FindInAdditionalScopes(const ID: string; var ADeclArray: TIDdeclarray); overload;
     function FindIDRecurcive(const ID: string; AHelperTree: THelperTree = nil): TIDDeclaration; overload; virtual;
-    procedure FindIDRecurcive(const ID: string; AHelperTree: THelperTree; var ADeclArray: TIDDeclArray); overload; virtual;
     function FindMembers(const ID: string; AHelperTree: THelperTree = nil): TIDDeclaration; overload; virtual;
     procedure FindMembers(const ID: string; var ADeclArray: TIDDeclArray); overload; virtual;
     function GetDeclArray(Recursively: Boolean = False): TIDDeclArray;
@@ -2090,7 +2082,6 @@ type
   public
     constructor CreateAsStruct(Parent: TScope; Struct: TIDStructure; DeclUnit: TASTModule); reintroduce;
     function FindIDRecurcive(const ID: string; AHelperTree: THelperTree = nil): TIDDeclaration; override;
-    procedure FindIDRecurcive(const ID: string; AHelperTree: THelperTree; var ADeclArray: TIDDeclArray); override;
     function FindMembers(const ID: string; AHelperTree: THelperTree = nil): TIDDeclaration; override;
     property Struct: TIDStructure read fStruct;
     property AncestorScope: TStructScope read fAncestorScope;
@@ -2169,7 +2160,6 @@ type
   public
     constructor CreateInDecl(OuterScope, Parent: TScope; AProc: TIDProcedure); reintroduce;
     function FindIDRecurcive(const ID: string; AHelperTree: THelperTree = nil): TIDDeclaration; override;
-    procedure FindIDRecurcive(const ID: string; AHelperTree: THelperTree; var ADeclArray: TIDDeclArray); overload; override;
     property Struct: TIDStructure read GetStruct;
   end;
 
@@ -2617,21 +2607,6 @@ begin
     Result := FParent.FindIDRecurcive(ID, AHelperTree);
 end;
 
-procedure TScope.FindIDRecurcive(const ID: string; AHelperTree: THelperTree; var ADeclArray: TIDDeclArray);
-begin
-  // search within oneself
-  var LDecl := FindID(ID);
-  if Assigned(LDecl) then
-    ADeclArray := ADeclArray + [LDecl];
-
-  // search in additional scopes
-  FindInAdditionalScopes(ID, {var} ADeclArray);
-
-  // если есть родитель - ищем в нем
-  if Assigned(FParent) then
-    FParent.FindIDRecurcive(ID, AHelperTree, {var} ADeclArray);
-end;
-
 procedure TScope.FindInAdditionalScopes(const ID: string; var ADeclArray: TIDdeclarray);
 begin
   // search in the backward direction than defined in the code
@@ -2950,27 +2925,20 @@ end;
 
 { TIDDeclarationGeneric }
 
-procedure TIDDeclarationGeneric.AddGenecricOverload(ADecl: TIDDeclarationGeneric);
-begin
-  var LCurrent := Self;
-  while Assigned(LCurrent.NextGenericOverload) do
-     LCurrent := LCurrent.NextGenericOverload;
-
-  LCurrent.fNextOverload := ADecl;
-end;
-
 procedure TIDDeclarationGeneric.GenericInstances2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
 begin
   if Assigned(fGenericDescriptor) then
     fGenericDescriptor.Decl2StrAllInstances(ABuilder, ANestedLevel);
 end;
 
-procedure TIDDeclarationGeneric.GenericOverloads2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
+function TIDDeclarationGeneric.GetPrettyName: string;
 begin
-  if Assigned(NextGenericOverload) then
+  Result := Name;
+  if Assigned(GenericDescriptor) then
   begin
-    ABuilder.AppendLine;
-    NextGenericOverload.Decl2Str(ABuilder, ANestedLevel);
+    var LPos := Pos('@', Result);
+    if LPos >= 1 then
+      Result := Copy(Result, 1, LPos - 1);
   end;
 end;
 
@@ -2983,9 +2951,10 @@ function TIDDeclarationGeneric.ToJson: TJsonASTDeclaration;
 begin
   Result := ASTJsonDeclClass().Create;
   Result.kind := ASTKind;
-  Result.name := Name;
   if Assigned(GenericDescriptor) then
-    Result.name := Result.name + GenericDescriptor.DisplayName;
+    Result.name := GetPrettyName + GenericDescriptor.DisplayName
+  else
+    Result.name := Name;
   Result.srcRow := ID.TextPosition.Row;
   Result.srcCol := ID.TextPosition.Col - Length(ID.Name);
   Result.handle := ASTHandle;
@@ -3505,8 +3474,6 @@ begin
 
   if not Assigned(GenericPrototype) then
     GenericInstances2Str(ABuilder, ANestedLevel);
-
-  GenericOverloads2Str(ABuilder, ANestedLevel);
 end;
 
 procedure TIDProcedure.DecRefCount(RCPath: UInt32);
@@ -3569,7 +3536,6 @@ begin
 end;
 
 function TIDProcedure.InstantiateGenericProc(ADstScope: TScope; ADstStruct: TIDStructure;
-                                             ANextOverload: TIDProcedure;
                                              AContext: TGenericInstantiateContext): TIDProcedure;
 
 
@@ -3598,7 +3564,6 @@ begin
 
   LNewProc.FStruct := ADstStruct;
   LNewProc.FProcFlags := FProcFlags;
-  LNewProc.FNextOverload := FNextOverload;
   LNewProc.FCallConv := FCallConv;
   LNewProc.FVirtualIndex := FVirtualIndex;
   LNewProc.FFirstBodyLine := FFirstBodyLine;
@@ -3618,7 +3583,7 @@ end;
 function TIDProcedure.InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                          AContext: TGenericInstantiateContext): TIDDeclaration;
 begin
-  Result := InstantiateGenericProc(ADstScope, ADstStruct, nil, AContext);
+  Result := InstantiateGenericProc(ADstScope, ADstStruct, AContext);
 end;
 
 procedure TIDProcedure.MakeSelfParam;
@@ -3690,10 +3655,13 @@ begin
   begin
     ABuilder.Append(' ', ANestedLevel*2);
     ABuilder.Append('type ');
-    ABuilder.Append(Name);
 
     if Assigned(GenericDescriptor) then
+    begin
+      ABuilder.Append(GetPrettyName);
       GenericDescriptor.Decl2Str(ABuilder);
+    end else
+      ABuilder.Append(Name);
 
     ABuilder.Append(' = ');
 
@@ -4815,7 +4783,7 @@ begin
   if FDeclaration is TIDType then
     Result := TIDType(FDeclaration)
   else begin
-    AbortWorkInternal('Invalid Expression Type Cast [as type] for %s:%s', [Text, DataTypeName]);
+    AbortWorkInternal('Invalid Expression Type Cast [as type] for %s: %s', [Text, DataTypeName], TextPosition);
     Result := nil;
   end;
 end;
@@ -5293,7 +5261,7 @@ function TIDStructure.InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStruc
     var APrevOverload := AProc.PrevOverload;
     while Assigned(APrevOverload) and  (APrevOverload.Struct = Self) do
     begin
-      AProc.PrevOverload := APrevOverload.InstantiateGenericProc(ADstScope, ANewStruct, nil, AContext);
+      AProc.PrevOverload := APrevOverload.InstantiateGenericProc(ADstScope, ANewStruct, AContext);
       AProc := AProc.PrevOverload;
       APrevOverload := APrevOverload.PrevOverload;
     end;
@@ -5386,8 +5354,6 @@ begin
   // ABuilder.Append(Format('[$%p]', [Pointer(Self)]));
 
   GenericInstances2Str(ABuilder, ANestedLevel);
-
-  GenericOverloads2Str(ABuilder, ANestedLevel);
 end;
 
 procedure TIDStructure.DecRefCount(RCPath: UInt32);
@@ -6540,10 +6506,7 @@ begin
   TypeNameToString(ElementDataType, ABuilder);
 
   if AAppendName then
-  begin
     GenericInstances2Str(ABuilder, ANestedLevel);
-    GenericOverloads2Str(ABuilder, ANestedLevel);
-  end;
 end;
 
 function TIDDynArray.GetHelperScope: TScope;
@@ -7229,7 +7192,7 @@ end;
 
 function TImplementationScope.FindIDRecurcive(const ID: string; AHelperTree: THelperTree): TIDDeclaration;
 begin
-  Result := inherited FindIDRecurcive(ID);
+  Result := inherited FindIDRecurcive(ID, AHelperTree);
 
   if not Assigned(Result) then
   begin
@@ -7523,8 +7486,6 @@ begin
     ABuilder.Append(' of object ');
 
   GenericInstances2Str(ABuilder, ANestedLevel);
-
-  GenericOverloads2Str(ABuilder, ANestedLevel);
 end;
 
 function TIDProcType.GetAsInterface: TIDInterface;
@@ -8069,23 +8030,6 @@ begin
   Result := fParent.FindIDRecurcive(ID);
 end;
 
-procedure TMethodScope.FindIDRecurcive(const ID: string; AHelperTree: THelperTree; var ADeclArray: TIDDeclArray);
-begin
-  // search within oneself
-  var LDecl := FindID(ID);
-  if Assigned(LDecl) then
-    ADeclArray := ADeclArray + [LDecl];
-
-  // search in parent struct members
-  FParent.FindMembers(ID, {var} ADeclArray);
-
-  // search in the all impl uses scopes
-  fOuterScope.FindIDRecurcive(ID, AHelperTree, {var} ADeclArray);
-
-  // search in the all intf uses scopes
-  FParent.FindIDRecurcive(ID, AHelperTree, {var} ADeclArray);
-end;
-
 function TMethodScope.GetName: string;
 begin
   if Assigned(fProc) then
@@ -8621,27 +8565,6 @@ begin
     Result := FAncestorScope.FindIDRecurcive(ID);
 end;
 
-procedure TStructScope.FindIDRecurcive(const ID: string; AHelperTree: THelperTree; var ADeclArray: TIDDeclArray);
-var
-  LDecl: TIDDeclaration;
-begin
-  // search in helpers first
-  if Assigned(AHelperTree) then
-  begin
-    var LHelper := AHelperTree.FindHelper(Struct);
-    if Assigned(LHelper) then
-    begin
-      LDecl := LHelper.FindMember(ID);
-      if Assigned(LDecl) then
-        ADeclArray := ADeclArray + [LDecl];
-    end;
-  end;
-
-  inherited FindIDRecurcive(ID, AHelperTree, {var} ADeclArray);
-  if Assigned(FAncestorScope) and (FAncestorScope <> Self) then
-    FAncestorScope.FindIDRecurcive(ID, AHelperTree, {var} ADeclArray);
-end;
-
 function TStructScope.FindMembers(const ID: string; AHelperTree: THelperTree): TIDDeclaration;
 begin
   // search in helpers first
@@ -9075,8 +8998,6 @@ begin
     ABuilder.Append('<null>');
 
   GenericInstances2Str(ABuilder, ANestedLevel);
-
-  GenericOverloads2Str(ABuilder, ANestedLevel);
 end;
 
 { TUnknownIDExpression }

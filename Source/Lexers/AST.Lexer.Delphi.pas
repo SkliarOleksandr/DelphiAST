@@ -295,6 +295,7 @@ begin
         // read the escaped token
         GetNextTokenId();
         fCurrentTokenID := ord(token_identifier);
+        fAmbiguousTokenId := ord(token_identifier);
         fIdentifireType := itIdentifier;
         Result := token_identifier;
       end;
@@ -407,7 +408,6 @@ begin
   fIncludeFilesStack := TStack<TParserPosition>.Create;
   IdentifireID := ord(token_identifier);
   EofID := ord(token_eof);
-//  AmbiguousId := ord(token_id_or_keyword);
   TokenCaptions.AddObject('end of file', TObject(token_eof));
   TokenCaptions.AddObject('identifier', TObject(token_identifier));
   SeparatorChars := '#$ '''#9#10#13'%^&*@()+-{}[]\/,.;:<>=~!?';
