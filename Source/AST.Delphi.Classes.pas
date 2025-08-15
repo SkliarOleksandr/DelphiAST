@@ -2224,6 +2224,7 @@ type
   function GetItemTypeName(ItemType: TIDItemType): string;
 
   function SameTypes(ASrcType, ADstType: TIDType): Boolean;
+  function SameProceduralTypes(ALeftType, ARightType: TIDType): Boolean;
   function SameProcSignTypes(ASrcType, ADstType: TIDType): Boolean;
   function SameParams(const AParams1, AParams2: TIDParamArray): Boolean;
   function IsGenericTypeThisStruct(Scope: TScope; Struct: TIDType): Boolean;
@@ -6535,7 +6536,8 @@ begin
     case AOpID of
       opEqual, opNotEqual: Exit(SYSUnit._Boolean);
       opAdd: begin
-        if TIDDynArray(ARight).ElementDataType.ActualDataType = ElementDataType.ActualDataType then
+        if SameTypes(ElementDataType, TIDDynArray(ARight).ElementDataType) or
+           SameProceduralTypes(ElementDataType, TIDDynArray(ARight).ElementDataType) then
           Exit(Self);
       end;
     end
@@ -9266,6 +9268,12 @@ begin
       end;
     end;
   end;
+end;
+
+function SameProceduralTypes(ALeftType, ARightType: TIDType): Boolean;
+begin
+  Result := ((ALeftType.DataTypeID = dtPointer) and (ARightType.DataTypeID = dtProcType)) or
+            ((ARightType.DataTypeID = dtPointer) and (ALeftType.DataTypeID = dtProcType));
 end;
 
 function SameProcSignTypes(ASrcType, ADstType: TIDType): Boolean;

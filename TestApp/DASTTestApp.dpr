@@ -121,6 +121,7 @@ uses
   ASTTest.Procs.ClosureWithInherited1 in '..\TestScripts\Procedures\Closures\ASTTest.Procs.ClosureWithInherited1.pas',
   ASTTest.ProcTypes.ProcType1 in '..\TestScripts\Procedures\Proc Types\ASTTest.ProcTypes.ProcType1.pas',
   ASTTest.ProcTypes.ProcType2 in '..\TestScripts\Procedures\Proc Types\ASTTest.ProcTypes.ProcType2.pas',
+  ASTTest.ProcTypes.ProcType3 in '..\TestScripts\Procedures\Proc Types\ASTTest.ProcTypes.ProcType3.pas',
   ASTTest.Classes.Base in '..\TestScripts\Classes\ASTTest.Classes.Base.pas',
   ASTTest.Classes.Construct1 in '..\TestScripts\Classes\Constructors\ASTTest.Classes.Construct1.pas',
   ASTTest.Classes.Construct2 in '..\TestScripts\Classes\Constructors\ASTTest.Classes.Construct2.pas',

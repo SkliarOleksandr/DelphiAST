@@ -4429,8 +4429,9 @@ end;
 
 class function TASTDelphiUnit.CheckAndCallFuncImplicit(const EContext: TEContext; Expr: TIDExpression): TIDExpression;
 begin
-  if (Expr.DataTypeID = dtProcType) and
-      Assigned((Expr.ActualDataType as TIDProcType).ResultType) then
+  if Assigned(Expr) and
+    (Expr.DataTypeID = dtProcType) and
+     Assigned((Expr.ActualDataType as TIDProcType).ResultType) then
   begin
     // todo: generate func call
     Result := GetTMPVarExpr(EContext, (Expr.ActualDataType as TIDProcType).ResultType, Expr.TextPosition);
@@ -10855,7 +10856,8 @@ begin
   while True do begin
     Lexer_NextToken(Scope);
     Token := ParseExpression(Scope, SContext, InnerEContext, {out} ASTExpr);
-    Expr := InnerEContext.Result;
+    // resolve implicit calls when it's a const array element
+    Expr := CheckAndCallFuncImplicit(EContext, InnerEContext.Result);
     if Assigned(Expr) then begin
       if Expr.Declaration.ItemType <> itConst then
         IsStatic := False;
