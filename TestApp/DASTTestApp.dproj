@@ -215,6 +215,8 @@
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.SmartRef1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenericInstantiation1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenericInstantiation2.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenericInstantiation3.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenericInstantiation4.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Overload1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.OverloadProc1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.TListDecl1.pas"/>

@@ -88,6 +88,8 @@ uses
   ASTTest.Generics.SmartRef1 in '..\TestScripts\Generics\ASTTest.Generics.SmartRef1.pas',
   ASTTest.Generics.GenericInstantiation1 in '..\TestScripts\Generics\ASTTest.Generics.GenericInstantiation1.pas',
   ASTTest.Generics.GenericInstantiation2 in '..\TestScripts\Generics\ASTTest.Generics.GenericInstantiation2.pas',
+  ASTTest.Generics.GenericInstantiation3 in '..\TestScripts\Generics\ASTTest.Generics.GenericInstantiation3.pas',
+  ASTTest.Generics.GenericInstantiation4 in '..\TestScripts\Generics\ASTTest.Generics.GenericInstantiation4.pas',
   ASTTest.Generics.Overload1 in '..\TestScripts\Generics\ASTTest.Generics.Overload1.pas',
   ASTTest.Generics.OverloadProc1 in '..\TestScripts\Generics\ASTTest.Generics.OverloadProc1.pas',
   ASTTest.Generics.TListDecl1 in '..\TestScripts\Generics\ASTTest.Generics.TListDecl1.pas',

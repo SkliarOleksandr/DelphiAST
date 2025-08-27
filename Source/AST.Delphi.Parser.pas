@@ -1007,11 +1007,12 @@ begin
       Result := ParseConstExpression(Scope, Expr, ExprType);
       {simple alias type}
       if Expr.ItemType = itType then
+      begin
         // insert the same data type with a new name into the scope
-        // TODO: add a list of aliases to pull them into common declaration list
-        // since an alias doesn't have its own declaration now
-        Decl := Expr.AsType
-      else
+        Decl := Expr.AsType;
+        // add a new alias to special list since an alias doesn't have its own declaration now
+        Scope.AddAlias(ID, Decl);
+      end else
       {range type}
       begin
         ParseRangeType(Scope, Expr, ID, TIDRangeType(Decl));
@@ -3700,128 +3701,111 @@ begin
   if not Assigned(Source) or not Assigned(Source.DataType) then
     AbortWorkInternal('Source data type is not assigned', Lexer_Position);
 
-  SDataType := Source.DataType.ActualDataType;
-  Dest := Dest.ActualDataType;
+  SDataType := Source.DataType;
 
-  if SDataType = Dest then
-    Exit(Source);
-
-  SrcDTID := SDataType.DataTypeID;
-  DstDTID := Dest.DataTypeID;
-
-  // ищем явно определенный implicit у источника
-  Decl := SDataType.GetImplicitOperatorTo(Dest);
-  if Decl is TSysTypeCast then
+  while True do
   begin
-    Result := TSysTypeCast(Decl).Match(SContext, Source, Dest);
-    if Assigned(Result) then
-      Exit(Result);
-    Decl := nil;
-  end;
 
-  if not Assigned(Decl) then
-  begin
-    // ищем явно определенный implicit у приемника
-    Decl := Dest.GetImplicitOperatorFrom(SDataType);
-    if not Assigned(Decl) then
+    var LDstHelper := fCurrentHelpers.FindHelper(Dest);
+    if Assigned(LDstHelper) and LDstHelper.HasImplicitOperators then
     begin
-      // если не нашли точных имплиситов, ищем подходящий (у источника)
-      Decl := SDataType.FindImplicitOperatorTo(Dest);
-      if not Assigned(Decl) then
-      begin
-        // если не нашли точных имплиситов, ищем подходящий (у приемника)
-        Decl := Dest.FindImplicitOperatorFrom(SDataType);
-        if not Assigned(Decl) then
-        begin
-          { если классы и интерфейс }
-          if (SrcDTID = dtClass) and (DstDTID = dtInterface) then
-          begin
-            if TIDClass(Source.DataType).FindInterface(TIDInterface(Dest), {AFindInAncestors:} True) then
-              Exit(Source)
-            else begin
-              // for debug
-              TIDClass(Source.DataType).FindInterface(TIDInterface(Dest));
-              ERRORS.CLASS_NOT_IMPLEMENT_INTF(Source, Dest);
-            end;
-          end;
+      Result := MatchImplicitOrNil(SContext, Source, LDstHelper);
+      if Assigned(Result) then
+        Exit;
+    end;
 
-          { есди приемник - class of }
-          if DstDTID = dtClassOf then
-            Decl := MatchImplicitClassOf(Source, TIDClassOf(Dest));
+//    var LSrcHelper := fCurrentHelpers.FindHelper(SDataType);
+//    if Assigned(LSrcHelper) and LSrcHelper.HasImplicitOperators then
+//    begin
+//      Result := MatchImplicitOrNil(SContext, Source, LSrcHelper);
+//      if Result then
+//        Exit;
+//    end;
 
-// todo: not needed?
-//          {дин. массив как набор}
-//          if (DstDTID = dtSet) and (SDataType is TIDDynArray) then
-//          begin
-//            Result := MatchSetImplicit(SContext, Source, TIDSet(Dest));
-//            Exit;
-//          end else
-//          if (SrcDTID = dtProcType) and (DstDTID = dtProcType) then
-//            Decl := MatchProcedureTypes(TIDProcType(SDataType), TIDProcType(Dest))
-//          else
-//          if SDataType is TIDArray then
-//          begin
-//            if Dest is TIDArray then
-//              Result := MatchArrayImplicit(SContext, Source, TIDArray(Dest))
-//            else
-////            if DstDTID = dtRecord then
-////              Result := MatchArrayImplicitToRecord(SContext, Source, TIDStructure(Dest))
-////            else
-//              Result := nil;
-//            Exit;
-//          end;
-//          if (SrcDTID = dtRecord) and (DstDTID = dtRecord) then
-//          begin
-//            Result := MatchRecordImplicit(SContext, Source, TIDRecord(Dest));
-//            Exit;
-//          end;
-        end else
-          Exit(Source);
-      end;
-    end else
+    if SDataType = Dest then
+      Exit(Source);
+
+    SrcDTID := SDataType.DataTypeID;
+    DstDTID := Dest.DataTypeID;
+
+    // ищем явно определенный implicit у источника
+    Decl := SDataType.GetImplicitOperatorTo(Dest);
     if Decl is TSysTypeCast then
     begin
       Result := TSysTypeCast(Decl).Match(SContext, Source, Dest);
       if Assigned(Result) then
-        Exit;
-    end else
+        Exit(Result);
+      Decl := nil;
+    end;
+
+    if not Assigned(Decl) then
+    begin
+      // ищем явно определенный implicit у приемника
+      Decl := Dest.GetImplicitOperatorFrom(SDataType);
+      if not Assigned(Decl) then
+      begin
+        // если не нашли точных имплиситов, ищем подходящий (у источника)
+        Decl := SDataType.FindImplicitOperatorTo(Dest);
+        if not Assigned(Decl) then
+        begin
+          // если не нашли точных имплиситов, ищем подходящий (у приемника)
+          Decl := Dest.FindImplicitOperatorFrom(SDataType);
+          if not Assigned(Decl) then
+          begin
+            { если классы и интерфейс }
+            if (SrcDTID = dtClass) and (DstDTID = dtInterface) then
+            begin
+              if TIDClass(Source.DataType).FindInterface(TIDInterface(Dest), {AFindInAncestors:} True) then
+                Exit(Source)
+              else begin
+                // for debug
+                TIDClass(Source.DataType).FindInterface(TIDInterface(Dest));
+                ERRORS.CLASS_NOT_IMPLEMENT_INTF(Source, Dest);
+              end;
+            end;
+
+            { есди приемник - class of }
+            if DstDTID = dtClassOf then
+              Decl := MatchImplicitClassOf(Source, TIDClassOf(Dest));
+
+          end else
+            Exit(Source);
+        end;
+      end else
+      if Decl is TSysTypeCast then
+      begin
+        Result := TSysTypeCast(Decl).Match(SContext, Source, Dest);
+        if Assigned(Result) then
+          Exit;
+      end else
+        Exit(Source);
+    end;
+
+    {generic case}
+    // todo: constraint check is needed
+    if (SrcDTID = dtGeneric) or (DstDTID = dtGeneric) then
       Exit(Source);
+
+    if Source.ClassType = TIDDrefExpression then
+    begin
+      Result := GetTMPVarExpr(SContext, Source.DataType, Lexer_Position);
+      Exit;
+    end;
+
+    if Assigned(Decl) and (Decl.ItemType = itType) then
+      Exit(Source);
+
+    // if the type is an alias, let's try to find operators in a linked type
+    if SDataType is TIDAliasType then
+      SDataType := TIDAliasType(SDataType).LinkedType
+    else
+    if Dest is TIDAliasType then
+      Dest := TIDAliasType(Dest).LinkedType
+    else
+      Break;
   end;
 
-  {generic case}
-  // todo: constraint check is needed
-  if (SrcDTID = dtGeneric) or (DstDTID = dtGeneric) then
-    Exit(Source);
-
-  if Source.ClassType = TIDDrefExpression then
-  begin
-    Result := GetTMPVarExpr(SContext, Source.DataType, Lexer_Position);
-    Exit;
-  end;
-
-//  if Assigned(SDataType.SysImplicitToAny) then
-//  begin
-//    Decl := TSysOpImplicit(SDataType.SysImplicitToAny).Check(SContext, Source, Dest);
-//    if Assigned(Decl) then
-//      Exit(Source);
-//    Decl := nil;
-//  end;
-
-//  if not Assigned(Decl) then
-//  begin
-//    if Assigned(Dest.SysImplicitFromAny) then
-//    begin
-//      Decl := TSysOpImplicit(Dest.SysImplicitFromAny).Check(SContext, Source, Dest);
-//      if Assigned(Decl) then
-//        Exit(Source);
-//    end;
-//    Exit(nil);
-//  end;
-
-  if Assigned(Decl) and (Decl.ItemType = itType) then
-    Exit(Source);
-
-  Result := nil;
+  //Result := nil;
 end;
 
 procedure TASTDelphiUnit.MatchProc(const SContext: TSContext; CallExpr: TIDExpression;
@@ -7280,18 +7264,16 @@ var
 begin
   DataType := nil;
   Result := ParseGenericsArgs(Scope, fUnitSContext, {out} LGenericArgs, {out} LCanInstantiate);
-  // find all types with the same name
-  LNewID := ID;
 
-  if Length(LGenericArgs) > 0 then
-    LNewID.Name := ID.Name + '@' + Length(LGenericArgs).ToString;
+  LNewID.Name := ID.Name + '@' + Length(LGenericArgs).ToString;
+  LNewID.TextPosition := ID.TextPosition;
 
   var LDecl := FindID(ASearchScope, LNewID);
   if Assigned(LDecl) and (LDecl is TIDType) then
   begin
     var LType := LDecl as TIDType;
     var LTypesArray := GetTypesArray(LGenericArgs);
-    if LCanInstantiate and not IsGenericTypeThisStruct(Scope, LType) then
+    if LCanInstantiate then
     begin
       DataType := InstantiateGenericType(Scope, LType, LTypesArray);
     end else
@@ -9017,23 +8999,23 @@ begin
     case LOperatorDef.OpID of
       opImplicit: begin
       if ResultType = LTargetType then
-        LTargetType.OverloadImplicitFrom(Proc.ExplicitParams[0].DataType, Proc)
+        Struct.OverloadImplicitFrom(Proc.ExplicitParams[0].DataType, Proc)
       else
-        LTargetType.OverloadImplicitTo(ResultType, Proc);
+        Struct.OverloadImplicitTo(ResultType, Proc);
       end;
       opExplicit: begin
         if ResultType = LTargetType then
-          LTargetType.OverloadExplicitFrom(Proc.ExplicitParams[0].DataType, Proc)
+          Struct.OverloadExplicitFrom(Proc.ExplicitParams[0].DataType, Proc)
         else
-          LTargetType.OverloadExplicitTo(ResultType, Proc);
+          Struct.OverloadExplicitTo(ResultType, Proc);
       end;
     else
       if LOperatorDef.OpID < opIn then
-        LTargetType.OverloadUnarOperator(LOperatorDef.OpID, Proc)
+        Struct.OverloadUnarOperator(LOperatorDef.OpID, Proc)
       else begin
         var LLeftType := Proc.ExplicitParams[0].DataType;
         var LRightType := Proc.ExplicitParams[1].DataType;
-        LTargetType.OverloadBinarOperator(LOperatorDef.OpID, LLeftType, LRightType, TIDOperator(Proc));
+        Struct.OverloadBinarOperator(LOperatorDef.OpID, LLeftType, LRightType, TIDOperator(Proc));
       end;
     end;
   end;
@@ -9267,15 +9249,23 @@ function TASTDelphiUnit.InstantiateGenericType(AScope: TScope; AGenericType: TID
 var
   GDescriptor: IGenericDescriptor;
   LContext: TGenericInstantiateContext;
+  LExistingInstance: TIDStructure;
 begin
+  LExistingInstance := nil;
   GDescriptor := AGenericType.GenericDescriptor;
-
   {find in the pool first}
   var LDecl: TIDDeclaration;
   if GDescriptor.TryGetInstance(AGenericArgs, {out} LDecl) then
   begin
     Result := LDecl as TIDType;
-    Exit;
+
+    // the type found, but it's not complete, we need to re-instantiate
+    if (Result is TIDStructure) and not TIDStructure(Result).IsCompleted then
+    begin
+      TIDStructure(Result).ClearMembers;
+      LExistingInstance := TIDStructure(Result);
+    end else
+      Exit;
   end;
 
   LContext := TGenericInstantiateContext.Create({AParent} nil, AGenericType);
@@ -9288,6 +9278,7 @@ begin
       AStrSufix := AddStringSegment(AStrSufix, AGenericArgs[AIndex].Name, ', ');
     LContext.DstID.Name := AGenericType.Name + '<' + AStrSufix + '>';
     LContext.DstID.TextPosition := Lexer_Position;
+    LContext.ExistingInstance := LExistingInstance;
 
     try
       WriteLog('# INSTANTIATE TYPE (%s: %d): %s', [Name, Lexer_Line, LContext.DstID.Name]);

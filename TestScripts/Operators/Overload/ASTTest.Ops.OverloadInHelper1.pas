@@ -15,7 +15,7 @@ type
 
   // it must be a new type, to make worked both helpers
   // otherwise second helper replaces the first one in case of simple alias 
-  TAlias1 = type TOrigin;  
+  TAlias1 = type TOrigin;
 
   THelper2 = record helper for TAlias1
     class operator Implicit(V: string): TAlias1;
@@ -29,9 +29,9 @@ var
   LAlias1: TAlias1;
 begin
   LOrigin := 5;
-  // LOrigin := '5'; // E2010 Incompatible types: 'TOrigin' and 'Char'
+  // LOrigin := '5'; // Expected: E2010 Incompatible types: 'TOrigin' and 'Char'
 
-  // LAlias1 := 5; // E2010 Incompatible types: 'TAlias1' and 'Integer'
+  // LAlias1 := 5; // Expected: E2010 Incompatible types: 'TAlias1' and 'Integer'
   LAlias1 := '5';
 end;
 
