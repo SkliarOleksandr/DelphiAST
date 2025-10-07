@@ -1,7 +1,6 @@
 object frmTestAppMain: TfrmTestAppMain
   Left = 0
   Top = 0
-  Caption = 'Delphi AST Parser'
   ClientHeight = 774
   ClientWidth = 1266
   Color = clBtnFace
@@ -24,6 +23,8 @@ object frmTestAppMain: TfrmTestAppMain
     ActivePage = SrcTabSheet
     Align = alClient
     TabOrder = 0
+    ExplicitWidth = 1260
+    ExplicitHeight = 757
     object SrcTabSheet: TTabSheet
       Caption = 'Source'
       object Splitter2: TSplitter
@@ -53,6 +54,7 @@ object frmTestAppMain: TfrmTestAppMain
         ActivePage = tsTestScripts
         Align = alLeft
         TabOrder = 0
+        ExplicitHeight = 493
         object tsTestScripts: TTabSheet
           Caption = ' Tests'
           ImageIndex = 2
@@ -96,8 +98,8 @@ object frmTestAppMain: TfrmTestAppMain
             OnChecking = VTTestsChecking
             OnClick = VTTestsClick
             OnDrawText = VTTestsDrawText
-            OnGetText = VTTestsGetText
             OnFreeNode = VTTestsFreeNode
+            OnGetText = VTTestsGetText
             OnGetImageIndex = VTTestsGetImageIndex
             OnNodeClick = VTTestsNodeClick
             OnNodeDblClick = VTTestsNodeDblClick
@@ -136,26 +138,31 @@ object frmTestAppMain: TfrmTestAppMain
             BevelOuter = bvNone
             ShowCaption = False
             TabOrder = 2
+            ExplicitTop = 439
             object TotalTestCntLabel: TLabel
               AlignWithMargins = True
               Left = 3
               Top = 3
               Width = 66
-              Height = 13
+              Height = 20
               Align = alLeft
               Caption = 'Total Tests: 0'
               Layout = tlCenter
+              ExplicitHeight = 13
             end
             object TestRunProgressLabel: TLabel
               AlignWithMargins = True
-              Left = 316
+              Left = 75
               Top = 3
-              Width = 63
-              Height = 13
+              Width = 304
+              Height = 20
               Align = alClient
               Alignment = taRightJustify
               Caption = 'Test Not Run'
               Layout = tlCenter
+              ExplicitLeft = 316
+              ExplicitWidth = 63
+              ExplicitHeight = 13
             end
           end
         end
@@ -215,8 +222,8 @@ object frmTestAppMain: TfrmTestAppMain
                 Width = 71
                 Height = 17
                 Hint = 
-                  'Saves the AST as a JSON files in the same directories as the original PAS' +
-                  ' files'
+                  'Saves the AST as a JSON files in the same directories as the ori' +
+                  'ginal PAS files'
                 Anchors = [akTop, akRight]
                 Caption = 'Save AST'
                 ParentShowHint = False
@@ -281,6 +288,7 @@ object frmTestAppMain: TfrmTestAppMain
                 Width = 3
               end>
             ReadOnly = True
+            ScrollbarAnnotations = <>
             WordWrap = True
           end
           object Panel1: TPanel
@@ -315,6 +323,8 @@ object frmTestAppMain: TfrmTestAppMain
         BevelOuter = bvNone
         ShowCaption = False
         TabOrder = 1
+        ExplicitTop = 529
+        ExplicitWidth = 1252
         object ErrMemo: TSynEdit
           AlignWithMargins = True
           Left = 3
@@ -357,7 +367,9 @@ object frmTestAppMain: TfrmTestAppMain
               Width = 3
             end>
           ReadOnly = True
+          ScrollbarAnnotations = <>
           WordWrap = True
+          ExplicitWidth = 1246
         end
         object Panel6: TPanel
           Left = 0
@@ -368,6 +380,7 @@ object frmTestAppMain: TfrmTestAppMain
           BevelOuter = bvNone
           ShowCaption = False
           TabOrder = 1
+          ExplicitWidth = 1252
           object ShowWarningsCheck: TCheckBox
             Left = 3
             Top = 3
@@ -405,174 +418,15 @@ object frmTestAppMain: TfrmTestAppMain
         Caption = 'MainPanel'
         ShowCaption = False
         TabOrder = 2
-        object SrcPageControl: TPageControl
-          AlignWithMargins = True
-          Left = 4
-          Top = 4
-          Width = 857
-          Height = 502
-          ActivePage = tsSource
-          Align = alClient
-          TabOrder = 0
-          object tsSource: TTabSheet
-            Caption = 'Source'
-            object edUnit: TSynEdit
-              Left = 0
-              Top = 35
-              Width = 849
-              Height = 439
-              Align = alClient
-              Font.Charset = DEFAULT_CHARSET
-              Font.Color = clWindowText
-              Font.Height = -13
-              Font.Name = 'Consolas'
-              Font.Pitch = fpFixed
-              Font.Style = []
-              Font.Quality = fqClearTypeNatural
-              TabOrder = 0
-              UseCodeFolding = False
-              BookMarkOptions.LeftMargin = 0
-              BookMarkOptions.Xoffset = 0
-              Gutter.Font.Charset = DEFAULT_CHARSET
-              Gutter.Font.Color = clWindowText
-              Gutter.Font.Height = -11
-              Gutter.Font.Name = 'Courier New'
-              Gutter.Font.Style = []
-              Gutter.Font.Quality = fqClearTypeNatural
-              Gutter.ShowLineNumbers = True
-              Gutter.Bands = <
-                item
-                  Kind = gbkMarks
-                  Width = 13
-                end
-                item
-                  Kind = gbkLineNumbers
-                end
-                item
-                  Kind = gbkFold
-                end
-                item
-                  Kind = gbkTrackChanges
-                end
-                item
-                  Kind = gbkMargin
-                  Width = 3
-                end>
-              Highlighter = SynPasSyn1
-              OnChange = edUnitChange
-              OnSpecialLineColors = edUnitSpecialLineColors
-            end
-            object Panel7: TPanel
-              Left = 0
-              Top = 0
-              Width = 849
-              Height = 35
-              Align = alTop
-              BevelOuter = bvNone
-              ShowCaption = False
-              TabOrder = 1
-              object SaveButton: TButton
-                Left = 0
-                Top = 4
-                Width = 75
-                Height = 25
-                Action = SaveSourceAction
-                TabOrder = 0
-              end
-              object ASTParseButton: TButton
-                Left = 79
-                Top = 4
-                Width = 75
-                Height = 25
-                Action = ASTParseAction
-                TabOrder = 1
-              end
-            end
-          end
-          object tsAST: TTabSheet
-            Caption = 'AST'
-            ImageIndex = 1
-            object ASTResultTopPanel: TPanel
-              Left = 0
-              Top = 0
-              Width = 849
-              Height = 31
-              Align = alTop
-              BevelOuter = bvNone
-              ShowCaption = False
-              TabOrder = 0
-              object ASTResultFormatComboBox: TComboBox
-                AlignWithMargins = True
-                Left = 3
-                Top = 3
-                Width = 145
-                Height = 22
-                Align = alLeft
-                Style = csOwnerDrawFixed
-                ItemIndex = 0
-                TabOrder = 0
-                Text = 'Show as Code'
-                OnChange = ASTResultFormatComboBoxChange
-                Items.Strings = (
-                  'Show as Code'
-                  'Show as JSON')
-              end
-              object ASTResultViewComboBox: TComboBox
-                AlignWithMargins = True
-                Left = 154
-                Top = 3
-                Width = 145
-                Height = 22
-                Align = alLeft
-                Style = csOwnerDrawFixed
-                ItemIndex = 0
-                TabOrder = 1
-                Text = 'Show in Single File'
-                OnChange = ASTResultFormatComboBoxChange
-                Items.Strings = (
-                  'Show in Single File'
-                  'Show in Separate Files ')
-              end
-              object SearchEdit: TEdit
-                AlignWithMargins = True
-                Left = 305
-                Top = 3
-                Width = 460
-                Height = 24
-                Margins.Bottom = 4
-                Align = alClient
-                TabOrder = 2
-                ExplicitHeight = 21
-              end
-              object SearchButton: TButton
-                AlignWithMargins = True
-                Left = 771
-                Top = 3
-                Width = 75
-                Height = 25
-                Align = alRight
-                Caption = 'Search'
-                TabOrder = 3
-                OnClick = SearchButtonClick
-              end
-            end
-            object ASTPageControl: TPageControl
-              Left = 0
-              Top = 31
-              Width = 849
-              Height = 443
-              Align = alClient
-              TabOrder = 1
-            end
-          end
-        end
+        ExplicitWidth = 859
+        ExplicitHeight = 493
         object chkbShowAnonymous: TCheckBox
           Left = 428
-          Top = 5
+          Top = 4
           Width = 111
           Height = 18
           Caption = 'Show Anonymous'
-          TabOrder = 1
+          TabOrder = 0
           OnClick = StopIfErrorCheckClick
         end
         object chkbShowConstValues: TCheckBox
@@ -583,7 +437,7 @@ object frmTestAppMain: TfrmTestAppMain
           Caption = 'Show const values'
           Checked = True
           State = cbChecked
-          TabOrder = 2
+          TabOrder = 1
           OnClick = StopIfErrorCheckClick
         end
         object chkbShowSysDecls: TCheckBox
@@ -592,8 +446,208 @@ object frmTestAppMain: TfrmTestAppMain
           Width = 145
           Height = 18
           Caption = 'Show system declarations'
+          TabOrder = 2
+          OnClick = StopIfErrorCheckClick
+        end
+        object ShowGenericInstancesCheck: TCheckBox
+          Left = 545
+          Top = 4
+          Width = 144
+          Height = 18
+          Caption = 'Show Generic Instances'
           TabOrder = 3
           OnClick = StopIfErrorCheckClick
+        end
+        object SrcRootPanel: TPanel
+          Left = 1
+          Top = 1
+          Width = 863
+          Height = 508
+          Align = alClient
+          BevelOuter = bvNone
+          TabOrder = 4
+          ExplicitWidth = 857
+          ExplicitHeight = 491
+          object SrcPageControl: TPageControl
+            AlignWithMargins = True
+            Left = 3
+            Top = 3
+            Width = 857
+            Height = 483
+            ActivePage = tsSource
+            Align = alClient
+            TabOrder = 0
+            ExplicitWidth = 851
+            ExplicitHeight = 466
+            object tsSource: TTabSheet
+              Caption = 'Source'
+              object edUnit: TSynEdit
+                Left = 0
+                Top = 35
+                Width = 849
+                Height = 420
+                Align = alClient
+                Font.Charset = DEFAULT_CHARSET
+                Font.Color = clWindowText
+                Font.Height = -13
+                Font.Name = 'Consolas'
+                Font.Pitch = fpFixed
+                Font.Style = []
+                Font.Quality = fqClearTypeNatural
+                TabOrder = 0
+                UseCodeFolding = False
+                BookMarkOptions.LeftMargin = 0
+                BookMarkOptions.Xoffset = 0
+                Gutter.Font.Charset = DEFAULT_CHARSET
+                Gutter.Font.Color = clWindowText
+                Gutter.Font.Height = -11
+                Gutter.Font.Name = 'Courier New'
+                Gutter.Font.Style = []
+                Gutter.Font.Quality = fqClearTypeNatural
+                Gutter.ShowLineNumbers = True
+                Gutter.Bands = <
+                  item
+                    Kind = gbkMarks
+                    Width = 13
+                  end
+                  item
+                    Kind = gbkLineNumbers
+                  end
+                  item
+                    Kind = gbkFold
+                  end
+                  item
+                    Kind = gbkTrackChanges
+                  end
+                  item
+                    Kind = gbkMargin
+                    Width = 3
+                  end>
+                Highlighter = SynPasSyn1
+                ScrollbarAnnotations = <>
+                OnChange = edUnitChange
+                OnSpecialLineColors = edUnitSpecialLineColors
+                OnStatusChange = edUnitStatusChange
+                ExplicitWidth = 843
+                ExplicitHeight = 403
+              end
+              object Panel7: TPanel
+                Left = 0
+                Top = 0
+                Width = 849
+                Height = 35
+                Align = alTop
+                BevelOuter = bvNone
+                ShowCaption = False
+                TabOrder = 1
+                ExplicitWidth = 843
+                object SaveButton: TButton
+                  Left = 0
+                  Top = 4
+                  Width = 75
+                  Height = 25
+                  Action = SaveSourceAction
+                  TabOrder = 0
+                end
+                object ASTParseButton: TButton
+                  Left = 81
+                  Top = 4
+                  Width = 75
+                  Height = 25
+                  Action = ASTParseAction
+                  TabOrder = 1
+                end
+              end
+            end
+            object tsAST: TTabSheet
+              Caption = 'AST'
+              ImageIndex = 1
+              object ASTResultTopPanel: TPanel
+                Left = 0
+                Top = 0
+                Width = 849
+                Height = 31
+                Align = alTop
+                BevelOuter = bvNone
+                ShowCaption = False
+                TabOrder = 0
+                object ASTResultFormatComboBox: TComboBox
+                  AlignWithMargins = True
+                  Left = 3
+                  Top = 3
+                  Width = 145
+                  Height = 22
+                  Align = alLeft
+                  Style = csOwnerDrawFixed
+                  ItemIndex = 0
+                  TabOrder = 0
+                  Text = 'Show as Code'
+                  OnChange = ASTResultFormatComboBoxChange
+                  Items.Strings = (
+                    'Show as Code'
+                    'Show as JSON')
+                end
+                object ASTResultViewComboBox: TComboBox
+                  AlignWithMargins = True
+                  Left = 154
+                  Top = 3
+                  Width = 145
+                  Height = 22
+                  Align = alLeft
+                  Style = csOwnerDrawFixed
+                  ItemIndex = 0
+                  TabOrder = 1
+                  Text = 'Show in Single File'
+                  OnChange = ASTResultFormatComboBoxChange
+                  Items.Strings = (
+                    'Show in Single File'
+                    'Show in Separate Files ')
+                end
+                object SearchEdit: TEdit
+                  AlignWithMargins = True
+                  Left = 305
+                  Top = 3
+                  Width = 460
+                  Height = 24
+                  Margins.Bottom = 4
+                  Align = alClient
+                  TabOrder = 2
+                  ExplicitHeight = 21
+                end
+                object SearchButton: TButton
+                  AlignWithMargins = True
+                  Left = 771
+                  Top = 3
+                  Width = 75
+                  Height = 25
+                  Align = alRight
+                  Caption = 'Search'
+                  TabOrder = 3
+                  OnClick = SearchButtonClick
+                end
+              end
+              object ASTPageControl: TPageControl
+                Left = 0
+                Top = 31
+                Width = 849
+                Height = 424
+                Align = alClient
+                TabOrder = 1
+              end
+            end
+          end
+          object SrcStatusBar: TStatusBar
+            Left = 0
+            Top = 489
+            Width = 863
+            Height = 19
+            Panels = <
+              item
+                Width = 50
+              end>
+            ExplicitTop = 472
+            ExplicitWidth = 857
+          end
         end
       end
       object TopPanel: TPanel
@@ -606,6 +660,7 @@ object frmTestAppMain: TfrmTestAppMain
         BevelOuter = bvNone
         ShowCaption = False
         TabOrder = 3
+        ExplicitWidth = 1246
         DesignSize = (
           1252
           27)
@@ -625,6 +680,7 @@ object frmTestAppMain: TfrmTestAppMain
           Caption = 'AST Parse RTL'
           TabOrder = 0
           OnClick = ASTParseRTLButtonClick
+          ExplicitLeft = 1138
         end
         object ParseSystemCheck: TCheckBox
           Left = 129
@@ -687,6 +743,7 @@ object frmTestAppMain: TfrmTestAppMain
           Anchors = [akTop, akRight]
           Caption = 'rtl\common'
           TabOrder = 6
+          ExplicitLeft = 1048
         end
       end
     end

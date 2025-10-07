@@ -191,6 +191,7 @@
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenResult.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Methods.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.MethodWithConstr.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\constraints\ASTTest.Generics.MethodConstr1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.MixedConstr.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Mixed.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Array1.pas"/>
@@ -213,10 +214,13 @@
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.RecursiveUsing1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.RecursiveUsing2.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.SmartRef1.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenericInstantiation0.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenericInstantiation1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenericInstantiation2.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenericInstantiation3.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenericInstantiation4.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenericInstantiationProc1.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenericInstantiationProc2.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Overload1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.OverloadProc1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.TListDecl1.pas"/>
@@ -277,6 +281,8 @@
         <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.ClassVar.pas"/>
         <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.ClassCtor.pas"/>
         <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.GenericTypeInHelper1.pas"/>
+        <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.TypeCast1.pas"/>
+        <DCCReference Include="..\TestScripts\Helpers\ASTTest.Helpers.TypeCast2.pas"/>
         <DCCReference Include="..\TestScripts\Loops\ASTTest.Loops.For1.pas"/>
         <DCCReference Include="..\TestScripts\Loops\ASTTest.Loops.ForIn1.pas"/>
         <DCCReference Include="..\TestScripts\Variants\ASTTest.Variants.Variant1.pas"/>

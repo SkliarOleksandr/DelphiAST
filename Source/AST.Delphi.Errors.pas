@@ -281,7 +281,10 @@ type
     class procedure E2005_ID_IS_NOT_A_TYPE_IDENTIFIER(const AModule: IASTModule; const AID: TIdentifier);
     class procedure E2008_INCOMPATIBLE_TYPES(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2010_INCOMPATIBLE_TYPES(const AModule: IASTModule; ALeft, ARight: TIDType; const ATextPosition: TTextPosition);
-    class procedure E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(const AModule: IASTModule; const ATextPosition: TTextPosition);
+    class procedure E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(const AModule: IASTModule; const AExpression: TIDExpression); overload;
+    class procedure E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(const AModule: IASTModule;
+                                                                       const ATextPosition: TTextPosition;
+                                                                       const ADataType: TIDType); overload;
     class procedure E2016_ARRAY_TYPE_REQUIRED(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2018_RECORD_OBJECT_OR_CLASS_TYPE_REQUIRED(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2021_CLASS_TYPE_REQUIRED(const AModule: IASTModule; const APosition: TTextPosition);
@@ -610,9 +613,17 @@ begin
   AModule.PutError('E2010 Incompatible types: ''%s'' and ''%s''', [ALeft.DisplayName, ARight.DisplayName], ATextPosition);
 end;
 
-class procedure TASTDelphiErrors.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(const AModule: IASTModule; const ATextPosition: TTextPosition);
+class procedure TASTDelphiErrors.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(const AModule: IASTModule;
+  const ATextPosition: TTextPosition; const ADataType: TIDType);
 begin
-  AModule.PutError('E2015 Operator not applicable to this operand type', ATextPosition);
+  AModule.PutError('E2015 Operator not applicable to this operand type (%s)',
+    [ADataType.DisplayName], ATextPosition);
+end;
+
+class procedure TASTDelphiErrors.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(const AModule: IASTModule; const AExpression: TIDExpression);
+begin
+  AModule.PutError('E2015 Operator not applicable to this operand type (%s)',
+    [AExpression.DataTypeName], AExpression.TextPosition);
 end;
 
 class procedure TASTDelphiErrors.E2016_ARRAY_TYPE_REQUIRED(const AModule: IASTModule; const ATextPosition: TTextPosition);

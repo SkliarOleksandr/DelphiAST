@@ -185,7 +185,7 @@ begin
   for var LIndex := 0 to IntfScope.Count - 1 do
   begin
     var LDecl := IntfScope.Items[LIndex];
-    if not (LDecl is TIDUnit) or (TIDUnit(LDecl).UseModule <> Self) then
+    if not (LDecl is TIDUnit) or (TIDUnit(LDecl).Module <> Self) then
     begin
       var LJson := LDecl.ToJson;
       LObject.intfDecls[LIndex] := LJson;
@@ -235,15 +235,15 @@ begin
   FMessages := TCompilerMessages.Create;
   //FVisibility := vPublic;
 
-  var AUnitName := StringReplace(ExtractFileName(FileName), '.pas', '', []);
+  fUnitName.Name := StringReplace(ExtractFileName(FileName), '.pas', '', []);
 
   FIntfImportedUnits := TUnitList.Create;
   FImplImportedUnits := TUnitList.Create;
 
   FIntfScope := TInterfaceScope.Create(Self);
-  {$IFDEF DEBUG}FIntfScope.Name := AUnitName + '$intf_scope';{$ENDIF}
+  {$IFDEF DEBUG}FIntfScope.Name := fUnitName.Name + '$intf_scope';{$ENDIF}
   FImplScope := TImplementationScope.Create(FIntfScope);
-  {$IFDEF DEBUG}FImplScope.Name := AUnitName + '$impl_scope';{$ENDIF}
+  {$IFDEF DEBUG}FImplScope.Name := fUnitName.Name + '$impl_scope';{$ENDIF}
 
   //FBENodesPool := TBENodesPool.Create(16);
 
@@ -327,7 +327,7 @@ end;
 
 procedure TPascalUnit.AddType(const Decl: TIDType);
 begin
-  if not (Decl is TIDAliasType) and not Decl.IsPooled then
+  if not Decl.IsPooled then
   begin
     FTypeSpace.Add(Decl);
     Decl.IsPooled := True;

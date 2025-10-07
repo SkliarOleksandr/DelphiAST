@@ -441,7 +441,7 @@ uses AST.Delphi.DataTypes,
 
 function TSysTypeCast.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
 begin
-  if Check(SContext, Src.DataType.ActualDataType, Dst) then
+  if Check(SContext, Src.DataType, Dst) then
     Result := Dst
   else
     Result := nil;
@@ -590,7 +590,7 @@ end;
 function TSysImplicitTProcFromAny.Check(const SContext: TSContext; const Src: TIDExpression;
   const Dst: TIDType): TIDDeclaration;
 begin
-  var LSrcDataType := Src.ActualDataType;
+  var LSrcDataType := Src.DataType;
   var LDstProcType := Dst as TIDProcType;
 
   if Src.ItemType = itProcedure then
@@ -704,10 +704,10 @@ function TSysImplicitArrayToAny.Check(const SContext: TSContext; const Src, Dst:
 var
   SrcElType, DstElType: TIDType;
 begin
-  SrcElType := (Src as TIDArray).ElementDataType.ActualDataType;
+  SrcElType := (Src as TIDArray).ElementDataType;
   if Dst is TIDArray then
   begin
-    DstElType := TIDArray(Dst).ElementDataType.ActualDataType;
+    DstElType := TIDArray(Dst).ElementDataType;
     Result := ({(Dst.DataTypeID = dtOpenArray) and} SameTypes(SrcElType, DstElType)) or
                (SrcElType.IsGeneric and DstElType.IsGeneric);
   end else begin
@@ -946,7 +946,7 @@ begin
 //    var DstSetType := TIDSet(Dst);
 //    var SrcSetType := TIDSet(Src.DataType);
 //    if (Src.Declaration = SYSUnit.SystemDeclarations._EmptyArrayConstant) or
-//       (DstSetType.BaseType.ActualDataType = SrcSetType.BaseType.ActualDataType) then
+//       (DstSetType.BaseType.DataType = SrcSetType.BaseType.DataType) then
       Exit(Dst);
   end;
 end;

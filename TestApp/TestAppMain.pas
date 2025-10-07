@@ -163,6 +163,9 @@ type
     EditorPopup: TPopupMenu;
     GoToLineAction: TAction;
     GoToLine1: TMenuItem;
+    ShowGenericInstancesCheck: TCheckBox;
+    SrcStatusBar: TStatusBar;
+    SrcRootPanel: TPanel;
     procedure ASTParseRTLButtonClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure SearchButtonClick(Sender: TObject);
@@ -214,6 +217,7 @@ type
     procedure FilesEditActionExecute(Sender: TObject);
     procedure GoToLineActionUpdate(Sender: TObject);
     procedure GoToLineActionExecute(Sender: TObject);
+    procedure edUnitStatusChange(Sender: TObject; Changes: TSynStatusChanges);
   private
     { Private declarations }
     fSettings: IASTProjectSettings;
@@ -243,6 +247,7 @@ type
     procedure ParseTests(AParentNode: PVirtualNode);
     procedure LoadTests(ARootNode: PVirtualNode; const ARootPath: string);
     procedure SelectTest(ATestData: TTestData);
+    procedure ShowCaretPosition(ASynEdit: TSynEdit);
   public
     { Public declarations }
     procedure IndexSources(const RootPath: string; Dict: TSourcesDict);
@@ -544,6 +549,7 @@ begin
       LINI.WriteBool(SGeneral, 'UNITS_FULL_PATH', UnitsFullPathCheck.Checked);
       LINI.WriteBool(SGeneral, 'SHOW_PROGRESS', ShowProgressCheck.Checked);
       LINI.WriteBool(SGeneral, 'SAVE_AST', SaveASTCheckBox.Checked);
+      LINI.WriteBool(SGeneral, 'SHOW_GENRIC_INSTACES', ShowGenericInstancesCheck.Checked);
 
       LINI.WriteString(SGeneral, 'PLATFORM', cbPlatform.Text);
       LINI.WriteString(SGeneral, 'DELPHI_BDS', DelphiDirComboBox.Text);
@@ -707,6 +713,7 @@ begin
     UnitsFullPathCheck.Checked := LINI.ReadBool(SGeneral, 'UNITS_FULL_PATH', False);
     ShowProgressCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_PROGRESS', True);
     SaveASTCheckBox.Checked := LINI.ReadBool(SGeneral, 'SAVE_AST', False);
+    ShowGenericInstancesCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_GENRIC_INSTACES', False);
 
     cbPlatform.Text := LINI.ReadString(SGeneral, 'PLATFORM', 'WIN32');
     ProjectNameEdit.Text := LINI.ReadString(SGeneral, 'PROJECT_NAME', ProjectNameEdit.Text);
@@ -981,6 +988,11 @@ begin
   end;
 end;
 
+procedure TfrmTestAppMain.edUnitStatusChange(Sender: TObject; Changes: TSynStatusChanges);
+begin
+  ShowCaretPosition(edUnit);
+end;
+
 procedure TfrmTestAppMain.ShowASTResultAsCode(const Project: IASTDelphiProject; ASynEdit: TSynEdit);
 begin
   ASynEdit.BeginUpdate;
@@ -1024,6 +1036,8 @@ begin
   try
     var LBuilder := TStringBuilder.Create;
     try
+      TASTDelphiUnit(AModule).GenericInstancesToStr(LBuilder);
+
       AModule.EnumDeclarations(
         procedure(const Module: IASTModule; const Decl: IASTDeclaration)
         begin
@@ -1132,6 +1146,11 @@ begin
   end;
 
   FLastProject := AProject;
+end;
+
+procedure TfrmTestAppMain.ShowCaretPosition(ASynEdit: TSynEdit);
+begin
+  SrcStatusBar.Panels[0].Text := Format('%d: %d', [ASynEdit.CaretY, ASynEdit.CaretX]);
 end;
 
 procedure TfrmTestAppMain.SaveASTFiles(const AProject: IASTDelphiProject);

@@ -20,6 +20,10 @@ var
   Res: TArray<string>; 
 begin
   Res := TArrayHelper.Concat<string>(Arr);   
+  
+  // todo: fix assert
+  // if TArrayHelper.Count(Res) > 0 then;
+  // if TArrayHelper.Count(Arr) > 0 then;
 end;
 
 { TArrayHelper }
