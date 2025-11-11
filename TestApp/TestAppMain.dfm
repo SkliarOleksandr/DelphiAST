@@ -160,9 +160,7 @@ object frmTestAppMain: TfrmTestAppMain
               Alignment = taRightJustify
               Caption = 'Test Not Run'
               Layout = tlCenter
-              ExplicitLeft = 316
-              ExplicitWidth = 63
-              ExplicitHeight = 13
+              ExplicitLeft = 75
             end
           end
         end
@@ -528,8 +526,6 @@ object frmTestAppMain: TfrmTestAppMain
                 OnChange = edUnitChange
                 OnSpecialLineColors = edUnitSpecialLineColors
                 OnStatusChange = edUnitStatusChange
-                ExplicitWidth = 843
-                ExplicitHeight = 403
               end
               object Panel7: TPanel
                 Left = 0
@@ -645,8 +641,6 @@ object frmTestAppMain: TfrmTestAppMain
               item
                 Width = 50
               end>
-            ExplicitTop = 472
-            ExplicitWidth = 857
           end
         end
       end

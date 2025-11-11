@@ -8,7 +8,7 @@ type
 
   TArrayHelper = class
   public
-    class function Concat<T>(const Arrays: array of TArray<T>): TArray<T>;
+    class function Concat<K>(const Arrays: array of TArray<K>): TArray<K>;
     class function Count<T>(const Arrays: array of T): Integer;          
   end;
  
@@ -28,7 +28,7 @@ end;
 
 { TArrayHelper }
 
-class function TArrayHelper.Concat<T>(const Arrays: array of TArray<T>): TArray<T>;
+class function TArrayHelper.Concat<K>(const Arrays: array of TArray<K>): TArray<K>;
 begin
   Result := nil;
   for var LArr in Arrays do

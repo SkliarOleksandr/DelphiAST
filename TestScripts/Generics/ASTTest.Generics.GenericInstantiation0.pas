@@ -8,7 +8,8 @@ type
   end;
   
   TMyObj<K> = class
-    ValueWraper: TWraper<K>; // this is generic instantiation promise 
+    ValueWraper1: TWraper<K>; // this is generic instantiation promise 
+    ValueWraper2: TWraper<K>; // this is generic instantiation promise
   end;
 
 var
@@ -16,9 +17,10 @@ var
 
 implementation
 
-procedure Main;
-begin
-  Obj.ValueWraper.Value := 1; 
-end;
+//procedure Main;
+//begin
+//  Obj.ValueWraper1.Value := 1;
+//  Obj.ValueWraper2.Value := 2; 
+//end;
 
 end.

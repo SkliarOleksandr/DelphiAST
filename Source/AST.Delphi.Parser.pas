@@ -7285,28 +7285,12 @@ begin
   begin
     var LType := LDecl as TIDType;
     var LTypesArray := GetTypesArray(LGenericArgs);
-    if LCanInstantiate then
+
+    if not IsTheStructIsOwner(Scope, LType) then
     begin
       DataType := InstantiateGenericType(Scope, LType, LTypesArray);
     end else
-    begin
-      // check if this type is not the current parsed type
-      if not IsTheStructIsOwner(Scope, LType) then
-      begin
-        // firts, try to find existing instantiation in the special pool
-        var LInstantiationKey := GetGenericInstantiationKey(LType, LTypesArray);
-        if not fGenericInstantiations.TryGetValue(LInstantiationKey, {out} DataType) then
-        begin
-          LNewID.Name := MakeGenericName(LGenericArgs);
-          LNewID.TextPosition := Lexer_Position;
-          DataType := LType.CreateGenericInstantiation(Scope, ID, LTypesArray);
-          Scope.AddType(LNewID, DataType);
-          // add a new instantiation to the special pool
-          fGenericInstantiations.Add(LInstantiationKey, DataType);
-        end;
-      end else
-        DataType := LType;
-    end;
+      DataType := LType;
   end else
     ERRORS.UNDECLARED_ID(MakeGenericName(LGenericArgs), ID.TextPosition);
 end;
@@ -9296,18 +9280,13 @@ begin
 
   LContext := TGenericInstantiateContext.Create({AParent} nil, AGenericType);
   try
-    var AStrSufix := '';
-    var AArgsCount := Length(AGenericArgs);
     LContext.Args := AGenericArgs;
     LContext.Params := GDescriptor.GenericParams;
-    for var AIndex := 0 to AArgsCount - 1 do
-      AStrSufix := AddStringSegment(AStrSufix, AGenericArgs[AIndex].Name, ', ');
-    LContext.DstID.Name := AGenericType.GenericName + '<' + AStrSufix + '>';
+    LContext.DstID.Name := AGenericType.GenericName;
     LContext.DstID.TextPosition := Lexer_Position;
     LContext.ExistingInstance := LExistingInstance;
-
     try
-      WriteLog('# INSTANTIATE TYPE (%s: %d): %s', [Name, Lexer_Line, LContext.DstID.Name]);
+      WriteLog('# INSTANTIATE TYPE (%s: %d): %s', [Name, Lexer_Line, AGenericType.DisplayName]);
       Result := AGenericType.InstantiateGeneric(AScope, {ADstStruct:} nil, LContext) as TIDType;
     except
       Error('Generic Instantiation Error: %s', [LContext.DstID.Name], LContext.DstID.TextPosition);
@@ -9720,23 +9699,14 @@ begin
     ERRORS.UNDECLARED_ID(ExprName, Lexer_PrevPosition);
   end;
 
-  if PMContext.CanInstantiate then
+  if not (LGenericDecl is TIDType) or not IsTheStructIsOwner(Scope, TIDType(LGenericDecl)) then
   begin
     if LGenericDecl is TIDType then
       Decl := InstantiateGenericType(Scope, LGenericDecl as TIDType, GetTypesArray(PMContext.GenericArgs))
     else
       Decl := InstantiateGenericProc(Scope, LGenericDecl as TIDProcedure, PMContext.GenericArgs);
-
-    PMContext.CanInstantiate := False;
-    //PMContext.GenericArgs := nil;
   end else
-  begin
-    // check if this type is not the current parsed type
-    if (LGenericDecl is TIDType) and not IsTheStructIsOwner(Scope, TIDType(LGenericDecl)) then
-      Decl := TIDType(LGenericDecl).CreateGenericInstantiation(Scope, LGenericDecl.ID, GetTypesArray(PMContext.GenericArgs))
-    else
-      Decl := LGenericDecl;
-  end;
+     Decl := LGenericDecl;
 end;
 
 function TASTDelphiUnit.ParseIdentifier(Scope, SearchScope: TScope;

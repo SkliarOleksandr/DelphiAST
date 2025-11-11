@@ -9,27 +9,27 @@ type
   end;
 
   TRecord1 = record
-    class function GetIntf<T>(APtr: Pointer): IInterface<T>; static;
+    class function GetIntf<K1>(APtr: Pointer): IInterface<K1>; static;
   end;
 
-  TRecord2<K> = record
-    class function GetIntf<T>(APtr: Pointer): IInterface<K>; static;
+  TRecord2<K2> = record
+    class function GetIntf<K3>(APtr: Pointer): IInterface<K2>; static;
   end;
 
 implementation
 
 { TRecord1 }
 
-class function TRecord1.GetIntf<T>(APtr: Pointer): IInterface<T>;
+class function TRecord1.GetIntf<K1>(APtr: Pointer): IInterface<K1>;
 begin
-  Result := IInterface<T>(APtr);
+  Result := IInterface<K1>(APtr);
 end;
 
 { TRecord2<K> }
 
-class function TRecord2<K>.GetIntf<T>(APtr: Pointer): IInterface<K>;
+class function TRecord2<K2>.GetIntf<K3>(APtr: Pointer): IInterface<K2>;
 begin
-  Result := IInterface<K>(APtr);
+  Result := IInterface<K2>(APtr);
 end;
 
 end.

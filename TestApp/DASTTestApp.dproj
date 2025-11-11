@@ -214,7 +214,13 @@
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.RecursiveUsing1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.RecursiveUsing2.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.SmartRef1.pas"/>
-        <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenericInstantiation0.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\Instantiation\ASTTest.Generics.GenericInstantiation0.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\Instantiation\ASTTest.Generics.GenericInstantiation0_1.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\Instantiation\ASTTest.Generics.GenericInstantiation0_2.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\Instantiation\ASTTest.Generics.GenericInstantiation0_3.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\Instantiation\ASTTest.Generics.GenericInstantiation0_4.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\Instantiation\ASTTest.Generics.GenericInstantiation0_5.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\Instantiation\ASTTest.Generics.InstantiationMethodOverride1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenericInstantiation1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenericInstantiation2.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenericInstantiation3.pas"/>

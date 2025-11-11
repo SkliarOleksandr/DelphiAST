@@ -805,6 +805,7 @@ begin
   edUnit.Lines.LoadFromFile(ATestData.FilePath);
   edUnit.Modified := False;
   ATestData.Modified := False;
+  SrcPageControl.ActivePage := tsSource;
 
   var LINI := TIniFile.Create(ChangeFileExt(Application.ExeName, '.ini'));
   try
