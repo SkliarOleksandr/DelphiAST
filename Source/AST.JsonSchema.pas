@@ -20,6 +20,7 @@ type
     handle: TASTHandle;
     srcRow: Integer;
     srcCol: Integer;
+    genericInstances: TArray<TJsonASTDeclaration>;
   end;
 
   TASTTypeDeclDetails = class(TJsonBase)
@@ -54,6 +55,8 @@ type
 
   TASTJsonFunction = class(TJsonASTDeclaration)
     params: TArray<TASTJsonParam>;
+    resultTypeName: string;
+    resultTypeHandle: Integer;
     isVirtual: Boolean;
     isOverload: Boolean;
     prevOverload: TASTHandle;

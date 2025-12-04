@@ -493,7 +493,7 @@ object frmTestAppMain: TfrmTestAppMain
                 Font.Style = []
                 Font.Quality = fqClearTypeNatural
                 TabOrder = 0
-                UseCodeFolding = False
+                UseCodeFolding = True
                 BookMarkOptions.LeftMargin = 0
                 BookMarkOptions.Xoffset = 0
                 Gutter.Font.Charset = DEFAULT_CHARSET
@@ -536,7 +536,6 @@ object frmTestAppMain: TfrmTestAppMain
                 BevelOuter = bvNone
                 ShowCaption = False
                 TabOrder = 1
-                ExplicitWidth = 843
                 object SaveButton: TButton
                   Left = 0
                   Top = 4
@@ -730,14 +729,13 @@ object frmTestAppMain: TfrmTestAppMain
           OnClick = StopIfErrorCheckClick
         end
         object ParseRtlCommonCheck: TCheckBox
-          Left = 1054
+          Left = 1048
           Top = 3
           Width = 82
           Height = 17
           Anchors = [akTop, akRight]
           Caption = 'rtl\common'
           TabOrder = 6
-          ExplicitLeft = 1048
         end
       end
     end

@@ -2,6 +2,8 @@ unit ASTTest.Generics.GenericInstantiation0_2;
 
 interface
 
+{$HINTS OFF}
+
 type
   TWrapper<T> = record
     Value: T;

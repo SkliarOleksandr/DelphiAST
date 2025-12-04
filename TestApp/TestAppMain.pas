@@ -550,6 +550,8 @@ begin
       LINI.WriteBool(SGeneral, 'SHOW_PROGRESS', ShowProgressCheck.Checked);
       LINI.WriteBool(SGeneral, 'SAVE_AST', SaveASTCheckBox.Checked);
       LINI.WriteBool(SGeneral, 'SHOW_GENRIC_INSTACES', ShowGenericInstancesCheck.Checked);
+      LINI.WriteInteger(SGeneral, 'SHOW_AST_FORMAT_COMBO_INDEX', ASTResultFormatComboBox.ItemIndex);
+      LINI.WriteInteger(SGeneral, 'SHOW_AST_VIEW_COMBO_INDEX', ASTResultViewComboBox.ItemIndex);
 
       LINI.WriteString(SGeneral, 'PLATFORM', cbPlatform.Text);
       LINI.WriteString(SGeneral, 'DELPHI_BDS', DelphiDirComboBox.Text);
@@ -566,6 +568,50 @@ begin
     finally
       LINI.Free;
     end;
+  end;
+end;
+
+procedure TfrmTestAppMain.LoadSettings;
+begin
+  // TMemIniFile supports longer string values than TIniFile
+  var LINI := TMemIniFile.Create(ChangeFileExt(Application.ExeName, '.ini'));
+  try
+    // to avoid SaveSettings auto-triggering
+    FLockSaveSettings := True;
+
+    StopIfErrorCheck.Checked := LINI.ReadBool(SGeneral, 'STOP_IF_ERROR', True);
+    ParseSystemCheck.Checked := LINI.ReadBool(SGeneral, 'PARSE_SYSTEM', False);
+    ParseImplsCheck.Checked := LINI.ReadBool(SGeneral, 'PARSE_IMPLS', True);
+    WriteLogCheck.Checked := LINI.ReadBool(SGeneral, 'WRITE_LOG', True);
+    ShowWarningsCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_WARNINGS', False);
+    ShowMemLeaksCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_MEMLEAKS', False);
+    BreakpointOnErrorCheck.Checked := LINI.ReadBool(SGeneral, 'BREAKPOINT_ON_ERROR', False);
+    LeftPageControl.ActivePageIndex := LINI.ReadInteger(SGeneral, 'LEFT_ACTIVE_TAB', 0);
+    UnitsFullPathCheck.Checked := LINI.ReadBool(SGeneral, 'UNITS_FULL_PATH', False);
+    ShowProgressCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_PROGRESS', True);
+    SaveASTCheckBox.Checked := LINI.ReadBool(SGeneral, 'SAVE_AST', False);
+    ShowGenericInstancesCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_GENRIC_INSTACES', False);
+    ASTResultFormatComboBox.ItemIndex := LINI.ReadInteger(SGeneral, 'SHOW_AST_FORMAT_COMBO_INDEX', 0);
+    ASTResultViewComboBox.ItemIndex := LINI.ReadInteger(SGeneral, 'SHOW_AST_VIEW_COMBO_INDEX', 0);
+
+    cbPlatform.Text := LINI.ReadString(SGeneral, 'PLATFORM', 'WIN32');
+    ProjectNameEdit.Text := LINI.ReadString(SGeneral, 'PROJECT_NAME', ProjectNameEdit.Text);
+    DelphiDirComboBox.Text := LINI.ReadString(SGeneral, 'DELPHI_BDS', '');
+    DelphiSrcPathEdit.Text := LINI.ReadString(SGeneral, 'DELPHI_SRC_PATH', DelphiSrcPathEdit.Text);
+    DelphiPathIncludeSubDirCheck.Checked := LINI.ReadBool(SGeneral, 'DELPHI_SRC_PATH_INCLUDE_SUBDIRS', True);
+    UnitScopeNamesEdit.Text := LINI.ReadString(SGeneral, 'UNIT_SCOPE_NAMES', UnitScopeNamesEdit.Text);
+    UnitSearchPathEdit.Text := LINI.ReadString(SGeneral, 'UNIT_SEARCH_PATH', UnitSearchPathEdit.Text);
+    UnitSearchPathIncludeSubDirCheck.Checked := LINI.ReadBool(SGeneral, 'UNIT_SEARCH_PATH_INCLUDE_SUBDIRS', True);
+    CondDefinesEdit.Text := LINI.ReadString(SGeneral, 'COND_DEFINES', CondDefinesEdit.Text);
+    TestScriptsPathEdit.Text := LINI.ReadString(SGeneral, 'TEST_SCRIPTS_PATH', TestScriptsPathEdit.Text);
+    lbFiles.Items.CommaText := LINI.ReadString(SGeneral, 'CUSTOM_UNITS', '');
+    lbFiles.CheckAll(TCheckBoxState.cbChecked);
+
+    var LUnitName := LINI.ReadString(SGeneral, 'LAST_TEST_UNIT', SDefTestScriptName);
+    LoadTestScripts(LUnitName);
+  finally
+    FLockSaveSettings := False;
+    LINI.Free;
   end;
 end;
 
@@ -691,48 +737,6 @@ begin
     end;
   finally
     LDlg.Free;
-  end;
-end;
-
-procedure TfrmTestAppMain.LoadSettings;
-begin
-  // TMemIniFile supports longer string values than TIniFile
-  var LINI := TMemIniFile.Create(ChangeFileExt(Application.ExeName, '.ini'));
-  try
-    // to avoid SaveSettings auto-triggering
-    FLockSaveSettings := True;
-
-    StopIfErrorCheck.Checked := LINI.ReadBool(SGeneral, 'STOP_IF_ERROR', True);
-    ParseSystemCheck.Checked := LINI.ReadBool(SGeneral, 'PARSE_SYSTEM', False);
-    ParseImplsCheck.Checked := LINI.ReadBool(SGeneral, 'PARSE_IMPLS', True);
-    WriteLogCheck.Checked := LINI.ReadBool(SGeneral, 'WRITE_LOG', True);
-    ShowWarningsCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_WARNINGS', False);
-    ShowMemLeaksCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_MEMLEAKS', False);
-    BreakpointOnErrorCheck.Checked := LINI.ReadBool(SGeneral, 'BREAKPOINT_ON_ERROR', False);
-    LeftPageControl.ActivePageIndex := LINI.ReadInteger(SGeneral, 'LEFT_ACTIVE_TAB', 0);
-    UnitsFullPathCheck.Checked := LINI.ReadBool(SGeneral, 'UNITS_FULL_PATH', False);
-    ShowProgressCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_PROGRESS', True);
-    SaveASTCheckBox.Checked := LINI.ReadBool(SGeneral, 'SAVE_AST', False);
-    ShowGenericInstancesCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_GENRIC_INSTACES', False);
-
-    cbPlatform.Text := LINI.ReadString(SGeneral, 'PLATFORM', 'WIN32');
-    ProjectNameEdit.Text := LINI.ReadString(SGeneral, 'PROJECT_NAME', ProjectNameEdit.Text);
-    DelphiDirComboBox.Text := LINI.ReadString(SGeneral, 'DELPHI_BDS', '');
-    DelphiSrcPathEdit.Text := LINI.ReadString(SGeneral, 'DELPHI_SRC_PATH', DelphiSrcPathEdit.Text);
-    DelphiPathIncludeSubDirCheck.Checked := LINI.ReadBool(SGeneral, 'DELPHI_SRC_PATH_INCLUDE_SUBDIRS', True);
-    UnitScopeNamesEdit.Text := LINI.ReadString(SGeneral, 'UNIT_SCOPE_NAMES', UnitScopeNamesEdit.Text);
-    UnitSearchPathEdit.Text := LINI.ReadString(SGeneral, 'UNIT_SEARCH_PATH', UnitSearchPathEdit.Text);
-    UnitSearchPathIncludeSubDirCheck.Checked := LINI.ReadBool(SGeneral, 'UNIT_SEARCH_PATH_INCLUDE_SUBDIRS', True);
-    CondDefinesEdit.Text := LINI.ReadString(SGeneral, 'COND_DEFINES', CondDefinesEdit.Text);
-    TestScriptsPathEdit.Text := LINI.ReadString(SGeneral, 'TEST_SCRIPTS_PATH', TestScriptsPathEdit.Text);
-    lbFiles.Items.CommaText := LINI.ReadString(SGeneral, 'CUSTOM_UNITS', '');
-    lbFiles.CheckAll(TCheckBoxState.cbChecked);
-
-    var LUnitName := LINI.ReadString(SGeneral, 'LAST_TEST_UNIT', SDefTestScriptName);
-    LoadTestScripts(LUnitName);
-  finally
-    FLockSaveSettings := False;
-    LINI.Free;
   end;
 end;
 
@@ -1066,11 +1070,14 @@ begin
   end;
 end;
 
+const
+  CJSONOptions = [joIgnoreEmptyArrays];
+
 procedure TfrmTestAppMain.ShowASTResultAsJSON(const AModule: IASTModule; ASynEdit: TSynEdit);
 begin
   var LJSONProject := AModule.ToJson;
   try
-    var LJSON := TJson.ObjectToJsonObject(LJSONProject);
+    var LJSON := TJson.ObjectToJsonObject(LJSONProject, CJSONOptions);
     try
       ASynEdit.Text := LJSON.Format(2);
     finally
@@ -1085,7 +1092,7 @@ procedure TfrmTestAppMain.ShowASTResultAsJSON(const Project: IASTDelphiProject; 
 begin
   var LJSONProject := Project.ToJson;
   try
-    var LJSON := TJson.ObjectToJsonObject(LJSONProject);
+    var LJSON := TJson.ObjectToJsonObject(LJSONProject, CJSONOptions);
     try
       ASynEdit.Text := LJSON.Format(2);
     finally
@@ -1116,6 +1123,8 @@ procedure TfrmTestAppMain.ShowASTResults(const AProject: IASTDelphiProject);
       0: Result.Highlighter := SynPasSyn1;
       1: Result.Highlighter := SynJSONSyn1;
     end;
+    Result.UseCodeFolding := True;
+    Result.IndentGuides.Visible := False;
   end;
 
 begin

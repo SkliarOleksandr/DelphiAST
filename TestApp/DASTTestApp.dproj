@@ -72,7 +72,7 @@
         <UWP_DelphiLogo44>$(BDS)\bin\Artwork\Windows\UWP\delphi_UwpDefault_44.png</UWP_DelphiLogo44>
         <UWP_DelphiLogo150>$(BDS)\bin\Artwork\Windows\UWP\delphi_UwpDefault_150.png</UWP_DelphiLogo150>
         <SanitizedProjectName>DASTTestApp</SanitizedProjectName>
-        <DCC_UnitSearchPath>..\Source\;..\Source\Lexers;..\TestScripts;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_UnitSearchPath>..\Source\;..\Source\Lexers;..\TestScripts;..\RTLOverride;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
         <DCC_DUPLICATE_CTOR_DTOR>false</DCC_DUPLICATE_CTOR_DTOR>
@@ -220,6 +220,10 @@
         <DCCReference Include="..\TestScripts\Generics\Instantiation\ASTTest.Generics.GenericInstantiation0_3.pas"/>
         <DCCReference Include="..\TestScripts\Generics\Instantiation\ASTTest.Generics.GenericInstantiation0_4.pas"/>
         <DCCReference Include="..\TestScripts\Generics\Instantiation\ASTTest.Generics.GenericInstantiation0_5.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\Instantiation\ASTTest.Generics.InstantiationInMethods1.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\Instantiation\ASTTest.Generics.InstantiationNestedType1.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\Instantiation\ASTTest.Generics.InstantiationPointers1.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\Instantiation\ASTTest.Generics.GenericInstantiation0_6.pas"/>
         <DCCReference Include="..\TestScripts\Generics\Instantiation\ASTTest.Generics.InstantiationMethodOverride1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenericInstantiation1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenericInstantiation2.pas"/>

@@ -7,18 +7,18 @@ type
     function GetData: T;
   end;
 
-  TMyObj<T> = class(TInterfacedObject, IIntf<T>)
-    function GetMyData: T;   
-    function IIntf<T>.GetData = GetMyData;
+  TMyObj<K> = class(TInterfacedObject, IIntf<K>)
+    function GetMyData: K;
+    function IIntf<K>.GetData = GetMyData;
   end;
 
 implementation
 
 { TMyObj<T> }
 
-function TMyObj<T>.GetMyData: T;
+function TMyObj<K>.GetMyData: K;
 begin
-  Result := Default(T);
+  Result := Default(K);
 end;
 
 end.

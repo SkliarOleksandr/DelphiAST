@@ -5665,7 +5665,7 @@ begin
       LConst.ID := LConstID
     else begin
       // create a const alias
-      var LNewConst := LConst.MakeCopy as TIDConstant;
+      var LNewConst := LConst.MakeCopy(Scope) as TIDConstant;
       LNewConst.ID := LConstID;
       LNewConst.DataType := LConst.DataType;
       LNewConst.AssignValue(LConst);
@@ -6086,14 +6086,7 @@ begin
          ERRORS.E2021_CLASS_TYPE_REQUIRED(Self, Expr.TextPosition);
       end;
       dtInterface: begin
-        var LIntfDecl: TIDInterface;
-        if LAncestorDecl.IsGenericInstantiation then
-        begin
-          LIntfDecl := LAncestorDecl.Original as TIDInterface;
-          ClassDecl.AddGenericInterface(LAncestorDecl as TIDInterface);
-        end else
-          LIntfDecl := LAncestorDecl as TIDInterface;
-
+        var LIntfDecl := LAncestorDecl as TIDInterface;
         if ClassDecl.FindInterface(LIntfDecl) then
           ERRORS.INTF_ALREADY_IMPLEMENTED(Expr);
         ClassDecl.AddInterface(LIntfDecl);
@@ -7286,7 +7279,7 @@ begin
     var LType := LDecl as TIDType;
     var LTypesArray := GetTypesArray(LGenericArgs);
 
-    if not IsTheStructIsOwner(Scope, LType) then
+    if not IsTheStructIsOwner(Scope, LType) or not LType.GenericDescriptor.SameParams(LTypesArray) then
     begin
       DataType := InstantiateGenericType(Scope, LType, LTypesArray);
     end else
@@ -8766,7 +8759,7 @@ var
 begin
   AProcScope := nil;
   SearchScope := AScope;
-  var LIntfMathedDelegation := False;
+  var LIntfMethodDelegation := False;
   while True do begin
     Lexer_ReadNextIdentifier(AScope, {out} AID);
     Result := Lexer_NextToken(AScope);
@@ -8811,14 +8804,14 @@ begin
       begin
         if Assigned(AStruct) and (AStruct.DataTypeID = dtClass) then
         begin
-          // since an interface can be an alias (like IUnknown), we have to find original interface and take its name
+          // since an interface can be an alias (like IUnknown), we have to find original declaration and take its name
           var LDecl := FindIDNoAbort(AStruct.Scope, GetSearchName(AID.Name, AGenericParams));
           if Assigned(LDecl) then
           begin
-            var LIntf := TIDClass(AStruct).FindInterface(LDecl.Name, AGenericParams);
+            var LIntf := TIDClass(AStruct).FindInterface(AID.Name, AGenericParams);
             if Assigned(LIntf) then
             begin
-              LIntfMathedDelegation := True;
+              LIntfMethodDelegation := True;
               SearchScope := LIntf.Members;
               Continue;
             end
@@ -8844,7 +8837,7 @@ begin
         ERRORS.STRUCT_TYPE_REQUIRED(AID.TextPosition);
       Continue;
     end;
-    if not Assigned(AProcScope) and not LIntfMathedDelegation then
+    if not Assigned(AProcScope) and not LIntfMethodDelegation then
     begin
       if Assigned(AStruct) then
         AProcScope := TMethodScope.CreateInDecl(AScope, GetStructScope(AStruct, AProcType), nil)
@@ -9229,20 +9222,13 @@ begin
 
   LContext := TGenericInstantiateContext.Create({AParent} nil, AGenericProc);
   try
-    var AStrSufix := '';
-    var AArgsCount := Length(AGenericArgs);
     LContext.Args := LGArgs;
     LContext.Params := GDescriptor.GenericParams;
-    for var AIndex := 0 to AArgsCount - 1 do
-    begin
-      var AArgType := AGenericArgs[AIndex].AsType;
-      AStrSufix := AddStringSegment(AStrSufix, AArgType.Name, ', ');
-    end;
-    LContext.DstID.Name := AGenericProc.Name + '<' + AStrSufix + '>';
+    LContext.DstID.Name := AGenericProc.Name;
     LContext.DstID.TextPosition := Lexer_Position;
     try
       WriteLog('# INSTANTIATE PROC (%s: %d): %s', [Name, Lexer_Line, LContext.DstID.Name]);
-      Result := AGenericProc.InstantiateGeneric(AScope, {ADstStruct:} nil, LContext) as TIDProcedure;
+      Result := AGenericProc.InstantiateGeneric(AScope, AGenericProc.Struct, LContext) as TIDProcedure;
       {add new instance to the pool}
       GDescriptor.AddGenericInstance(Result, LGArgs);
     except
@@ -9257,15 +9243,15 @@ end;
 function TASTDelphiUnit.InstantiateGenericType(AScope: TScope; AGenericType: TIDType;
                                                const AGenericArgs: TIDTypeArray): TIDType;
 var
-  GDescriptor: IGenericDescriptor;
+  LGDescriptor: IGenericDescriptor;
   LContext: TGenericInstantiateContext;
   LExistingInstance: TIDStructure;
 begin
   LExistingInstance := nil;
-  GDescriptor := AGenericType.GenericDescriptor;
+  LGDescriptor := AGenericType.GenericDescriptor;
   {find in the pool first}
   var LDecl: TIDDeclaration;
-  if GDescriptor.TryGetInstance(AGenericArgs, {out} LDecl) then
+  if LGDescriptor.TryGetInstance(AGenericArgs, {out} LDecl) then
   begin
     Result := LDecl as TIDType;
 
@@ -9281,7 +9267,7 @@ begin
   LContext := TGenericInstantiateContext.Create({AParent} nil, AGenericType);
   try
     LContext.Args := AGenericArgs;
-    LContext.Params := GDescriptor.GenericParams;
+    LContext.Params := LGDescriptor.GenericParams;
     LContext.DstID.Name := AGenericType.GenericName;
     LContext.DstID.TextPosition := Lexer_Position;
     LContext.ExistingInstance := LExistingInstance;

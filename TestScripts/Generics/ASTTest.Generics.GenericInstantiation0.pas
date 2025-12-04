@@ -17,10 +17,10 @@ var
 
 implementation
 
-//procedure Main;
-//begin
-//  Obj.ValueWraper1.Value := 1;
-//  Obj.ValueWraper2.Value := 2; 
-//end;
+procedure Main;
+begin
+  Obj.ValueWraper1.Value := 1;
+  Obj.ValueWraper2.Value := 2; 
+end;
 
 end.
