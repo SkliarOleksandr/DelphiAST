@@ -201,6 +201,7 @@ type
     function GetSystemDeclarations: PDelphiSystemDeclarations; virtual;
     procedure CheckLabelExpression(const Expr: TIDExpression); overload;
     procedure CheckLabelExpression(const Decl: TIDDeclaration); overload;
+    procedure CheckAndInstantiateProc(var AProc: TIDProcedure; ACallExpr: TIDCallExpression; SContext: PSContext);
 
     function Process_operators(var EContext: TEContext; OpID: TOperatorID): TIDExpression;
     function Process_CALL(var EContext: TEContext): TIDExpression;
@@ -1833,34 +1834,58 @@ begin
   Result := AType1;
 end;
 
-procedure InferImplicitGenericArgs(ACallExpr: TIDCallExpression);
+function InferImplicitGenericArgs(ACallExpr: TIDCallExpression): Boolean;
 begin
   var LProc := ACallExpr.Proc;
   var LDescriptor := LProc.GenericDescriptor;
-  Assert(LProc.ParamsCount = ACallExpr.ArgumentsCount);
-  // set generic array len according to proc params
-  var LGenericArgs: TIDExpressions;
-  SetLength(LGenericArgs, LDescriptor.ParamsCount);
-  for var LIndex := 0 to LProc.ParamsCount - 1 do
+  Result := (LProc.ParamsCount = ACallExpr.ArgumentsCount);
+  if Result then
   begin
-    var LArg := ACallExpr.Arguments[LIndex];
-    var LParam := LProc.ExplicitParams[LIndex];
-    if Assigned(LArg) and LParam.IsGeneric then
+    // set generic array len according to proc params
+    var LGenericArgs: TIDExpressions;
+    SetLength(LGenericArgs, LDescriptor.ParamsCount);
+    for var LIndex := 0 to LProc.ParamsCount - 1 do
     begin
-      var LParamTypeName := LParam.DataType.Name;
-      var LParamTypeIndex := LDescriptor.IndexOfType(LParamTypeName);
-      Assert(LParamTypeIndex >= 0);
+      var LArg := ACallExpr.Arguments[LIndex];
+      var LParam := LProc.ExplicitParams[LIndex];
+      if Assigned(LArg) and LParam.IsGeneric then
+      begin
+        var LParamTypeName := LParam.DataType.Name;
+        var LParamTypeIndex := LDescriptor.IndexOfType(LParamTypeName);
+        Assert(LParamTypeIndex >= 0);
 
-      var LCurArgType := LArg.DataType;
-      if not Assigned(LGenericArgs[LParamTypeIndex]) then
-        LGenericArgs[LParamTypeIndex] := TIDExpression.Create(LCurArgType)
-      else begin
-        var LPrevArgType := LGenericArgs[LParamTypeIndex].AsType;
-        LGenericArgs[LParamTypeIndex].Declaration := GetCommonType(LCurArgType, LPrevArgType);
+        var LCurArgType := LArg.DataType;
+        if not Assigned(LGenericArgs[LParamTypeIndex]) then
+          LGenericArgs[LParamTypeIndex] := TIDExpression.Create(LCurArgType)
+        else begin
+          var LPrevArgType := LGenericArgs[LParamTypeIndex].AsType;
+          LGenericArgs[LParamTypeIndex].Declaration := GetCommonType(LCurArgType, LPrevArgType);
+        end;
       end;
     end;
+    ACallExpr.GenericArgs := LGenericArgs;
   end;
-  ACallExpr.GenericArgs := LGenericArgs;
+end;
+
+procedure TASTDelphiUnit.CheckAndInstantiateProc(var AProc: TIDProcedure; ACallExpr: TIDCallExpression; SContext: PSContext);
+begin
+  if Assigned(AProc.GenericDescriptor) then
+  begin
+    var LIsStructMethod := IsStructsMethod(SContext.Proc.Struct, AProc);
+    var LCurrentProcIsGeneric := Assigned(SContext.Proc.GenericDescriptor);
+    var LIsGenericTypeStructMethod := IsGenericTypeThisStruct(SContext.Scope, AProc.Struct);
+    var LNeedsToInstantiate := GenericNeedsInstantiate(ACallExpr.GenericArgs);
+
+    // instantiate "external" or "independent" generic methods
+    if LNeedsToInstantiate and
+       (not LIsStructMethod and
+        not LCurrentProcIsGeneric and
+        not LIsGenericTypeStructMethod) or ACallExpr.CanInstantiate then
+    begin
+      if Assigned(ACallExpr.GenericArgs) or InferImplicitGenericArgs(ACallExpr) then
+        AProc := InstantiateGenericProc(AProc.Scope, AProc, ACallExpr.GenericArgs);
+    end;
+  end;
 end;
 
 function TASTDelphiUnit.Process_CALL(var EContext: TEContext): TIDExpression;
@@ -1903,9 +1928,9 @@ begin
   if Decl.ItemType = itProcedure then
   begin
     ProcDecl := TIDProcedure(Decl);
-
     {match proper generic/overload declaration}
-    if Assigned(ProcDecl.PrevOverload) then begin
+    if Assigned(ProcDecl.PrevOverload) then
+    begin
       ProcDecl := MatchOverloadProc(EContext.SContext, PExpr, UserArguments, ArgsCount);
       // handle "keep parsing"
       if not Assigned(ProcDecl) then
@@ -1915,33 +1940,14 @@ begin
       end;
       ProcParams := ProcDecl.ExplicitParams;
       PExpr.Declaration := ProcDecl;
-    end else begin
+    end else
+    begin
+      // instantiate proc if needed
+      CheckAndInstantiateProc({var} ProcDecl, PExpr, SContext);
+
       ProcParams := ProcDecl.ExplicitParams;
       MatchProc(EContext.SContext, PExpr, ProcParams, UserArguments);
     end;
-
-    if Assigned(ProcDecl.GenericDescriptor) then
-    begin
-      var LIsStructMethod := IsStructsMethod(SContext.Proc.Struct, ProcDecl);
-      var LCurrentProcIsGeneric := Assigned(SContext.Proc.GenericDescriptor);
-      var LIsGenericTypeStructMethod := IsGenericTypeThisStruct(SContext.Scope, ProcDecl.Struct);
-      var LNeedsToInstantiate := GenericNeedsInstantiate(PExpr.GenericArgs);
-
-      // instantiate "external" or "independent" generic methods
-      if LNeedsToInstantiate and
-         (not LIsStructMethod and
-          not LCurrentProcIsGeneric and
-          not LIsGenericTypeStructMethod) or PExpr.CanInstantiate then
-      begin
-        if not Assigned(PExpr.GenericArgs)  then
-          InferImplicitGenericArgs(PExpr);
-
-        ProcDecl := InstantiateGenericProc(ProcDecl.Scope, ProcDecl, PExpr.GenericArgs);
-        ProcParams := ProcDecl.ExplicitParams;
-        PExpr.Declaration := ProcDecl;
-      end;
-    end;
-
 
     ProcResult := ProcDecl.ResultType;
 
@@ -4023,7 +4029,10 @@ begin
        (ACallExpr.GenericArgsCount <= Declaration.GenericParamsCount) and
        (ACallExpr.GenericArgsCount >= Declaration.GenericRequiredParamsCount) then
     begin
-      for i := 0 to Declaration.ParamsCount - 1 do begin
+      CheckAndInstantiateProc({var} Declaration, ACallExpr, @SContext);
+
+      for i := 0 to Declaration.ParamsCount - 1 do
+      begin
         Param := Declaration.ExplicitParams[i];
         // if cur arg presents
         if (i < CallArgsCount) and Assigned(CallArgs[i]) then

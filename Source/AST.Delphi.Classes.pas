@@ -198,12 +198,12 @@ type
   TIDDeclaration = class(TASTDeclaration, IASTDelphiDeclaration)
   private
     FItemType: TIDItemType;
-    FScope: TScope;                  // Обл. видимости где объявлена декларация
-    FDataType: TIDType;              // Тип декларации (равен nil для процедур)
-    FVisibility: TVisibility;        // Уровень видимости декларации
-    FIndex: Integer;                 // Индекс элемента в TSpace
+    FScope: TScope;                  // declaration scope
+    FDataType: TIDType;              // declaration data type
+    FVisibility: TVisibility;        // declaration visibility
+    FIndex: Integer;                 // TODO: remove (Индекс элемента в TSpace)
     FExportNameIndex: Integer;       // Показывает экспортируется ли декларация и с каким именем
-    FNext: TIDDeclaration;           // Следующий добавленный в список элемент
+    FNext: TIDDeclaration;           // TODO: remove (Следующий добавленный в список элемент)
     FRefCount: Integer;              // кол-во зависимостей
     FRCPath: UInt32;                 // номер прохода increfcount/decrefcount (необходим для алгоритма проставления зависимостей)
     FNoOverride: Boolean;            // запрещено ли переопределять
@@ -254,8 +254,6 @@ type
     property SpaceIndex: Integer read GetIndex;
     procedure IncRefCount(RCPath: UInt32); virtual; // добавляет зависимость
     procedure DecRefCount(RCPath: UInt32); virtual; // удаляет зависимость
-    {процедура делает DecReadCount для зависимостей}
-    procedure RemoveILReferences(var RCPathCount: UInt32); virtual;
     property Package: IASTPascalProject read GetPackage;
     property CValue: TIDConstant read GetCValue write SetCValue;
     property DepricatedExpression: TIDExpression read fDepricatedExpression write fDepricatedExpression;
@@ -677,7 +675,7 @@ type
     FSignedBound: Boolean;
     FLBound: Int64;
     FHBound: Int64;
-    function GetElementsCount: UInt64; inline;
+    function GetElementsCount: Int64; inline;
     function GetHighBoundUInt64: UInt64;
   protected
     function GetIsOrdinal: Boolean; override;
@@ -689,7 +687,7 @@ type
     property HighBoundUInt64: UInt64 read GetHighBoundUInt64;
     // показывает знаковый ли диаппазон (Int64) или беззнаковый (UInt64)
     property SignedBound: Boolean read FSignedBound write FSignedBound;
-    property ElementsCount: UInt64 read GetElementsCount;
+    property ElementsCount: Int64 read GetElementsCount;
 
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
 
@@ -1875,7 +1873,6 @@ type
 
     procedure IncTypesReadCountInSignature(RCPath: UInt32);
     procedure DecTypesReadCountInSignature(RCPath: UInt32);
-    procedure RemoveILReferences(var RCPathCount: UInt32); override;
 
     procedure CreateProcedureTypeIfNeed(Scope: TScope);
 
@@ -2897,11 +2894,6 @@ begin
   Dec(FRefCount);
 end;
 
-procedure TIDDeclaration.RemoveILReferences;
-begin
-
-end;
-
 procedure TIDDeclaration.SetCValue(const Value: TIDConstant);
 begin
 
@@ -3590,11 +3582,6 @@ begin
   var LSelfParam := TIDParam.Create(ParamsScope, Identifier('Self'), FStruct, [VarParameter, VarConst, VarHiddenParam]);
   ParamsScope.AddVariable(LSelfParam);
   ParamsScope.SelfParam := LSelfParam;
-end;
-
-procedure TIDProcedure.RemoveILReferences(var RCPathCount: UInt32);
-begin
- // todo:
 end;
 
 { TIDType }
@@ -6201,7 +6188,7 @@ begin
 
 end;
 
-function TIDOrdinal.GetElementsCount: UInt64;
+function TIDOrdinal.GetElementsCount: Int64;
 begin
   if FHBound > FLBound then
     Result := Abs(FHBound - FLBound) + 1
@@ -8124,15 +8111,14 @@ begin
   // instantiate indexed params
   if Assigned(FParams) and (FParams.Count > 0) then
   begin
-    var LNewParams := TParamsScope.Create(stLocal, ADstScope);
+    LNewProp.Params := TParamsScope.Create(stLocal, ADstScope);
     for var LIndex := 0 to FParams.Count - 1 do
     begin
       var LNewParam := FParams.Items[LIndex].MakeCopy(LNewProp.Params) as TIDParam;
       if LNewParam.IsGeneric then
         LNewParam.DataType := LNewParam.DataType.InstantiateGeneric(ADstScope, ADstStruct, AContext) as TIDType;
-      LNewParams.AddExplicitParam(LNewParam);
+      LNewProp.Params.AddExplicitParam(LNewParam);
     end;
-    LNewProp.FParams := LNewParams;
   end;
 
   // todo: check signatures

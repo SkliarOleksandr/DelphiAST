@@ -7,9 +7,9 @@ interface
 type
   TArray<T> = array of T;
   
-  TPair<K,V> = record
-    Key: K;
-    Value: V;
+  TPair<TKey,TValue> = record
+    Key: TKey;
+    Value: TValue;
   end;
 
   TEnumerator<T> = class abstract
