@@ -1018,7 +1018,10 @@ begin
 //            LBuilder.Append(sLineBreak);
 //            LBuilder.Append('//class: ' + Decl.ClassName);
 //            LBuilder.Append(sLineBreak);
-            Decl.Decl2Str(LBuilder, {ANestedLevel:} 0, {AAppendName:} True);
+            if TIDDeclaration(Decl).ItemType = itProcedure then
+              TIDProcedure(Decl).Decl2StrAllOverloads(LBuilder, {ANestedLevel:} 0)
+            else
+              Decl.Decl2Str(LBuilder, {ANestedLevel:} 0, {AAppendName:} True);
             LBuilder.Append(sLineBreak);
             LBuilder.Append(sLineBreak);
           except
@@ -1053,7 +1056,11 @@ begin
             Exit;
 
           try
-            Decl.Decl2Str(LBuilder, {ANestedLevel:} 0, {AAppendName:} True);
+            if TIDDeclaration(Decl).ItemType = itProcedure then
+              TIDProcedure(Decl).Decl2StrAllOverloads(LBuilder, {ANestedLevel:} 0)
+            else
+              Decl.Decl2Str(LBuilder, {ANestedLevel:} 0, {AAppendName:} True);
+
             LBuilder.Append(sLineBreak);
             LBuilder.Append(sLineBreak);
           except

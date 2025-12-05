@@ -1907,6 +1907,8 @@ type
                                 AContext: TGenericInstantiateContext): TIDDeclaration; override;
 
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
+    procedure Decl2StrAllOverloads(ABuilder: TStringBuilder; ANestedLevel: Integer = 0);
+
     function ASTJsonDeclClass: TASTJsonDeclClass; override;
     function BodyToJson: TASTJsonFunctionBody;
     function ToJson: TJsonASTDeclaration; override;
@@ -3244,9 +3246,6 @@ var
 begin
   Result := Name;
 
-  if Assigned(Struct) and not Struct.IsAnonymous then
-    Result := Struct.DisplayName + '.' + Result;
-
   if Result = '' then
     Result := '$anonymous_proc_' + IntToStr(Index);
 
@@ -3255,19 +3254,6 @@ begin
   else
   if IsGenericInstantiation then
     Result := GenericName + GenericArgsAsText(FGenericArgs);
-
-  for i := 0 to Length(ExplicitParams) - 1 do
-  begin
-    Param := ExplicitParams[i];
-    var LDataType := Param.DataType;
-    if Assigned(LDataType) then
-      ParamsStr := AddStringSegment(ParamsStr, LDataType.DisplayName, ', ')
-    else
-      ParamsStr := AddStringSegment(ParamsStr, '<unknown>', ', ');
-  end;
-  Result := Result + '(' + ParamsStr + ')';
-  if Assigned(FResultType) then
-    Result := Result + ': ' + FResultType.DisplayName;
 end;
 
 function TIDProcedure.GetGenericRequiredParamsCount: Integer;
@@ -3441,16 +3427,10 @@ end;
 
 procedure TIDProcedure.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
-  if Assigned(PrevOverload) and (PrevOverload.Struct = Struct) then
-  begin
-    PrevOverload.Decl2Str(ABuilder, ANestedLevel, AAppendName);
-    ABuilder.AppendLine;
-  end;
-
   ABuilder.Append(' ', ANestedLevel*2);
   ABuilder.Append(ProcKindName);
   ABuilder.Append(' ');
-  ABuilder.Append(Name);
+  ABuilder.Append(GetDisplayName);
 
   if Assigned(GenericDescriptor) then
     GenericDescriptor.Decl2Str(ABuilder);
@@ -3491,6 +3471,16 @@ begin
 
   if not Assigned(GenericPrototype) then
     GenericInstances2Str(ABuilder, ANestedLevel);
+end;
+
+procedure TIDProcedure.Decl2StrAllOverloads(ABuilder: TStringBuilder; ANestedLevel: Integer);
+begin
+  if Assigned(PrevOverload) and (PrevOverload.Struct = Struct) then
+  begin
+    PrevOverload.Decl2StrAllOverloads(ABuilder, ANestedLevel);
+    ABuilder.AppendLine;
+  end;
+  Decl2Str(ABuilder, ANestedLevel);
 end;
 
 procedure TIDProcedure.DecRefCount(RCPath: UInt32);
@@ -5530,7 +5520,10 @@ begin
         // if LDecl.Scope = Members then
         begin
           ABuilder.Append(sLineBreak);
-          LDecl.Decl2Str(ABuilder, ANestedLevel + 1);
+          if LDecl.ItemType = itProcedure then
+            TIDProcedure(LDecl).Decl2StrAllOverloads(ABuilder, ANestedLevel + 1)
+          else
+            LDecl.Decl2Str(ABuilder, ANestedLevel + 1);
         end;
       end;
     end;
