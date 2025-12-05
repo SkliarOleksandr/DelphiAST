@@ -111,6 +111,8 @@ uses
   ASTTest.Generics.TListDecl3 in '..\TestScripts\Generics\ASTTest.Generics.TListDecl3.pas',
   ASTTest.Generics.SearchAppropriateType1 in '..\TestScripts\Generics\ASTTest.Generics.SearchAppropriateType1.pas',
   ASTTest.Generics.OverloadMethodInstantiation1 in '..\TestScripts\Generics\ASTTest.Generics.OverloadMethodInstantiation1.pas',
+  ASTTest.Generics.InstantiationAncestors1 in '..\TestScripts\Generics\ASTTest.Generics.InstantiationAncestors1.pas',
+  ASTTest.Generics.InstantiationAncestors2 in '..\TestScripts\Generics\ASTTest.Generics.InstantiationAncestors2.pas',
   ASTTest.Ordian.Enums.Init in '..\TestScripts\Ordinals\ASTTest.Ordian.Enums.Init.pas',
   ASTTest.Procs.External1 in '..\TestScripts\Procedures\ASTTest.Procs.External1.pas',
   ASTTest.Procs.External2 in '..\TestScripts\Procedures\ASTTest.Procs.External2.pas',
