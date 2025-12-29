@@ -2242,8 +2242,13 @@ const
   function IsGenericArgMatch(ATypeArg: TIDType; const AGenericParam: TIDGenericParam): Boolean;
   function CallConventionToStr(AConvention: TCallConvention): string;
 
-  function InstantiateGenericType(AScope: TScope; AGenericType: TIDType;
-                                  AContext: TGenericInstantiateContext): TIDType;
+type
+  TDecl2StrParams = record
+    AppendTypePtr: Boolean;
+  end;
+
+var
+  Decl2StrParams: TDecl2StrParams;
 
 implementation
 
@@ -2260,8 +2265,11 @@ uses AST.Delphi.System,
 procedure TypeNameToString(AType: TIDType; ABuilder: TStringBuilder);
 begin
   if Assigned(AType) then
-    ABuilder.Append(AType.DisplayName)
-  else
+  begin
+    ABuilder.Append(AType.DisplayName);
+    if Decl2StrParams.AppendTypePtr then
+      ABuilder.AppendFormat('{$%p}', [Pointer(AType)]);
+  end else
     ABuilder.Append('<unassigned>');
 end;
 
@@ -2862,9 +2870,6 @@ end;
 function TIDDeclaration.InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                            AContext: TGenericInstantiateContext): TIDDeclaration;
 begin
-  if IsGeneric then
-    AbortWork('Declaration %s is not a generic', [DisplayName], TextPosition);
-
   Result := Self;
 end;
 
@@ -3239,10 +3244,6 @@ begin
 end;
 
 function TIDProcedure.GetDisplayName: string;
-var
-  Param: TIDVariable;
-  ParamsStr: string;
-  i: Integer;
 begin
   Result := Name;
 
@@ -3440,7 +3441,7 @@ begin
   if Assigned(FResultType) then
   begin
     ABuilder.Append(': ');
-    ABuilder.Append(FResultType.DisplayName);
+    TypeNameToString(FResultType, ABuilder);
   end;
 
   ABuilder.Append(';');
@@ -3498,6 +3499,9 @@ begin
  // todo:
 end;
 
+function InternalInstantiateGenericType(AScope: TScope; AGenericType: TIDType;
+                                        AOuterContext: TGenericInstantiateContext): TIDType; forward;
+
 function InstantiateParams(ANewScope: TScope;
                            ADstStruct: TIDStructure;
                            const AProcParams: TIDParamArray;
@@ -3511,7 +3515,7 @@ begin
     var LParamType := AParam.DataType;
     // if a param data type is generic and belongs current context, instantiate it
     if LParamType.DoesGenericUseParams(AContext.Params) then
-      AParam.DataType := InstantiateGenericType(ANewScope, LParamType, AContext);
+      AParam.DataType := InternalInstantiateGenericType(ANewScope, LParamType, AContext);
     Result[AIndex] := AParam;
   end;
 end;
@@ -3528,7 +3532,7 @@ begin
   // todo: what about implicit params (self, open array len, etc)?
   LNewProc.ExplicitParams := InstantiateParams(LNewProc.FEntryScope, ADstStruct, ExplicitParams, AContext);
   if Assigned(ResultType) and ResultType.DoesGenericUseParams(AContext.Params) then
-    LNewProc.ResultType := InstantiateGenericType(ADstScope, ResultType, AContext)
+    LNewProc.ResultType := InternalInstantiateGenericType(ADstScope, ResultType, AContext)
   else
     LNewProc.ResultType := ResultType;
 
@@ -3649,6 +3653,8 @@ begin
 //      GenericDescriptor.Decl2Str(ABuilder);
 //    end else
       ABuilder.Append(GetDisplayName);
+      if Decl2StrParams.AppendTypePtr then
+        ABuilder.AppendFormat('{$%p}', [Pointer(Self)]);
 
     ABuilder.Append(' = ');
 
@@ -4029,54 +4035,6 @@ begin
     Result := nil;
 end;
 
-(*function TIDType.InstantiateGenericInstantiation(ADstScope: TScope; ADstStruct: TIDStructure;
-  AContext: TGenericInstantiateContext): TIDDeclaration;
-begin
-  // Original - is the generic type that needs to be instantiated
-  var LNewContext := TGenericInstantiateContext.Create(AContext, Original);
-  try
-    LNewContext.Params := Original.GenericDescriptor.GenericParams;
-    var LGParamsCount := Length(LNewContext.Params);
-    SetLength(LNewContext.Args, LGParamsCount);
-
-    var LStrSufix := '';
-    var LCanInstantiate := False;
-    for var LIndex := 0 to LGParamsCount - 1 do
-    begin
-      var LGArg := FGenericArgs[LIndex];
-      // if an argument is a generic param from the outer context, find the related argument from that context
-      if LGArg is TIDGenericParam then
-        LGArg := AContext.GetArgByParam(TIDGenericParam(LGArg))
-      else
-      // if an argument is a generic instantiation, instantiate it
-      if LGArg.IsGenericInstantiation then
-        LGArg := LGArg.InstantiateGeneric(ADstScope, ADstStruct, AContext) as TIDType;
-
-      // if at least one argument is NOT a generic param, we can instantiate (even partially) the original generic type
-      // otherwise we have to create another generic-instantiation with new arguments
-      if not LGArg.IsGeneric then
-        LCanInstantiate := True;
-
-      LNewContext.Args[LIndex] := LGArg;
-      LStrSufix := AddStringSegment(LStrSufix, LGArg.DisplayName, ', ');
-    end;
-
-    LNewContext.DstID.Name := Original.GenericName + '<' + LStrSufix + '>';
-    LNewContext.DstID.TextPosition := TextPosition;
-
-    if not Original.GenericDescriptor.TryGetInstance(LNewContext.Args, {out} Result) then
-    begin
-      if LCanInstantiate then
-        Result := Original.InstantiateGeneric(ADstScope, ADstStruct, LNewContext)
-      else
-        Result := Original.CreateGenericInstantiation(Scope, Original.ID, LNewContext.Args);
-    end;
-  finally
-    LNewContext.Free;
-  end;
-end; *)
-
-
 function TIDType.MustBeInstantiated(ADstStruct: TIDStructure; AContext: TGenericInstantiateContext): TIDDeclaration;
 begin
   // first, try to find this type in the parent struct (if it's nested)
@@ -4126,15 +4084,15 @@ begin
   end;
 end;
 
-function InstantiateGenericType(AScope: TScope; AGenericType: TIDType;
-                                AContext: TGenericInstantiateContext): TIDType;
+function InternalInstantiateGenericType(AScope: TScope; AGenericType: TIDType;
+                                        AOuterContext: TGenericInstantiateContext): TIDType;
 var
   LContext: TGenericInstantiateContext;
   LExistingInstance: TIDStructure;
   LNeededGenericArgs: TIDTypeArray;
   LNeededGenericParams: TIDTypeArray;
 begin
-  Result := AGenericType.MustBeInstantiated(AContext.DstDecl as TIDStructure, AContext) as TIDType;
+  Result := AGenericType.MustBeInstantiated(AOuterContext.DstDecl as TIDStructure, AOuterContext) as TIDType;
 
   if Assigned(Result) then
     Exit;
@@ -4152,11 +4110,11 @@ begin
       // if an arg is a normal type (partial instantiation) - take it as is
       if LArg is TIDGenericParam then
       begin
-        var LParamIndex := AContext.IndexOfParam(TIDGenericParam(LArg));
+        var LParamIndex := AOuterContext.IndexOfParam(TIDGenericParam(LArg));
         Assert(LParamIndex >= 0);
-        LNeededGenericArgs := LNeededGenericArgs + [AContext.Args[LParamIndex]];
+        LNeededGenericArgs := LNeededGenericArgs + [AOuterContext.Args[LParamIndex]];
         // todo: use AGenericType.GenericDescriptor params?
-        LNeededGenericParams := LNeededGenericParams + [AContext.Params[LParamIndex]];
+        LNeededGenericParams := LNeededGenericParams + [AOuterContext.Params[LParamIndex]];
       end else
       begin
         LNeededGenericArgs := LNeededGenericArgs + [LArg];
@@ -4167,9 +4125,9 @@ begin
   end else
   begin
     // the case when it's nested type that uses outer generic params
-    LNeededGenericArgs := AContext.Args;
+    LNeededGenericArgs := AOuterContext.Args;
     // todo: use AGenericType.GenericDescriptor params?
-    LNeededGenericParams := AContext.Params;
+    LNeededGenericParams := AOuterContext.Params;
   end;
 
   var LDescriptor := GetOriginGenericDescriptor(AGenericType);
@@ -4190,7 +4148,7 @@ begin
     end;
   end;
 
-  LContext := TGenericInstantiateContext.Create(AContext, AGenericType);
+  LContext := TGenericInstantiateContext.Create(AOuterContext, AGenericType);
   try
     LContext.Args := LNeededGenericArgs;
     LContext.Params := LNeededGenericParams;
@@ -4647,8 +4605,8 @@ begin
   if DataType is TIDGenericParam then
     Result.DataType := DataType.InstantiateGeneric(ADstScope, ADstStruct, AContext) as TIDType
   else
-  if DataType.IsGeneric then
-    Result.DataType := InstantiateGenericType(ADstScope, DataType, AContext);
+  if DataType.DoesGenericUseParams(AContext.Params) then
+    Result.DataType := InternalInstantiateGenericType(ADstScope, DataType, AContext);
 
   LogEnd('inst [type: %s, dst: %s]', [ClassName, Result.DisplayName]);
 end;
@@ -5406,7 +5364,7 @@ begin
   begin
     // use actual original scope as for generic ancestors
     var LParentScope := AncestorDecl.Scope;
-    ADstStruct.AncestorDecl := InstantiateGenericType(LParentScope, AncestorDecl, AContext);
+    ADstStruct.AncestorDecl := InternalInstantiateGenericType(LParentScope, AncestorDecl, AContext);
   end;
 end;
 
@@ -5473,7 +5431,7 @@ begin
           LNewMember := LMember.InstantiateGeneric(LNewStruct.Members, LNewStruct, AContext)
         else begin
           if TIDType(LMember).DoesGenericUseParams(AContext.Params) then
-            LNewMember := InstantiateGenericType(LNewStruct.Members, LMember as TIDType, AContext)
+            LNewMember := InternalInstantiateGenericType(LNewStruct.Members, LMember as TIDType, AContext)
           else
             LNewMember := LMember;
         end;
@@ -6382,14 +6340,9 @@ end;
 
 procedure TIDPointer.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
-  ABuilder.Append(' ', ANestedLevel*2);
-  ABuilder.Append('type ');
-  ABuilder.Append(Name);
-  if Assigned(ReferenceType) then
-  begin
-    ABuilder.Append(' = ^');
-    ABuilder.Append(ReferenceType.DisplayName);
-  end;
+  inherited;
+  ABuilder.Append('^');
+  TypeNameToString(ReferenceType, ABuilder);
 end;
 
 function TIDPointer.DoesGenericUseParams(const AParams: TIDTypeArray): Boolean;
@@ -6432,7 +6385,7 @@ begin
         Scope.AddType(LNewPtr);
     end;
 
-    LNewPtr.ReferenceType := ReferenceType.InstantiateGeneric(ADstScope, ADstStruct, AContext) as TIDType;
+    LNewPtr.ReferenceType := InternalInstantiateGenericType(ADstScope, ReferenceType, AContext);
 
     Result := LNewPtr;
     LogEnd('inst [type: %s, dst: %s]', [ClassName, Result.DisplayName]);
@@ -6696,14 +6649,9 @@ end;
 
 procedure TIDDynArray.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
-  if AAppendName then
-  begin
-    ABuilder.Append(' ', ANestedLevel*2);
-    ABuilder.Append('type ');
-    ABuilder.Append(DisplayName);
-  end;
+  inherited;
 
-  ABuilder.Append(' = array of ');
+  ABuilder.Append('array of ');
   TypeNameToString(ElementDataType, ABuilder);
 
   if AAppendName then
@@ -9132,10 +9080,7 @@ begin
 
   ABuilder.Append('] of ');
 
-  if Assigned(ElementDataType) then
-    ABuilder.Append(ElementDataType.DisplayName)
-  else
-    ABuilder.Append('<null>');
+  TypeNameToString(ElementDataType, ABuilder);
 
   GenericInstances2Str(ABuilder, ANestedLevel);
 end;

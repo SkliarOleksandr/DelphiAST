@@ -13,13 +13,13 @@ type
   TBase<TItem> = class abstract
     Item: TItem;
   end;
-  
-  TGeneric<K> = class(TBase<TItem<K>>)
 
-  end;      
+  TChild<K> = class(TBase<TItem<K>>)
+
+  end;
 
 var
-  MyObj: TGeneric<string>;
+  MyObj: TChild<string>;
 
 implementation
 

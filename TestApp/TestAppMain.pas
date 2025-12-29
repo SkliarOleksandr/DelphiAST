@@ -166,6 +166,7 @@ type
     ShowGenericInstancesCheck: TCheckBox;
     SrcStatusBar: TStatusBar;
     SrcRootPanel: TPanel;
+    ShowTypePtrInASTCheck: TCheckBox;
     procedure ASTParseRTLButtonClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure SearchButtonClick(Sender: TObject);
@@ -550,6 +551,7 @@ begin
       LINI.WriteBool(SGeneral, 'SHOW_PROGRESS', ShowProgressCheck.Checked);
       LINI.WriteBool(SGeneral, 'SAVE_AST', SaveASTCheckBox.Checked);
       LINI.WriteBool(SGeneral, 'SHOW_GENRIC_INSTACES', ShowGenericInstancesCheck.Checked);
+      LINI.WriteBool(SGeneral, 'SHOW_TYPE_PTR_IN_AST', ShowTypePtrInASTCheck.Checked);
       LINI.WriteInteger(SGeneral, 'SHOW_AST_FORMAT_COMBO_INDEX', ASTResultFormatComboBox.ItemIndex);
       LINI.WriteInteger(SGeneral, 'SHOW_AST_VIEW_COMBO_INDEX', ASTResultViewComboBox.ItemIndex);
 
@@ -591,6 +593,7 @@ begin
     ShowProgressCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_PROGRESS', True);
     SaveASTCheckBox.Checked := LINI.ReadBool(SGeneral, 'SAVE_AST', False);
     ShowGenericInstancesCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_GENRIC_INSTACES', False);
+    ShowTypePtrInASTCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_TYPE_PTR_IN_AST', False);
     ASTResultFormatComboBox.ItemIndex := LINI.ReadInteger(SGeneral, 'SHOW_AST_FORMAT_COMBO_INDEX', 0);
     ASTResultViewComboBox.ItemIndex := LINI.ReadInteger(SGeneral, 'SHOW_AST_VIEW_COMBO_INDEX', 0);
 
@@ -1364,7 +1367,9 @@ begin
     LogMemo.Clear;
   end;
 
+  // set global params
   BreakpointOnError := BreakpointOnErrorCheck.Checked;
+  Decl2StrParams.AppendTypePtr := ShowTypePtrInASTCheck.Checked;
 
   Screen.Cursor := crHourGlass;
   try

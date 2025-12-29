@@ -3789,7 +3789,7 @@ begin
 
     {generic case}
     // todo: constraint check is needed
-    if (SrcDTID = dtGeneric) or (DstDTID = dtGeneric) then
+    if (SrcDTID = dtGeneric) and (DstDTID = dtGeneric) then
       Exit(Source);
 
     if Source.ClassType = TIDDrefExpression then

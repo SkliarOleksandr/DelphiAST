@@ -9,12 +9,12 @@ type
   TBase<T> = class
     Value: T;
   end;
-  
-  TGeneric<K> = class(TBase<K>)
-  end;      
+
+  TChild<K> = class(TBase<K>)
+  end;
 
 var
-  MyObj: TGeneric<string>;
+  MyObj: TChild<string>;
 
 implementation
 

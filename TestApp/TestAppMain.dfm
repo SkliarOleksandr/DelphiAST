@@ -160,7 +160,6 @@ object frmTestAppMain: TfrmTestAppMain
               Alignment = taRightJustify
               Caption = 'Test Not Run'
               Layout = tlCenter
-              ExplicitLeft = 75
             end
           end
         end
@@ -640,6 +639,14 @@ object frmTestAppMain: TfrmTestAppMain
               item
                 Width = 50
               end>
+          end
+          object ShowTypePtrInASTCheck: TCheckBox
+            Left = 105
+            Top = 4
+            Width = 168
+            Height = 17
+            Caption = 'Show Type Pointers in AST'
+            TabOrder = 2
           end
         end
       end
