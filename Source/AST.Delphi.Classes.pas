@@ -186,6 +186,7 @@ type
     function IndexOfParam(AParam: TIDGenericParam): Integer;
     function GetArgByParam(AParam: TIDGenericParam): TIDType;
     function Args2Str: string;
+    function Params2Str: string;
     function IsDeclInstantiating(ADecl: TIDDeclaration; out ADstDecl: TIDDeclaration): Boolean;
     property DstDecl: TIDDeclaration read FDstDecl write FDstDecl;
   end;
@@ -3500,7 +3501,7 @@ begin
 end;
 
 function InternalInstantiateGenericType(AScope: TScope; AGenericType: TIDType;
-                                        AOuterContext: TGenericInstantiateContext): TIDType; forward;
+                                        AContext: TGenericInstantiateContext): TIDType; forward;
 
 function InstantiateParams(ANewScope: TScope;
                            ADstStruct: TIDStructure;
@@ -4085,19 +4086,21 @@ begin
 end;
 
 function InternalInstantiateGenericType(AScope: TScope; AGenericType: TIDType;
-                                        AOuterContext: TGenericInstantiateContext): TIDType;
+                                        AContext: TGenericInstantiateContext): TIDType;
 var
   LContext: TGenericInstantiateContext;
   LExistingInstance: TIDStructure;
   LNeededGenericArgs: TIDTypeArray;
   LNeededGenericParams: TIDTypeArray;
 begin
-  Result := AGenericType.MustBeInstantiated(AOuterContext.DstDecl as TIDStructure, AOuterContext) as TIDType;
+  // NOTE:
+  //   AContext - outer instantiation context
+  //   LContext - inner instantiation context
+
+  Result := AGenericType.MustBeInstantiated(AContext.DstDecl as TIDStructure, AContext) as TIDType;
 
   if Assigned(Result) then
     Exit;
-
-  LExistingInstance := nil;
 
   // extract needed generic params & arguments from the upper level (it may differ)
   var LGenericArgsCount := Length(AGenericType.FGenericArgs);
@@ -4110,27 +4113,32 @@ begin
       // if an arg is a normal type (partial instantiation) - take it as is
       if LArg is TIDGenericParam then
       begin
-        var LParamIndex := AOuterContext.IndexOfParam(TIDGenericParam(LArg));
+        var LParamIndex := AContext.IndexOfParam(TIDGenericParam(LArg));
         Assert(LParamIndex >= 0);
-        LNeededGenericArgs := LNeededGenericArgs + [AOuterContext.Args[LParamIndex]];
-        // todo: use AGenericType.GenericDescriptor params?
-        LNeededGenericParams := LNeededGenericParams + [AOuterContext.Params[LParamIndex]];
+        LNeededGenericArgs := LNeededGenericArgs + [AContext.Args[LParamIndex]];
       end else
       begin
+        // if an arg is generic one, go recursion
+        if LArg.IsGeneric then
+          LArg := InternalInstantiateGenericType(AScope, LArg, AContext);
+
         LNeededGenericArgs := LNeededGenericArgs + [LArg];
-        // todo: use AGenericType.GenericDescriptor params?
-        LNeededGenericParams := LNeededGenericParams + [LArg];
       end;
     end;
   end else
   begin
     // the case when it's nested type that uses outer generic params
-    LNeededGenericArgs := AOuterContext.Args;
-    // todo: use AGenericType.GenericDescriptor params?
-    LNeededGenericParams := AOuterContext.Params;
+    LNeededGenericArgs := AContext.Args;
+    LNeededGenericParams := AContext.Params;
   end;
 
-  var LDescriptor := GetOriginGenericDescriptor(AGenericType);
+  LExistingInstance := nil;
+
+  // for instantiation take the original generic type (not a partially one)
+  if Assigned(AGenericType.GenericOrigin) then
+    AGenericType := AGenericType.GenericOrigin as TIDType;
+
+  var LDescriptor := AGenericType.GenericDescriptor;
   if Assigned(LDescriptor) then
   begin
     {find in the pool first}
@@ -4146,9 +4154,11 @@ begin
       end else
         Exit;
     end;
+    // take original generic type params
+    LNeededGenericParams := LDescriptor.GenericParams;
   end;
 
-  LContext := TGenericInstantiateContext.Create(AOuterContext, AGenericType);
+  LContext := TGenericInstantiateContext.Create(AContext, AGenericType);
   try
     LContext.Args := LNeededGenericArgs;
     LContext.Params := LNeededGenericParams;
@@ -5128,7 +5138,7 @@ begin
   if Assigned(fAncestor) then
   begin
     ABuilder.Append('(');
-    ABuilder.Append(fAncestor.Name);
+    TypeNameToString(Ancestor, ABuilder);
     ABuilder.Append(')');
   end;
 end;
@@ -5360,7 +5370,7 @@ end;
 procedure TIDStructure.InstantiateGenericAncestors(ADstScope: TScope; ADstStruct: TIDStructure;
                                                    AContext: TGenericInstantiateContext);
 begin
-  if Assigned(AncestorDecl) and AncestorDecl.IsGeneric then
+  if Assigned(AncestorDecl) and AncestorDecl.DoesGenericUseParams(AContext.Params) then
   begin
     // use actual original scope as for generic ancestors
     var LParentScope := AncestorDecl.Scope;
@@ -7827,7 +7837,7 @@ begin
 
     if Assigned(fAncestorDecl) then
     begin
-      ABuilder.Append(fAncestorDecl.DisplayName);
+      TypeNameToString(AncestorDecl, ABuilder);
       if Assigned(FInterfaces) then
         ABuilder.Append(', ');
     end;
@@ -7835,7 +7845,7 @@ begin
     if Assigned(FInterfaces) then
       for var LItemIndex := 0 to FInterfaces.Count - 1 do
       begin
-         ABuilder.Append(FInterfaces[LItemIndex].DisplayName);
+         TypeNameToString(FInterfaces[LItemIndex], ABuilder);
          if LItemIndex < FInterfaces.Count - 1 then
            ABuilder.Append(', ');
       end;
@@ -9107,7 +9117,7 @@ end;
 
 procedure TDlphHelper.AncestorsDecl2Str(ABuilder: TStringBuilder);
 begin
-  ABuilder.Append(fTarget.Name);
+  TypeNameToString(fTarget, ABuilder);
 end;
 
 function TDlphHelper.ASTJsonDeclClass: TASTJsonDeclClass;
@@ -9534,6 +9544,14 @@ begin
   Result := '';
   for var LArg in Args do
     Result := AddStringSegment(Result, LArg.DisplayName, ', ');
+  Result := '<' + Result + '>';
+end;
+
+function TGenericInstantiateContext.Params2Str: string;
+begin
+  Result := '';
+  for var LParam in Params do
+    Result := AddStringSegment(Result, LParam.DisplayName, ', ');
   Result := '<' + Result + '>';
 end;
 
