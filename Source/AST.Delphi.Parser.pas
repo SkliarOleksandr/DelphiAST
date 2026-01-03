@@ -1033,7 +1033,7 @@ function TASTDelphiUnit.ParseTypeHelper(Scope, GenericScope: TScope; AIsClassHel
   out Decl: TDlphHelper): TTokenID;
 
 var
-  LAncestor: TIDType;
+  LAncestor: TDlphHelper;
   TargetDecl: TIDType;
   Visibility: TVisibility;
 begin
@@ -1046,7 +1046,7 @@ begin
     var LAncestorDecl := FindID(Scope, LAncestorID);
     if not (LAncestorDecl is TDlphHelper) then
       ERRORS.E2022_CLASS_HELPER_TYPE_REQUIRED(Self, LAncestorID.TextPosition);
-    LAncestor := TIDType(LAncestorDecl);
+    LAncestor := TDlphHelper(LAncestorDecl);
     Lexer_ReadToken(Scope, token_closeround);
     Result := Lexer_NextToken(Scope);
   end else
@@ -1058,7 +1058,7 @@ begin
   Result := ParseTypeSpec(Scope, {out} TargetDecl);
 
   Decl := TDlphHelper.Create(Scope, ID);
-  Decl.AncestorDecl := LAncestor;
+  Decl.Ancestor := LAncestor;
   Decl.Target := TargetDecl;
 
   // register new helper for the target type
@@ -2757,6 +2757,11 @@ begin
   except
     on e: ECompilerStop do Exit(CompileFail);
     on e: ECompilerSkip do Exit(CompileSkip);
+    on e: ECompilerInternalError do begin
+      PutMessage(cmtInteranlError, e.Message, Lexer_Position, {ACritical:} True);
+      Progress(TASTStatusParseFail, TTickCounter.GetTicks - LStartedAt);
+      Result := CompileFail;
+    end;
     on e: ECompilerAbort do begin
       var LMsg := ECompilerAbort(e).CompilerMessage;
       LMsg.Module := Self;
@@ -6090,12 +6095,12 @@ begin
       dtClass: begin
         if LAncestorsCount = 0 then
         begin
-          ClassDecl.AncestorDecl := LAncestorDecl;
+          ClassDecl.Ancestor := TIDClass(LAncestorDecl);
         end else
          ERRORS.E2021_CLASS_TYPE_REQUIRED(Self, Expr.TextPosition);
       end;
       dtInterface: begin
-        var LIntfDecl := LAncestorDecl as TIDInterface;
+        var LIntfDecl := TIDInterface(LAncestorDecl);
         if ClassDecl.FindInterface(LIntfDecl) then
           ERRORS.INTF_ALREADY_IMPLEMENTED(Expr);
         ClassDecl.AddInterface(LIntfDecl);
@@ -6338,7 +6343,7 @@ begin
     Result := ParseClassAncestorType(Decl.Members, Decl);
   end else begin
     if Self <> TObject(SYSUnit) then
-      Decl.AncestorDecl := Sys._TObject;
+      Decl.Ancestor := Sys._TObject;
   end;
 
   // semicolon means a short declaration (without end)
@@ -8207,12 +8212,15 @@ begin
         // note, that InheritedProc points to the actual inherited procedue (with the same params),
         // while, ForwardDecl points to the latest declared procedure with the same name,
         // which can be either inherited or overloaded.
-        if Assigned(ForwardDecl.PrevOverload) then
-          Proc.PrevOverload := ForwardDecl;
+        if Assigned(ForwardDecl) then
+        begin
+          if Assigned(ForwardDecl.PrevOverload) then
+            Proc.PrevOverload := ForwardDecl;
 
-        // add current procedure to the scope, if ForwardDecl declared in a base class
-        if ForwardDecl.Struct <> Struct then
-          ForwardDecl := nil;
+          // add current procedure to the scope, if ForwardDecl declared in a base class
+          if ForwardDecl.Struct <> Struct then
+            ForwardDecl := nil;
+        end;
       end;
 
       if Assigned(ForwardDecl) and (Struct = ForwardDecl.Struct) and
@@ -8813,11 +8821,12 @@ begin
       begin
         if Assigned(AStruct) and (AStruct.DataTypeID = dtClass) then
         begin
-          // since an interface can be an alias (like IUnknown), we have to find original declaration and take its name
-          var LDecl := FindIDNoAbort(AStruct.Scope, GetSearchName(AID.Name, AGenericParams));
-          if Assigned(LDecl) then
+          // since an interface can be an alias (like IUnknown), find the original declaration and take its name
+          LTypeDecl := FindIDNoAbort(AStruct.Scope, GetSearchName(AID.Name, AGenericParams)) as TIDType;
+          if Assigned(LTypeDecl) then
           begin
-            var LIntf := TIDClass(AStruct).FindInterface(AID.Name, AGenericParams);
+            // TODO: rework to use a strict finding interfaces (not by name)
+            var LIntf := TIDClass(AStruct).FindInterface(LTypeDecl.GenericName, AGenericParams);
             if Assigned(LIntf) then
             begin
               LIntfMethodDelegation := True;
@@ -8825,9 +8834,9 @@ begin
               Continue;
             end
           end;
+          // for debug:
+          TIDClass(AStruct).FindInterface(LTypeDecl.GenericName, AGenericParams);
         end;
-        // for debug:
-        TIDClass(AStruct).FindInterface(AID.Name, AGenericParams);
         ERRORS.UNDECLARED_ID(AID, AGenericParams);
       end;
 
@@ -10307,14 +10316,15 @@ begin
     Lexer_NextToken(Scope);
     Result := ParseConstExpression(Scope, Expr, ExprNested);
     CheckInterfaceType(Expr);
-    var Ancestor := Expr.AsType;
-    if Ancestor = Decl then
+    var LAncestor := TIDInterface(Expr.AsType);
+    if LAncestor = Decl then
       AbortWork(sRecurciveTypeLinkIsNotAllowed, Expr.TextPosition);
+
     Lexer_MatchToken(Result, token_closeround);
-    Decl.AncestorDecl := Expr.AsType;
+    Decl.Ancestor := LAncestor;
     Result := Lexer_NextToken(Scope);
   end else
-    Decl.AncestorDecl := Sys._IInterface;
+    Decl.Ancestor := Sys._IInterface;
 
   // semicolon means this is forward declaration
   if Result = token_semicolon then

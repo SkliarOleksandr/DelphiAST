@@ -756,8 +756,7 @@ type
   {base structure type}
   TIDStructure = class(TIDType)
   private
-    fAncestor: TIDStructure;        // origianl type of fAncestorDecl
-    fAncestorDecl: TIDType;         // can be TIDGenericInstantiation or TIDStructure successor
+    fAncestor: TIDStructure;        // ancestor
     fMembers: TStructScope;         // instance members
     fOperators: TStructScope;       // operators members
     fFields: TIDFieldArray;         // instance fields
@@ -769,7 +768,7 @@ type
     function GetFieldsCount: Integer; inline;
     function GetMethodCount: Integer; inline;
     function GetDefaultProperty: TIDProperty;
-    procedure SetAncestorDecl(const Value: TIDType);
+    procedure SetAncestor(const Value: TIDStructure);
     procedure SetDefaultProperty(const Value: TIDProperty);
     function GetFields: TIDFieldArray;
     function GetIsCompleted: Boolean;
@@ -788,13 +787,14 @@ type
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
     ////////////////////////////////////////////////////////////////////////////
     function CreateNewType(AScope: TScope; const AID: TIdentifier): TIDType; override;
+    function MakeCopy(AScope: TScope): TIDDeclaration; override;
+
 
     property Members: TStructScope read FMembers;
     property Operators: TStructScope read fOperators;
     property HasInitFiels: Boolean read GetHasInitFiels;
     property StructFlags: TStructFlags read FStrucFlags write FStrucFlags;
-    property Ancestor: TIDStructure read FAncestor;
-    property AncestorDecl: TIDType read fAncestorDecl write SetAncestorDecl;
+    property Ancestor: TIDStructure read fAncestor write SetAncestor;
     property MethodCount: Integer read GetMethodCount;
     property Fields: TIDFieldArray read GetFields;
     property FieldsCount: Integer read GetFieldsCount;
@@ -5138,7 +5138,7 @@ begin
   if Assigned(fAncestor) then
   begin
     ABuilder.Append('(');
-    TypeNameToString(Ancestor, ABuilder);
+    TypeNameToString(fAncestor, ABuilder);
     ABuilder.Append(')');
   end;
 end;
@@ -5175,7 +5175,6 @@ function TIDStructure.CreateNewType(AScope: TScope; const AID: TIdentifier): TID
 begin
   Result := inherited;
   TIDStructure(Result).fAncestor := fAncestor;
-  TIDStructure(Result).fAncestorDecl := fAncestorDecl;
   TIDStructure(Result).fMembers := fMembers;
   TIDStructure(Result).fOperators := fOperators;
   TIDStructure(Result).fFields := fFields;
@@ -5248,16 +5247,16 @@ begin
       Exit(nil);
   end;
 
-  if Assigned(FAncestor) then
-    Result := FAncestor.FindVirtualProc(AProc)
+  if Assigned(fAncestor) then
+    Result := fAncestor.FindVirtualProc(AProc)
   else
     Result := nil;
 end;
 
 function TIDStructure.FindVirtualProcInAncestor(Proc: TIDProcedure): TIDProcedure;
 begin
-  if Assigned(FAncestor) then
-    Result := FAncestor.FindVirtualProc(Proc)
+  if Assigned(fAncestor) then
+    Result := fAncestor.FindVirtualProc(Proc)
   else
     Result := nil;
 end;
@@ -5338,7 +5337,7 @@ function TIDStructure.GetIsGeneric: Boolean;
 begin
   Result := Assigned(fGenericDescriptor) or
             Assigned(FGenericArgs) or
-            (Assigned(fAncestorDecl) and fAncestorDecl.IsGenericInstantiation);
+            (Assigned(fAncestor) and fAncestor.IsGenericInstantiation);
 end;
 
 function TIDStructure.GetIsManaged: Boolean;
@@ -5370,11 +5369,11 @@ end;
 procedure TIDStructure.InstantiateGenericAncestors(ADstScope: TScope; ADstStruct: TIDStructure;
                                                    AContext: TGenericInstantiateContext);
 begin
-  if Assigned(AncestorDecl) and AncestorDecl.DoesGenericUseParams(AContext.Params) then
+  if Assigned(fAncestor) and fAncestor.DoesGenericUseParams(AContext.Params) then
   begin
     // use actual original scope as for generic ancestors
-    var LParentScope := AncestorDecl.Scope;
-    ADstStruct.AncestorDecl := InternalInstantiateGenericType(LParentScope, AncestorDecl, AContext);
+    var LParentScope := fAncestor.Scope;
+    ADstStruct.Ancestor := InternalInstantiateGenericType(LParentScope, fAncestor, AContext) as TIDStructure;
   end;
 end;
 
@@ -5536,7 +5535,7 @@ begin
 
   if not Result and (Assigned(Parent) or IsGeneric) then
   begin
-    if Assigned(fAncestorDecl) and fAncestorDecl.DoesGenericUseParams(AParams) then
+    if Assigned(fAncestor) and fAncestor.DoesGenericUseParams(AParams) then
       Exit(True);
 
     // iterate through all members, to find at least one that uses outer generic params
@@ -5610,7 +5609,7 @@ begin
   Result := (Self = Ancestor) or (Self.GenericOrigin = Ancestor);
   if not Result then
   begin
-    AC := FAncestor;
+    AC := fAncestor;
     while Assigned(AC) do begin
       if (AC = Ancestor) or (AC.GenericOrigin = Ancestor) then
         Exit(True);
@@ -5618,6 +5617,12 @@ begin
     end;
     Result := False;
   end;
+end;
+
+function TIDStructure.MakeCopy(AScope: TScope): TIDDeclaration;
+begin
+  Result := inherited MakeCopy(AScope);
+  TIDStructure(Result).fAncestor := fAncestor;
 end;
 
 function TIDProcedure.GetSelfParam: TIDParam;
@@ -5633,19 +5638,13 @@ begin
   Result := TIDExpression.Create(GetSelfParam);
 end;
 
-procedure TIDStructure.SetAncestorDecl(const Value: TIDType);
+procedure TIDStructure.SetAncestor(const Value: TIDStructure);
 begin
-  fAncestorDecl := Value;
+  fAncestor := Value;
   if Assigned(Value) then
-  begin
-    if Value is TIDStructure then
-    begin
-      fAncestor := Value as TIDStructure;
-      fMembers.fAncestorScope := fAncestor.Members;
-    end;
-    // TODO: else
-  end else
-    fAncestor := nil;
+    fMembers.fAncestorScope := Ancestor.Members
+  else
+    fMembers.fAncestorScope := nil;
 end;
 
 procedure TIDStructure.SetDefaultProperty(const Value: TIDProperty);
@@ -7831,13 +7830,13 @@ begin
   if IsSealed then
     ABuilder.Append(' sealed');
 
-  if Assigned(fAncestorDecl) or Assigned(FInterfaces) then
+  if Assigned(fAncestor) or Assigned(FInterfaces) then
   begin
     ABuilder.Append('(');
 
-    if Assigned(fAncestorDecl) then
+    if Assigned(fAncestor) then
     begin
-      TypeNameToString(AncestorDecl, ABuilder);
+      TypeNameToString(fAncestor, ABuilder);
       if Assigned(FInterfaces) then
         ABuilder.Append(', ');
     end;
@@ -9146,11 +9145,13 @@ end;
 procedure TDlphHelper.SetTarget(const Value: TIDType);
 begin
   fTarget := Value;
+
+  // TODO: check
   // use the target type as an ancestor (if there is not explicit ancestor)
   if (Value is TIDStructure) and not Assigned(Ancestor) then
   begin
     fMembers.FAncestorScope := TIDStructure(Value).Members;
-    fAncestorDecl := Value;
+    fAncestor := TIDStructure(Value);
   end;
 end;
 
