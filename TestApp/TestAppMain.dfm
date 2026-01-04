@@ -404,6 +404,14 @@ object frmTestAppMain: TfrmTestAppMain
             Caption = 'Show Progress'
             TabOrder = 2
           end
+          object ShowDefinesCheck: TCheckBox
+            Left = 312
+            Top = 2
+            Width = 97
+            Height = 17
+            Caption = 'Show Defines'
+            TabOrder = 3
+          end
         end
       end
       object MainPanel: TPanel

@@ -167,6 +167,7 @@ type
     SrcStatusBar: TStatusBar;
     SrcRootPanel: TPanel;
     ShowTypePtrInASTCheck: TCheckBox;
+    ShowDefinesCheck: TCheckBox;
     procedure ASTParseRTLButtonClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure SearchButtonClick(Sender: TObject);
@@ -311,6 +312,15 @@ begin
         LSourceToShowCol := LMessage.Col;
       end;
     end;
+  end;
+
+  if ShowDefinesCheck.Checked then
+  begin
+    ErrMemo.Lines.Add('-----------------------------------------------');
+    var LDefineStr: string;
+    for var LDefine in Project.Defines.ToStringArray do
+      LDefineStr := AddStringSegment(LDefineStr, LDefine);
+    ErrMemo.Lines.Add('DEFINES: ' + LDefineStr);
   end;
 
   if LSourceToShow <> '' then
@@ -549,6 +559,7 @@ begin
       LINI.WriteInteger(SGeneral, 'LEFT_ACTIVE_TAB', LeftPageControl.ActivePageIndex);
       LINI.WriteBool(SGeneral, 'UNITS_FULL_PATH', UnitsFullPathCheck.Checked);
       LINI.WriteBool(SGeneral, 'SHOW_PROGRESS', ShowProgressCheck.Checked);
+      LINI.WriteBool(SGeneral, 'SHOW_DEFINES', ShowDefinesCheck.Checked);
       LINI.WriteBool(SGeneral, 'SAVE_AST', SaveASTCheckBox.Checked);
       LINI.WriteBool(SGeneral, 'SHOW_GENRIC_INSTACES', ShowGenericInstancesCheck.Checked);
       LINI.WriteBool(SGeneral, 'SHOW_TYPE_PTR_IN_AST', ShowTypePtrInASTCheck.Checked);
@@ -591,13 +602,14 @@ begin
     LeftPageControl.ActivePageIndex := LINI.ReadInteger(SGeneral, 'LEFT_ACTIVE_TAB', 0);
     UnitsFullPathCheck.Checked := LINI.ReadBool(SGeneral, 'UNITS_FULL_PATH', False);
     ShowProgressCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_PROGRESS', True);
+    ShowDefinesCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_DEFINES', False);
     SaveASTCheckBox.Checked := LINI.ReadBool(SGeneral, 'SAVE_AST', False);
     ShowGenericInstancesCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_GENRIC_INSTACES', False);
     ShowTypePtrInASTCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_TYPE_PTR_IN_AST', False);
     ASTResultFormatComboBox.ItemIndex := LINI.ReadInteger(SGeneral, 'SHOW_AST_FORMAT_COMBO_INDEX', 0);
     ASTResultViewComboBox.ItemIndex := LINI.ReadInteger(SGeneral, 'SHOW_AST_VIEW_COMBO_INDEX', 0);
 
-    cbPlatform.Text := LINI.ReadString(SGeneral, 'PLATFORM', 'WIN32');
+    cbPlatform.ItemIndex :=  cbPlatform.Items.IndexOf(LINI.ReadString(SGeneral, 'PLATFORM', 'Win32'));
     ProjectNameEdit.Text := LINI.ReadString(SGeneral, 'PROJECT_NAME', ProjectNameEdit.Text);
     DelphiDirComboBox.Text := LINI.ReadString(SGeneral, 'DELPHI_BDS', '');
     DelphiSrcPathEdit.Text := LINI.ReadString(SGeneral, 'DELPHI_SRC_PATH', DelphiSrcPathEdit.Text);
