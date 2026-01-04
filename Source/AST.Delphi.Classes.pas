@@ -7646,6 +7646,7 @@ begin
     begin
       // override name according to the generic arguments
       LNewType.ID := AContext.DstID;
+      LNewType.FGenericArgs := AContext.Args;
       // add this instance to the its pool
       GenericDescriptor.AddGenericInstance(LNewType, AContext.Args);
     end;
