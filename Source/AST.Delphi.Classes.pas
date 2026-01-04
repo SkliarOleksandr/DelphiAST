@@ -876,7 +876,6 @@ type
   TIDClass = class(TIDStructure)
   private
     FInterfaces: TList<TIDInterface>;
-    FIntfGenericInstantiations: TArray<TIDInterface>;
     FInterfacesMethods: TList<TIDMethods>;
     FClassDeclFlags: TClassDeclFlags;
     fClassOfType: TIDClassOf;
@@ -903,7 +902,6 @@ type
     function SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType; override;
     function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
     procedure AddInterface(const Intf: TIDInterface);
-    procedure AddGenericInterface(AGenricIntf: TIDInterface);
     procedure MapInterfaceMethod(const Intf: TIDInterface; IntfMethod, ImplMethod: TIDProcedure);
     property InterfacesCount: Integer read GetInterfacesCount;
     property Interfaces[Index: Integer]: TIDInterface read GetInterface;
@@ -7793,11 +7791,6 @@ end;
 
 { TIDClassType }
 
-procedure TIDClass.AddGenericInterface(AGenricIntf: TIDInterface);
-begin
-  FIntfGenericInstantiations := FIntfGenericInstantiations + [AGenricIntf];
-end;
-
 procedure TIDClass.AddInterface(const Intf: TIDInterface);
 var
   Methods: TIDMethods;
@@ -7903,7 +7896,6 @@ function TIDClass.CreateNewType(AScope: TScope; const AID: TIdentifier): TIDType
 begin
   Result := inherited;
   TIDClass(Result).FInterfaces := FInterfaces;
-  TIDClass(Result).FIntfGenericInstantiations := FIntfGenericInstantiations;
 end;
 
 procedure TIDClass.CreateStandardOperators;
@@ -8770,23 +8762,17 @@ procedure TIDClass.InstantiateGenericAncestors(ADstScope: TScope; ADstStruct: TI
   AContext: TGenericInstantiateContext);
 begin
   inherited;
-  // add none-generic interfaces
+  // instantiate if needed & add implemented interfaces
   if Assigned(FInterfaces) then
   begin
     for var LIntfIndex := 0 to FInterfaces.Count - 1 do
     begin
       var LIntf := FInterfaces[LIntfIndex];
-      if not LIntf.IsGeneric then
-        TIDClass(ADstStruct).AddInterface(LIntf);
-    end;
-  end;
+      if LIntf.IsGeneric then
+        LIntf := InternalInstantiateGenericType(ADstScope, LIntf, AContext) as TIDInterface;
 
-  // instantiate implemented interfaces
-  for var LIntfIndex := 0 to Length(FIntfGenericInstantiations) - 1 do
-  begin
-    var LOldIntf := FIntfGenericInstantiations[LIntfIndex];
-    var LNewIntf := LOldIntf.InstantiateGeneric(ADstScope, {ADestStruct:} nil, AContext) as TIDInterface;
-    TIDClass(ADstStruct).AddInterface(LNewIntf);
+      TIDClass(ADstStruct).AddInterface(LIntf);
+    end;
   end;
 end;
 

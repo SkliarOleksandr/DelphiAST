@@ -248,6 +248,7 @@
         <DCCReference Include="..\TestScripts\Generics\Methods\ASTTest.Generics.OverloadProc1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\Methods\ASTTest.Generics.OverloadProc2.pas"/>
         <DCCReference Include="..\TestScripts\Generics\Methods\ASTTest.Generics.OverloadProc3.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\Interfaces\ASTTest.Generics.IntfImpl1.pas"/>
         <DCCReference Include="..\TestScripts\Ordinals\ASTTest.Ordian.Enums.Init.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.External1.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.External2.pas"/>

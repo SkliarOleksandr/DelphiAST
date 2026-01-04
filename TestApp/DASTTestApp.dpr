@@ -115,6 +115,7 @@ uses
   ASTTest.Generics.OverloadProc1 in '..\TestScripts\Generics\Methods\ASTTest.Generics.OverloadProc1.pas',
   ASTTest.Generics.OverloadProc2 in '..\TestScripts\Generics\Methods\ASTTest.Generics.OverloadProc2.pas',
   ASTTest.Generics.OverloadProc3 in '..\TestScripts\Generics\Methods\ASTTest.Generics.OverloadProc3.pas',
+  ASTTest.Generics.IntfImpl1 in '..\TestScripts\Generics\Interfaces\ASTTest.Generics.IntfImpl1.pas',
   ASTTest.Ordian.Enums.Init in '..\TestScripts\Ordinals\ASTTest.Ordian.Enums.Init.pas',
   ASTTest.Procs.External1 in '..\TestScripts\Procedures\ASTTest.Procs.External1.pas',
   ASTTest.Procs.External2 in '..\TestScripts\Procedures\ASTTest.Procs.External2.pas',
