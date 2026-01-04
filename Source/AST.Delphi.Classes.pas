@@ -5628,7 +5628,8 @@ end;
 function TIDStructure.MakeCopy(AScope: TScope): TIDDeclaration;
 begin
   Result := inherited MakeCopy(AScope);
-  TIDStructure(Result).fAncestor := fAncestor;
+  // Call the Ancestor property setter here to properly set Ancestor Scope!
+  TIDStructure(Result).Ancestor := fAncestor;
 end;
 
 function TIDProcedure.GetSelfParam: TIDParam;
