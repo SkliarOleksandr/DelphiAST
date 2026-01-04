@@ -10093,7 +10093,7 @@ begin
   {if there is "<" - read generic params}
   if Result = token_less then
   begin
-    GDescriptor := TGenericDescriptor.Create(Scope, nil);
+    GDescriptor := TGenericDescriptor.Create(Scope, {AGenericParams:} nil);
     Result := ParseGenericsHeader(GDescriptor.Scope, {out} GenericParams);
     GDescriptor.GenericParams := GenericParams;
   end;
