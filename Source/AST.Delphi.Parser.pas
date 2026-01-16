@@ -531,6 +531,9 @@ type
   function IntConstExpression(const SContext: TSContext; const Value: Int64): TIDExpression;
   function StrConstExpression(const SContext: TSContext; const Value: string): TIDExpression;
 
+var
+  _RaiseOverloadErrors: Boolean;
+
 implementation
 
 uses
@@ -3972,24 +3975,45 @@ function TASTDelphiUnit.MatchOverloadProc(const SContext: TSContext; ACallExpr: 
 
   procedure AbortWithAmbiguousOverload(AmbiguousCnt: Integer; AmbiguousRate: Integer);
   var
-    Str, Args: string;
+    LDetails, LArgsStr: string;
     ProcItem: PASTProcMatchItem;
   begin
+    // append ambiguous procedures
     for var i := 0 to AmbiguousCnt - 1 do
     begin
       ProcItem := Addr(fProcMatches[i]);
       if ProcItem.TotalRate = AmbiguousRate then
-        Str := Str + #13#10'  ' + ProcItem.Decl.Module.Name + '.' + ProcItem.Decl.DisplayName;
+      begin
+        var LProc := ProcItem.Decl;
+        LDetails := LDetails + sLineBreak +
+          Format( '  %s.pas(%d): Related method: %s%s',
+            [LProc.Module.Name, LProc.SourcePosition.Row, LProc.DisplayName, LProc.Signature2Str]);
+      end;
     end;
-    for var i := 0 to CallArgsCount - 1 do
-      Args := AddStringSegment(Args, CallArgs[i].DataType.DisplayName, ', ');
 
-    Str := Str + #13#10'  Arguments: (' + Args + ')';
+    // append call arguments
+    for var LArg in CallArgs do
+      LArgsStr := AddStringSegment(LArgsStr, LArg.DataTypeName, ', ');
 
-    // just warning, to not block parsing process
-    // todo: AST parser doesn't have ability to resolve an ambiguous
-    // in case argument array [..] of Char and params (1. PAnsiChar, 2. untyped ref)
-    // Warning(sAmbiguousOverloadedCallFmt, [Str], Item.TextPosition);
+    LDetails := LDetails + sLineBreak + ' Call Arguments: (' + LArgsStr + ')';
+
+    if _RaiseOverloadErrors then
+      ERRORS.E2251_AMBIGUOUS_OVERLOADED_CALL(Self, ACallExpr, LDetails);
+  end;
+
+  function IsOverriddenMethodInList(const AProc: TIDProcedure; ALength: Integer): Boolean;
+  begin
+    for var LIndex := 0 to ALength - 1 do
+    begin
+      var LProc := fProcMatches[LIndex].Decl;
+      repeat
+        if LProc.InheritedProc = AProc then
+          Exit(True);
+
+        LProc := LProc.InheritedProc;
+      until not Assigned(LProc);
+    end;
+    Result := False;
   end;
 
 const
@@ -4117,6 +4141,12 @@ begin
     end;
     // take next declaration
     Declaration := Declaration.PrevOverload;
+
+    // NOTE: in case of overload and override methods it needs to check and ignore the inherited methods
+    // to avoid duplicates, since an inherited method exists in the overload list in the base class!
+    while Assigned(Declaration) and IsOverriddenMethodInList(Declaration, MatchedCount) do
+      Declaration := Declaration.PrevOverload;
+
   until Declaration = nil;
 
   if MatchedCount = 1 then
@@ -11456,6 +11486,10 @@ begin
   end;
   Result := nil;
 end;
+
+//[dcc32 Error] AST.Delphi.Parser.pas(11477): E2251 Ambiguous overloaded call to 'X'
+//  AST.Delphi.Parser.pas(11464): Related method: procedure X(Integer);
+//  AST.Delphi.Parser.pas(11469): Related method: procedure X(string);
 
 end.
 

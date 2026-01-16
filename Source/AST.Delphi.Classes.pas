@@ -1912,6 +1912,7 @@ type
 
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
     procedure Decl2StrAllOverloads(ABuilder: TStringBuilder; ANestedLevel: Integer = 0);
+    function Signature2Str(AIncludeParamNames: Boolean = False): string;
 
     function ASTJsonDeclClass: TASTJsonDeclClass; override;
     function BodyToJson: TASTJsonFunctionBody;
@@ -3170,6 +3171,22 @@ begin
   FResultParam.DataType := DataType;
   FResultParam.IncludeFlags([VarParameter, VarOut, VarHiddenParam, VarResult]);
   FResultType := DataType;
+end;
+
+function TIDProcedure.Signature2Str(AIncludeParamNames: Boolean): string;
+begin
+  Result := '';
+  for var LParam in ExplicitParams do
+  begin
+    if AIncludeParamNames then
+      Result := AddStringSegment(Result, LParam.Name + ':' + LParam.DataType.Name, ', ')
+    else
+      Result := AddStringSegment(Result, LParam.DataType.Name, ', ');
+  end;
+  Result := '(' + Result + ')';
+
+  if Assigned(ResultType) then
+    Result := Result + ': ' + ResultType.Name;
 end;
 
 function TIDProcedure.ToJson: TJsonASTDeclaration;
@@ -5230,7 +5247,7 @@ begin
       var LMethod := TIDProcedure(LDecl);
       if (pfVirtual in LMethod.Flags) and
          (LMethod.SameDeclaration(AProc.ExplicitParams, AProc.ResultType, {ACheckNames:} False)) and
-          LMethod.IsClassMethod = AProc.IsClassMethod then
+         (LMethod.IsClassMethod = AProc.IsClassMethod) then
       begin
         var LResultType1 := LMethod.ResultType;
         var LResultType2 := AProc.ResultType;

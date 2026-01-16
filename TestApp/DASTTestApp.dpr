@@ -127,6 +127,8 @@ uses
   ASTTest.Procs.OverloadDecl1 in '..\TestScripts\Procedures\Overloads\ASTTest.Procs.OverloadDecl1.pas',
   ASTTest.Procs.OverloadDecl2 in '..\TestScripts\Procedures\Overloads\ASTTest.Procs.OverloadDecl2.pas',
   ASTTest.Procs.OverloadDecl3 in '..\TestScripts\Procedures\Overloads\ASTTest.Procs.OverloadDecl3.pas',
+  ASTTest.Procs.OverloadAndOverride1 in '..\TestScripts\Procedures\Overloads\ASTTest.Procs.OverloadAndOverride1.pas',
+  ASTTest.Procs.OverloadAndOverride2 in '..\TestScripts\Procedures\Overloads\ASTTest.Procs.OverloadAndOverride2.pas',
   ASTTest.Props.ArrayProp1 in '..\TestScripts\Properties\ASTTest.Props.ArrayProp1.pas',
   ASTTest.Props.ArrayPropOverload1 in '..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload1.pas',
   ASTTest.Props.ArrayPropOverload2 in '..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload2.pas',

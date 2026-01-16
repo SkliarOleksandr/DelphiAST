@@ -168,6 +168,7 @@ type
     SrcRootPanel: TPanel;
     ShowTypePtrInASTCheck: TCheckBox;
     ShowDefinesCheck: TCheckBox;
+    ShowOverloadErrorsCheck: TCheckBox;
     procedure ASTParseRTLButtonClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure SearchButtonClick(Sender: TObject);
@@ -268,6 +269,7 @@ uses
   System.IniFiles,
   System.NetEncoding,
   System.Win.Registry,
+  SynEditTypes,
   REST.Json,
   AST.Delphi.System,
   AST.Delphi.Parser,
@@ -556,6 +558,7 @@ begin
       LINI.WriteBool(SGeneral, 'SHOW_WARNINGS', ShowWarningsCheck.Checked);
       LINI.WriteBool(SGeneral, 'SHOW_MEMLEAKS', ShowMemLeaksCheck.Checked);
       LINI.WriteBool(SGeneral, 'BREAKPOINT_ON_ERROR', BreakpointOnErrorCheck.Checked);
+      LINI.WriteBool(SGeneral, 'SHOW_OVERLOAD_ERRORS', ShowOverloadErrorsCheck.Checked);
       LINI.WriteInteger(SGeneral, 'LEFT_ACTIVE_TAB', LeftPageControl.ActivePageIndex);
       LINI.WriteBool(SGeneral, 'UNITS_FULL_PATH', UnitsFullPathCheck.Checked);
       LINI.WriteBool(SGeneral, 'SHOW_PROGRESS', ShowProgressCheck.Checked);
@@ -599,6 +602,7 @@ begin
     ShowWarningsCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_WARNINGS', False);
     ShowMemLeaksCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_MEMLEAKS', False);
     BreakpointOnErrorCheck.Checked := LINI.ReadBool(SGeneral, 'BREAKPOINT_ON_ERROR', False);
+    ShowOverloadErrorsCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_OVERLOAD_ERRORS', False);
     LeftPageControl.ActivePageIndex := LINI.ReadInteger(SGeneral, 'LEFT_ACTIVE_TAB', 0);
     UnitsFullPathCheck.Checked := LINI.ReadBool(SGeneral, 'UNITS_FULL_PATH', False);
     ShowProgressCheck.Checked := LINI.ReadBool(SGeneral, 'SHOW_PROGRESS', True);
@@ -1382,6 +1386,7 @@ begin
   // set global params
   BreakpointOnError := BreakpointOnErrorCheck.Checked;
   Decl2StrParams.AppendTypePtr := ShowTypePtrInASTCheck.Checked;
+  _RaiseOverloadErrors := ShowOverloadErrorsCheck.Checked;
 
   Screen.Cursor := crHourGlass;
   try

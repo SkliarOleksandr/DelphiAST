@@ -23,8 +23,6 @@ object frmTestAppMain: TfrmTestAppMain
     ActivePage = SrcTabSheet
     Align = alClient
     TabOrder = 0
-    ExplicitWidth = 1260
-    ExplicitHeight = 757
     object SrcTabSheet: TTabSheet
       Caption = 'Source'
       object Splitter2: TSplitter
@@ -54,7 +52,6 @@ object frmTestAppMain: TfrmTestAppMain
         ActivePage = tsTestScripts
         Align = alLeft
         TabOrder = 0
-        ExplicitHeight = 493
         object tsTestScripts: TTabSheet
           Caption = ' Tests'
           ImageIndex = 2
@@ -138,7 +135,6 @@ object frmTestAppMain: TfrmTestAppMain
             BevelOuter = bvNone
             ShowCaption = False
             TabOrder = 2
-            ExplicitTop = 439
             object TotalTestCntLabel: TLabel
               AlignWithMargins = True
               Left = 3
@@ -320,8 +316,6 @@ object frmTestAppMain: TfrmTestAppMain
         BevelOuter = bvNone
         ShowCaption = False
         TabOrder = 1
-        ExplicitTop = 529
-        ExplicitWidth = 1252
         object ErrMemo: TSynEdit
           AlignWithMargins = True
           Left = 3
@@ -366,7 +360,6 @@ object frmTestAppMain: TfrmTestAppMain
           ReadOnly = True
           ScrollbarAnnotations = <>
           WordWrap = True
-          ExplicitWidth = 1246
         end
         object Panel6: TPanel
           Left = 0
@@ -377,7 +370,6 @@ object frmTestAppMain: TfrmTestAppMain
           BevelOuter = bvNone
           ShowCaption = False
           TabOrder = 1
-          ExplicitWidth = 1252
           object ShowWarningsCheck: TCheckBox
             Left = 3
             Top = 3
@@ -423,8 +415,6 @@ object frmTestAppMain: TfrmTestAppMain
         Caption = 'MainPanel'
         ShowCaption = False
         TabOrder = 2
-        ExplicitWidth = 859
-        ExplicitHeight = 493
         object chkbShowAnonymous: TCheckBox
           Left = 428
           Top = 4
@@ -471,8 +461,6 @@ object frmTestAppMain: TfrmTestAppMain
           Align = alClient
           BevelOuter = bvNone
           TabOrder = 4
-          ExplicitWidth = 857
-          ExplicitHeight = 491
           object SrcPageControl: TPageControl
             AlignWithMargins = True
             Left = 3
@@ -482,8 +470,6 @@ object frmTestAppMain: TfrmTestAppMain
             ActivePage = tsSource
             Align = alClient
             TabOrder = 0
-            ExplicitWidth = 851
-            ExplicitHeight = 466
             object tsSource: TTabSheet
               Caption = 'Source'
               object edUnit: TSynEdit
@@ -668,13 +654,12 @@ object frmTestAppMain: TfrmTestAppMain
         BevelOuter = bvNone
         ShowCaption = False
         TabOrder = 3
-        ExplicitWidth = 1246
         DesignSize = (
           1252
           27)
         object Label2: TLabel
-          Left = 608
-          Top = 3
+          Left = 743
+          Top = 5
           Width = 40
           Height = 13
           Caption = 'Platform'
@@ -688,11 +673,10 @@ object frmTestAppMain: TfrmTestAppMain
           Caption = 'AST Parse RTL'
           TabOrder = 0
           OnClick = ASTParseRTLButtonClick
-          ExplicitLeft = 1138
         end
         object ParseSystemCheck: TCheckBox
           Left = 129
-          Top = 2
+          Top = 3
           Width = 196
           Height = 17
           Caption = 'Compile "system.pas" for AST Parse'
@@ -700,8 +684,8 @@ object frmTestAppMain: TfrmTestAppMain
           OnClick = StopIfErrorCheckClick
         end
         object cbPlatform: TComboBox
-          Left = 654
-          Top = 0
+          Left = 789
+          Top = 3
           Width = 81
           Height = 21
           ItemIndex = 0
@@ -714,8 +698,8 @@ object frmTestAppMain: TfrmTestAppMain
         end
         object ParseImplsCheck: TCheckBox
           Left = 331
-          Top = 2
-          Width = 142
+          Top = 3
+          Width = 126
           Height = 17
           Caption = 'Parse Used Units Impl.'
           Checked = True
@@ -725,7 +709,7 @@ object frmTestAppMain: TfrmTestAppMain
         end
         object StopIfErrorCheck: TCheckBox
           Left = 1
-          Top = 2
+          Top = 3
           Width = 122
           Height = 17
           Caption = 'Stop compile if errors'
@@ -735,10 +719,10 @@ object frmTestAppMain: TfrmTestAppMain
           OnClick = StopIfErrorCheckClick
         end
         object BreakpointOnErrorCheck: TCheckBox
-          Left = 479
-          Top = -3
+          Left = 463
+          Top = 3
           Width = 114
-          Height = 27
+          Height = 17
           Caption = 'Breakpoint on Error'
           TabOrder = 5
           OnClick = StopIfErrorCheckClick
@@ -751,6 +735,14 @@ object frmTestAppMain: TfrmTestAppMain
           Anchors = [akTop, akRight]
           Caption = 'rtl\common'
           TabOrder = 6
+        end
+        object ShowOverloadErrorsCheck: TCheckBox
+          Left = 583
+          Top = 4
+          Width = 130
+          Height = 17
+          Caption = 'Show Overload Errors'
+          TabOrder = 7
         end
       end
     end

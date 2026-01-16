@@ -40,7 +40,7 @@ resourcestring
     // overload:
   sOverloadedMustBeMarked = 'Overloaded entry "%s" must be marked with the "overload" directive';
   sErrorOverload = '%s: There is no overload version with such parameters';
-  sAmbiguousOverloadedCallFmt = 'Ambiguous overloaded call, declarations: %s';
+
   sInvalidIndex = 'Index is out of bounds';
   sNotAllowedHere = 'Not allowed here: "%s"';
   sUnexpectedEndOfFile = 'Unexpected end of file';
@@ -240,7 +240,6 @@ type
     class procedure CANNOT_MODIFY_READONLY_PROPERTY(const Expr: TIDExpression); static;
     class procedure PROPERTY_DOES_NOT_EXIST_IN_BASE_CLASS(const AID: TIdentifier); static;
 
-    class procedure AMBIGUOUS_OVERLOAD_CALL(CallExpr: TIDExpression); overload; static;
     class procedure INCOMPLETE_PROC(Decl: TIDDeclaration); static;
     class procedure TYPE_NOT_COMPLETELY_DEFINED(Decl: TIDDeclaration); static;
     class procedure UNIT_NOT_FOUND(const ID: TIdentifier); static;
@@ -313,7 +312,8 @@ type
     class procedure E2205_INTERFACE_TYPE_REQUIRED(const AModule: IASTModule; const APosition: TTextPosition); static;
     class procedure E2250_NO_OVERLOADED_PROC_FOR_THESE_ARGUMENTS(const AModule: IASTModule; AExpression: TIDExpression); overload;
     class procedure E2250_NO_OVERLOADED_PROC_FOR_THESE_ARGUMENTS(const AModule: IASTModule; ACallExpr: TIDCallExpression); overload;
-    class procedure E2251_AMBIGUOUS_OVERLOADED_CALL(const AModule: IASTModule; AExpression: TIDExpression);
+    class procedure E2251_AMBIGUOUS_OVERLOADED_CALL(const AModule: IASTModule; ACallExpr: TIDExpression;
+                                                    const ADetails: string = ''); overload; static;
     class procedure E2258_IMPLEMENTS_CLAUSE_ONLY_ALLOWED_WITHIN_CLASS_TYPES(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2265_INTERFACE_NOT_MENTIONED_IN_INTERFACE_LIST(const AModule: IASTModule; const AID: TIdentifier);
     class procedure E2232_INTERFACE_HAS_NO_INTERFACE_IDENTIFICATION(const AModule: IASTModule; ADecl: TIDDeclaration);
@@ -795,9 +795,10 @@ begin
     [ACallExpr.Declaration.Name], ACallExpr.TextPosition);
 end;
 
-class procedure TASTDelphiErrors.E2251_AMBIGUOUS_OVERLOADED_CALL(const AModule: IASTModule; AExpression: TIDExpression);
+class procedure TASTDelphiErrors.E2251_AMBIGUOUS_OVERLOADED_CALL(const AModule: IASTModule; ACallExpr: TIDExpression;
+                                                                 const ADetails: string);
 begin
-  AModule.PutError('E2251 Ambiguous overloaded call to ''%s''', [AExpression.Declaration.Name], AExpression.TextPosition);
+  AModule.PutError('E2251 Ambiguous overloaded call to ''%s''%s', [ACallExpr.DisplayName, ADetails], ACallExpr.TextPosition);
 end;
 
 class procedure TASTDelphiErrors.E2258_IMPLEMENTS_CLAUSE_ONLY_ALLOWED_WITHIN_CLASS_TYPES(const AModule: IASTModule;
@@ -1225,11 +1226,6 @@ end;
 procedure TASTDelphiErrors.IDENTIFIER_HAS_NO_MEMBERS(const Decl: TIDDeclaration);
 begin
   AbortWork(sIdentifierHasNoMembersFmt, [Decl.DisplayName], Lexer.PrevPosition);
-end;
-
-class procedure TASTDelphiErrors.AMBIGUOUS_OVERLOAD_CALL(CallExpr: TIDExpression);
-begin
-  AbortWork(sAmbiguousOverloadedCallFmt, [CallExpr.DisplayName], CallExpr.TextPosition);
 end;
 
 class procedure TASTDelphiErrors.INCOMPLETE_PROC(Decl: TIDDeclaration);
