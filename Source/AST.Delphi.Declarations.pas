@@ -15,7 +15,6 @@ type
     itSysOperator,     // system operator
     itMacroFunction,   // функция времени компиляции
     itProperty,        // свойство
-    itAlias,           // алиас
     itType,            // тип
     itUnit,            // модуль
     itLabel            // label

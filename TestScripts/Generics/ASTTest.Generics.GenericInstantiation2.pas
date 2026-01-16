@@ -7,7 +7,6 @@ type
     class function DoSmth<T>(Arr: Integer): Integer;
   end;
 
-
 implementation
 
 { TMyClass }
@@ -15,6 +14,11 @@ implementation
 class function TMyClass.DoSmth<T>(Arr: Integer): Integer;
 begin
   Result := TMyClass.DoSmth<T>(Arr);
+end;
+
+procedure Main;
+begin
+  TMyClass.DoSmth<Integer>(42);
 end;
 
 end.

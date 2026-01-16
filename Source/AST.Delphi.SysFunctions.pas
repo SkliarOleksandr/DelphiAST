@@ -713,9 +713,9 @@ begin
   Expr := EContext.RPNPopExpression();
   Decl := Expr.Declaration;
   if Decl.ItemType <> itType then
-    DataType := Decl.DataType.ActualDataType
+    DataType := Decl.DataType
   else
-    DataType := TIDType(Decl).ActualDataType;
+    DataType := TIDType(Decl);
 
   Result := IntConstExpression(EContext.SContext, DataType.DataSize);
   Result.TextPosition := Expr.TextPosition;
@@ -750,8 +750,6 @@ begin
     UN.ERRORS.ORDINAL_TYPE_REQUIRED(Expr.TextPosition);
     Exit(nil);
   end;
-
-  DataType := DataType.ActualDataType;
 
   if DataType.IsOrdinal then
   begin
@@ -807,15 +805,13 @@ begin
     Exit(nil);
   end;
 
-  DataType := DataType.ActualDataType;
-
   if DataType.IsOrdinal then
   begin
     Decl := TIDIntConstant.CreateAsAnonymous(UN.IntfScope, DataType, (DataType as TIDOrdinal).HighBound);
   end else
   if DataType.DataTypeID = dtStaticArray then
   begin
-    DataType := (DataType as TIDArray).Dimensions[0].ActualDataType;
+    DataType := (DataType as TIDArray).Dimensions[0];
     if DataType.DataTypeID <> dtRange then
       Decl := TIDIntConstant.CreateAsAnonymous(UN.IntfScope, DataType, (DataType as TIDOrdinal).HighBound)
     else
@@ -902,7 +898,7 @@ begin
      AbortWork(sArrayOrStringTypeRequired, Expr.TextPosition);
   end;
 
-  DataType := Expr.DataType.ActualDataType;
+  DataType := Expr.DataType;
 
   case DataType.DataTypeID of
     // static array

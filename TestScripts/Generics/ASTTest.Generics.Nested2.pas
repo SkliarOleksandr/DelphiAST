@@ -9,19 +9,19 @@ type
     Value: T;  
   end; 
 
-  TBase<T> = class
+  TBase<K> = class
   public
-    function GetNested: TNested<T>; virtual; abstract;
+    function GetNested: TNested<K>; virtual; abstract;
   end;
 
-  TGeneric<T> = class(TBase<T>)
+  TGeneric<X> = class(TBase<X>)
   type
-    TNested = class(TNested<T>)
+    TMyNested = class(TNested<X>)
     end;
   private
-    FNested: TNested;
+    FNested: TMyNested;
   public
-    function GetNested: TNested; reintroduce;
+    function GetNested: TMyNested; reintroduce;
   end;
 
 var
@@ -31,13 +31,13 @@ implementation
 
 procedure Main;
 begin
-  Generic.FNested := Generic.GetNested;
+  Generic.FNested := Generic.GetNested; 
+  Generic.FNested := Generic.GetNested();
 end;
 
+{ TGeneric<X> }
 
-{ TGeneric<T> }
-
-function TGeneric<T>.GetNested: TNested;
+function TGeneric<X>.GetNested: TMyNested;
 begin
   Result := nil;
 end;

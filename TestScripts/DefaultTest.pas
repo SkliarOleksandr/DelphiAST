@@ -3,8 +3,9 @@ unit DefaultTest;
 interface
 
 //uses System.Types;
+uses System.Generics.Defaults;
 //uses System.Generics.Collections;
-uses System.JSON;
+//uses System.JSON;
 //uses System.JSON.Converters;
 //uses System.JSON.Types;
 //uses Vcl.Graphics;

@@ -3,6 +3,7 @@
 interface
 
 uses
+  System.SysUtils,
   AST.Pascal.Parser,
   AST.Lexer,
   AST.Classes,
@@ -129,6 +130,7 @@ type
     fImplHelpers: THelperTree;
     fCurrentHelpers: THelperTree; // points to fIntfHelpers or fImplHelpers
     fIsPorgram: Boolean;
+    fGenericInstantiations: TOrderedDictionary<{ID} string, TIDType>;
     property Sys: PDelphiSystemDeclarations read fSysDecls;
     procedure CheckLeftOperand(const Status: TRPNStatus);
     class procedure CheckAndCallFuncImplicit(const EContext: TEContext); overload; static;
@@ -139,8 +141,8 @@ type
       const ID: TIdentifier; IdentifierType: TIdentifierType): TIDExpression;
     procedure InitEContext(out EContext: TEContext; const SContext: TSContext; EPosition: TExpessionPosition); overload; inline;
     procedure AddType(const Decl: TIDType);
-    class function CheckExplicit(const SContext: TSContext; const Source, Destination: TIDType; out ExplicitOp: TIDDeclaration): Boolean; overload; static;
-    function MatchExplicit(const SContext: TSContext; const Source: TIDExpression; Destination: TIDType; out Explicit: TIDDeclaration): TIDExpression; overload;
+    class function CheckExplicit(const SContext: TSContext; const ASrcType, ADstType: TIDType; out ExplicitOp: TIDDeclaration): Boolean; overload; static;
+    function MatchExplicit(const SContext: TSContext; const Source: TIDExpression; ADstType: TIDType; out Explicit: TIDDeclaration): TIDExpression; overload;
 
     //class function MatchArrayImplicitToRecord(const SContext: TSContext; Source: TIDExpression; Destination: TIDStructure): TIDExpression; static;
 
@@ -199,6 +201,7 @@ type
     function GetSystemDeclarations: PDelphiSystemDeclarations; virtual;
     procedure CheckLabelExpression(const Expr: TIDExpression); overload;
     procedure CheckLabelExpression(const Decl: TIDDeclaration); overload;
+    procedure CheckAndInstantiateProc(var AProc: TIDProcedure; ACallExpr: TIDCallExpression; SContext: PSContext);
 
     function Process_operators(var EContext: TEContext; OpID: TOperatorID): TIDExpression;
     function Process_CALL(var EContext: TEContext): TIDExpression;
@@ -214,7 +217,7 @@ type
     function Process_operator_Is(var EContext: TEContext): TIDExpression;
     function Process_operator_As(var EContext: TEContext): TIDExpression;
     function Process_operator_Period(var EContext: TEContext): TIDExpression;
-    function MatchImplicitOrNil(const SContext: TSContext; Source: TIDExpression; Dest: TIDType): TIDExpression;
+    function MatchImplicitOrNil(const SContext: TSContext; Source: TIDExpression; ADstType: TIDType): TIDExpression;
     function MatchArrayImplicit(const SContext: TSContext; Source: TIDExpression; DstArray: TIDArray): TIDExpression;
     function MatchRecordImplicit(const SContext: TSContext; Source: TIDExpression; DstRecord: TIDRecord): TIDExpression;
     function MatchBinarOperator(Op: TOperatorID; var Left, Right: TIDExpression): TIDDeclaration;
@@ -281,7 +284,7 @@ type
     procedure CheckClassExpression(Expression: TIDExpression); inline;
     class procedure CheckSetType(Expression: TIDExpression); static; inline;
     procedure CheckClassOrIntfType(Expression: TIDExpression); overload;
-    procedure CheckClassOrClassOfOrIntfType(Expression: TIDExpression); overload;
+    procedure CheckClassOrClassOfOrIntfType(ATypeExpression: TIDExpression); overload;
     procedure CheckClassOrIntfType(DataType: TIDType; const TextPosition: TTextPosition); overload;
     procedure CheckInterfaceType(Expression: TIDExpression); inline;
     procedure CheckIncompleteType(Fields: TScope);
@@ -339,7 +342,7 @@ type
     class function StrictMatchProcSingnatures(const SrcParams, DstParams: TIDParamArray; const SrcResultType, DstResultType: TIDType): Boolean;
     class function StrictMatchProc(const Src, Dst: TIDProcedure): Boolean;
   public
-    class function CheckImplicit(const SContext: TSContext; Source: TIDExpression; Dest: TIDType;
+    class function CheckImplicit(const SContext: TSContext; Source: TIDExpression; ADstType: TIDType;
                                  AResolveCalls: Boolean = False): TIDDeclaration;
     class function ConstDynArrayToSet(const SContext: TSContext; const CDynArray: TIDExpression; TargetSetType: TIDSet): TIDExpression; static;
     class function MatchSetImplicit(const SContext: TSContext; Source: TIDExpression; Destination: TIDSet): TIDExpression; static;
@@ -510,6 +513,8 @@ type
     procedure EnumDeclarations(const AEnumProc: TEnumASTDeclProc; AUnitScope: TUnitScopeKind); override;
     procedure PostCompileChecks;
 
+    procedure GenericInstancesToStr(AStrBuilder: TStringBuilder);
+
     property Source: string read GetSource;
     function DoParse(Scope: TScope; AFirstToken: TTokenID; ACompileIntfOnly: Boolean): TCompilerResult;
     function Compile(ACompileIntfOnly: Boolean; RunPostCompile: Boolean = True): TCompilerResult; override;
@@ -526,13 +531,15 @@ type
   function IntConstExpression(const SContext: TSContext; const Value: Int64): TIDExpression;
   function StrConstExpression(const SContext: TSContext; const Value: string): TIDExpression;
 
+var
+  _RaiseOverloadErrors: Boolean;
+
 implementation
 
 uses
    System.Math,
    System.Types,
    System.StrUtils,
-   System.SysUtils,
    System.Classes,
    AST.Parser.Errors,
    AST.Delphi.System,
@@ -611,7 +618,7 @@ begin
   Lexer_MatchToken(Lexer_NextToken(Scope), token_of);
   Result := ParseTypeSpec(Scope, {out} LBaseType);
   CheckOrdinalType(LBaseType);
-  Decl.BaseType := (LBaseType.ActualDataType as TIDOrdinal);
+  Decl.BaseType := (LBaseType as TIDOrdinal);
   Decl.BaseType.OverloadBinarOperator2(opIn, Decl, Sys._Boolean);
 end;
 
@@ -765,7 +772,7 @@ begin
     if Expr.ItemType = itType then
     begin
       CheckOrdinalType(Expr.AsType);
-      Bound := Expr.AsType.ActualDataType as TIDOrdinal;
+      Bound := Expr.AsType as TIDOrdinal;
     end else
       Bound := Expr.AsRangeConst.DataType as TIDRangeType;
 
@@ -1007,11 +1014,12 @@ begin
       Result := ParseConstExpression(Scope, Expr, ExprType);
       {simple alias type}
       if Expr.ItemType = itType then
+      begin
         // insert the same data type with a new name into the scope
-        // TODO: add a list of aliases to pull them into common declaration list
-        // since an alias doesn't have its own declaration now
-        Decl := Expr.AsType
-      else
+        Decl := Expr.AsType;
+        // add a new alias to special list since an alias doesn't have its own declaration now
+        Scope.AddAlias(ID, Decl);
+      end else
       {range type}
       begin
         ParseRangeType(Scope, Expr, ID, TIDRangeType(Decl));
@@ -1028,7 +1036,7 @@ function TASTDelphiUnit.ParseTypeHelper(Scope, GenericScope: TScope; AIsClassHel
   out Decl: TDlphHelper): TTokenID;
 
 var
-  LAncestor: TIDType;
+  LAncestor: TDlphHelper;
   TargetDecl: TIDType;
   Visibility: TVisibility;
 begin
@@ -1041,7 +1049,7 @@ begin
     var LAncestorDecl := FindID(Scope, LAncestorID);
     if not (LAncestorDecl is TDlphHelper) then
       ERRORS.E2022_CLASS_HELPER_TYPE_REQUIRED(Self, LAncestorID.TextPosition);
-    LAncestor := TIDType(LAncestorDecl);
+    LAncestor := TDlphHelper(LAncestorDecl);
     Lexer_ReadToken(Scope, token_closeround);
     Result := Lexer_NextToken(Scope);
   end else
@@ -1053,7 +1061,7 @@ begin
   Result := ParseTypeSpec(Scope, {out} TargetDecl);
 
   Decl := TDlphHelper.Create(Scope, ID);
-  Decl.AncestorDecl := LAncestor;
+  Decl.Ancestor := LAncestor;
   Decl.Target := TargetDecl;
 
   // register new helper for the target type
@@ -1197,10 +1205,9 @@ begin
             if Assigned(LHelper) then
               SearchScope := LHelper.Members
             else begin
-              var LActualDataType := DataType.ActualDataType;
-              if not (LActualDataType is TIDStructure) then
+              if not (DataType is TIDStructure) then
                 ERRORS.STRUCT_TYPE_REQUIRED(Lexer_PrevPosition);
-              SearchScope := TIDStructure(LActualDataType).Members;
+              SearchScope := TIDStructure(DataType).Members;
             end;
             Lexer_NextToken(Scope);
             continue;
@@ -1216,22 +1223,6 @@ begin
             Result := Lexer_NextToken(Scope);
           end;
           Exit;
-        end;
-        itAlias: begin
-          Decl := Decl.Original;
-          if Decl.ItemType = itType then
-          begin
-            DataType := Decl as TIDType;
-            if Result = token_dot then
-            begin
-              if not (DataType is TIDStructure) then
-                ERRORS.STRUCT_TYPE_REQUIRED(Lexer_PrevPosition);
-              SearchScope := TIDStructure(DataType).Members;
-              Lexer_NextToken(Scope);
-              continue;
-            end;
-            Exit;
-          end;
         end;
         itUnit: begin
           SearchScope := TIDUnit(Decl).Members;
@@ -1808,7 +1799,7 @@ begin
     WNextScope := TWithScope.Create(Scope, Expression);
     Scope.AddScope(WNextScope);
     WNextScope.OuterScope := WPrevScope;
-    WNextScope.InnerScope := TIDStructure(Expression.ActualDataType).Members;
+    WNextScope.InnerScope := TIDStructure(Expression.DataType).Members;
 
     case Result of
       token_coma: begin
@@ -1846,34 +1837,58 @@ begin
   Result := AType1;
 end;
 
-procedure InferImplicitGenericArgs(ACallExpr: TIDCallExpression);
+function InferImplicitGenericArgs(ACallExpr: TIDCallExpression): Boolean;
 begin
   var LProc := ACallExpr.Proc;
   var LDescriptor := LProc.GenericDescriptor;
-  Assert(LProc.ParamsCount = ACallExpr.ArgumentsCount);
-  // set generic array len according to proc params
-  var LGenericArgs: TIDExpressions;
-  SetLength(LGenericArgs, LDescriptor.ParamsCount);
-  for var LIndex := 0 to LProc.ParamsCount - 1 do
+  Result := (LProc.ParamsCount = ACallExpr.ArgumentsCount);
+  if Result then
   begin
-    var LArg := ACallExpr.Arguments[LIndex];
-    var LParam := LProc.ExplicitParams[LIndex];
-    if Assigned(LArg) and LParam.IsGeneric then
+    // set generic array len according to proc params
+    var LGenericArgs: TIDExpressions;
+    SetLength(LGenericArgs, LDescriptor.ParamsCount);
+    for var LIndex := 0 to LProc.ParamsCount - 1 do
     begin
-      var LParamTypeName := LParam.DataType.Name;
-      var LParamTypeIndex := LDescriptor.IndexOfType(LParamTypeName);
-      Assert(LParamTypeIndex >= 0);
+      var LArg := ACallExpr.Arguments[LIndex];
+      var LParam := LProc.ExplicitParams[LIndex];
+      if Assigned(LArg) and LParam.IsGeneric then
+      begin
+        var LParamTypeName := LParam.DataType.Name;
+        var LParamTypeIndex := LDescriptor.IndexOfType(LParamTypeName);
+        Assert(LParamTypeIndex >= 0);
 
-      var LCurArgType := LArg.DataType;
-      if not Assigned(LGenericArgs[LParamTypeIndex]) then
-        LGenericArgs[LParamTypeIndex] := TIDExpression.Create(LCurArgType)
-      else begin
-        var LPrevArgType := LGenericArgs[LParamTypeIndex].AsType;
-        LGenericArgs[LParamTypeIndex].Declaration := GetCommonType(LCurArgType, LPrevArgType);
+        var LCurArgType := LArg.DataType;
+        if not Assigned(LGenericArgs[LParamTypeIndex]) then
+          LGenericArgs[LParamTypeIndex] := TIDExpression.Create(LCurArgType)
+        else begin
+          var LPrevArgType := LGenericArgs[LParamTypeIndex].AsType;
+          LGenericArgs[LParamTypeIndex].Declaration := GetCommonType(LCurArgType, LPrevArgType);
+        end;
       end;
     end;
+    ACallExpr.GenericArgs := LGenericArgs;
   end;
-  ACallExpr.GenericArgs := LGenericArgs;
+end;
+
+procedure TASTDelphiUnit.CheckAndInstantiateProc(var AProc: TIDProcedure; ACallExpr: TIDCallExpression; SContext: PSContext);
+begin
+  if Assigned(AProc.GenericDescriptor) then
+  begin
+    var LIsStructMethod := IsStructsMethod(SContext.Proc.Struct, AProc);
+    var LCurrentProcIsGeneric := Assigned(SContext.Proc.GenericDescriptor);
+    var LIsGenericTypeStructMethod := IsGenericTypeThisStruct(SContext.Scope, AProc.Struct);
+    var LNeedsToInstantiate := GenericNeedsInstantiate(ACallExpr.GenericArgs);
+
+    // instantiate "external" or "independent" generic methods
+    if LNeedsToInstantiate and
+       (not LIsStructMethod and
+        not LCurrentProcIsGeneric and
+        not LIsGenericTypeStructMethod) or ACallExpr.CanInstantiate then
+    begin
+      if Assigned(ACallExpr.GenericArgs) or InferImplicitGenericArgs(ACallExpr) then
+        AProc := InstantiateGenericProc(AProc.Scope, AProc, ACallExpr.GenericArgs);
+    end;
+  end;
 end;
 
 function TASTDelphiUnit.Process_CALL(var EContext: TEContext): TIDExpression;
@@ -1916,9 +1931,9 @@ begin
   if Decl.ItemType = itProcedure then
   begin
     ProcDecl := TIDProcedure(Decl);
-
     {match proper generic/overload declaration}
-    if Assigned(ProcDecl.PrevOverload) then begin
+    if Assigned(ProcDecl.PrevOverload) then
+    begin
       ProcDecl := MatchOverloadProc(EContext.SContext, PExpr, UserArguments, ArgsCount);
       // handle "keep parsing"
       if not Assigned(ProcDecl) then
@@ -1928,33 +1943,14 @@ begin
       end;
       ProcParams := ProcDecl.ExplicitParams;
       PExpr.Declaration := ProcDecl;
-    end else begin
+    end else
+    begin
+      // instantiate proc if needed
+      CheckAndInstantiateProc({var} ProcDecl, PExpr, SContext);
+
       ProcParams := ProcDecl.ExplicitParams;
       MatchProc(EContext.SContext, PExpr, ProcParams, UserArguments);
     end;
-
-    if Assigned(ProcDecl.GenericDescriptor) then
-    begin
-      var LIsStructMethod := IsStructsMethod(SContext.Proc.Struct, ProcDecl);
-      var LCurrentProcIsGeneric := Assigned(SContext.Proc.GenericDescriptor);
-      var LIsGenericTypeStructMethod := IsGenericTypeThisStruct(SContext.Scope, ProcDecl.Struct);
-      var LNeedsToInstantiate := GenericNeedsInstantiate(PExpr.GenericArgs);
-
-      // instantiate "external" or "independent" generic methods
-      if LNeedsToInstantiate and
-         (not LIsStructMethod and
-          not LCurrentProcIsGeneric and
-          not LIsGenericTypeStructMethod) or PExpr.CanInstantiate then
-      begin
-        if not Assigned(PExpr.GenericArgs)  then
-          InferImplicitGenericArgs(PExpr);
-
-        ProcDecl := InstantiateGenericProc(ProcDecl.Scope, ProcDecl, PExpr.GenericArgs);
-        ProcParams := ProcDecl.ExplicitParams;
-        PExpr.Declaration := ProcDecl;
-      end;
-    end;
-
 
     ProcResult := ProcDecl.ResultType;
 
@@ -1962,7 +1958,7 @@ begin
   {procedure call by proc type}
   if PExpr.DataTypeID = dtProcType then begin
 
-    Decl := PExpr.ActualDataType;
+    Decl := PExpr.DataType;
 
     ProcParams := (Decl as TIDProcType).Params;
     ProcResult := (Decl as TIDProcType).ResultType;
@@ -2055,7 +2051,7 @@ begin
       begin
         CheckVarExpression(ArgExpr, vmpPassArgument);
         {проверка на строгость соответствия типов}
-        if Param.DataType.ActualDataType <> ArgExpr.DataType.ActualDataType then
+        if Param.DataType <> ArgExpr.DataType then
           ERRORS.E2033_TYPES_OF_ACTUAL_AND_FORMAL_VAR_PARAMETER_MUST_BE_IDENTICAL(Self, ArgExpr.TextPosition);
       end;
     end;
@@ -2198,6 +2194,7 @@ end;
 
 destructor TASTDelphiUnit.Destroy;
 begin
+  fGenericInstantiations.Free;
   fImplHelpers.Free;
   fIntfHelpers.Free;
   fForwardTypes.Free;
@@ -2287,7 +2284,7 @@ begin
      (Source.DataTypeID = Destination.DataTypeID) then
   begin
     SrcDataType := TIDArray(Source.DataType);
-    if SrcDataType.ElementDataType.ActualDataType = TIDArray(Destination).ElementDataType.ActualDataType then
+    if SrcDataType.ElementDataType = TIDArray(Destination).ElementDataType then
       Exit(Destination);
   end;
   Result := nil;
@@ -2319,7 +2316,7 @@ begin
       // for debug:
       DoMatchBinarOperator(SContext, OpID, Left, Right);
 
-      ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Self, Left.TextPosition);
+      ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Self, Left);
       // return "unknown" to keep parsing
       Result := Sys._UnknownVariable;
     end;
@@ -2406,7 +2403,7 @@ begin
         begin
           Result := TSysOpBinary(Op).Match(EContext.SContext, Left, Right);
           if Result = nil then
-            ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Self, Left.TextPosition);
+            ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Self, Left);
 
         end else begin
           TmpVar := GetTMPVar(EContext, TIDType(Op));
@@ -2557,7 +2554,7 @@ begin
 
   CheckPointerType(Src);
 
-  PtrType := Src.ActualDataType as TIDPointer;
+  PtrType := Src.DataType as TIDPointer;
   RefType := GetPtrReferenceType(PtrType);
   if not Assigned(RefType) then
     RefType := Sys._Untyped;
@@ -2594,7 +2591,7 @@ begin
   OperatorItem := MatchUnarOperator(EContext.SContext, opNegative, Right);
   if not Assigned(OperatorItem) then
   begin
-    ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Self, Right.TextPosition);
+    ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Self, Right);
     Exit(CreateUnknownExpr(Right.TextPosition));
   end;
 
@@ -2618,7 +2615,7 @@ begin
   begin
     // for debug
     MatchUnarOperator(EContext.SContext, opNot, Right);
-    ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Self, Right.TextPosition);
+    ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Self, Right);
   end;
 
   if Right.ItemType = itConst then
@@ -2763,6 +2760,11 @@ begin
   except
     on e: ECompilerStop do Exit(CompileFail);
     on e: ECompilerSkip do Exit(CompileSkip);
+    on e: ECompilerInternalError do begin
+      PutMessage(cmtInteranlError, e.Message, Lexer_Position, {ACritical:} True);
+      Progress(TASTStatusParseFail, TTickCounter.GetTicks - LStartedAt);
+      Result := CompileFail;
+    end;
     on e: ECompilerAbort do begin
       var LMsg := ECompilerAbort(e).CompilerMessage;
       LMsg.Module := Self;
@@ -2988,6 +2990,22 @@ begin
   var Scope := TASTDelphiUnit(SContext.Module).ImplScope;
 
   Result := TIDExpression.Create(TIDIntConstant.CreateAsAnonymous(Scope, SContext.SysUnit._Int32, SetValue), Source.TextPosition);
+end;
+
+procedure TASTDelphiUnit.GenericInstancesToStr(AStrBuilder: TStringBuilder);
+begin
+  AStrBuilder.Append('// GENRIC INSTANCES BEGIN').AppendLine;
+  for var LValue in fGenericInstantiations.Values do
+  begin
+    AStrBuilder.Append('// ');
+    AStrBuilder.Append(LValue.DisplayName);
+    AStrBuilder.Append(' at ');
+    AStrBuilder.Append(LValue.TextPosition.Row);
+    AStrBuilder.Append(':');
+    AStrBuilder.Append(LValue.TextPosition.Col);
+    AStrBuilder.AppendLine;
+  end;
+  AStrBuilder.Append('// GENRIC INSTANCES END').AppendLine;
 end;
 
 function TASTDelphiUnit.GetBuiltins: IDelphiBuiltInTypes;
@@ -3432,7 +3450,7 @@ end;
 
 procedure TASTDelphiUnit.AddType(const Decl: TIDType);
 begin
-  if not (Decl is TIDAliasType) and not Decl.IsPooled then
+  if not Decl.IsPooled then
   begin
     Decl.IsPooled := True;
   end;
@@ -3440,9 +3458,6 @@ end;
 
 class function TASTDelphiUnit.MatchImplicit(Source, Destination: TIDType): TIDDeclaration;
 begin
-  Source := Source.ActualDataType;
-  Destination := Destination.ActualDataType;
-
   if Source = Destination then
     Exit(Destination);
 
@@ -3615,10 +3630,10 @@ begin
       for i := 0 to SrcArray.DimensionsCount - 1 do
       begin
         // todo: добавить глубокую проверку типов (range/enum/...)
-        if SrcArray.Dimensions[i].ActualDataType <> DstArray.Dimensions[i].ActualDataType then
+        if SrcArray.Dimensions[i] <> DstArray.Dimensions[i] then
           Exit(nil);
       end;
-      if SrcArray.ElementDataType.ActualDataType <> DstArray.ElementDataType.ActualDataType then
+      if SrcArray.ElementDataType <> DstArray.ElementDataType then
         Exit(nil);
       Result := Source;
     end;
@@ -3638,7 +3653,7 @@ begin
   begin
     SrcFld := SrcRecord.Members.Items[LIndex];
     DstFld := DstRecord.Members.Items[LIndex];
-    if SrcFld.DataType.ActualDataType <> DstFld.DataType.ActualDataType then
+    if SrcFld.DataType <> DstFld.DataType then
       Exit(nil);
   end;
   Result := Source;
@@ -3663,8 +3678,8 @@ begin
     if Assigned(Result) then
       Exit;
 
-    if LDataType is TIDAliasType then
-      LDataType := TIDAliasType(LDataType).LinkedType
+    if LDataType.IsAlias then
+      LDataType := LDataType.Original
     else
       Break;
   end;
@@ -3690,9 +3705,9 @@ begin
   Result := nil;
 end;
 
-function TASTDelphiUnit.MatchImplicitOrNil(const SContext: TSContext; Source: TIDExpression; Dest: TIDType): TIDExpression;
+function TASTDelphiUnit.MatchImplicitOrNil(const SContext: TSContext; Source: TIDExpression; ADstType: TIDType): TIDExpression;
 var
-  SDataType: TIDType;
+  LSrcType: TIDType;
   Decl: TIDDeclaration;
   SrcDTID, DstDTID: TDataTypeID;
 begin
@@ -3700,128 +3715,111 @@ begin
   if not Assigned(Source) or not Assigned(Source.DataType) then
     AbortWorkInternal('Source data type is not assigned', Lexer_Position);
 
-  SDataType := Source.DataType.ActualDataType;
-  Dest := Dest.ActualDataType;
+  LSrcType := Source.DataType;
 
-  if SDataType = Dest then
-    Exit(Source);
-
-  SrcDTID := SDataType.DataTypeID;
-  DstDTID := Dest.DataTypeID;
-
-  // ищем явно определенный implicit у источника
-  Decl := SDataType.GetImplicitOperatorTo(Dest);
-  if Decl is TSysTypeCast then
+  while True do
   begin
-    Result := TSysTypeCast(Decl).Match(SContext, Source, Dest);
-    if Assigned(Result) then
-      Exit(Result);
-    Decl := nil;
-  end;
 
-  if not Assigned(Decl) then
-  begin
-    // ищем явно определенный implicit у приемника
-    Decl := Dest.GetImplicitOperatorFrom(SDataType);
-    if not Assigned(Decl) then
+    var LDstHelper := fCurrentHelpers.FindHelper(ADstType);
+    if Assigned(LDstHelper) and LDstHelper.HasImplicitOperators then
     begin
-      // если не нашли точных имплиситов, ищем подходящий (у источника)
-      Decl := SDataType.FindImplicitOperatorTo(Dest);
-      if not Assigned(Decl) then
-      begin
-        // если не нашли точных имплиситов, ищем подходящий (у приемника)
-        Decl := Dest.FindImplicitOperatorFrom(SDataType);
-        if not Assigned(Decl) then
-        begin
-          { если классы и интерфейс }
-          if (SrcDTID = dtClass) and (DstDTID = dtInterface) then
-          begin
-            if TIDClass(Source.DataType).FindInterface(TIDInterface(Dest), {AFindInAncestors:} True) then
-              Exit(Source)
-            else begin
-              // for debug
-              TIDClass(Source.DataType).FindInterface(TIDInterface(Dest));
-              ERRORS.CLASS_NOT_IMPLEMENT_INTF(Source, Dest);
-            end;
-          end;
-
-          { есди приемник - class of }
-          if DstDTID = dtClassOf then
-            Decl := MatchImplicitClassOf(Source, TIDClassOf(Dest));
-
-// todo: not needed?
-//          {дин. массив как набор}
-//          if (DstDTID = dtSet) and (SDataType is TIDDynArray) then
-//          begin
-//            Result := MatchSetImplicit(SContext, Source, TIDSet(Dest));
-//            Exit;
-//          end else
-//          if (SrcDTID = dtProcType) and (DstDTID = dtProcType) then
-//            Decl := MatchProcedureTypes(TIDProcType(SDataType), TIDProcType(Dest))
-//          else
-//          if SDataType is TIDArray then
-//          begin
-//            if Dest is TIDArray then
-//              Result := MatchArrayImplicit(SContext, Source, TIDArray(Dest))
-//            else
-////            if DstDTID = dtRecord then
-////              Result := MatchArrayImplicitToRecord(SContext, Source, TIDStructure(Dest))
-////            else
-//              Result := nil;
-//            Exit;
-//          end;
-//          if (SrcDTID = dtRecord) and (DstDTID = dtRecord) then
-//          begin
-//            Result := MatchRecordImplicit(SContext, Source, TIDRecord(Dest));
-//            Exit;
-//          end;
-        end else
-          Exit(Source);
-      end;
-    end else
-    if Decl is TSysTypeCast then
-    begin
-      Result := TSysTypeCast(Decl).Match(SContext, Source, Dest);
+      Result := MatchImplicitOrNil(SContext, Source, LDstHelper);
       if Assigned(Result) then
         Exit;
-    end else
-      Exit(Source);
-  end;
+    end;
 
-  {generic case}
-  // todo: constraint check is needed
-  if (SrcDTID = dtGeneric) or (DstDTID = dtGeneric) then
-    Exit(Source);
-
-  if Source.ClassType = TIDDrefExpression then
-  begin
-    Result := GetTMPVarExpr(SContext, Source.DataType, Lexer_Position);
-    Exit;
-  end;
-
-//  if Assigned(SDataType.SysImplicitToAny) then
-//  begin
-//    Decl := TSysOpImplicit(SDataType.SysImplicitToAny).Check(SContext, Source, Dest);
-//    if Assigned(Decl) then
-//      Exit(Source);
-//    Decl := nil;
-//  end;
-
-//  if not Assigned(Decl) then
-//  begin
-//    if Assigned(Dest.SysImplicitFromAny) then
+//    var LSrcHelper := fCurrentHelpers.FindHelper(LSrcType);
+//    if Assigned(LSrcHelper) and LSrcHelper.HasImplicitOperators then
 //    begin
-//      Decl := TSysOpImplicit(Dest.SysImplicitFromAny).Check(SContext, Source, Dest);
-//      if Assigned(Decl) then
-//        Exit(Source);
+//      Result := MatchImplicitOrNil(SContext, Source, LSrcHelper);
+//      if Result then
+//        Exit;
 //    end;
-//    Exit(nil);
-//  end;
 
-  if Assigned(Decl) and (Decl.ItemType = itType) then
-    Exit(Source);
+    if LSrcType = ADstType then
+      Exit(Source);
 
-  Result := nil;
+    SrcDTID := LSrcType.DataTypeID;
+    DstDTID := ADstType.DataTypeID;
+
+    // ищем явно определенный implicit у источника
+    Decl := LSrcType.GetImplicitOperatorTo(ADstType);
+    if Decl is TSysTypeCast then
+    begin
+      Result := TSysTypeCast(Decl).Match(SContext, Source, ADstType);
+      if Assigned(Result) then
+        Exit(Result);
+      Decl := nil;
+    end;
+
+    if not Assigned(Decl) then
+    begin
+      // ищем явно определенный implicit у приемника
+      Decl := ADstType.GetImplicitOperatorFrom(LSrcType);
+      if not Assigned(Decl) then
+      begin
+        // если не нашли точных имплиситов, ищем подходящий (у источника)
+        Decl := LSrcType.FindImplicitOperatorTo(ADstType);
+        if not Assigned(Decl) then
+        begin
+          // если не нашли точных имплиситов, ищем подходящий (у приемника)
+          Decl := ADstType.FindImplicitOperatorFrom(LSrcType);
+          if not Assigned(Decl) then
+          begin
+            { если классы и интерфейс }
+            if (SrcDTID = dtClass) and (DstDTID = dtInterface) then
+            begin
+              if TIDClass(Source.DataType).FindInterface(TIDInterface(ADstType), {AFindInAncestors:} True) then
+                Exit(Source)
+              else begin
+                // for debug
+                TIDClass(Source.DataType).FindInterface(TIDInterface(ADstType));
+                ERRORS.CLASS_NOT_IMPLEMENT_INTF(Source, ADstType);
+              end;
+            end;
+
+            { есди приемник - class of }
+            if DstDTID = dtClassOf then
+              Decl := MatchImplicitClassOf(Source, TIDClassOf(ADstType));
+
+          end else
+            Exit(Source);
+        end;
+      end else
+      if Decl is TSysTypeCast then
+      begin
+        Result := TSysTypeCast(Decl).Match(SContext, Source, ADstType);
+        if Assigned(Result) then
+          Exit;
+      end else
+        Exit(Source);
+    end;
+
+    {generic case}
+    // todo: constraint check is needed
+    if (SrcDTID = dtGeneric) and (DstDTID = dtGeneric) then
+      Exit(Source);
+
+    if Source.ClassType = TIDDrefExpression then
+    begin
+      Result := GetTMPVarExpr(SContext, Source.DataType, Lexer_Position);
+      Exit;
+    end;
+
+    if Assigned(Decl) and (Decl.ItemType = itType) then
+      Exit(Source);
+
+    // if the type is an alias, let's try to find operators in a linked type
+    if LSrcType.IsAlias then
+      LSrcType := LSrcType.Original
+    else
+    if ADstType.IsAlias then
+      ADstType := ADstType.Original
+    else
+      Break;
+  end;
+
+  //Result := nil;
 end;
 
 procedure TASTDelphiUnit.MatchProc(const SContext: TSContext; CallExpr: TIDExpression;
@@ -3866,7 +3864,7 @@ begin
           begin
             CheckVarExpression(Arg, vmpPassArgument);
             {проверка на строгость соответствия типов}
-            if Param.DataType.ActualDataType <> Arg.DataType.ActualDataType then
+            if Param.DataType <> Arg.DataType then
               CheckVarParamConformity(Param, Arg);
           end;
           continue;
@@ -3945,11 +3943,11 @@ begin
       Exit;
 
     // if the type is an alias, let's try to find operators in a linked type
-    if LeftDT is TIDAliasType then
-      LeftDT := TIDAliasType(LeftDT).LinkedType
+    if LeftDT.IsAlias then
+      LeftDT := LeftDT.Original
     else
-    if RightDT is TIDAliasType then
-      RightDT := TIDAliasType(RightDT).LinkedType
+    if RightDT.IsAlias then
+      RightDT := RightDT.Original
     else
       Break;
   end;
@@ -3977,24 +3975,45 @@ function TASTDelphiUnit.MatchOverloadProc(const SContext: TSContext; ACallExpr: 
 
   procedure AbortWithAmbiguousOverload(AmbiguousCnt: Integer; AmbiguousRate: Integer);
   var
-    Str, Args: string;
+    LDetails, LArgsStr: string;
     ProcItem: PASTProcMatchItem;
   begin
+    // append ambiguous procedures
     for var i := 0 to AmbiguousCnt - 1 do
     begin
       ProcItem := Addr(fProcMatches[i]);
       if ProcItem.TotalRate = AmbiguousRate then
-        Str := Str + #13#10'  ' + ProcItem.Decl.Module.Name + '.' + ProcItem.Decl.DisplayName;
+      begin
+        var LProc := ProcItem.Decl;
+        LDetails := LDetails + sLineBreak +
+          Format( '  %s.pas(%d): Related method: %s%s',
+            [LProc.Module.Name, LProc.SourcePosition.Row, LProc.DisplayName, LProc.Signature2Str]);
+      end;
     end;
-    for var i := 0 to CallArgsCount - 1 do
-      Args := AddStringSegment(Args, CallArgs[i].DataType.DisplayName, ', ');
 
-    Str := Str + #13#10'  Arguments: (' + Args + ')';
+    // append call arguments
+    for var LArg in CallArgs do
+      LArgsStr := AddStringSegment(LArgsStr, LArg.DataTypeName, ', ');
 
-    // just warning, to not block parsing process
-    // todo: AST parser doesn't have ability to resolve an ambiguous
-    // in case argument array [..] of Char and params (1. PAnsiChar, 2. untyped ref)
-    // Warning(sAmbiguousOverloadedCallFmt, [Str], Item.TextPosition);
+    LDetails := LDetails + sLineBreak + ' Call Arguments: (' + LArgsStr + ')';
+
+    if _RaiseOverloadErrors then
+      ERRORS.E2251_AMBIGUOUS_OVERLOADED_CALL(Self, ACallExpr, LDetails);
+  end;
+
+  function IsOverriddenMethodInList(const AProc: TIDProcedure; ALength: Integer): Boolean;
+  begin
+    for var LIndex := 0 to ALength - 1 do
+    begin
+      var LProc := fProcMatches[LIndex].Decl;
+      repeat
+        if LProc.InheritedProc = AProc then
+          Exit(True);
+
+        LProc := LProc.InheritedProc;
+      until not Assigned(LProc);
+    end;
+    Result := False;
   end;
 
 const
@@ -4039,13 +4058,16 @@ begin
        (ACallExpr.GenericArgsCount <= Declaration.GenericParamsCount) and
        (ACallExpr.GenericArgsCount >= Declaration.GenericRequiredParamsCount) then
     begin
-      for i := 0 to Declaration.ParamsCount - 1 do begin
+      CheckAndInstantiateProc({var} Declaration, ACallExpr, @SContext);
+
+      for i := 0 to Declaration.ParamsCount - 1 do
+      begin
         Param := Declaration.ExplicitParams[i];
         // if cur arg presents
         if (i < CallArgsCount) and Assigned(CallArgs[i]) then
         begin
-          ParamDataType := Param.DataType.ActualDataType;
-          ArgDataType := CallArgs[i].DataType.ActualDataType;
+          ParamDataType := Param.DataType;
+          ArgDataType := CallArgs[i].DataType;
 
           curRate := 0;
           curLevel := MatchNone;
@@ -4119,6 +4141,12 @@ begin
     end;
     // take next declaration
     Declaration := Declaration.PrevOverload;
+
+    // NOTE: in case of overload and override methods it needs to check and ignore the inherited methods
+    // to avoid duplicates, since an inherited method exists in the overload list in the base class!
+    while Assigned(Declaration) and IsOverriddenMethodInList(Declaration, MatchedCount) do
+      Declaration := Declaration.PrevOverload;
+
   until Declaration = nil;
 
   if MatchedCount = 1 then
@@ -4173,8 +4201,8 @@ var
 begin
   LeftImplicitFactor := 0;
   RightImplicitFactor := 0;
-  LeftDT := Left.DataType.ActualDataType;
-  RightDT := Right.DataType.ActualDataType;
+  LeftDT := Left.DataType;
+  RightDT := Right.DataType;
 
   Operators := LeftDT.BinarOperators[Op];
   if Assigned(Operators) then
@@ -4205,37 +4233,32 @@ begin
   end;
 end;
 
-class function TASTDelphiUnit.CheckExplicit(const Scontext: TSContext; const Source, Destination: TIDType; out ExplicitOp: TIDDeclaration): Boolean;
-var
-  SrcDataType: TIDType;
-  DstDataType: TIDType;
+class function TASTDelphiUnit.CheckExplicit(const Scontext: TSContext; const ASrcType, ADstType: TIDType; out ExplicitOp: TIDDeclaration): Boolean;
 begin
   ExplicitOp := nil;
-  SrcDataType := Source.ActualDataType;
-  DstDataType := Destination.ActualDataType;
-  if SrcDataType = DstDataType then
+  if ASrcType = ADstType then
     Exit(True);
 
-  if (SrcDataType.DataTypeID = dtClass) and (DstDataType.DataTypeID = dtClass) then
+  if (ASrcType.DataTypeID = dtClass) and (ADstType.DataTypeID = dtClass) then
     Exit(True);
 
-  ExplicitOp := SrcDataType.GetExplicitOperatorTo(DstDataType);
+  ExplicitOp := ASrcType.GetExplicitOperatorTo(ADstType);
   if Assigned(ExplicitOp) then
   begin
     if ExplicitOp is TSysTypeCast then
     begin
-      if TSysTypeCast(ExplicitOp).Check(SContext, SrcDataType, DstDataType) then
+      if TSysTypeCast(ExplicitOp).Check(SContext, ASrcType, ADstType) then
         Exit(True);
     end else
       Exit(True);
   end;
 
-  ExplicitOp := DstDataType.GetExplicitOperatorFrom(SrcDataType);
+  ExplicitOp := ADstType.GetExplicitOperatorFrom(ASrcType);
   if Assigned(ExplicitOp) then
   begin
     if ExplicitOp is TSysTypeCast then
     begin
-      if TSysTypeCast(ExplicitOp).Check(SContext, SrcDataType, DstDataType) then
+      if TSysTypeCast(ExplicitOp).Check(SContext, ASrcType, ADstType) then
         Exit(True);
     end else
       Exit(True);
@@ -4245,7 +4268,7 @@ end;
 
 class procedure TASTDelphiUnit.CheckExprHasMembers(Expression: TIDExpression);
 begin
-  var LDataType := Expression.ActualDataType;
+  var LDataType := Expression.DataType;
 
   if (LDataType is TIDStructure) then
     Exit
@@ -4272,26 +4295,24 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.MatchExplicit(const SContext: TSContext; const Source: TIDExpression; Destination: TIDType; out Explicit: TIDDeclaration): TIDExpression;
+function TASTDelphiUnit.MatchExplicit(const SContext: TSContext; const Source: TIDExpression; ADstType: TIDType; out Explicit: TIDDeclaration): TIDExpression;
 var
-  SrcDataType: TIDType;
-  DstDataType: TIDType;
+  LSrcType: TIDType;
 begin
-  SrcDataType := Source.DataType.ActualDataType;
-  DstDataType := Destination.ActualDataType;
+  LSrcType := Source.DataType;
 
-  if CheckExplicit(SContext, SrcDataType, DstDataType, Explicit) then
-    Result := TIDCastExpression.Create(Source, DstDataType)
+  if CheckExplicit(SContext, LSrcType, ADstType, Explicit) then
+    Result := TIDCastExpression.Create(Source, ADstType)
   else begin
     Result := nil;
     var WasCall := False;
     var NewSource := CheckAndCallFuncImplicit(Scontext, Source, WasCall);
     if WasCall then
     begin
-      SrcDataType := NewSource.DataType.ActualDataType;
-      Result := TIDCastExpression.Create(NewSource, DstDataType);
+      LSrcType := NewSource.DataType;
+      Result := TIDCastExpression.Create(NewSource, ADstType);
     end else
-      Result := MatchImplicit3(SContext, Source, Destination);
+      Result := MatchImplicit3(SContext, Source, LSrcType);
   end
 end;
 
@@ -4414,7 +4435,7 @@ begin
     itVar, itConst: begin
       if Expr.DataTypeID = dtProcType then
       begin
-        var LProcType := (Expr.ActualDataType as TIDProcType);
+        var LProcType := (Expr.DataType as TIDProcType);
         if Assigned(LProcType.ResultType) then
         begin
           WasCall := True;
@@ -4431,10 +4452,10 @@ class function TASTDelphiUnit.CheckAndCallFuncImplicit(const EContext: TEContext
 begin
   if Assigned(Expr) and
     (Expr.DataTypeID = dtProcType) and
-     Assigned((Expr.ActualDataType as TIDProcType).ResultType) then
+     Assigned((Expr.DataType as TIDProcType).ResultType) then
   begin
     // todo: generate func call
-    Result := GetTMPVarExpr(EContext, (Expr.ActualDataType as TIDProcType).ResultType, Expr.TextPosition);
+    Result := GetTMPVarExpr(EContext, (Expr.DataType as TIDProcType).ResultType, Expr.TextPosition);
   end else
     Result := Expr;
 end;
@@ -4551,106 +4572,116 @@ begin
   end;
 end;
 
-class function TASTDelphiUnit.CheckImplicit(const SContext: TSContext; Source: TIDExpression; Dest: TIDType;
+class function TASTDelphiUnit.CheckImplicit(const SContext: TSContext; Source: TIDExpression; ADstType: TIDType;
                                             AResolveCalls: Boolean): TIDDeclaration;
 var
-  SDataType: TIDType;
+  LSrcType: TIDType;
   SrcDTID, DstDTID: TDataTypeID;
 begin
-  SDataType := Source.ActualDataType;
-  Dest := Dest.ActualDataType;
+  LSrcType := Source.DataType;
 
-  if SDataType = Dest then
-    Exit(Dest);
-
-  // ищем явно определенный implicit у источника
-  Result := SDataType.GetImplicitOperatorTo(Dest);
-  if Result is TSysTypeCast then
-    Result := TSysTypeCast(Result).Check(SContext, Source, Dest);
-
-  if Assigned(Result) then
-    Exit;
-
-  // ищем явно определенный implicit у приемника
-  Result := Dest.GetImplicitOperatorFrom(SDataType);
-  if Result is TSysTypeCast then
-    Result := TSysTypeCast(Result).Check(SContext, Source, Dest);
-  if Assigned(Result) then
-    Exit;
-
-  // если не нашли точных имплиситов, ищем подходящий (у источника)
-  Result := SDataType.FindImplicitOperatorTo(Dest);
-  if Result is TSysTypeCast then
-    Result := TSysTypeCast(Result).Check(SContext, Source, Dest);
-  if Assigned(Result) then
-    Exit;
-
-  // если не нашли точных имплиситов, ищем подходящий (у приемника)
-  Result := Dest.FindImplicitOperatorFrom(SDataType);
-  if Result is TSysTypeCast then
-    Result := TSysTypeCast(Result).Check(SContext, Source, Dest);
-  if Assigned(Result) then
-    Exit;
-
-  SrcDTID := Source.DataTypeID;
-  DstDTID := Dest.DataTypeID;
-
-  // есди приемник - class of
-  if DstDTID = dtClassOf then
+  while True do
   begin
-    Result := MatchImplicitClassOf(Source, TIDClassOf(Dest));
+    if LSrcType = ADstType then
+      Exit(ADstType);
+
+    // ищем явно определенный implicit у источника
+    Result := LSrcType.GetImplicitOperatorTo(ADstType);
+    if Result is TSysTypeCast then
+      Result := TSysTypeCast(Result).Check(SContext, Source, ADstType);
+
     if Assigned(Result) then
       Exit;
-  end;
 
-  if (SrcDTID = dtPointer) and (DstDTID = dtPointer) then
-  begin
-    if (TIDPointer(SDataType).ReferenceType = nil) and
-       (TIDPointer(Dest).ReferenceType = nil) then
-      Exit(Source.DataType);
+    // ищем явно определенный implicit у приемника
+    Result := ADstType.GetImplicitOperatorFrom(LSrcType);
+    if Result is TSysTypeCast then
+      Result := TSysTypeCast(Result).Check(SContext, Source, ADstType);
+    if Assigned(Result) then
+      Exit;
 
-    // it needs to check !!!
-    if not Assigned(TIDPointer(SDataType).ReferenceType) or not Assigned(TIDPointer(Dest).ReferenceType) then
-      Exit(Source.DataType);
+    // если не нашли точных имплиситов, ищем подходящий (у источника)
+    Result := LSrcType.FindImplicitOperatorTo(ADstType);
+    if Result is TSysTypeCast then
+      Result := TSysTypeCast(Result).Check(SContext, Source, ADstType);
+    if Assigned(Result) then
+      Exit;
 
-    if TIDPointer(SDataType).ReferenceType.ActualDataType = TIDPointer(Dest).ReferenceType.ActualDataType then
-      Exit(Source.DataType);
-  end;
+    // если не нашли точных имплиситов, ищем подходящий (у приемника)
+    Result := ADstType.FindImplicitOperatorFrom(LSrcType);
+    if Result is TSysTypeCast then
+      Result := TSysTypeCast(Result).Check(SContext, Source, ADstType);
+    if Assigned(Result) then
+      Exit;
 
-  if (SrcDTID = dtProcType) and (DstDTID = dtProcType) then
-    Result := MatchProcedureTypes(TIDProcType(SDataType), TIDProcType(Dest))
-  else
-  if (Source.Declaration.ItemType = itConst) and (SrcDTID = dtDynArray) then
-    Result := CheckConstDynArrayImplicit(SContext, Source, Dest)
-  else begin
-    Result := MatchDynArrayImplicit(Source, Dest);
-  end;
-  if (DstDTID = dtGeneric) or (SrcDTID = dtGeneric) then
-  begin
-     // todo: constrains
-     Exit(Source.Declaration);
-  end;
+    SrcDTID := Source.DataTypeID;
+    DstDTID := ADstType.DataTypeID;
 
-  if AResolveCalls then
-  begin
-    if Source.ItemType = itProcedure then
+    // есди приемник - class of
+    if DstDTID = dtClassOf then
     begin
-      if Assigned(Source.AsProcedure.ResultType) then
+      Result := MatchImplicitClassOf(Source, TIDClassOf(ADstType));
+      if Assigned(Result) then
+        Exit;
+    end;
+
+    if (SrcDTID = dtPointer) and (DstDTID = dtPointer) then
+    begin
+      if (TIDPointer(ADstType).ReferenceType = nil) and
+         (TIDPointer(ADstType).ReferenceType = nil) then
+        Exit(Source.DataType);
+
+      // it needs to check !!!
+      if not Assigned(TIDPointer(ADstType).ReferenceType) or not Assigned(TIDPointer(ADstType).ReferenceType) then
+        Exit(Source.DataType);
+
+      if TIDPointer(ADstType).ReferenceType = TIDPointer(ADstType).ReferenceType then
+        Exit(Source.DataType);
+    end;
+
+    if (SrcDTID = dtProcType) and (DstDTID = dtProcType) then
+      Result := MatchProcedureTypes(TIDProcType(LSrcType), TIDProcType(ADstType))
+    else
+    if (Source.Declaration.ItemType = itConst) and (SrcDTID = dtDynArray) then
+      Result := CheckConstDynArrayImplicit(SContext, Source, ADstType)
+    else begin
+      Result := MatchDynArrayImplicit(Source, ADstType);
+    end;
+    if (DstDTID = dtGeneric) or (SrcDTID = dtGeneric) then
+    begin
+       // todo: constrains
+       Exit(Source.Declaration);
+    end;
+
+    if AResolveCalls then
+    begin
+      if Source.ItemType = itProcedure then
       begin
-        var AResultExpr := TIDExpression.Create(SContext.Proc.GetTMPVar(SContext.Scope, Source.AsProcedure.ResultType), Source.TextPosition);
-        Exit(CheckImplicit(SContext, AResultExpr, Dest));
+        if Assigned(Source.AsProcedure.ResultType) then
+        begin
+          var AResultExpr := TIDExpression.Create(SContext.Proc.GetTMPVar(SContext.Scope, Source.AsProcedure.ResultType), Source.TextPosition);
+          Exit(CheckImplicit(SContext, AResultExpr, ADstType));
+        end;
+      end;
+
+      if (Source.ItemType = itVar) and (Source.DataTypeID = dtProcType) then
+      begin
+        var AResultType := TIDProcType(Source.DataType).ResultType;
+        if Assigned(AResultType) then
+        begin
+          var AResultExpr := TIDExpression.Create(SContext.Proc.GetTMPVar(SContext.Scope,AResultType), Source.TextPosition);
+          Exit(CheckImplicit(SContext, AResultExpr, ADstType));
+        end;
       end;
     end;
 
-    if (Source.ItemType = itVar) and (Source.DataTypeID = dtProcType) then
-    begin
-      var AResultType := TIDProcType(Source.DataType).ResultType;
-      if Assigned(AResultType) then
-      begin
-        var AResultExpr := TIDExpression.Create(SContext.Proc.GetTMPVar(SContext.Scope,AResultType), Source.TextPosition);
-        Exit(CheckImplicit(SContext, AResultExpr, Dest));
-      end;
-    end;
+    if LSrcType.IsAlias then
+      LSrcType := LSrcType.Original
+    else
+    if ADstType.IsAlias then
+      ADstType := ADstType.Original
+    else
+      Break;
   end;
 end;
 
@@ -4662,7 +4693,9 @@ var
   Closure: TIDClosure;
   Expr: TIDExpression;
 begin
-  ProcScope := TProcScope.CreateInDecl(Scope, {Proc:} nil);
+  ProcDecl := TASTDelphiProc.CreateAsAnonymous(Scope);
+
+  ProcScope := TProcScope.CreateInDecl(Scope, ProcDecl);
 
   // создаем Result переменную (тип будет определен позже)
 
@@ -4684,7 +4717,6 @@ begin
   end else
     ResultType := nil;
 
-  ProcDecl := TASTDelphiProc.CreateAsAnonymous(Scope);
   ProcDecl.EntryScope := ProcScope;
   ProcDecl.ResultType := ResultType;
   ProcDecl.CreateProcedureTypeIfNeed(Scope);
@@ -4724,7 +4756,7 @@ begin
   // auto resolve function call when missed parentheses
   ArrExpr := CheckAndCallFuncImplicit(EContext, ArrExpr);
   ArrDecl := ArrExpr.Declaration;
-  ArrType := ArrExpr.ActualDataType;
+  ArrType := ArrExpr.DataType;
   DataType := nil;
   DimensionsCount := 0;
   // indexed property case
@@ -5144,7 +5176,7 @@ begin
      (TIDType(LIntfDecl).DataTypeID <> dtInterface) then
     ERRORS.E2205_INTERFACE_TYPE_REQUIRED(Self, LIntfID.TextPosition);
 
-  LCasetedIntfDecl := (LIntfDecl as TIDType).ActualDataType as TIDInterface;
+  LCasetedIntfDecl := (LIntfDecl as TIDInterface);
 
   if not (AProp.Struct as TIDClass).FindInterface(LCasetedIntfDecl) then
     ERRORS.E2265_INTERFACE_NOT_MENTIONED_IN_INTERFACE_LIST(Self, LIntfID);
@@ -5595,7 +5627,7 @@ function TASTDelphiUnit.ParseConstSection(Scope: TScope; AInlineConst: Boolean):
       if LArrayType.ElementDataType.IsOrdinal then
       begin
         Result := TIDSet.CreateAsAnonymous(LArrayType.Scope,
-                                           LArrayType.ElementDataType.ActualDataType as TIDOrdinal);
+                                           LArrayType.ElementDataType as TIDOrdinal);
       end else
       begin
         ERRORS.ORDINAL_TYPE_REQUIRED(AExpr.TextPosition);
@@ -5652,7 +5684,7 @@ begin
       itType: begin
         if LExpr.AsType.DataTypeID = dtInterface then
         begin
-          var LIntfDecl := LExpr.AsType.Original as TIDInterface;
+          var LIntfDecl := LExpr.AsType as TIDInterface;
           LConst := LIntfDecl.GuidDecl;
           if not Assigned(LConst) then
             ERRORS.E2232_INTERFACE_HAS_NO_INTERFACE_IDENTIFICATION(Self, LIntfDecl);
@@ -5677,7 +5709,7 @@ begin
       LConst.ID := LConstID
     else begin
       // create a const alias
-      var LNewConst := LConst.MakeCopy as TIDConstant;
+      var LNewConst := LConst.MakeCopy(Scope) as TIDConstant;
       LNewConst.ID := LConstID;
       LNewConst.DataType := LConst.DataType;
       LNewConst.AssignValue(LConst);
@@ -5783,9 +5815,9 @@ begin
         LSearchScope := TIDUnit(ADeclaration).Members;
         Continue;
       end;
-      if ADeclaration.Original is TIDStructure then
+      if ADeclaration is TIDStructure then
       begin
-        LSearchScope := TIDStructure(ADeclaration.Original).Members;
+        LSearchScope := TIDStructure(ADeclaration).Members;
         Continue;
       end;
       ERRORS.STRUCT_TYPE_REQUIRED(LID.TextPosition);
@@ -6093,25 +6125,18 @@ begin
       dtClass: begin
         if LAncestorsCount = 0 then
         begin
-          ClassDecl.AncestorDecl := LAncestorDecl;
+          ClassDecl.Ancestor := TIDClass(LAncestorDecl);
         end else
          ERRORS.E2021_CLASS_TYPE_REQUIRED(Self, Expr.TextPosition);
       end;
       dtInterface: begin
-        var LIntfDecl: TIDInterface;
-        if LAncestorDecl is TIDGenericInstantiation then
-        begin
-          LIntfDecl := TIDGenericInstantiation(LAncestorDecl).Original as TIDInterface;
-          ClassDecl.AddGenericInterface(TIDGenericInstantiation(LAncestorDecl));
-        end else
-          LIntfDecl := LAncestorDecl.ActualDataType as TIDInterface;
-
+        var LIntfDecl := TIDInterface(LAncestorDecl);
         if ClassDecl.FindInterface(LIntfDecl) then
           ERRORS.INTF_ALREADY_IMPLEMENTED(Expr);
         ClassDecl.AddInterface(LIntfDecl);
       end;
       dtProcType: begin
-        var LProcType := LAncestorDecl.Original as TIDProcType;
+        var LProcType := LAncestorDecl as TIDProcType;
         if LProcType.ProcClass = procReference then
         begin
           // a reference to procedure can be treated as an interface
@@ -6172,7 +6197,7 @@ begin
     if Assigned(LFwdDecl) and (LFwdDecl.Scope = Scope) then
     begin
       // check existing declration is a forward declaration (none: can be an alias)
-      if (LFwdDecl.Original is ATypeClass) then
+      if (LFwdDecl is ATypeClass) then
       begin
         if LFwdDecl.NeedForward then
         begin
@@ -6210,7 +6235,7 @@ begin
     if Assigned(LFwdDecl) and (LFwdDecl.Scope = Scope) then
     begin
       // check existing declration is a forward declaration (none: can be an alias)
-      if (LFwdDecl.Original is ATypeClass) then
+      if (LFwdDecl is ATypeClass) then
       begin
 
           var LFwdGDescriptor := TIDType(LFwdDecl).GenericDescriptor;
@@ -6348,7 +6373,7 @@ begin
     Result := ParseClassAncestorType(Decl.Members, Decl);
   end else begin
     if Self <> TObject(SYSUnit) then
-      Decl.AncestorDecl := Sys._TObject;
+      Decl.Ancestor := Sys._TObject;
   end;
 
   // semicolon means a short declaration (without end)
@@ -6747,6 +6772,7 @@ constructor TASTDelphiUnit.Create(const Project: IASTProject; const FileName: st
 begin
   inherited Create(Project, FileName, Source);
 
+  fGenericInstantiations := TOrderedDictionary<string, TIDType>.Create;
   fDefines := TDefines.Create();
   fPackage := Project as IASTDelphiProject;
   fUnitSContext := TSContext.Create(Self, IntfScope);
@@ -6903,7 +6929,7 @@ begin
   LExpr := EContext.Result;
 
   LExpr := CheckAndCallFuncImplicit(SContext, LExpr, {out} AWasCall);
-  LExprDataType := LExpr.ActualDataType;
+  LExprDataType := LExpr.DataType;
 
   if LExprDataType.TryGetEnumerator({out} LItemDataType) then
   begin
@@ -7004,10 +7030,10 @@ begin
   if LoopVar.DataType = nil then
   begin
     // align infered type to System.Integer for integer types
-    if StartExpr.ActualDataType.IsInteger then
+    if StartExpr.DataType.IsInteger then
       LoopVar.DataType := Sys._Int32
     else
-      LoopVar.DataType := StartExpr.ActualDataType;
+      LoopVar.DataType := StartExpr.DataType;
   end else
   if (LoopVar.ItemType <> itVar) or not (LoopVar.DataType.IsOrdinal) then
     AbortWork(sForLoopIndexVarsMastBeSimpleIntVar, Lexer_Position);
@@ -7084,7 +7110,7 @@ begin
     var AArgType := AArgExpression.AsType;
     // if an argument is not a generic, the instantiation is possible
     if not (AArgType is TIDGenericParam) and
-       not (AArgType is TIDGenericInstantiation) then
+       not AArgType.IsGenericInstantiation then
       ACanInstantiate := True;
 
     Args[ArgsCount - 1] := AArgExpression;
@@ -7265,6 +7291,13 @@ end;
 
 function TASTDelphiUnit.ParseGenericTypeSpec(Scope, ASearchScope: TScope; const ID: TIdentifier; out DataType: TIDType): TTokenID;
 
+  function GetGenericInstantiationKey(AGenericType: TIDType; const AGenericArgs: TIDTypeArray): string;
+  begin
+    Result := NativeUInt(AGenericType).ToHexString;
+    for var LIndex := 0 to Length(AGenericArgs) - 1 do
+      Result := Result + NativeUInt(AGenericArgs[LIndex]).ToHexString;
+  end;
+
   function MakeGenericName(const AGenericArgs: TIDExpressions): string;
   begin
     var LParamsStr := '';
@@ -7280,28 +7313,21 @@ var
 begin
   DataType := nil;
   Result := ParseGenericsArgs(Scope, fUnitSContext, {out} LGenericArgs, {out} LCanInstantiate);
-  // find all types with the same name
-  LNewID := ID;
 
-  if Length(LGenericArgs) > 0 then
-    LNewID.Name := ID.Name + '@' + Length(LGenericArgs).ToString;
+  LNewID.Name := ID.Name + '@' + Length(LGenericArgs).ToString;
+  LNewID.TextPosition := ID.TextPosition;
 
   var LDecl := FindID(ASearchScope, LNewID);
   if Assigned(LDecl) and (LDecl is TIDType) then
   begin
     var LType := LDecl as TIDType;
     var LTypesArray := GetTypesArray(LGenericArgs);
-    if LCanInstantiate and not IsGenericTypeThisStruct(Scope, LType) then
+
+    if not IsTheStructIsOwner(Scope, LType) or not LType.GenericDescriptor.SameParams(LTypesArray) then
     begin
       DataType := InstantiateGenericType(Scope, LType, LTypesArray);
     end else
-    begin
-      // check if this type is not the current parsed type
-      if not IsTheStructIsOwner(Scope, LType) then
-        DataType := TIDGenericInstantiation.CreateInstantiation(Scope, LType as TIDType, LTypesArray)
-      else
-        DataType := LType;
-    end;
+      DataType := LType;
   end else
     ERRORS.UNDECLARED_ID(MakeGenericName(LGenericArgs), ID.TextPosition);
 end;
@@ -8180,6 +8206,9 @@ begin
   {create a new declaration}
   if not Assigned(Proc) then
   begin
+    if Scope.ScopeClass = scImplementation then
+      ERRORS.E2037_DECLARATION_OF_DIFFERS_FROM_PREVIOUS_DECLARATION(Self, ID);
+
     Proc := TASTDelphiProc.Create(Scope, ID);
     {if there are explict generic params - create generic descriptor}
     if Assigned(GenericParams) then
@@ -8213,12 +8242,15 @@ begin
         // note, that InheritedProc points to the actual inherited procedue (with the same params),
         // while, ForwardDecl points to the latest declared procedure with the same name,
         // which can be either inherited or overloaded.
-        if Assigned(ForwardDecl.PrevOverload) then
-          Proc.PrevOverload := ForwardDecl;
+        if Assigned(ForwardDecl) then
+        begin
+          if Assigned(ForwardDecl.PrevOverload) then
+            Proc.PrevOverload := ForwardDecl;
 
-        // add current procedure to the scope, if ForwardDecl declared in a base class
-        if ForwardDecl.Struct <> Struct then
-          ForwardDecl := nil;
+          // add current procedure to the scope, if ForwardDecl declared in a base class
+          if ForwardDecl.Struct <> Struct then
+            ForwardDecl := nil;
+        end;
       end;
 
       if Assigned(ForwardDecl) and (Struct = ForwardDecl.Struct) and
@@ -8740,8 +8772,8 @@ begin
 
   LSrcType := LSrcDecl as TIDType;
 
-  Decl := TIDAliasType.CreateAlias(Scope, AID, LSrcType, {ANewType:} True);
-  //Decl := LSrcType.CreateAsNewType(Scope, AID);
+  Decl := LSrcType.CreateNewType(Scope, AID);
+
   Scope.AddType(Decl);
 
   if (Result = token_openround) and (LSrcType.DataTypeID = dtAnsiString) then
@@ -8774,7 +8806,7 @@ var
 begin
   AProcScope := nil;
   SearchScope := AScope;
-  var LIntfMathedDelegation := False;
+  var LIntfMethodDelegation := False;
   while True do begin
     Lexer_ReadNextIdentifier(AScope, {out} AID);
     Result := Lexer_NextToken(AScope);
@@ -8819,21 +8851,22 @@ begin
       begin
         if Assigned(AStruct) and (AStruct.DataTypeID = dtClass) then
         begin
-          // since an interface can be an alias (like IUnknown), we have to find original interface and take its name
-          var LDecl := FindIDNoAbort(AStruct.Scope, GetSearchName(AID.Name, AGenericParams));
-          if Assigned(LDecl) then
+          // since an interface can be an alias (like IUnknown), find the original declaration and take its name
+          LTypeDecl := FindIDNoAbort(AStruct.Scope, GetSearchName(AID.Name, AGenericParams)) as TIDType;
+          if Assigned(LTypeDecl) then
           begin
-            var LIntf := TIDClass(AStruct).FindInterface(LDecl.Name, AGenericParams);
+            // TODO: rework to use a strict finding interfaces (not by name)
+            var LIntf := TIDClass(AStruct).FindInterface(LTypeDecl.GenericName, AGenericParams);
             if Assigned(LIntf) then
             begin
-              LIntfMathedDelegation := True;
+              LIntfMethodDelegation := True;
               SearchScope := LIntf.Members;
               Continue;
             end
           end;
+          // for debug:
+          TIDClass(AStruct).FindInterface(LTypeDecl.GenericName, AGenericParams);
         end;
-        // for debug:
-        TIDClass(AStruct).FindInterface(AID.Name, AGenericParams);
         ERRORS.UNDECLARED_ID(AID, AGenericParams);
       end;
 
@@ -8852,7 +8885,7 @@ begin
         ERRORS.STRUCT_TYPE_REQUIRED(AID.TextPosition);
       Continue;
     end;
-    if not Assigned(AProcScope) and not LIntfMathedDelegation then
+    if not Assigned(AProcScope) and not LIntfMethodDelegation then
     begin
       if Assigned(AStruct) then
         AProcScope := TMethodScope.CreateInDecl(AScope, GetStructScope(AStruct, AProcType), nil)
@@ -9017,23 +9050,23 @@ begin
     case LOperatorDef.OpID of
       opImplicit: begin
       if ResultType = LTargetType then
-        LTargetType.OverloadImplicitFrom(Proc.ExplicitParams[0].DataType, Proc)
+        Struct.OverloadImplicitFrom(Proc.ExplicitParams[0].DataType, Proc)
       else
-        LTargetType.OverloadImplicitTo(ResultType, Proc);
+        Struct.OverloadImplicitTo(ResultType, Proc);
       end;
       opExplicit: begin
         if ResultType = LTargetType then
-          LTargetType.OverloadExplicitFrom(Proc.ExplicitParams[0].DataType, Proc)
+          Struct.OverloadExplicitFrom(Proc.ExplicitParams[0].DataType, Proc)
         else
-          LTargetType.OverloadExplicitTo(ResultType, Proc);
+          Struct.OverloadExplicitTo(ResultType, Proc);
       end;
     else
       if LOperatorDef.OpID < opIn then
-        LTargetType.OverloadUnarOperator(LOperatorDef.OpID, Proc)
+        Struct.OverloadUnarOperator(LOperatorDef.OpID, Proc)
       else begin
         var LLeftType := Proc.ExplicitParams[0].DataType;
         var LRightType := Proc.ExplicitParams[1].DataType;
-        LTargetType.OverloadBinarOperator(LOperatorDef.OpID, LLeftType, LRightType, TIDOperator(Proc));
+        Struct.OverloadBinarOperator(LOperatorDef.OpID, LLeftType, LRightType, TIDOperator(Proc));
       end;
     end;
   end;
@@ -9237,20 +9270,13 @@ begin
 
   LContext := TGenericInstantiateContext.Create({AParent} nil, AGenericProc);
   try
-    var AStrSufix := '';
-    var AArgsCount := Length(AGenericArgs);
     LContext.Args := LGArgs;
     LContext.Params := GDescriptor.GenericParams;
-    for var AIndex := 0 to AArgsCount - 1 do
-    begin
-      var AArgType := AGenericArgs[AIndex].AsType;
-      AStrSufix := AddStringSegment(AStrSufix, AArgType.Name, ', ');
-    end;
-    LContext.DstID.Name := AGenericProc.Name + '<' + AStrSufix + '>';
+    LContext.DstID.Name := AGenericProc.Name;
     LContext.DstID.TextPosition := Lexer_Position;
     try
       WriteLog('# INSTANTIATE PROC (%s: %d): %s', [Name, Lexer_Line, LContext.DstID.Name]);
-      Result := AGenericProc.InstantiateGeneric(AScope, {ADstStruct:} nil, LContext) as TIDProcedure;
+      Result := AGenericProc.InstantiateGeneric(AScope, AGenericProc.Struct, LContext) as TIDProcedure;
       {add new instance to the pool}
       GDescriptor.AddGenericInstance(Result, LGArgs);
     except
@@ -9265,32 +9291,36 @@ end;
 function TASTDelphiUnit.InstantiateGenericType(AScope: TScope; AGenericType: TIDType;
                                                const AGenericArgs: TIDTypeArray): TIDType;
 var
-  GDescriptor: IGenericDescriptor;
+  LGDescriptor: IGenericDescriptor;
   LContext: TGenericInstantiateContext;
+  LExistingInstance: TIDStructure;
 begin
-  GDescriptor := AGenericType.GenericDescriptor;
-
+  LExistingInstance := nil;
+  LGDescriptor := AGenericType.GenericDescriptor;
   {find in the pool first}
   var LDecl: TIDDeclaration;
-  if GDescriptor.TryGetInstance(AGenericArgs, {out} LDecl) then
+  if LGDescriptor.TryGetInstance(AGenericArgs, {out} LDecl) then
   begin
     Result := LDecl as TIDType;
-    Exit;
+
+    // the type found, but it's not complete, we need to re-instantiate
+    if (Result is TIDStructure) and not TIDStructure(Result).IsCompleted then
+    begin
+      TIDStructure(Result).ClearMembers;
+      LExistingInstance := TIDStructure(Result);
+    end else
+      Exit;
   end;
 
   LContext := TGenericInstantiateContext.Create({AParent} nil, AGenericType);
   try
-    var AStrSufix := '';
-    var AArgsCount := Length(AGenericArgs);
     LContext.Args := AGenericArgs;
-    LContext.Params := GDescriptor.GenericParams;
-    for var AIndex := 0 to AArgsCount - 1 do
-      AStrSufix := AddStringSegment(AStrSufix, AGenericArgs[AIndex].Name, ', ');
-    LContext.DstID.Name := AGenericType.Name + '<' + AStrSufix + '>';
+    LContext.Params := LGDescriptor.GenericParams;
+    LContext.DstID.Name := AGenericType.GenericName;
     LContext.DstID.TextPosition := Lexer_Position;
-
+    LContext.ExistingInstance := LExistingInstance;
     try
-      WriteLog('# INSTANTIATE TYPE (%s: %d): %s', [Name, Lexer_Line, LContext.DstID.Name]);
+      WriteLog('# INSTANTIATE TYPE (%s: %d): %s', [Name, Lexer_Line, AGenericType.DisplayName]);
       Result := AGenericType.InstantiateGeneric(AScope, {ADstStruct:} nil, LContext) as TIDType;
     except
       Error('Generic Instantiation Error: %s', [LContext.DstID.Name], LContext.DstID.TextPosition);
@@ -9322,7 +9352,7 @@ begin
   // check matching for the result (if exists)
   if Assigned(SrcResultType) and Assigned(DstResultType) then
   begin
-    if not SameTypes(SrcResultType.ActualDataType, DstResultType.ActualDataType) then
+    if not SameTypes(SrcResultType, DstResultType) then
       Exit(False);
   end else
   if Assigned(SrcResultType) or Assigned(DstResultType) then
@@ -9335,8 +9365,8 @@ begin
   if SParamsCount = DParamsCount then
   begin
     for var LIndex := 0 to SParamsCount - 1 do begin
-      SParamType := SrcParams[LIndex].DataType.ActualDataType;
-      DParamType := DstParams[LIndex].DataType.ActualDataType;
+      SParamType := SrcParams[LIndex].DataType;
+      DParamType := DstParams[LIndex].DataType;
       if not SameTypes(SParamType, DParamType) then
         Exit(False);
     end;
@@ -9703,23 +9733,14 @@ begin
     ERRORS.UNDECLARED_ID(ExprName, Lexer_PrevPosition);
   end;
 
-  if PMContext.CanInstantiate then
+  if not (LGenericDecl is TIDType) or not IsTheStructIsOwner(Scope, TIDType(LGenericDecl)) then
   begin
     if LGenericDecl is TIDType then
       Decl := InstantiateGenericType(Scope, LGenericDecl as TIDType, GetTypesArray(PMContext.GenericArgs))
     else
       Decl := InstantiateGenericProc(Scope, LGenericDecl as TIDProcedure, PMContext.GenericArgs);
-
-    PMContext.CanInstantiate := False;
-    //PMContext.GenericArgs := nil;
   end else
-  begin
-    // check if this type is not the current parsed type
-    if (LGenericDecl is TIDType) and not IsTheStructIsOwner(Scope, TIDType(LGenericDecl)) then
-      Decl := TIDGenericInstantiation.CreateInstantiation(Scope, TIDType(LGenericDecl), GetTypesArray(PMContext.GenericArgs))
-    else
-      Decl := LGenericDecl;
-  end;
+     Decl := LGenericDecl;
 end;
 
 function TASTDelphiUnit.ParseIdentifier(Scope, SearchScope: TScope;
@@ -9932,7 +9953,7 @@ begin
       if Result = token_openround then
          Result := ParseExplicitCast(Scope, EContext.SContext, Expression);
 
-      PMContext.DataType := Decl.DataType;
+      PMContext.DataType := TIDType(Decl);
     end;
   else
     ERRORS.FEATURE_NOT_SUPPORTED(Self);
@@ -9981,9 +10002,9 @@ function TASTDelphiUnit.ParseMember(Scope: TScope; var EContext: TEContext; cons
         continue;
       end;
 
-      if ATypeDecl is TIDAliasType then
+      if ATypeDecl.IsAlias then
       begin
-        ATypeDecl := TIDAliasType(ATypeDecl).LinkedType;
+        ATypeDecl := ATypeDecl.Original;
         continue;
       end;
 
@@ -10047,12 +10068,12 @@ begin
       Result := ParseBuiltinCall(Scope, Expr, EContext);
       Exit;
     end else
-    if (Expr.ItemType in [itVar, itConst]) and (Expr.ActualDataType is TIDProcType) then
+    if (Expr.ItemType in [itVar, itConst]) and (Expr.DataType is TIDProcType) then
     begin
       CallExpr := TIDCastedCallExpression.Create(Expr.Declaration, Expr.TextPosition);
       TIDCastedCallExpression(CallExpr).DataType := Expr.DataType;
     end else
-    if (Expr.ItemType = itProperty) and (Expr.ActualDataType is TIDProcType) then
+    if (Expr.ItemType = itProperty) and (Expr.DataType is TIDProcType) then
     begin
       CheckPropertyReadable(Expr);
       var LDecl := Expr.AsProperty.Getter;
@@ -10102,7 +10123,7 @@ begin
   {if there is "<" - read generic params}
   if Result = token_less then
   begin
-    GDescriptor := TGenericDescriptor.Create(Scope, nil);
+    GDescriptor := TGenericDescriptor.Create(Scope, {AGenericParams:} nil);
     Result := ParseGenericsHeader(GDescriptor.Scope, {out} GenericParams);
     GDescriptor.GenericParams := GenericParams;
   end;
@@ -10325,14 +10346,15 @@ begin
     Lexer_NextToken(Scope);
     Result := ParseConstExpression(Scope, Expr, ExprNested);
     CheckInterfaceType(Expr);
-    var Ancestor := Expr.AsType.ActualDataType;
-    if Ancestor = Decl then
+    var LAncestor := TIDInterface(Expr.AsType);
+    if LAncestor = Decl then
       AbortWork(sRecurciveTypeLinkIsNotAllowed, Expr.TextPosition);
+
     Lexer_MatchToken(Result, token_closeround);
-    Decl.AncestorDecl := Expr.AsType;
+    Decl.Ancestor := LAncestor;
     Result := Lexer_NextToken(Scope);
   end else
-    Decl.AncestorDecl := Sys._IInterface;
+    Decl.Ancestor := Sys._IInterface;
 
   // semicolon means this is forward declaration
   if Result = token_semicolon then
@@ -10422,7 +10444,7 @@ begin
         Result := ParseConstExpression(Scope, DefaultValue, ExprRValue);
       end else
       begin
-        var LActualDataType := DataType.ActualDataType as TIDStructure;
+        var LActualDataType := DataType as TIDStructure;
         Result := ParseVarRecordDefaultValue(Scope, LActualDataType, DefaultValue)
       end;
     end
@@ -10527,7 +10549,7 @@ begin
     Lexer_ReadCurrIdentifier(ID);
     Lexer_ReadToken(Scope, token_colon);
     Field := Struct.FindField(ID.Name);
-    LFieldDataType := Field.DataType.ActualDataType;
+    LFieldDataType := Field.DataType;
     if not Assigned(Field) then
       ERRORS.UNDECLARED_ID(ID);
 
@@ -10614,7 +10636,7 @@ begin
       Result := Lexer_NextToken(Scope);
 
     if Result = token_equal then
-      Result := ParseVarDefaultValue(Scope, DataType.ActualDataType, {out} DefaultValue);
+      Result := ParseVarDefaultValue(Scope, DataType, {out} DefaultValue);
 
     // deprecated & platform
     Result := CheckAndParseDeprecated(Scope, {ASemicolonRequired:} False);
@@ -11028,14 +11050,12 @@ var
   Matched: Boolean;
   ValueI64: Int64;
   ValueU64: UInt64;
-  DataType: TIDType;
 begin
   if Src.Declaration is TIDIntConstant then
   begin
-    DataType := DstDataType.ActualDataType;
     ValueI64 := TIDIntConstant(Src.Declaration).AsInt64;
     ValueU64 := TIDIntConstant(Src.Declaration).AsUInt64;
-    case DataType.DataTypeID of
+    case DstDataType.DataTypeID of
       dtInt8: Matched := (ValueI64 >= MinInt8) and (ValueI64 <= MaxInt8);
       dtInt16: Matched := (ValueI64 >= MinInt16) and (ValueI64 <= MaxInt16);
       dtInt32: Matched := (ValueI64 >= MinInt32) and (ValueI64 <= MaxInt32);
@@ -11200,11 +11220,11 @@ begin
   ERRORS.CLASS_OR_INTF_TYPE_REQUIRED(Expression.TextPosition);
 end;
 
-procedure TASTDelphiUnit.CheckClassOrClassOfOrIntfType(Expression: TIDExpression);
+procedure TASTDelphiUnit.CheckClassOrClassOfOrIntfType(ATypeExpression: TIDExpression);
 var
   Decl: TIDDeclaration;
 begin
-  Decl := Expression.Declaration;
+  Decl := ATypeExpression.Declaration;
   if (Decl.ItemType = itType) and
      (TIDType(Decl).IsClass or
       TIDType(Decl).IsInterface) then Exit;
@@ -11212,7 +11232,10 @@ begin
   if (Decl.ItemType = itVar) and
      (TIDVariable(Decl).DataTypeID = dtClassOf) then Exit;
 
-  ERRORS.CLASS_OR_INTF_TYPE_REQUIRED(Expression.TextPosition);
+  if Decl.ItemType = itType then
+    ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Self, ATypeExpression.TextPosition, TIDType(Decl))
+  else
+    ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Self, ATypeExpression)
 end;
 
 procedure TASTDelphiUnit.CheckClassOrIntfType(DataType: TIDType; const TextPosition: TTextPosition);
@@ -11300,7 +11323,7 @@ begin
     begin
       if ADecl is TIDVariable then
       begin
-        var LFieldType := TIDVariable(ADecl).DataType.ActualDataType;
+        var LFieldType := TIDVariable(ADecl).DataType;
         if (TIDVariable(ADecl).DataTypeID = dtRecord) and
            (not (StructCompleted in (LFieldType as TIDStructure).StructFlags)) then
           AbortWork(sRecurciveTypeLinkIsNotAllowed, ADecl.ID.TextPosition);
@@ -11346,7 +11369,7 @@ end;
 
 procedure TASTDelphiUnit.CheckVarParamConformity(Param: TIDVariable; Arg: TIDExpression);
 begin
-  if (Param.DataTypeID = dtOpenArray) and (Arg.ActualDataType is TIDArray) then
+  if (Param.DataTypeID = dtOpenArray) and (Arg.DataType is TIDArray) then
     Exit;
 
   if (Param.DataType <> Sys._UntypedReference) and
@@ -11392,13 +11415,13 @@ end;
 
 procedure TASTDelphiUnit.CheckArrayExpression(Expression: TIDExpression);
 begin
-  if not (Expression.ActualDataType is TIDArray) then
+  if not (Expression.DataType is TIDArray) then
     ERRORS.ARRAY_EXPRESSION_REQUIRED(Expression);
 end;
 
 procedure TASTDelphiUnit.CheckBooleanExpression(Expression: TIDExpression; AUseImplicitCast: Boolean);
 begin
-  if Expression.ActualDataType <> Sys._Boolean then
+  if Expression.DataType <> Sys._Boolean then
     if not AUseImplicitCast or (CheckImplicit(fUnitSContext, Expression, Sys._Boolean) = nil) then
     ERRORS.BOOLEAN_EXPRESSION_REQUIRED(Expression);
 end;
@@ -11463,6 +11486,10 @@ begin
   end;
   Result := nil;
 end;
+
+//[dcc32 Error] AST.Delphi.Parser.pas(11477): E2251 Ambiguous overloaded call to 'X'
+//  AST.Delphi.Parser.pas(11464): Related method: procedure X(Integer);
+//  AST.Delphi.Parser.pas(11469): Related method: procedure X(string);
 
 end.
 
