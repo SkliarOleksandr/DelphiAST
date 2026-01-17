@@ -3728,14 +3728,6 @@ begin
         Exit;
     end;
 
-//    var LSrcHelper := fCurrentHelpers.FindHelper(LSrcType);
-//    if Assigned(LSrcHelper) and LSrcHelper.HasImplicitOperators then
-//    begin
-//      Result := MatchImplicitOrNil(SContext, Source, LSrcHelper);
-//      if Result then
-//        Exit;
-//    end;
-
     if LSrcType = ADstType then
       Exit(Source);
 

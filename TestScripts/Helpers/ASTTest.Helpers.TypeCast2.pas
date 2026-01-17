@@ -9,12 +9,10 @@ type
 
   TCaption2 = type string;
 
-
   TMYObj = class
     FText: TCaption;
     property Text: TCaption read FText;
   end;
-
 
   TStrHelper = record helper for TCaption2
     function IsStr: Boolean;

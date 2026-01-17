@@ -1075,6 +1075,7 @@ type
     procedure CreateStandardOperators; override;
     function GetHelperScope: TScope;
     function MatchImplicitFrom(ASrc: TIDType): Boolean; override;
+    function MatchExplicitFrom(ASrc: TIDType): Boolean; override;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
     function SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType; override;
     function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
@@ -1085,6 +1086,7 @@ type
   public
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
+    function CreateNewType(AScope: TScope; const AID: TIdentifier): TIDType; override;
   end;
 
   {variant}
@@ -6687,6 +6689,12 @@ begin
   Result := FMembersScope;
 end;
 
+function TIDDynArray.MatchExplicitFrom(ASrc: TIDType): Boolean;
+begin
+  Result := (ASrc.DataTypeID = DataTypeID) and
+            (TIDDynArray(ASrc).ElementDataType = ElementDataType);
+end;
+
 function TIDDynArray.MatchImplicitFrom(ASrc: TIDType): Boolean;
 begin
   Result :=
@@ -8972,6 +8980,12 @@ end;
 constructor TIDString.CreateAsSystem(Scope: TScope; const Name: string);
 begin
   inherited CreateAsSystem(Scope, Name);
+end;
+
+function TIDString.CreateNewType(AScope: TScope; const AID: TIdentifier): TIDType;
+begin
+  Result := inherited;
+  Result.DataTypeID := DataTypeID;
 end;
 
 procedure TIDString.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);

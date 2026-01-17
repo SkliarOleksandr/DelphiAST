@@ -12,4 +12,11 @@ begin
   Result := '';
 end;
 
+procedure Mian;
+var
+  LStr: string;
+begin
+  LStr := GetMyStr; 
+end;
+
 end.
