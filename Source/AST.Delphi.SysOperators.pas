@@ -704,17 +704,18 @@ function TSysImplicitArrayToAny.Check(const SContext: TSContext; const Src, Dst:
 var
   SrcElType, DstElType: TIDType;
 begin
-  SrcElType := (Src as TIDArray).ElementDataType;
-  if Dst is TIDArray then
-  begin
-    DstElType := TIDArray(Dst).ElementDataType;
-    Result := ({(Dst.DataTypeID = dtOpenArray) and} SameTypes(SrcElType, DstElType)) or
-               (SrcElType.IsGeneric and DstElType.IsGeneric);
-  end else begin
-    Result :=
-      ((Dst = SYSUnit._PAnsiChar) and (SrcElType = SYSUnit._AnsiChar)) or
-      ((Dst = SYSUnit._PWideChar) and (SrcElType = SYSUnit._WideChar));
-  end;
+  Result := False;
+//  SrcElType := (Src as TIDArray).ElementDataType;
+//  if Dst is TIDArray then
+//  begin
+//    DstElType := TIDArray(Dst).ElementDataType;
+//    Result := ({(Dst.DataTypeID = dtOpenArray) and} SameTypes(SrcElType, DstElType)) or
+//               (SrcElType.IsGeneric and DstElType.IsGeneric);
+//  end else begin
+//    Result :=
+//      ((Dst = SYSUnit._PAnsiChar) and (SrcElType = SYSUnit._AnsiChar)) or
+//      ((Dst = SYSUnit._PWideChar) and (SrcElType = SYSUnit._WideChar));
+//  end;
 end;
 
 { TSysImplicitArrayFromAny }

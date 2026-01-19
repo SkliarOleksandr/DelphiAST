@@ -120,6 +120,7 @@ uses
   ASTTest.Procs.External1 in '..\TestScripts\Procedures\ASTTest.Procs.External1.pas',
   ASTTest.Procs.External2 in '..\TestScripts\Procedures\ASTTest.Procs.External2.pas',
   ASTTest.Procs.DiffSigns1 in '..\TestScripts\Procedures\ASTTest.Procs.DiffSigns1.pas',
+  ASTTest.Procs.VarOutParams1 in '..\TestScripts\Procedures\ASTTest.Procs.VarOutParams1.pas',
   ASTTest.Procs.Overloads.Generics1 in '..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.Generics1.pas',
   ASTTest.Procs.Overloads.Generics2 in '..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.Generics2.pas',
   ASTTest.Procs.Overloads.ImplicitCall1 in '..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.ImplicitCall1.pas',
@@ -130,6 +131,7 @@ uses
   ASTTest.Procs.OverloadAndOverride1 in '..\TestScripts\Procedures\Overloads\ASTTest.Procs.OverloadAndOverride1.pas',
   ASTTest.Procs.OverloadAndOverride2 in '..\TestScripts\Procedures\Overloads\ASTTest.Procs.OverloadAndOverride2.pas',
   ASTTest.Procs.Overloads.RawByteString1 in '..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.RawByteString1.pas',
+  ASTTest.Procs.Overloads.Generics3 in '..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.Generics3.pas',
   ASTTest.Props.ArrayProp1 in '..\TestScripts\Properties\ASTTest.Props.ArrayProp1.pas',
   ASTTest.Props.ArrayPropOverload1 in '..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload1.pas',
   ASTTest.Props.ArrayPropOverload2 in '..\TestScripts\Properties\ASTTest.Props.ArrayPropOverload2.pas',
@@ -194,6 +196,7 @@ uses
   ASTTest.Sets.ForInSet2 in '..\TestScripts\Sets\ASTTest.Sets.ForInSet2.pas',
   ASTTest.Sets.ExplicitCast1 in '..\TestScripts\Sets\ASTTest.Sets.ExplicitCast1.pas',
   ASTTest.Sets.ExplicitCast2 in '..\TestScripts\Sets\ASTTest.Sets.ExplicitCast2.pas',
+  ASTTest.Sets.SetOfChar1 in '..\TestScripts\Sets\ASTTest.Sets.SetOfChar1.pas',
   ASTTest.Intf.MethodRedeclaration in '..\TestScripts\Interfaces\ASTTest.Intf.MethodRedeclaration.pas',
   ASTTest.Intf.RefToProcAsInterface1 in '..\TestScripts\Interfaces\ASTTest.Intf.RefToProcAsInterface1.pas',
   ASTTest.Intf.MethodDelegation1 in '..\TestScripts\Interfaces\ASTTest.Intf.MethodDelegation1.pas',
@@ -219,7 +222,10 @@ uses
   ASTTest.Consts.DateTime1 in '..\TestScripts\Consts\ASTTest.Consts.DateTime1.pas',
   ASTTest.RTL.FileTypes1 in '..\TestScripts\RTL\ASTTest.RTL.FileTypes1.pas',
   ASTTest.RTL.StrHelper1 in '..\TestScripts\RTL\ASTTest.RTL.StrHelper1.pas',
-  ASTTest.Ranges.EnumRange1 in '..\TestScripts\Ranges\ASTTest.Ranges.EnumRange1.pas';
+  ASTTest.Ranges.EnumRange1 in '..\TestScripts\Ranges\ASTTest.Ranges.EnumRange1.pas',
+  ASTTest.Arrays.Implicit1 in '..\TestScripts\Arrays\ASTTest.Arrays.Implicit1.pas',
+  ASTTest.Arrays.OpenArrayImplicits1 in '..\TestScripts\Arrays\ASTTest.Arrays.OpenArrayImplicits1.pas',
+  ASTTest.Strings.ArrayOfChar1 in '..\TestScripts\Strings\ASTTest.Strings.ArrayOfChar1.pas';
 
 {$R *.res}
 

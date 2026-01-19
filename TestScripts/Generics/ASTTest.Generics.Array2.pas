@@ -9,7 +9,7 @@ type
   TArrayHelper = class
   public
     class function Concat<K>(const Arrays: array of TArray<K>): TArray<K>;
-    class function Count<T>(const Arrays: array of T): Integer;          
+    class function Count<T>(const Arrays: array of T): Integer;
   end;
  
 implementation
@@ -19,7 +19,7 @@ var
   Arr: TArray<TArray<string>>;
   Res: TArray<string>; 
 begin
-  Res := TArrayHelper.Concat<string>(Arr);   
+  Res := TArrayHelper.Concat<string>(Arr);
   
   // todo: fix assert
   // if TArrayHelper.Count(Res) > 0 then;

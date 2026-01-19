@@ -414,6 +414,7 @@ type
     function GetIsInteger: Boolean; virtual;
     function GetIsFloat: Boolean; virtual;
     function GetIsPointer: Boolean; virtual;
+    function GetIsUntypedReference: Boolean; virtual;
     function GetDisplayName: string; overload; override;
     function GetIsManaged: Boolean; virtual;
     function GetParent: TIDType;
@@ -438,6 +439,7 @@ type
     property IsChar: Boolean read GetIsChar;
     property IsPointer: Boolean read GetIsPointer;
     property IsUntypedPointer: Boolean read GetIsUntypedPointer;
+    property IsUntypedReference: Boolean read GetIsUntypedReference;
     property IsPacked: Boolean read FPacked write FPacked;
     property IsReferenced: Boolean read GetIsReferenced;
     property IsGeneric: Boolean read GetIsGeneric;
@@ -640,11 +642,14 @@ type
     function DoesGenericUseParams(const AParams: TIDTypeArray): Boolean; override;
   end;
 
-  {untyped referenced type}
+  {untyped referenced type (parameter's type only)}
   TIDUntypedRef = class(TIDRefType)
+  protected
+    function GetIsUntypedReference: Boolean; override;
   public
     constructor CreateAsSystem(Scope: TScope; const Name: string); override;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
+    function MatchImplicitFrom(ASrc: TIDType): Boolean; override;
   end;
 
   {class of type}
@@ -3180,10 +3185,11 @@ begin
   Result := '';
   for var LParam in ExplicitParams do
   begin
+    var LDataTypeName := LParam.DataType.DisplayName;
     if AIncludeParamNames then
-      Result := AddStringSegment(Result, LParam.Name + ':' + LParam.DataType.Name, ', ')
+      Result := AddStringSegment(Result, LParam.Name + ':' + LDataTypeName, ', ')
     else
-      Result := AddStringSegment(Result, LParam.DataType.Name, ', ');
+      Result := AddStringSegment(Result, LDataTypeName, ', ');
   end;
   Result := '(' + Result + ')';
 
@@ -3223,12 +3229,12 @@ function TIDProcedure.GetAllOverloadSignatures(const LineSeparator: string): str
 var
   Decl: TIDProcedure;
 begin
-  Result := DisplayName;
-  Decl := PrevOverload;
-  while Assigned(Decl) do begin
-    Result := Result + LineSeparator + Decl.DisplayName;
+  Result := '';
+  Decl := Self;
+  repeat
+    Result := Decl.DisplayName + Decl.Signature2Str + LineSeparator + Result;
     Decl := Decl.PrevOverload;
-  end;
+  until not Assigned(Decl);
 end;
 
 function TIDProcedure.GetASTKind: string;
@@ -3455,10 +3461,7 @@ begin
   ABuilder.Append(' ', ANestedLevel*2);
   ABuilder.Append(ProcKindName);
   ABuilder.Append(' ');
-  ABuilder.Append(GetDisplayName);
-
-  if Assigned(GenericDescriptor) then
-    GenericDescriptor.Decl2Str(ABuilder);
+  ABuilder.Append(DisplayName);
 
   Params2Str(ABuilder, ExplicitParams);
 
@@ -3989,6 +3992,11 @@ end;
 function TIDType.GetIsUntypedPointer: Boolean;
 begin
   Result := IsPointer and (TIDPointer(Self).ReferenceType = nil);
+end;
+
+function TIDType.GetIsUntypedReference: Boolean;
+begin
+  Result := False;
 end;
 
 function TIDType.GetIsGeneric: Boolean;
@@ -5939,6 +5947,7 @@ procedure TIDArray.CreateStandardOperators;
 begin
   inherited;
   OverloadImplicitTo(Self);
+  // todo: remove
   OverloadImplicitToAny(SYSUnit.Operators.ImplicitArrayToAny);
   OverloadImplicitFromAny(SYSUnit.Operators.ImplicitArrayFromAny);
   AddBinarySysOperator(opIn, SYSUnit.Operators.Ordinal_In_Set);
@@ -6065,12 +6074,13 @@ begin
       LNewArray.FGenericArgs := AContext.Args;
       LNewArray.GenericOrigin := Self;
 
-      AContext.DstDecl := LNewArray;
+      // todo: rework AContext.DstDecl := LNewArray;
       // add this instance to the its pool
       GenericDescriptor.AddGenericInstance(LNewArray, AContext.Args);
     end;
     // instantiate array element type
-    LNewArray.ElementDataType := ElementDataType.InstantiateGeneric(ADstScope, ADstStruct, AContext) as TIDType;
+    if ElementDataType.DoesGenericUseParams(AContext.Params) then
+      LNewArray.ElementDataType := InternalInstantiateGenericType(ADstScope, ElementDataType, AContext);
 
     Result := LNewArray;
 
@@ -7373,9 +7383,8 @@ end;
 
 function TIDOpenArray.MatchImplicitFrom(ASrc: TIDType): Boolean;
 begin
-  Result :=
-    (ASrc.DataTypeID = dtSet) and ASrc.IsAnonymous and
-    ((ASrc as TIDSet).BaseType = ElementDataType);
+  Result := inherited or
+    ((ASrc is TIDArray) and SameTypes(TIDArray(ASrc).ElementDataType, ElementDataType))
 end;
 
 { TIDRangeType }
@@ -9318,6 +9327,16 @@ begin
   ABuilder.Append('<');
   ABuilder.Append(DisplayName);
   ABuilder.Append('>');
+end;
+
+function TIDUntypedRef.GetIsUntypedReference: Boolean;
+begin
+  Result := True;
+end;
+
+function TIDUntypedRef.MatchImplicitFrom(ASrc: TIDType): Boolean;
+begin
+  Result := True; // any type is acceptable
 end;
 
 { TIDSysVariativeType }

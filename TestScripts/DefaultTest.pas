@@ -3,7 +3,8 @@ unit DefaultTest;
 interface
 
 //uses System.Types;
-uses System.Generics.Defaults;
+//uses System.Generics.Defaults;
+  uses System.SyncObjs;
 //uses System.Generics.Collections;
 //uses System.JSON;
 //uses System.JSON.Converters;

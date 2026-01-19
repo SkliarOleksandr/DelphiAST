@@ -3841,31 +3841,22 @@ begin
       Inc(ArgIdx);
       if Assigned(Arg) then
       begin
-        if (Arg.ItemType = itVar) and (Arg.DataType = Sys._Void) then
+        if Param.VarReference then
         begin
-          if VarOut in Param.Flags then
-            Arg.AsVariable.DataType := Param.DataType
-          else
-            ERRORS.INPLACEVAR_ALLOWED_ONLY_FOR_OUT_PARAMS(Arg.AsVariable);
+          CheckVarExpression(Arg, vmpPassArgument);
+          {strict type checking}
+          if Param.DataType <> Arg.DataType then
+            CheckVarParamConformity(Param, Arg);
         end;
 
         Implicit := CheckImplicit(SContext, Arg, Param.DataType, {AResolveCalls:} True);
-        if Assigned(Implicit) then
+        if not Assigned(Implicit) then
         begin
-          if Param.VarReference then
-          begin
-            CheckVarExpression(Arg, vmpPassArgument);
-            {проверка на строгость соответствия типов}
-            if Param.DataType <> Arg.DataType then
-              CheckVarParamConformity(Param, Arg);
-          end;
-          continue;
+          // for debug
+          Implicit := CheckImplicit(SContext, Arg, Param.DataType, {AResolveCalls:} True);
+
+          ERRORS.E2010_INCOMPATIBLE_TYPES(Self, Param.DataType, Arg.DataType, Arg.TextPosition);
         end;
-
-        // for debug
-        Implicit := CheckImplicit(SContext, Arg, Param.DataType, {AResolveCalls:} True);
-
-        ERRORS.E2008_INCOMPATIBLE_TYPES(Self, Arg.TextPosition);
       end else
       if not Assigned(Param.DefaultValue) then
         ERRORS.E2035_NOT_ENOUGH_ACTUAL_PARAMETERS(Self, CallExpr.TextPosition);
@@ -4058,11 +4049,18 @@ begin
         // if cur arg presents
         if (i < CallArgsCount) and Assigned(CallArgs[i]) then
         begin
+          var LArg := CallArgs[i];
+          ArgDataType := LArg.DataType;
           ParamDataType := Param.DataType;
-          ArgDataType := CallArgs[i].DataType;
 
           curRate := 0;
           curLevel := MatchNone;
+
+          // check "VAR" & "OUT" params
+          if Param.VarReference then
+            if (LArg.ItemType <> itVar) or ((ArgDataType <> ParamDataType) and not ParamDataType.IsUntypedReference) then
+              Break;
+
           // сравнение типов формального параметра и аргумента (пока не учитываются модификаторы const, var... etc)
           if ParamDataType.DataTypeID = dtGeneric then
             curLevel := TASTArgMatchLevel.MatchGeneric
@@ -4071,7 +4069,7 @@ begin
             curLevel := TASTArgMatchLevel.MatchStrict
           else begin
             // find implicit type cast
-            ImplicitCast := CheckImplicit(SContext, CallArgs[i], ParamDataType, {AResolveCalls:} True);
+            ImplicitCast := CheckImplicit(SContext, LArg, ParamDataType, {AResolveCalls:} True);
             if Assigned(ImplicitCast) then
             begin
               SrcDataTypeID := ArgDataType.DataTypeID;
@@ -4155,6 +4153,8 @@ begin
       curProcMatchItem := Addr(fProcMatches[i]);
       for var j := 0 to CallArgsCount - 1  do
       begin
+        if CallArgsCount > Length(curProcMatchItem.ArgsInfo) then
+          sleep(1);
         cutArgMatchItem := Addr(curProcMatchItem.ArgsInfo[j]);
         TotalRate := TotalRate + Ord(cutArgMatchItem.Level)*cRateFactor + cutArgMatchItem.Rate * 100000;
       end;

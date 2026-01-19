@@ -1260,19 +1260,19 @@ begin
   CompileSource(IntfScope, 'procedure VarArrayRedim(var V: Variant; HighBound: Integer);');
 
   // initial stuff for File/Text file functionality
-  CompileSource(IntfScope, 'type File = pointer;');
-  CompileSource(IntfScope, 'type TextFile = pointer;');
+  CompileSource(IntfScope, 'type File = type pointer;');
+  CompileSource(IntfScope, 'type TextFile = File;');
 
-  CompileSource(IntfScope, 'procedure AssignFile(var F; const FileName: string);');
-  CompileSource(IntfScope, 'procedure Reset(var F; RecordSize: Word = 0);');
-  CompileSource(IntfScope, 'procedure Rewrite(var F; RecordSize: Word = 0);');
+  CompileSource(IntfScope, 'procedure AssignFile(var F: File; const FileName: string);');
+  CompileSource(IntfScope, 'procedure Reset(var F: File; RecordSize: Word = 0);');
+  CompileSource(IntfScope, 'procedure Rewrite(var F: File; RecordSize: Word = 0);');
   CompileSource(IntfScope, 'procedure Append(var F: Text);');
-  CompileSource(IntfScope, 'procedure CloseFile(var F);');
+  CompileSource(IntfScope, 'procedure CloseFile(var F: File);');
 
-  CompileSource(IntfScope, 'procedure BlockRead(var F; var Buf; Count: Integer; var Result: Integer); overload;');
-  CompileSource(IntfScope, 'procedure BlockRead(var F; var Buf; Count: Integer); overload;');
-  CompileSource(IntfScope, 'procedure BlockWrite(var F; const Buf; Count: Integer; var Result: Integer); overload;');
-  CompileSource(IntfScope, 'procedure BlockWrite(var F; const Buf; Count: Integer); overload;');
+  CompileSource(IntfScope, 'procedure BlockRead(var F: File; var Buf; Count: Integer; var Result: Integer); overload;');
+  CompileSource(IntfScope, 'procedure BlockRead(var F: File; var Buf; Count: Integer); overload;');
+  CompileSource(IntfScope, 'procedure BlockWrite(var F: File; const Buf; Count: Integer; var Result: Integer); overload;');
+  CompileSource(IntfScope, 'procedure BlockWrite(var F: File; const Buf; Count: Integer); overload;');
 
   CompileSource(IntfScope, 'procedure Read(var F: Text; var V1); cdecl; varargs;');
   CompileSource(IntfScope, 'procedure ReadLn(var F: Text; var V1); cdecl; varargs;');
