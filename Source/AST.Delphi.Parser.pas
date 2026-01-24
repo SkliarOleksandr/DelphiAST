@@ -1873,22 +1873,11 @@ end;
 
 procedure TASTDelphiUnit.CheckAndInstantiateProc(var AProc: TIDProcedure; ACallExpr: TIDCallExpression; SContext: PSContext);
 begin
-  if Assigned(AProc.GenericDescriptor) then
+  // instantiate procedure with it's own generic params only, ignore recursive calls
+  if Assigned(AProc.GenericDescriptor) and (AProc <> SContext.Proc) then
   begin
-    var LIsStructMethod := IsStructsMethod(SContext.Proc.Struct, AProc);
-    var LCurrentProcIsGeneric := Assigned(SContext.Proc.GenericDescriptor);
-    var LIsGenericTypeStructMethod := IsGenericTypeThisStruct(SContext.Scope, AProc.Struct);
-    var LNeedsToInstantiate := GenericNeedsInstantiate(ACallExpr.GenericArgs);
-
-    // instantiate "external" or "independent" generic methods
-    if LNeedsToInstantiate and
-       (not LIsStructMethod and
-        not LCurrentProcIsGeneric and
-        not LIsGenericTypeStructMethod) or ACallExpr.CanInstantiate then
-    begin
-      if Assigned(ACallExpr.GenericArgs) or InferImplicitGenericArgs(ACallExpr) then
-        AProc := InstantiateGenericProc(AProc.Scope, AProc, ACallExpr.GenericArgs);
-    end;
+    if Assigned(ACallExpr.GenericArgs) or InferImplicitGenericArgs(ACallExpr) then
+      AProc := InstantiateGenericProc(AProc.Scope, AProc, ACallExpr.GenericArgs);
   end;
 end;
 
@@ -3834,7 +3823,7 @@ begin
   for LParamIndex := 0 to pc - 1 do begin
     Param := ProcParams[LParamIndex];
     if VarHiddenParam in Param.Flags then
-      Continue; // пропускаем скрытые параметры
+      Continue; // skip hidden parameters
 
     if (ArgIdx < CallArgsCount) then
     begin
@@ -9541,6 +9530,7 @@ begin
   if pfDynamic in Flags then
     ERRORS.DUPLICATE_SPECIFICATION(pfDynamic);
   Include(Flags, pfDynamic);
+  Include(Flags, pfVirtual);
 
   if not Assigned(Struct) then
     ERRORS.VIRTUAL_ALLOWED_ONLY_IN_CLASSES;
@@ -11480,10 +11470,6 @@ begin
   end;
   Result := nil;
 end;
-
-//[dcc32 Error] AST.Delphi.Parser.pas(11477): E2251 Ambiguous overloaded call to 'X'
-//  AST.Delphi.Parser.pas(11464): Related method: procedure X(Integer);
-//  AST.Delphi.Parser.pas(11469): Related method: procedure X(string);
 
 end.
 

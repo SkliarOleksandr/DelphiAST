@@ -248,6 +248,9 @@
         <DCCReference Include="..\TestScripts\Generics\Methods\ASTTest.Generics.OverloadProc1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\Methods\ASTTest.Generics.OverloadProc2.pas"/>
         <DCCReference Include="..\TestScripts\Generics\Methods\ASTTest.Generics.OverloadProc3.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\Methods\ASTTest.Generics.GenericMethod1.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\Methods\ASTTest.Generics.GenericMethod2.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\Methods\ASTTest.Generics.GenericMethod3.pas"/>
         <DCCReference Include="..\TestScripts\Generics\Interfaces\ASTTest.Generics.IntfImpl1.pas"/>
         <DCCReference Include="..\TestScripts\Ordinals\ASTTest.Ordian.Enums.Init.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.External1.pas"/>
@@ -356,9 +359,9 @@
         <DCCReference Include="..\TestScripts\RTL\ASTTest.RTL.FileTypes1.pas"/>
         <DCCReference Include="..\TestScripts\RTL\ASTTest.RTL.StrHelper1.pas"/>
         <DCCReference Include="..\TestScripts\Ranges\ASTTest.Ranges.EnumRange1.pas"/>
-        <DCCReference Include="..\TestScripts\Strings\ASTTest.Strings.ArrayOfChar1.pas"/>
         <DCCReference Include="..\TestScripts\Arrays\ASTTest.Arrays.Implicit1.pas"/>
         <DCCReference Include="..\TestScripts\Arrays\ASTTest.Arrays.OpenArrayImplicits1.pas"/>
+        <DCCReference Include="..\TestScripts\Strings\ASTTest.Strings.ArrayOfChar1.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

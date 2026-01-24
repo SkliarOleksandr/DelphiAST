@@ -2210,8 +2210,6 @@ type
   function SameProceduralTypes(ALeftType, ARightType: TIDType): Boolean;
   function SameProcSignTypes(ASrcType, ADstType: TIDType): Boolean;
   function SameParams(const AParams1, AParams2: TIDParamArray): Boolean;
-  function IsGenericTypeThisStruct(Scope: TScope; Struct: TIDType): Boolean;
-  function GenericNeedsInstantiate(AGenericArgs: TIDExpressions): Boolean;
 
 const
   CIsClassProc: array [TProcType] of Boolean =
@@ -9451,29 +9449,6 @@ begin
     for var LIndex := 0 to Length(AParams1) - 1 do
       if not SameProcSignTypes(AParams1[LIndex].DataType, AParams2[LIndex].DataType) then
         Exit(False);
-end;
-
-function IsGenericTypeThisStruct(Scope: TScope; Struct: TIDType): Boolean;
-begin
-  while Assigned(Scope) do
-  begin
-    if (Scope.ScopeType = stStruct) and
-       (TStructScope(Scope).Struct = Struct) then
-      Exit(True);
-    Scope := Scope.Parent;
-  end;
-  Result := False;
-end;
-
-function GenericNeedsInstantiate(AGenericArgs: TIDExpressions): Boolean;
-begin
-  for var LArgIndex := 0 to High(AGenericArgs) do
-  begin
-    var LArgType := AGenericArgs[LArgIndex].AsType;
-    if (LArgType is TIDGenericParam) or LArgType.IsGeneric then
-     Exit(False);
-  end;
-  Result := True;
 end;
 
 { TParamsScope }
