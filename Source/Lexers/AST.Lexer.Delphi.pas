@@ -71,7 +71,7 @@ type
 
     tokenD_export,                  // directive: export
     tokenD_exports,                 // directive: exports
-    tokenD_external,                // directive: extern
+    tokenD_external,                // directive: external
     tokenD_name  {=50},             // directive: name
     token_interface,                // keyword: interface
     token_dispinterface,            // keyword: dispinterface
@@ -161,6 +161,7 @@ type
     token_destructor,               // keyword: destructor
     tokenD_default,                 // directive: default
     tokenD_nodefault,               // directive: nodefault
+    tokenD_noreturn,                // directive: noreturn
     tokenD_varargs,                 // directive: varargs
     token_threadvar,                // keyword: threadvar
     token_label,                    // keyword: label
@@ -471,6 +472,7 @@ begin
   RegisterToken('deprecated', tokenD_deprecated, tcWeakKeyword);
   RegisterToken('default', tokenD_default, tcWeakKeyword);
   RegisterToken('nodefault', tokenD_nodefault, tcWeakKeyword);
+  RegisterToken('noreturn', tokenD_noreturn, tcWeakKeyword);
   RegisterToken('dynamic', tokenD_dynamic, tcWeakKeyword);
   RegisterToken('delayed', tokenD_delayed, tcWeakKeyword);
   RegisterToken('end', token_end);

@@ -167,6 +167,7 @@ type
     function ProcSpec_DispId(AScope: TScope; AStruct: TIDStructure; const AMethodID: TIdentifier): TTokenID;
     function ProcSpec_CDecl(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
     function ProcSpec_Message(Scope: TScope; var Flags: TProcFlags): TTokenID;
+    function ProcSpec_Noreturn(Scope: TScope; var Flags: TProcFlags): TTokenID;
 
     function InstantiateGenericType(AScope: TScope; AGenericType: TIDType;
                                     const AGenericArgs: TIDTypeArray): TIDType;
@@ -7938,6 +7939,7 @@ begin
       tokenD_register: Result := ProcSpec_Register(Scope, CallConv);
       tokenD_dispid: Result := ProcSpec_DispId(Scope, Struct, ID);
       tokenD_deprecated, tokenD_platform: Result := CheckAndParseDeprecated(Scope);
+      tokenD_noreturn: Result := ProcSpec_Noreturn(Scope, ProcFlags);
     else
       break;
     end;
@@ -8112,6 +8114,7 @@ begin
       tokenD_dispid: Result := ProcSpec_DispId(Scope, Struct, ID);
       tokenD_message: Result := ProcSpec_Message(Scope, ProcFlags);
       tokenD_deprecated, tokenD_platform: Result := CheckAndParseDeprecated(Scope);
+      tokenD_noreturn: Result := ProcSpec_Noreturn(Scope, ProcFlags);
     else
       break;
     end;
@@ -8382,6 +8385,7 @@ begin
         Result := Lexer_NextToken(Scope);
       end;
       tokenD_deprecated, tokenD_platform: Result := CheckAndParseDeprecated(Scope, {ASemicolonRequired:} False);
+      tokenD_noreturn: Result := ProcSpec_Noreturn(Scope, ProcFlags);
     else
       break;
     end;
@@ -8425,8 +8429,8 @@ begin
   begin
     if (Scope.ScopeClass = scInterface) and
        (ForwardDecl.Scope.DeclUnit = Self) and
-       // NOTE: external (pfImport) declaration means implementation
-       not (pfImport in ProcFlags) then
+       // NOTE: external (pfExternal) declaration means implementation
+       not (pfExternal in ProcFlags) then
     begin
       if not (pfOveload in ForwardDecl.Flags)  then
         ERRORS.OVERLOADED_MUST_BE_MARKED(ForwardDecl.ID)
@@ -8512,7 +8516,7 @@ begin
   Proc.Flags := Proc.Flags + ProcFlags;
   Proc.CallConvention := CallConv;
 
-  if (Scope.ScopeClass <> scInterface) and not (pfImport in ProcFlags)
+  if (Scope.ScopeClass <> scInterface) and not (pfExternal in ProcFlags)
                                        and not (pfForward in ProcFlags) then
   begin
     Proc.EntryScope := ProcScope;
@@ -8598,6 +8602,7 @@ begin
         Result := Lexer_NextToken(Scope);
       end;
       tokenD_deprecated, tokenD_platform: Result := CheckAndParseDeprecated(Scope, {ASemicolonRequired:} False);
+      tokenD_noreturn: Result := ProcSpec_Noreturn(Scope, ProcFlags);
     else
       break;
     end;
@@ -8718,7 +8723,7 @@ begin
   Proc.Flags := Proc.Flags + ProcFlags;
   Proc.CallConvention := CallConv;
 
-  if (Scope.ScopeClass <> scInterface) and not (pfImport in ProcFlags)
+  if (Scope.ScopeClass <> scInterface) and not (pfExternal in ProcFlags)
                                        and not (pfForward in ProcFlags) then
   begin
     Proc.EntryScope := ProcScope;
@@ -9077,7 +9082,7 @@ begin
       end;
       tokenD_deprecated, tokenD_platform: Result := CheckAndParseDeprecated(Scope);
     else
-      if (Scope.ScopeClass = scInterface) or (pfImport in ProcFlags) then
+      if (Scope.ScopeClass = scInterface) or (pfExternal in ProcFlags) then
       begin
         Proc.Flags := ProcFlags;
         Break;
@@ -9409,10 +9414,10 @@ end;
 
 function TASTDelphiUnit.ProcSpec_Inline(Scope: TScope; var Flags: TProcFlags): TTokenID;
 begin
-  if pfImport in Flags then
+  if pfExternal in Flags then
     ERRORS.IMPORT_FUNCTION_CANNOT_BE_INLINE;
   if pfInline in Flags then
-    ERRORS.DUPLICATE_SPECIFICATION(PS_INLINE);
+    ERRORS.DUPLICATE_SPECIFICATION(pfExternal);
   Include(Flags, pfInline);
 
   {semicolin can be oprional}
@@ -9432,12 +9437,25 @@ begin
   Result := Lexer_NextToken(Scope);
 end;
 
+function TASTDelphiUnit.ProcSpec_Noreturn(Scope: TScope; var Flags: TProcFlags): TTokenID;
+begin
+  if pfNoreturn in Flags then
+    ERRORS.DUPLICATE_SPECIFICATION(pfNoreturn);
+
+  Include(Flags, pfNoreturn);
+
+  {semicolin can be oprional}
+  Result := Lexer_NextToken(Scope);
+  if Result = token_semicolon then
+    Result := Lexer_NextToken(Scope);
+end;
+
 function TASTDelphiUnit.ProcSpec_Export(Scope: TScope; var Flags: TProcFlags): TTokenID;
 var
   ExportID: TIdentifier;
 begin
   if pfExport in Flags then
-    ERRORS.DUPLICATE_SPECIFICATION(PS_EXPORT);
+    ERRORS.DUPLICATE_SPECIFICATION(pfExport);
   Include(Flags, pfExport);
   {if Scope.ScopeClass <> scInterface then
     ERRORS.EXPORT_ALLOWS_ONLY_IN_INTF_SECTION;}
@@ -9455,8 +9473,8 @@ end;
 
 function TASTDelphiUnit.ProcSpec_Forward(Scope: TScope; var Flags: TProcFlags): TTokenID;
 begin
-  if (pfForward in Flags) or (pfImport in Flags) then
-    ERRORS.DUPLICATE_SPECIFICATION(PS_FORWARD);
+  if (pfForward in Flags) or (pfExternal in Flags) then
+    ERRORS.DUPLICATE_SPECIFICATION(pfForward);
   Include(Flags, pfForward);
   Lexer_ReadSemicolon(Scope);
   Result := Lexer_NextToken(Scope);
@@ -9464,9 +9482,9 @@ end;
 
 function TASTDelphiUnit.ProcSpec_External(Scope: TScope; out ImportLib, ImportName: TIDDeclaration; var Flags: TProcFlags): TTokenID;
 begin
-  if pfImport in Flags then
-    ERRORS.DUPLICATE_SPECIFICATION(PS_IMPORT);
-  Include(Flags, pfImport);
+  if pfExternal in Flags then
+    ERRORS.DUPLICATE_SPECIFICATION(pfExternal);
+  Include(Flags, pfExternal);
 
   Result := ParseImportStatement(Scope, ImportLib, ImportName);
 end;
@@ -9474,7 +9492,7 @@ end;
 function TASTDelphiUnit.ProcSpec_Overload(Scope: TScope; var Flags: TProcFlags): TTokenID;
 begin
   if pfOveload in Flags then
-    ERRORS.DUPLICATE_SPECIFICATION(PS_OVELOAD);
+    ERRORS.DUPLICATE_SPECIFICATION(pfOveload);
   Include(Flags, pfOveload);
   Result := Lexer_ReadSemicolonAndToken(Scope);
 end;
@@ -9482,7 +9500,7 @@ end;
 function TASTDelphiUnit.ProcSpec_Reintroduce(Scope: TScope; var Flags: TProcFlags): TTokenID;
 begin
   if pfReintroduce in Flags then
-    ERRORS.DUPLICATE_SPECIFICATION(PS_REINTRODUCE);
+    ERRORS.DUPLICATE_SPECIFICATION(pfReintroduce);
   Include(Flags, pfReintroduce);
   Lexer_ReadSemicolon(Scope);
   Result := Lexer_NextToken(Scope);
@@ -9491,13 +9509,11 @@ end;
 function TASTDelphiUnit.ProcSpec_Virtual(Scope: TScope; Struct: TIDStructure; var Flags: TProcFlags): TTokenID;
 begin
   if pfVirtual in Flags then
-    ERRORS.DUPLICATE_SPECIFICATION(PS_VIRTUAL);
+    ERRORS.DUPLICATE_SPECIFICATION(pfVirtual);
   Include(Flags, pfVirtual);
 
   if not Assigned(Struct) then
     ERRORS.VIRTUAL_ALLOWED_ONLY_IN_CLASSES;
-
-  //Proc.VirtualIndex := Proc.Struct.GetLastVirtualIndex + 1;
 
   Lexer_ReadSemicolon(Scope);
   Result := Lexer_NextToken(Scope);
@@ -9522,14 +9538,12 @@ end;
 
 function TASTDelphiUnit.ProcSpec_Dynamic(Scope: TScope; Struct: TIDStructure; var Flags: TProcFlags): TTokenID;
 begin
-  if pfVirtual in Flags then
-    ERRORS.DUPLICATE_SPECIFICATION(PS_VIRTUAL);
-  Include(Flags, pfVirtual);
+  if pfDynamic in Flags then
+    ERRORS.DUPLICATE_SPECIFICATION(pfDynamic);
+  Include(Flags, pfDynamic);
 
   if not Assigned(Struct) then
     ERRORS.VIRTUAL_ALLOWED_ONLY_IN_CLASSES;
-
-  //Proc.VirtualIndex := Proc.Struct.GetLastVirtualIndex + 1;
 
   Lexer_ReadSemicolon(Scope);
   Result := Lexer_NextToken(Scope);
@@ -9544,7 +9558,7 @@ end;
 function TASTDelphiUnit.ProcSpec_Abstract(Scope: TScope; Struct: TIDStructure; var Flags: TProcFlags): TTokenID;
 begin
   if pfAbstract in Flags then
-    ERRORS.DUPLICATE_SPECIFICATION(PS_ABSTRACT);
+    ERRORS.DUPLICATE_SPECIFICATION(pfAbstract);
   Include(Flags, pfAbstract);
 
   if not Assigned(Struct) then
@@ -9557,13 +9571,13 @@ end;
 function TASTDelphiUnit.ProcSpec_Override(Scope: TScope; Struct: TIDStructure; var Flags: TProcFlags): TTokenID;
 begin
   if pfOverride in Flags then
-    ERRORS.DUPLICATE_SPECIFICATION(PS_OVERRIDE);
+    ERRORS.DUPLICATE_SPECIFICATION(pfOverride);
 
   if not Assigned(Struct) then
     ERRORS.STRUCT_TYPE_REQUIRED(Lexer_Position);
 
   Include(Flags, pfOverride);
-  Include(Flags, pfVirtual);
+  Include(Flags, pfVirtual); // todo: remove?
   Lexer_ReadSemicolon(Scope);
   Result := Lexer_NextToken(Scope);
 end;
@@ -9571,7 +9585,7 @@ end;
 function TASTDelphiUnit.ProcSpec_Final(Scope: TScope; Struct: TIDStructure; var Flags: TProcFlags): TTokenID;
 begin
   if pfFinal in Flags then
-    ERRORS.DUPLICATE_SPECIFICATION(PS_FINAL);
+    ERRORS.DUPLICATE_SPECIFICATION(pfFinal);
 
   if not Assigned(Struct) then
     ERRORS.STRUCT_TYPE_REQUIRED(Lexer_Position);
@@ -9581,32 +9595,26 @@ begin
   Result := Lexer_NextToken(Scope);
 end;
 
-function TASTDelphiUnit.ProcSpec_SafeCall(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
-begin
-  if CallConvention = ConvSafeCall then
-    ERRORS.DUPLICATE_SPECIFICATION(PS_SAFECALL);
-  CallConvention := ConvSafeCall;
-
-  Result := Lexer_NextToken(Scope);
-  if Result = token_semicolon then
-    Result := Lexer_NextToken(Scope);
-end;
-
 function TASTDelphiUnit.ProcSpec_Static(Scope: TScope; var Flags: TProcFlags; var ProcType: TProcType): TTokenID;
 begin
   if pfStatic in Flags then
-    ERRORS.DUPLICATE_SPECIFICATION(PS_STATIC);
+    ERRORS.DUPLICATE_SPECIFICATION(pfStatic);
   Include(Flags, pfStatic);
   Lexer_ReadSemicolon(Scope);
   Result := Lexer_NextToken(Scope);
 end;
 
+function TASTDelphiUnit.ProcSpec_SafeCall(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
+begin
+  CallConvention := ConvSafeCall;
+  Result := Lexer_NextToken(Scope);
+  if Result = token_semicolon then
+    Result := Lexer_NextToken(Scope);
+end;
+
 function TASTDelphiUnit.ProcSpec_StdCall(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
 begin
-  if CallConvention = ConvStdCall then
-    ERRORS.DUPLICATE_SPECIFICATION(PS_STDCALL);
   CallConvention := ConvStdCall;
-
   Result := Lexer_NextToken(Scope);
   if Result = token_semicolon then
     Result := Lexer_NextToken(Scope);
@@ -9614,8 +9622,6 @@ end;
 
 function TASTDelphiUnit.ProcSpec_Register(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
 begin
-  if CallConvention = ConvRegister then
-    ERRORS.DUPLICATE_SPECIFICATION(PS_REGISTER);
   CallConvention := ConvRegister;
   Lexer_ReadSemicolon(Scope);
   Result := Lexer_NextToken(Scope);
@@ -9623,8 +9629,6 @@ end;
 
 function TASTDelphiUnit.ProcSpec_FastCall(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
 begin
-  if CallConvention = ConvFastCall then
-    ERRORS.DUPLICATE_SPECIFICATION(PS_FASTCALL);
   CallConvention := ConvFastCall;
   Lexer_ReadSemicolon(Scope);
   Result := Lexer_NextToken(Scope);
@@ -9632,8 +9636,6 @@ end;
 
 function TASTDelphiUnit.ProcSpec_CDecl(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
 begin
-  if CallConvention = ConvCDecl then
-    ERRORS.DUPLICATE_SPECIFICATION(PS_CDECL);
   CallConvention := ConvCDecl;
 
   Result := Lexer_NextToken(Scope);

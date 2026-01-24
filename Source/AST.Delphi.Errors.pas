@@ -345,7 +345,7 @@ type
     procedure INTF_SECTION_MISSING;
     procedure KEYWORD_EXPECTED;
     procedure BEGIN_KEYWORD_EXPECTED;
-    procedure DUPLICATE_SPECIFICATION(Spec: TProcSpecification);
+    procedure DUPLICATE_SPECIFICATION(Spec: TProcFlag);
     procedure UNSUPPORTED_OPERATOR(Op: TOperatorID);
     procedure TRY_KEYWORD_MISSED;
     procedure EXPORT_ALLOWS_ONLY_IN_INTF_SECTION;
@@ -1008,27 +1008,25 @@ begin
   AbortWork('Method "%s" is not declared in "%s"', [ID.Name, Struct.Name], ID.TextPosition);
 end;
 
-procedure TASTDelphiErrors.DUPLICATE_SPECIFICATION(Spec: TProcSpecification);
+procedure TASTDelphiErrors.DUPLICATE_SPECIFICATION(Spec: TProcFlag);
 var
   SpecName: string;
 begin
   case Spec of
-    PS_FORWARD: SpecName := 'FORWARD';
-    PS_INLINE: SpecName := 'INLINE';
-    PS_PURE: SpecName := 'PURE';
-    PS_NORETURN: SpecName := 'NORETURN';
-    PS_NOEXCEPT: SpecName := 'NOEXCEPT';
-    PS_OVELOAD: SpecName := 'OVERLOAD';
-    PS_EXPORT: SpecName := 'EXPORT';
-    PS_IMPORT: SpecName := 'EXTERNAL';
-    PS_VIRTUAL: SpecName := 'VIRTUAL';
-    PS_OVERRIDE: SpecName := 'OVERRIDE';
-    PS_STATIC: SpecName := 'STATIC';
-    PS_STDCALL: SpecName := 'STDCALL';
-    PS_CDECL: SpecName := 'CDECL';
-    PS_FASTCALL: SpecName := 'FASTCALL';
-    PS_REGISTER: SpecName := 'REGISTER';
-    PS_REINTRODUCE: SpecName := 'REINTRODUCE';
+    pfAbstract: SpecName := 'ABSTRACT';
+    pfVirtual: SpecName := 'VIRTUAL';
+    pfDynamic: SpecName := 'DYNAMIC';
+    pfExternal: SpecName := 'EXTERNAL';
+    pfFinal: SpecName := 'FINAL';
+    pfVarArgs: SpecName := 'VARARGS';
+    pfForward: SpecName := 'FORWARD';
+    pfInline: SpecName := 'INLINE';
+    pfNoreturn: SpecName := 'NORETURN';
+    pfOveload: SpecName := 'OVERLOAD';
+    pfExport: SpecName := 'EXPORT';
+    pfOverride: SpecName := 'OVERRIDE';
+    pfStatic: SpecName := 'STATIC';
+    pfReintroduce: SpecName := 'REINTRODUCE';
   else
     SpecName := '<UNKNOWN>';
   end;

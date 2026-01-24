@@ -26,28 +26,6 @@ type
 
   TExpessionPosition = (ExprNested, ExprLValue, ExprRValue, ExprNestedGeneric, ExprType);
 
-  TProcSpecification = (
-    PS_FORWARD,
-    PS_INLINE,
-    PS_PURE,
-    PS_NORETURN,
-    PS_NOEXCEPT,
-    PS_OVELOAD,
-    PS_EXPORT,
-    PS_IMPORT,
-    PS_VIRTUAL,
-    PS_ABSTRACT,
-    PS_OVERRIDE,
-    PS_FINAL,
-    PS_STATIC,
-    PS_STDCALL,
-    PS_FASTCALL,
-    PS_CDECL,
-    PS_SAFECALL,
-    PS_REGISTER,
-    PS_REINTRODUCE
-  );
-
   TIDList = class;
   TIDPairList = class;
   TIDDeclaration = class;
@@ -1760,14 +1738,15 @@ type
     property Struct: TIDStructure read FStruct write FStruct;
   end;
 
+  // todo: split on several
   TProcFlag = (
-    pfHasResult,
     pfVirtual,
+    pfDynamic,
     pfAbstract,
     pfInline,
     pfOveload,
     pfExport,
-    pfImport,
+    pfExternal,
     pfOperator,
     pfConstructor,
     pfDestructor,
@@ -1778,7 +1757,8 @@ type
     pfClass,
     pfStatic,
     pfForward,
-    pfVarArgs
+    pfVarArgs,
+    pfNoreturn
   );
 
   TProcFlags = set of TProcFlag;
