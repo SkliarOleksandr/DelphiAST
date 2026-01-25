@@ -292,7 +292,7 @@ type
     class procedure E2029_ID_EXPECTED_BUT_FOUND(const AModule: IASTModule; const AActual: string; const APosition: TTextPosition);
     class procedure E2029_TOKEN_EXPECTED_BUT_ID_FOUND(const AModule: IASTModule; AExpectedToken: TTokenID; const AID: TIdentifier);
     class procedure E2029_EXPECTED_BUT_FOUND(const AModule: IASTModule; const AExpected, AActual: string; const APosition: TTextPosition);
-    class procedure E2033_TYPES_OF_ACTUAL_AND_FORMAL_VAR_PARAMETER_MUST_BE_IDENTICAL(const AModule: IASTModule; const APosition: TTextPosition);
+    class procedure E2033_TYPES_OF_ACTUAL_AND_FORMAL_VAR_PARAMETER_MUST_BE_IDENTICAL(const AModule: IASTModule; const AArg: TIDExpression; AParamType: TIDType);
     class procedure E2034_TOO_MANY_ACTUAL_PARAMETERS(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2035_NOT_ENOUGH_ACTUAL_PARAMETERS(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2037_DECLARATION_OF_DIFFERS_FROM_PREVIOUS_DECLARATION(const AModule: IASTModule; const AID: TIdentifier);
@@ -669,9 +669,10 @@ begin
 end;
 
 class procedure TASTDelphiErrors.E2033_TYPES_OF_ACTUAL_AND_FORMAL_VAR_PARAMETER_MUST_BE_IDENTICAL(const AModule: IASTModule;
-  const APosition: TTextPosition);
+  const AArg: TIDExpression; AParamType: TIDType);
 begin
-  AModule.PutError('E2033 Types of actual and formal var parameters must be identical', APosition);
+  AModule.PutError('E2033 Types of actual and formal var parameters must be identical: %s and %s',
+                   [AParamType.DisplayName, AArg.DataTypeName], AArg.TextPosition);
 end;
 
 class procedure TASTDelphiErrors.E2034_TOO_MANY_ACTUAL_PARAMETERS(const AModule: IASTModule;

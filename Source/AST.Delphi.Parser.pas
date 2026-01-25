@@ -2042,7 +2042,7 @@ begin
         CheckVarExpression(ArgExpr, vmpPassArgument);
         {проверка на строгость соответствия типов}
         if Param.DataType <> ArgExpr.DataType then
-          ERRORS.E2033_TYPES_OF_ACTUAL_AND_FORMAL_VAR_PARAMETER_MUST_BE_IDENTICAL(Self, ArgExpr.TextPosition);
+          ERRORS.E2033_TYPES_OF_ACTUAL_AND_FORMAL_VAR_PARAMETER_MUST_BE_IDENTICAL(Self, ArgExpr, Param.DataType);
       end;
     end;
   end;
@@ -9935,7 +9935,7 @@ begin
 
       {explicit typecase}
       if Result = token_openround then
-         Result := ParseExplicitCast(Scope, EContext.SContext, Expression);
+         Result := ParseExplicitCast(Scope, EContext.SContext, {var} Expression);
 
       PMContext.DataType := TIDType(Decl);
     end;
@@ -11336,10 +11336,10 @@ begin
   case VarModifyPlace of
     vmpAssignment: ERRORS.E2064_LEFT_SIDE_CANNOT_BE_ASSIGNED_TO(Self, Expression.TextPosition);
     vmpPassArgument: begin
-      if Decl.ItemType  = itConst then
+      if Decl.ItemType = itConst then
         ERRORS.E2197_CONSTANT_OBJECT_CANNOT_BE_PASSED_AS_VAR_PARAMETER(Self, Expression.TextPosition)
       else
-        ERRORS.E2033_TYPES_OF_ACTUAL_AND_FORMAL_VAR_PARAMETER_MUST_BE_IDENTICAL(Self, Expression.TextPosition);
+        Assert(False); // todo: rework
     end;
   end;
   Flags := TIDVariable(Decl).Flags;
@@ -11366,7 +11366,7 @@ begin
        not SameTypes(Param.DataType, Arg.DataType) and
        not ((Param.DataType.DataTypeID = dtPointer) and
             (Arg.DataType.DataTypeID = dtPointer)) then
-    ERRORS.E2033_TYPES_OF_ACTUAL_AND_FORMAL_VAR_PARAMETER_MUST_BE_IDENTICAL(Self, Arg.TextPosition);
+    ERRORS.E2033_TYPES_OF_ACTUAL_AND_FORMAL_VAR_PARAMETER_MUST_BE_IDENTICAL(Self, Arg, Param.DataType);
   end;
 end;
 

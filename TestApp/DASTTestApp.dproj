@@ -352,6 +352,10 @@
         <DCCReference Include="..\TestScripts\Include\ASTTest.Include2.pas"/>
         <DCCReference Include="..\TestScripts\Aliases\ASTTest.Aliases.StringTypeWithCodepage1.pas"/>
         <DCCReference Include="..\TestScripts\Aliases\ASTTest.Aliases.Nested1.pas"/>
+        <DCCReference Include="..\TestScripts\Aliases\ASTTest.Aliases.NewIntWithCast1.pas"/>
+        <DCCReference Include="..\TestScripts\Aliases\ASTTest.Aliases.NewDblWithCast1.pas"/>
+        <DCCReference Include="..\TestScripts\Aliases\ASTTest.Aliases.NewIntWithCast2.pas"/>
+        <DCCReference Include="..\TestScripts\Aliases\ASTTest.Aliases.NewDblWithCast2.pas"/>
         <DCCReference Include="..\TestScripts\Other\ASTTest.Other.Deprecated1.pas"/>
         <DCCReference Include="..\TestScripts\Other\ASTTest.Other.Platform1.pas"/>
         <DCCReference Include="..\TestScripts\Other\ASTTest.Other.PlatformAndDeprecatedMix.pas"/>

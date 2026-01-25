@@ -424,6 +424,8 @@ type
     property IsClass: Boolean read GetIsClass;
     property IsInterface: Boolean read GetIsInterface;
     property IsAlias: Boolean read GetIsAlias;
+
+    function IsNewTypeFrom(AOrigin: TIDType): Boolean;
     // функция возвращает точный implicit оператор, если определен
     function GetImplicitOperatorTo(const Destination: TIDType): TIDDeclaration;
     function GetImplicitOperatorFrom(const Source: TIDType): TIDDeclaration;
@@ -4082,6 +4084,13 @@ begin
     Result := Self;
 end;
 
+function TIDType.IsNewTypeFrom(AOrigin: TIDType): Boolean;
+begin
+  Result := (fOriginal = AOrigin);
+  if not Result and Assigned(fOriginal) then
+    Result := fOriginal.IsNewTypeFrom(AOrigin);
+end;
+
 function GetOriginGenericDescriptor(AGenericType: TIDType): IGenericDescriptor;
 begin
   Result := nil;
@@ -4418,12 +4427,14 @@ end;
 
 function TIDType.MatchExplicitFrom(ASrc: TIDType): Boolean;
 begin
-  Result := False;
+  // at this point only new type (strict alias) can be resolved
+  Result := IsNewTypeFrom(ASrc);
 end;
 
 function TIDType.MatchExplicitTo(ADst: TIDType): Boolean;
 begin
-  Result := False;
+  // at this point only new type (strict alias) can be resolved
+  Result := ADst.IsNewTypeFrom(Self);
 end;
 
 function TIDType.MatchImplicitFrom(ASrc: TIDType): Boolean;
