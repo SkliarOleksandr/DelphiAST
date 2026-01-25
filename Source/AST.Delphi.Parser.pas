@@ -533,7 +533,7 @@ type
   function StrConstExpression(const SContext: TSContext; const Value: string): TIDExpression;
 
 var
-  _RaiseOverloadErrors: Boolean;
+  _RaiseAmbiguousOverloadErrors: Boolean;
 
 implementation
 
@@ -1838,20 +1838,19 @@ begin
   Result := AType1;
 end;
 
-function InferImplicitGenericArgs(ACallExpr: TIDCallExpression): Boolean;
+function InferImplicitGenericArgs(AProc: TIDProcedure; const ACallArgs: TIDExpressions; out AGenericArgs: TIDExpressions): Boolean;
 begin
-  var LProc := ACallExpr.Proc;
-  var LDescriptor := LProc.GenericDescriptor;
-  Result := (LProc.ParamsCount = ACallExpr.ArgumentsCount);
+  var LDescriptor := AProc.GenericDescriptor;
+  Result := (AProc.ParamsCount = Length(ACallArgs));
   if Result then
   begin
     // set generic array len according to proc params
     var LGenericArgs: TIDExpressions;
     SetLength(LGenericArgs, LDescriptor.ParamsCount);
-    for var LIndex := 0 to LProc.ParamsCount - 1 do
+    for var LIndex := 0 to AProc.ParamsCount - 1 do
     begin
-      var LArg := ACallExpr.Arguments[LIndex];
-      var LParam := LProc.ExplicitParams[LIndex];
+      var LArg := ACallArgs[LIndex];
+      var LParam := AProc.ExplicitParams[LIndex];
       if Assigned(LArg) and LParam.IsGeneric then
       begin
         var LParamTypeName := LParam.DataType.Name;
@@ -1867,7 +1866,7 @@ begin
         end;
       end;
     end;
-    ACallExpr.GenericArgs := LGenericArgs;
+    AGenericArgs := LGenericArgs;
   end;
 end;
 
@@ -1876,8 +1875,9 @@ begin
   // instantiate procedure with it's own generic params only, ignore recursive calls
   if Assigned(AProc.GenericDescriptor) and (AProc <> SContext.Proc) then
   begin
-    if Assigned(ACallExpr.GenericArgs) or InferImplicitGenericArgs(ACallExpr) then
-      AProc := InstantiateGenericProc(AProc.Scope, AProc, ACallExpr.GenericArgs);
+    var LGenericArgs := ACallExpr.GenericArgs;
+    if Assigned(LGenericArgs) or InferImplicitGenericArgs(AProc, ACallExpr.Arguments, {out} LGenericArgs) then
+      AProc := InstantiateGenericProc(AProc.Scope, AProc, LGenericArgs);
   end;
 end;
 
@@ -2040,9 +2040,7 @@ begin
       if Param.VarReference then
       begin
         CheckVarExpression(ArgExpr, vmpPassArgument);
-        {проверка на строгость соответствия типов}
-        if Param.DataType <> ArgExpr.DataType then
-          ERRORS.E2033_TYPES_OF_ACTUAL_AND_FORMAL_VAR_PARAMETER_MUST_BE_IDENTICAL(Self, ArgExpr, Param.DataType);
+        CheckVarParamConformity(Param, ArgExpr);
       end;
     end;
   end;
@@ -3970,7 +3968,7 @@ function TASTDelphiUnit.MatchOverloadProc(const SContext: TSContext; ACallExpr: 
 
     LDetails := LDetails + sLineBreak + ' Call Arguments: (' + LArgsStr + ')';
 
-    if _RaiseOverloadErrors then
+    if _RaiseAmbiguousOverloadErrors then
       ERRORS.E2251_AMBIGUOUS_OVERLOADED_CALL(Self, ACallExpr, LDetails);
   end;
 

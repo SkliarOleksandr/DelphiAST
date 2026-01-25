@@ -736,12 +736,12 @@ object frmTestAppMain: TfrmTestAppMain
           Caption = 'rtl\common'
           TabOrder = 6
         end
-        object ShowOverloadErrorsCheck: TCheckBox
+        object ShowAmbiguousErrorsCheck: TCheckBox
           Left = 583
           Top = 4
-          Width = 130
+          Width = 146
           Height = 17
-          Caption = 'Show Overload Errors'
+          Caption = 'Show Ambiguous Errors'
           TabOrder = 7
         end
       end
