@@ -3988,6 +3988,14 @@ function TASTDelphiUnit.MatchOverloadProc(const SContext: TSContext; ACallExpr: 
     Result := False;
   end;
 
+  function DeclCanBePassedToUntypedReference(AArg: TIDDeclaration; AArgDataType, AParamDataType: TIDType): Boolean;
+  begin
+    Result :=
+      ((AArg.ItemType = itVar) or
+      ((AArg.ItemType = itConst) and TIDConstant(AArg).CanBeTreatedAsVariable)) and
+      ((AArgDataType = AParamDataType) or AParamDataType.IsUntypedReference);
+  end;
+
 const
   cRateFactor = 1000000;                // multiplication factor for total rate calculdation
 var
@@ -4045,10 +4053,9 @@ begin
           curRate := 0;
           curLevel := MatchNone;
 
-          // check "VAR" & "OUT" params
-          if Param.VarReference then
-            if (LArg.ItemType <> itVar) or ((ArgDataType <> ParamDataType) and not ParamDataType.IsUntypedReference) then
-              Break;
+          // check "VAR", "OUT", "CONST" params
+          if Param.VarReference and not DeclCanBePassedToUntypedReference(LArg.Declaration, ArgDataType, ParamDataType) then
+            Break;
 
           // сравнение типов формального параметра и аргумента (пока не учитываются модификаторы const, var... etc)
           if ParamDataType.DataTypeID = dtGeneric then
@@ -11342,8 +11349,10 @@ begin
   if LItemType <> itVar then
   begin
     if LItemType = itConst then
-      ERRORS.E2197_CONSTANT_OBJECT_CANNOT_BE_PASSED_AS_VAR_PARAMETER(Self, AArg.TextPosition)
-    else
+    begin
+      if not AArg.AsConst.CanBeTreatedAsVariable then
+        ERRORS.E2197_CONSTANT_OBJECT_CANNOT_BE_PASSED_AS_VAR_PARAMETER(Self, AArg.TextPosition)
+    end else
       ERRORS.E2036_VARIABLE_REQUIRED(Self, AArg.TextPosition);
   end;
 end;

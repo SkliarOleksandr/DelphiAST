@@ -1113,6 +1113,7 @@ type
     function AsString: string; virtual; abstract;
     function AsVariant: Variant; virtual; abstract;
     function CompareTo(Constant: TIDConstant): Integer; virtual; abstract;
+    function CanBeTreatedAsVariable: Boolean;
     procedure IncRefCount(RCPath: UInt32); override;
     procedure DecRefCount(RCPath: UInt32); override;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
@@ -3161,15 +3162,30 @@ begin
 end;
 
 function TIDProcedure.Signature2Str(AIncludeParamNames: Boolean): string;
+
+ function ParamFlagToStr(AParam: TIDParam): string;
+ begin
+    if VarConst in AParam.Flags then
+      Result := 'const '
+    else
+    if VarInOut in AParam.Flags then
+      Result := 'var '
+    else
+    if VarOut in AParam.Flags then
+      Result := 'out '
+    else
+      Result := '';
+ end;
+
 begin
   Result := '';
   for var LParam in ExplicitParams do
   begin
     var LDataTypeName := LParam.DataType.DisplayName;
     if AIncludeParamNames then
-      Result := AddStringSegment(Result, LParam.Name + ':' + LDataTypeName, ', ')
+      Result := AddStringSegment(Result, ParamFlagToStr(LParam) + LParam.Name + ':' + LDataTypeName, ', ')
     else
-      Result := AddStringSegment(Result, LDataTypeName, ', ');
+      Result := AddStringSegment(Result, ParamFlagToStr(LParam) + LDataTypeName, ', ');
   end;
   Result := '(' + Result + ')';
 
@@ -4465,6 +4481,11 @@ end;
 function TIDConstant.AsUInt64: UInt64;
 begin
   Result := UInt64(AsInt64);
+end;
+
+function TIDConstant.CanBeTreatedAsVariable: Boolean;
+begin
+  Result := Assigned(ExplicitDataType) or (DataType is TIDArray) or (DataType is TIDSet);
 end;
 
 constructor TIDConstant.Create(Scope: TScope; const Identifier: TIdentifier);
