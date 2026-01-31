@@ -272,7 +272,8 @@ type
     procedure CheckOrdinalType(DataType: TIDType); inline;
     class procedure CheckNumericExpression(Expression: TIDExpression); static; inline;
     procedure CheckBooleanExpression(Expression: TIDExpression; AUseImplicitCast: Boolean = False); inline;
-    procedure CheckVarExpression(Expression: TIDExpression; VarModifyPlace: TVarModifyPlace);
+    procedure CheckVarExpressionAssign(Expression: TIDExpression);
+    procedure CheckVarExpressionParam(AArg: TIDExpression);
     class procedure CheckPointerType(Expression: TIDExpression); static; inline;
     class procedure CheckRecordType(Expression: TIDExpression); static; inline;
     class procedure CheckStructType(Expression: TIDExpression); overload; static; inline;
@@ -2039,7 +2040,7 @@ begin
       {если параметр передается по ссылке, проверяем что аргумент можно менять}
       if Param.VarReference then
       begin
-        CheckVarExpression(ArgExpr, vmpPassArgument);
+        CheckVarExpressionParam(ArgExpr);
         CheckVarParamConformity(Param, ArgExpr);
       end;
     end;
@@ -2527,7 +2528,7 @@ begin
       ERRORS.E2010_INCOMPATIBLE_TYPES(Self, Dest.DataType, Source.DataType, Source.TextPosition);
     end;
   end else
-    CheckVarExpression(Dest, vmpAssignment);
+    CheckVarExpressionAssign(Dest);
 end;
 
 function TASTDelphiUnit.Process_operator_Deref(var EContext: TEContext): TIDExpression;
@@ -3831,7 +3832,7 @@ begin
       begin
         if Param.VarReference then
         begin
-          CheckVarExpression(Arg, vmpPassArgument);
+          CheckVarExpressionParam(Arg);
           {strict type checking}
           if Param.DataType <> Arg.DataType then
             CheckVarParamConformity(Param, Arg);
@@ -11313,33 +11314,19 @@ begin
     end, {AUnitScope} scopeBoth);
 end;
 
-procedure TASTDelphiUnit.CheckVarExpression(Expression: TIDExpression; VarModifyPlace: TVarModifyPlace);
+procedure TASTDelphiUnit.CheckVarExpressionAssign(Expression: TIDExpression);
 var
   Flags: TVariableFlags;
   Decl: TIDDeclaration;
 begin
-  if Expression.ExpressionType = etDeclaration then
-    Decl := Expression.Declaration
-  else
-    Decl := TIDMultiExpression(Expression).Items[0].Declaration;  // пока так
-  // сдесь необходимо отдельно обрабатывать случаи:
-  // 1. доступа к членам класса/структуры
-  // 2. массива
-  // 3. индексного свойства
+  Decl := Expression.Declaration;
 
   if (Decl.ItemType = itProperty) and Assigned(TIDProperty(Decl).Setter) then
     Exit;
 
   if Decl.ItemType <> itVar then
-  case VarModifyPlace of
-    vmpAssignment: ERRORS.E2064_LEFT_SIDE_CANNOT_BE_ASSIGNED_TO(Self, Expression.TextPosition);
-    vmpPassArgument: begin
-      if Decl.ItemType = itConst then
-        ERRORS.E2197_CONSTANT_OBJECT_CANNOT_BE_PASSED_AS_VAR_PARAMETER(Self, Expression.TextPosition)
-      else
-        Assert(False); // todo: rework
-    end;
-  end;
+    ERRORS.E2064_LEFT_SIDE_CANNOT_BE_ASSIGNED_TO(Self, Expression.TextPosition);
+
   Flags := TIDVariable(Decl).Flags;
   if (VarConst in Flags) and (Expression.DataType <> Sys._UntypedReference) then
   begin
@@ -11347,6 +11334,18 @@ begin
   end;
   if VarLoopIndex in Flags then
     ERRORS.CANNOT_MODIFY_FOR_LOOP_VARIABLE(Expression);
+end;
+
+procedure TASTDelphiUnit.CheckVarExpressionParam(AArg: TIDExpression);
+begin
+  var LItemType := AArg.ItemType;
+  if LItemType <> itVar then
+  begin
+    if LItemType = itConst then
+      ERRORS.E2197_CONSTANT_OBJECT_CANNOT_BE_PASSED_AS_VAR_PARAMETER(Self, AArg.TextPosition)
+    else
+      ERRORS.E2036_VARIABLE_REQUIRED(Self, AArg.TextPosition);
+  end;
 end;
 
 procedure TASTDelphiUnit.CheckVarParamConformity(Param: TIDVariable; Arg: TIDExpression);

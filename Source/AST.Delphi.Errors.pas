@@ -295,6 +295,7 @@ type
     class procedure E2033_TYPES_OF_ACTUAL_AND_FORMAL_VAR_PARAMETER_MUST_BE_IDENTICAL(const AModule: IASTModule; const AArg: TIDExpression; AParamType: TIDType);
     class procedure E2034_TOO_MANY_ACTUAL_PARAMETERS(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2035_NOT_ENOUGH_ACTUAL_PARAMETERS(const AModule: IASTModule; const ATextPosition: TTextPosition);
+    class procedure E2036_VARIABLE_REQUIRED(const AModule: IASTModule; const ATextPosition: TTextPosition);
     class procedure E2037_DECLARATION_OF_DIFFERS_FROM_PREVIOUS_DECLARATION(const AModule: IASTModule; const AID: TIdentifier);
     class procedure E2050_STATEMENTS_NOT_ALLOWED_IN_INTERFACE_PART(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2064_LEFT_SIDE_CANNOT_BE_ASSIGNED_TO(const AModule: IASTModule; const APosition: TTextPosition);
@@ -684,6 +685,11 @@ end;
 class procedure TASTDelphiErrors.E2035_NOT_ENOUGH_ACTUAL_PARAMETERS(const AModule: IASTModule; const ATextPosition: TTextPosition);
 begin
   AModule.PutError('E2035 Not enough actual parameters', ATextPosition);
+end;
+
+class procedure TASTDelphiErrors.E2036_VARIABLE_REQUIRED(const AModule: IASTModule; const ATextPosition: TTextPosition);
+begin
+  AModule.PutError('E2036 Variable required', ATextPosition);
 end;
 
 class procedure TASTDelphiErrors.E2037_DECLARATION_OF_DIFFERS_FROM_PREVIOUS_DECLARATION(const AModule: IASTModule; const AID: TIdentifier);

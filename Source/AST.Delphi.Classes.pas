@@ -4738,7 +4738,7 @@ begin
   if VarResult in Flags then
     Result := FDataType.DataTypeID in [dtRecord, dtStaticArray, dtRange]
   else
-    Result := (VarInOut in FFlags) or (VarOut in FFlags);
+    Result := (VarInOut in FFlags) or (VarOut in FFlags) or ((VarConst in FFlags) and DataType.IsUntypedReference);
 end;
 
 procedure TIDVariable.SaveAndIncludeFlags(const Flags: TVariableFlags; out PrevFlags: TVariableFlags);
