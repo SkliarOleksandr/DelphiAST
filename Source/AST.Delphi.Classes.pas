@@ -3656,6 +3656,7 @@ function TIDType.CreateNewType(AScope: TScope; const AID: TIdentifier): TIDType;
 begin
   Result := TIDTypeClass(ClassType).Create(AScope, AID);
   Result.fOriginal := Self;
+  Result.fDataTypeID := DataTypeID;
 end;
 
 procedure TIDType.CreateStandardOperators;

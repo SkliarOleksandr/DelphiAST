@@ -212,6 +212,7 @@ uses
   ASTTest.Records.CaseRecord1 in '..\TestScripts\Records\ASTTest.Records.CaseRecord1.pas',
   ASTTest.Records.StaticInit1 in '..\TestScripts\Records\ASTTest.Records.StaticInit1.pas',
   ASTTest.Records.StaticInit2 in '..\TestScripts\Records\ASTTest.Records.StaticInit2.pas',
+  ASTTest.Records.ExplicitCast1 in '..\TestScripts\Records\ASTTest.Records.ExplicitCast1.pas',
   ASTTest.Builtins.High1 in '..\TestScripts\Built-ins\ASTTest.Builtins.High1.pas',
   ASTTest.Builtins.Declared1 in '..\TestScripts\Built-ins\ASTTest.Builtins.Declared1.pas',
   ASTTest.Vars.TypeInfer1 in '..\TestScripts\Vars\ASTTest.Vars.TypeInfer1.pas',
