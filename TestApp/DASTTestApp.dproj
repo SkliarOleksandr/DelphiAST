@@ -202,6 +202,8 @@
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Mixed.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Array1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Array2.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Array3.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Array4.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Nested1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Nested2.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Nested3.pas"/>
@@ -257,6 +259,7 @@
         <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.External2.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.DiffSigns1.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.VarOutParams1.pas"/>
+        <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.VarOutParams2.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.Generics1.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.Generics2.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\Overloads\ASTTest.Procs.Overloads.ImplicitCall1.pas"/>

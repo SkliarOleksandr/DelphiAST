@@ -28,6 +28,7 @@ uses
   System.Generics.Collections;
 // System.Generics.Defaults,
 // System.Internal.GenericsHlpr
+// System.Internal.ThreadingHlpr
 // system
 // sysinit
 // GETMEM.INC
@@ -1840,6 +1841,15 @@ begin
 end;
 
 function InferImplicitGenericArgs(AProc: TIDProcedure; const ACallArgs: TIDExpressions; out AGenericArgs: TIDExpressions): Boolean;
+
+  function GetGenericParamName(ADataType: TIDType): string;
+  begin
+    if ADataType.DataTypeID in [dtStaticArray, dtDynArray, dtOpenArray] then
+      Result := TIDArray(ADataType).ElementDataType.Name
+    else
+      Result := ADataType.Name;
+  end;
+
 begin
   var LDescriptor := AProc.GenericDescriptor;
   Result := (AProc.ParamsCount = Length(ACallArgs));
@@ -1854,11 +1864,17 @@ begin
       var LParam := AProc.ExplicitParams[LIndex];
       if Assigned(LArg) and LParam.IsGeneric then
       begin
-        var LParamTypeName := LParam.DataType.Name;
+        var LParamTypeName := GetGenericParamName(LParam.DataType);
         var LParamTypeIndex := LDescriptor.IndexOfType(LParamTypeName);
-        Assert(LParamTypeIndex >= 0);
+        if LParamTypeIndex < 0 then
+          Exit(False);
 
         var LCurArgType := LArg.DataType;
+
+        // special case for array, Delphi infers a generic arg in this case
+        if (LParam.DataType is TIDArray) and (LCurArgType is TIDArray) then
+          LCurArgType := TIDArray(LCurArgType).ElementDataType;
+
         if not Assigned(LGenericArgs[LParamTypeIndex]) then
           LGenericArgs[LParamTypeIndex] := TIDExpression.Create(LCurArgType)
         else begin
@@ -3993,7 +4009,7 @@ function TASTDelphiUnit.MatchOverloadProc(const SContext: TSContext; ACallExpr: 
     Result :=
       ((AArg.ItemType = itVar) or
       ((AArg.ItemType = itConst) and TIDConstant(AArg).CanBeTreatedAsVariable)) and
-      ((AArgDataType = AParamDataType) or AParamDataType.IsUntypedReference);
+      (SameTypes(AArgDataType, AParamDataType) or AParamDataType.IsUntypedReference);
   end;
 
 const
@@ -4053,15 +4069,14 @@ begin
           curRate := 0;
           curLevel := MatchNone;
 
-          // check "VAR", "OUT", "CONST" params
+          // check "VAR", "OUT", "CONST" param modifiers
           if Param.VarReference and not DeclCanBePassedToUntypedReference(LArg.Declaration, ArgDataType, ParamDataType) then
             Break;
 
-          // сравнение типов формального параметра и аргумента (пока не учитываются модификаторы const, var... etc)
-          if ParamDataType.DataTypeID = dtGeneric then
-            curLevel := TASTArgMatchLevel.MatchGeneric
-          else
           if ParamDataType = ArgDataType then
+            curLevel := TASTArgMatchLevel.MatchStrict
+          else
+          if ParamDataType.DataTypeID = dtUntypedRef then
             curLevel := TASTArgMatchLevel.MatchStrict
           else begin
             // find implicit type cast
