@@ -4760,7 +4760,11 @@ begin
   if VarResult in Flags then
     Result := FDataType.DataTypeID in [dtRecord, dtStaticArray, dtRange]
   else
-    Result := (VarInOut in FFlags) or (VarOut in FFlags) or ((VarConst in FFlags) and DataType.IsUntypedReference);
+    Result := ((VarInOut in FFlags) or
+               (VarOut in FFlags) or
+               ((VarConst in FFlags) and DataType.IsUntypedReference)) and
+                // if a param is open array, it can not be a referenced param
+                (DataTypeID <> dtOpenArray);
 end;
 
 procedure TIDVariable.SaveAndIncludeFlags(const Flags: TVariableFlags; out PrevFlags: TVariableFlags);
@@ -6004,6 +6008,7 @@ begin
 end;
 
 function TIDArray.GetDisplayName: string;
+
   function GetDimInfo: string;
   var
     i: Integer;
@@ -6012,6 +6017,7 @@ function TIDArray.GetDisplayName: string;
     for i := 0 to FDimensionsCount - 1 do
       Result := AddStringSegment(Result, FDimensions[i].DisplayName, ', ');
   end;
+
 begin
   Result := inherited GetDisplayName;
   if Result <> '' then
@@ -6073,12 +6079,14 @@ begin
   if Assigned(Result) then
     Exit;
 
-  if not Assigned(GenericDescriptor) or
-     not GenericDescriptor.TryGetInstance(AContext.Args, {out} Result) then
+  var LOriginalDescriptor := GetOriginGenericDescriptor(Self);
+
+  if not Assigned(LOriginalDescriptor) or
+     not LOriginalDescriptor.TryGetInstance(AContext.Args, {out} Result) then
   begin
     LogBegin('inst [type: %s, src: %s]', [ClassName, DisplayName]);
     var LNewArray := MakeCopy(ADstScope) as TIDArray;
-    if Assigned(GenericDescriptor) then
+    if Assigned(LOriginalDescriptor) then
     begin
       // override name according to the generic arguments
       LNewArray.ID := AContext.DstID;
@@ -6087,7 +6095,7 @@ begin
 
       // todo: rework AContext.DstDecl := LNewArray;
       // add this instance to the its pool
-      GenericDescriptor.AddGenericInstance(LNewArray, AContext.Args);
+      LOriginalDescriptor.AddGenericInstance(LNewArray, AContext.Args);
     end;
     // instantiate array element type
     if ElementDataType.DoesGenericUseParams(AContext.Params) then
@@ -7698,7 +7706,7 @@ begin
     // instantiate params and result type
     LNewType.Params := InstantiateParams(ADstScope, ADstStruct, Params, AContext);
     if Assigned(ResultType) and ResultType.DoesGenericUseParams(AContext.Params) then
-      LNewType.ResultType := ResultType.InstantiateGeneric(ADstScope, ADstStruct, AContext) as TIDType
+      LNewType.ResultType := InternalInstantiateGenericType(ADstScope, ResultType, AContext)
     else
       LNewType.ResultType := ResultType;
 

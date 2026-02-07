@@ -254,6 +254,8 @@
         <DCCReference Include="..\TestScripts\Generics\Methods\ASTTest.Generics.GenericMethod2.pas"/>
         <DCCReference Include="..\TestScripts\Generics\Methods\ASTTest.Generics.GenericMethod3.pas"/>
         <DCCReference Include="..\TestScripts\Generics\Interfaces\ASTTest.Generics.IntfImpl1.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\Proc Types\ASTTest.Generics.ProcType1.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\Proc Types\ASTTest.Generics.ProcType2.pas"/>
         <DCCReference Include="..\TestScripts\Ordinals\ASTTest.Ordian.Enums.Init.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.External1.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.External2.pas"/>

@@ -121,6 +121,8 @@ uses
   ASTTest.Generics.GenericMethod2 in '..\TestScripts\Generics\Methods\ASTTest.Generics.GenericMethod2.pas',
   ASTTest.Generics.GenericMethod3 in '..\TestScripts\Generics\Methods\ASTTest.Generics.GenericMethod3.pas',
   ASTTest.Generics.IntfImpl1 in '..\TestScripts\Generics\Interfaces\ASTTest.Generics.IntfImpl1.pas',
+  ASTTest.Generics.ProcType1 in '..\TestScripts\Generics\Proc Types\ASTTest.Generics.ProcType1.pas',
+  ASTTest.Generics.ProcType2 in '..\TestScripts\Generics\Proc Types\ASTTest.Generics.ProcType2.pas',
   ASTTest.Ordian.Enums.Init in '..\TestScripts\Ordinals\ASTTest.Ordian.Enums.Init.pas',
   ASTTest.Procs.External1 in '..\TestScripts\Procedures\ASTTest.Procs.External1.pas',
   ASTTest.Procs.External2 in '..\TestScripts\Procedures\ASTTest.Procs.External2.pas',
