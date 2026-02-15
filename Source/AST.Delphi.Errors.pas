@@ -303,7 +303,8 @@ type
     class procedure E2075_THIS_FORM_OF_METHOD_CALL_ONLY_ALLOWED_IN_METHODS_OF_DERIVED_TYPES(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2086_TYPE_IS_NOT_YET_COMPLETELY_DEFINED(const AModule: IASTModule; const AID: TIdentifier);
     class procedure E2089_INVALID_TYPECAST(const AModule: IASTModule; const ATextPosition: TTextPosition);
-    class procedure E2137_METHOD_NOT_FOUND_IN_BASE_CLASS(const AModule: IASTModule; const AID: TIdentifier);
+    class procedure E2137_METHOD_NOT_FOUND_IN_BASE_CLASS(const AModule: IASTModule; const AID: TIdentifier); overload;
+    class procedure E2137_METHOD_NOT_FOUND_IN_BASE_CLASS(const AModule: IASTModule; const AName: string; const APosition: TTextPosition); overload;
     class procedure E2168_FIELD_OR_METHOD_IDENTIFIER_EXPECTED(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2169_FIELD_DEFINITION_NOT_ALLOWED_AFTER_METHODS_OR_PROPERTIES(const AModule: IASTModule; const APosition: TTextPosition);
     class procedure E2170_CANNOT_OVERRIDE_A_NON_VIRTUAL_METHOD(const AModule: IASTModule; const ATextPosition: TTextPosition);
@@ -733,6 +734,12 @@ end;
 class procedure TASTDelphiErrors.E2137_METHOD_NOT_FOUND_IN_BASE_CLASS(const AModule: IASTModule; const AID: TIdentifier);
 begin
   AModule.PutError('E2137 Method ''%s'' not found in base class', [AID.Name], AID.TextPosition);
+end;
+
+class procedure TASTDelphiErrors.E2137_METHOD_NOT_FOUND_IN_BASE_CLASS(const AModule: IASTModule; const AName: string;
+  const APosition: TTextPosition);
+begin
+  AModule.PutError('E2137 Method ''%s'' not found in base class', [AName], APosition);
 end;
 
 class procedure TASTDelphiErrors.E2168_FIELD_OR_METHOD_IDENTIFIER_EXPECTED(const AModule: IASTModule;

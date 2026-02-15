@@ -299,6 +299,7 @@
         <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.Inherited2.pas"/>
         <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.Inherited3.pas"/>
         <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.Inherited4.pas"/>
+        <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.Inherited5.pas"/>
         <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.MethodsRedefine1.pas"/>
         <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.MethodsRedefine2.pas"/>
         <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.VirtualsOverlod1.pas"/>

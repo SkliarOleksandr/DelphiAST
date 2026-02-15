@@ -10245,14 +10245,15 @@ begin
     end;
   end;
 
-  KW := EContext.SContext.Add(TASTKWInheritedCall) as TASTKWInheritedCall;
   Result := Lexer_NextToken(Scope);
-  if Result = token_identifier then
+
+  Ancestor := Proc.Struct.Ancestor;
+  if Assigned(Ancestor) then
   begin
-    {after "inherited" keyword there is an identifier}
-    Ancestor := Proc.Struct.Ancestor;
-    if Assigned(Ancestor) then
+    KW := EContext.SContext.Add(TASTKWInheritedCall) as TASTKWInheritedCall;
+    if Result = token_identifier then
     begin
+      {after "inherited" keyword there is an identifier}
       Lexer_ReadCurrIdentifier(ID);
       Decl := Ancestor.FindMember(ID.Name);
       if not Assigned(Decl) then
@@ -10291,28 +10292,28 @@ begin
         ERRORS.PROC_OR_TYPE_REQUIRED(ID);
       end;
     end else
-      ERRORS.PROC_OR_TYPE_REQUIRED(ID);
-  end else
-  begin
-    {after "inherited" keyword there is no indentifier}
-    InheritedProc := Proc.Struct.FindVirtualProcInAncestor(Proc);
-    if Assigned(InheritedProc) then
     begin
-      ArgsCnt := Length(Proc.ExplicitParams);
-      SetLength(CallArgs, ArgsCnt);
-      for i := 0 to ArgsCnt - 1 do
-        CallArgs[i] := TIDExpression.Create(Proc.ExplicitParams[i]);
+      {after "inherited" keyword there is no indentifier}
+      InheritedProc := Ancestor.FindMember(Proc.Name) as TIDProcedure;
+      if InheritedProc is TIDProcedure then
+      begin
+        ArgsCnt := Length(Proc.ExplicitParams);
+        SetLength(CallArgs, ArgsCnt);
+        for i := 0 to ArgsCnt - 1 do
+          CallArgs[i] := TIDExpression.Create(Proc.ExplicitParams[i]);
 
-      CallExpr := TIDCallExpression.Create(InheritedProc, Lexer_Line);
-      CallExpr.Instance := Proc.SelfParamExpression;
-      CallExpr.ArgumentsCount := ArgsCnt;
-      CallExpr.Arguments := CallArgs;
-      ResultExpr := Process_CALL_direct(EContext.SContext, CallExpr, CallArgs);
-      if Assigned(ResultExpr) then
-        EContext.RPNPushExpression(ResultExpr);
-    end else;
-      // ignore if there is no inherited
-  end;
+        CallExpr := TIDCallExpression.Create(InheritedProc, Lexer_Line);
+        CallExpr.Instance := Proc.SelfParamExpression;
+        CallExpr.ArgumentsCount := ArgsCnt;
+        CallExpr.Arguments := CallArgs;
+        ResultExpr := Process_CALL_direct(EContext.SContext, CallExpr, CallArgs);
+        if Assigned(ResultExpr) then
+          EContext.RPNPushExpression(ResultExpr);
+      end else
+        // just do nothing
+    end;
+  end else
+    // just do nothing
 end;
 
 function TASTDelphiUnit.ParseInitSection: TTokenID;
