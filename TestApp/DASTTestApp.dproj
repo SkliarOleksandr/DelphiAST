@@ -253,6 +253,7 @@
         <DCCReference Include="..\TestScripts\Generics\Methods\ASTTest.Generics.GenericMethod1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\Methods\ASTTest.Generics.GenericMethod2.pas"/>
         <DCCReference Include="..\TestScripts\Generics\Methods\ASTTest.Generics.GenericMethod3.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\Methods\ASTTest.Generics.GenericMethod4.pas"/>
         <DCCReference Include="..\TestScripts\Generics\Interfaces\ASTTest.Generics.IntfImpl1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\Proc Types\ASTTest.Generics.ProcType1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\Proc Types\ASTTest.Generics.ProcType2.pas"/>
@@ -372,6 +373,8 @@
         <DCCReference Include="..\TestScripts\Consts\ASTTest.Consts.DateTime1.pas"/>
         <DCCReference Include="..\TestScripts\RTL\ASTTest.RTL.FileTypes1.pas"/>
         <DCCReference Include="..\TestScripts\RTL\ASTTest.RTL.StrHelper1.pas"/>
+        <DCCReference Include="..\TestScripts\RTL\ASTTest.RTL.TColorRec1.pas"/>
+        <DCCReference Include="..\TestScripts\RTL\ASTTest.RTL.TValue1.pas"/>
         <DCCReference Include="..\TestScripts\Ranges\ASTTest.Ranges.EnumRange1.pas"/>
         <DCCReference Include="..\TestScripts\Arrays\ASTTest.Arrays.Implicit1.pas"/>
         <DCCReference Include="..\TestScripts\Arrays\ASTTest.Arrays.OpenArrayImplicits1.pas"/>

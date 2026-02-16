@@ -4315,7 +4315,10 @@ begin
       LSrcType := NewSource.DataType;
       Result := TIDCastExpression.Create(NewSource, ADstType);
     end else
-      Result := MatchImplicit3(SContext, Source, LSrcType);
+    begin
+      if MatchImplicit3(SContext, Source, LSrcType) <> nil then
+        Result := TIDCastExpression.Create(Source, ADstType);
+    end;
   end
 end;
 
@@ -7098,22 +7101,15 @@ begin
     Lexer_NextToken(Scope);
     Result := ParseExpression(Scope, SContext, EContext, ASTE);
     Expr := EContext.Result;
-    if Assigned(Expr) then begin
-      {if Expr.DataType = Sys._Boolean then
-      begin
-        if (Expr.ItemType = itVar) and Expr.IsAnonymous then
-          Bool_CompleteImmediateExpression(EContext, Expr);
-      end;}
-    end else
-      ERRORS.EXPRESSION_EXPECTED;
+    CheckEmptyExpression(Expr);
 
     Inc(ArgsCount);
     SetLength(Args, ArgsCount);
     var AArgExpression := EContext.RPNPopExpression();
     var AArgType := AArgExpression.AsType;
     // if an argument is not a generic, the instantiation is possible
-    if not (AArgType is TIDGenericParam) and
-       not AArgType.IsGenericInstantiation then
+    // todo: double-check, maybe we need to instantiate it always?
+    if not (AArgType is TIDGenericParam) then
       ACanInstantiate := True;
 
     Args[ArgsCount - 1] := AArgExpression;
