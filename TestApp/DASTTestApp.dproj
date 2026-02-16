@@ -379,6 +379,7 @@
         <DCCReference Include="..\TestScripts\Arrays\ASTTest.Arrays.Implicit1.pas"/>
         <DCCReference Include="..\TestScripts\Arrays\ASTTest.Arrays.OpenArrayImplicits1.pas"/>
         <DCCReference Include="..\TestScripts\Strings\ASTTest.Strings.ArrayOfChar1.pas"/>
+        <DCCReference Include="..\TestScripts\Strings\ASTTest.Strings.ArrayOfChar2.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

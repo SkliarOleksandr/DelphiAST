@@ -245,7 +245,8 @@ uses
   ASTTest.Ranges.EnumRange1 in '..\TestScripts\Ranges\ASTTest.Ranges.EnumRange1.pas',
   ASTTest.Arrays.Implicit1 in '..\TestScripts\Arrays\ASTTest.Arrays.Implicit1.pas',
   ASTTest.Arrays.OpenArrayImplicits1 in '..\TestScripts\Arrays\ASTTest.Arrays.OpenArrayImplicits1.pas',
-  ASTTest.Strings.ArrayOfChar1 in '..\TestScripts\Strings\ASTTest.Strings.ArrayOfChar1.pas';
+  ASTTest.Strings.ArrayOfChar1 in '..\TestScripts\Strings\ASTTest.Strings.ArrayOfChar1.pas',
+  ASTTest.Strings.ArrayOfChar2 in '..\TestScripts\Strings\ASTTest.Strings.ArrayOfChar2.pas';
 
 {$R *.res}
 

@@ -362,6 +362,9 @@ begin
       if ARight.DataTypeID in [dtString, dtAnsiString, dtWideString, dtChar, dtAnsiChar] then
         Result := Self
       else
+      if (ARight.DataTypeID = dtStaticArray) and (TIDArray(ARight).ElementDataType = ElementDataType) then
+        Result := Self
+      else
         Result := nil;
     end;
   else

@@ -57,6 +57,7 @@ uses
 // System.Character
 // System.SyncObjs
 // System.ObjAuto
+// System.Win.ComObjWrapper
 // System.Math
 // System.Math.Vectors
 // System.Messaging
@@ -2408,7 +2409,13 @@ begin
         begin
           Result := TSysOpBinary(Op).Match(EContext.SContext, Left, Right);
           if Result = nil then
+          begin
+            // for DEBUG
+            Op := FindBinaryOperator(EContext.SContext, OpID, Left, Right);
+            TSysOpBinary(Op).Match(EContext.SContext, Left, Right);
+
             ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Self, Left);
+          end;
 
         end else begin
           TmpVar := GetTMPVar(EContext, TIDType(Op));
