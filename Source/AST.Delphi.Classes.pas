@@ -968,14 +968,18 @@ type
   TIDArray = class(TIDType)
   public
   type
-    TDimensions = array of TIDOrdinal;
+    TDimention = record
+      Range: TIDOrdinal;  // range type
+      AsArray: TIDArray;  // dimention array - in case of multi-dim arrays
+    end;
+    TDimensions = array of TDimention;
   private
     FElementDataType: TIDType;  // array element datatype
-    FDimensionsCount: Integer;  // array dimensions count
     FDimensions: TDimensions;   // array dimensions
     function GetDimension(Index: Integer): TIDOrdinal; virtual;
     function GetAllDimensionsCount: Integer;
     function GetElementTypeByIndex(Index: Integer): TIDType;
+    function GetDimensionsCount: Integer; inline;
   protected
     function GetDisplayName: string; override;
     function GetDataSize: Integer; override;
@@ -989,7 +993,7 @@ type
     ////////////////////////////////////////////////////////////////////////////
     property ElementDataType: TIDType read FElementDataType write FElementDataType;
     // this array dimensions only
-    property DimensionsCount: Integer read FDimensionsCount;
+    property DimensionsCount: Integer read GetDimensionsCount;
     // this array and all nested arrays dimensions (since they can be addresed in the same way)
     property AllDimensionsCount: Integer read GetAllDimensionsCount;
     property Dimensions[Index: Integer]: TIDOrdinal read GetDimension;
@@ -5929,9 +5933,10 @@ end;
 
 procedure TIDArray.AddBound(Bound: TIDOrdinal);
 begin
-  SetLength(FDimensions, FDimensionsCount + 1);
-  FDimensions[FDimensionsCount] := Bound;
-  Inc(FDimensionsCount);
+  var LNextIndex := DimensionsCount;
+  SetLength(FDimensions, LNextIndex + 1);
+  FDimensions[LNextIndex].Range := Bound;
+  FDimensions[LNextIndex].AsArray := nil;
 end;
 
 constructor TIDArray.Create(Scope: TScope; const Name: TIdentifier);
@@ -5954,7 +5959,6 @@ function TIDArray.CreateNewType(AScope: TScope; const AID: TIdentifier): TIDType
 begin
   Result := inherited;
   TIDArray(Result).FElementDataType := FElementDataType;
-  TIDArray(Result).FDimensionsCount := FDimensionsCount;
   TIDArray(Result).FDimensions := FDimensions;
 end;
 
@@ -5987,8 +5991,8 @@ begin
   if DataTypeID = dtStaticArray then
   begin
     Result := 1;
-    for i := 0 to FDimensionsCount - 1 do
-      Result := Result * FDimensions[i].ElementsCount;
+    for i := 0 to DimensionsCount - 1 do
+      Result := Result * FDimensions[i].Range.ElementsCount;
     Result := ElementDataType.DataSize * Result;
   end else
     Result := Package.PointerSize;
@@ -5996,15 +6000,20 @@ end;
 
 function TIDArray.GetDimension(Index: Integer): TIDOrdinal;
 begin
-  if Index < FDimensionsCount then
-    Result := FDimensions[Index]
+  if Index < DimensionsCount then
+    Result := FDimensions[Index].Range
   else
   if FElementDataType is TIDArray then
-    Result := TIDArray(FElementDataType).Dimensions[Index - FDimensionsCount]
+    Result := TIDArray(FElementDataType).Dimensions[Index - DimensionsCount]
   else begin
     AbortWorkInternal(sInvalidIndex);
     Result := nil;
   end;
+end;
+
+function TIDArray.GetDimensionsCount: Integer;
+begin
+  Result := Length(FDimensions);
 end;
 
 function TIDArray.GetDisplayName: string;
@@ -6014,8 +6023,8 @@ function TIDArray.GetDisplayName: string;
     i: Integer;
   begin
     Result := '';
-    for i := 0 to FDimensionsCount - 1 do
-      Result := AddStringSegment(Result, FDimensions[i].DisplayName, ', ');
+    for i := 0 to DimensionsCount - 1 do
+      Result := AddStringSegment(Result, FDimensions[i].Range.DisplayName, ', ');
   end;
 
 begin
@@ -6036,11 +6045,24 @@ end;
 
 function TIDArray.GetElementTypeByIndex(Index: Integer): TIDType;
 begin
-  if Index < FDimensionsCount then
-    Result := FElementDataType
-  else
+  var LDimensionsCount := DimensionsCount;
+  if Index < LDimensionsCount then
+  begin
+    if Index = (LDimensionsCount - 1) then
+      Result := FElementDataType
+    else begin
+      if not Assigned(FDimensions[Index].AsArray) then
+      begin
+        // create a new array type that represens the multi-dim array sarting a dim-index
+        var LDimArray := Self.CreateNewType(Scope, ID) as TIDStaticArray;
+        Delete(LDimArray.FDimensions, 0, 1);
+        FDimensions[Index].AsArray := LDimArray;
+      end;
+      Result := FDimensions[Index].AsArray;
+    end;
+  end else
   if FElementDataType is TIDArray then
-    Result := TIDArray(FElementDataType).ElementTypeByIndex[Index - FDimensionsCount]
+    Result := TIDArray(FElementDataType).ElementTypeByIndex[Index - LDimensionsCount]
   else begin
     AbortWorkInternal(sInvalidIndex);
     Result := nil; // avoid warning
@@ -6054,22 +6076,14 @@ end;
 
 function TIDArray.GetAllDimensionsCount: Integer;
 begin
-  Result := FDimensionsCount;
+  Result := DimensionsCount;
   if FElementDataType is TIDArray then
     Result := Result + TIDArray(FElementDataType).AllDimensionsCount;
 end;
 
 procedure TIDArray.IncRefCount(RCPath: UInt32);
-var
-  i: Integer;
 begin
-  if FRCPath = RCPath then
-    Exit;
-  FRCPath := RCPath;
-  Inc(FRefCount);
-  for i := 0 to FDimensionsCount - 1 do
-    FDimensions[i].IncRefCount(RCPath);
-  ElementDataType.IncRefCount(RCPath);
+
 end;
 
 function TIDArray.InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
@@ -6147,16 +6161,7 @@ begin
 end;
 
 procedure TIDArray.DecRefCount(RCPath: UInt32);
-var
-  i: Integer;
 begin
-  if FRCPath = RCPath then
-    Exit;
-  FRCPath := RCPath;
-  Dec(FRefCount);
-  for i := 0 to FDimensionsCount - 1 do
-    FDimensions[i].DecRefCount(RCPath);
-  ElementDataType.DecRefCount(RCPath);
 end;
 
 function TIDArray.DoesGenericUseParams(const AParams: TIDTypeArray): Boolean;
@@ -7397,7 +7402,6 @@ constructor TIDOpenArray.CreateAsAnonymous(Scope: TScope);
 begin
   inherited CreateAsAnonymous(Scope);
   FDataTypeID := dtOpenArray;
-  FDimensionsCount := 1;
 end;
 
 function TIDOpenArray.MatchImplicitFrom(ASrc: TIDType): Boolean;
@@ -9134,9 +9138,9 @@ begin
   for var LIndex := 0 to DimensionsCount - 1 do
   begin
     // TODO: implement printing other ord type, like enums, etc
-    ABuilder.Append(FDimensions[LIndex].FLBound.ToString);
+    ABuilder.Append(FDimensions[LIndex].Range.FLBound.ToString);
     ABuilder.Append('..');
-    ABuilder.Append(FDimensions[LIndex].FHBound.ToString);
+    ABuilder.Append(FDimensions[LIndex].Range.FHBound.ToString);
   end;
 
   ABuilder.Append('] of ');

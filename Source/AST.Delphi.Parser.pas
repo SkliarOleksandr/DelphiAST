@@ -45,6 +45,7 @@ uses
 // System.JSON
 // System.JSON.Types
 // System.JSON.Converters
+// System.JSON.Writers
 // System.Win.ScktComp
 // REST.JsonReflect
 // system.Types
@@ -766,11 +767,10 @@ var
   Bound: TIDOrdinal;
   DataType: TIDType;
 begin
-  // todo сделать парсинг многомерного массива вида array of array of ...
   while True do begin
     // нижняя граница/тип/размер
     Lexer_NextToken(Scope);
-    Result := ParseConstExpression(Scope, Expr, ExprNested);
+    Result := ParseConstExpression(Scope, {out} Expr, ExprNested);
     CheckExpression(Expr);
 
     if Expr.ItemType = itType then
@@ -789,7 +789,7 @@ begin
   Lexer_MatchToken(Result, token_closeblock);
   Result := Lexer_NextToken(Scope);
   Lexer_MatchToken(Result, token_of);
-  Result := ParseTypeSpec(Scope, DataType);
+  Result := ParseTypeSpec(Scope, {out} DataType);
   Decl.ElementDataType := DataType;
 end;
 
