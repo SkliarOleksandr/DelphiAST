@@ -60,6 +60,8 @@ uses
   ASTTest.Ops.Ampersand1 in '..\TestScripts\Operators\Ampersand\ASTTest.Ops.Ampersand1.pas',
   ASTTest.AddrOp.Addr1 in '..\TestScripts\Operators\Addr\ASTTest.AddrOp.Addr1.pas',
   ASTTest.AddrOp.Addr2 in '..\TestScripts\Operators\Addr\ASTTest.AddrOp.Addr2.pas',
+  ASTTest.Ops.IfThen1 in '..\TestScripts\Operators\IfThen\ASTTest.Ops.IfThen1.pas',
+  ASTTest.Ops.IfThen2 in '..\TestScripts\Operators\IfThen\ASTTest.Ops.IfThen2.pas',
   ASTTest.Generics.Class1 in '..\TestScripts\Generics\ASTTest.Generics.Class1.pas',
   ASTTest.Generics.GenResult in '..\TestScripts\Generics\ASTTest.Generics.GenResult.pas',
   ASTTest.Generics.Methods in '..\TestScripts\Generics\ASTTest.Generics.Methods.pas',

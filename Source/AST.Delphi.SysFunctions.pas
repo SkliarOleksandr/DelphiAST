@@ -1315,13 +1315,12 @@ begin
   Result := nil;
 end;
 
-
 { TSF_Halt }
 
 class function TSF_Halt.CreateDecl(SysUnit: TSYSTEMUnit; Scope: TScope): TIDBuiltInFunction;
 begin
   Result := Self.Create(Scope, 'Halt', SYSUnit._Void);
-  Result.AddParam('ExitValue', SYSUnit._Int32, [VarConst]);
+  Result.AddParam('ExitValue', SYSUnit._Int32, [VarConst], SysUnit._ZeroIntExpression);
 end;
 
 function TSF_Halt.Process(var EContext: TEContext): TIDExpression;

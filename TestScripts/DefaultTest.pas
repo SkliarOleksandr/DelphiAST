@@ -4,11 +4,14 @@ interface
 
 //uses System.Types;
 //uses System.Generics.Defaults;
-  uses System.SyncObjs;
+//uses System.SyncObjs;
 //uses System.Generics.Collections;
 //uses System.JSON;
 //uses System.JSON.Converters;
 //uses System.JSON.Types;
+//uses System.JSON.Readers;
+//uses System.UIConsts;
+uses System.Win.ComObjWrapper;
 //uses Vcl.Graphics;
 //uses System.SysUtils;
 //uses System.Rtti;

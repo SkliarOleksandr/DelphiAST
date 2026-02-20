@@ -193,6 +193,8 @@
         <DCCReference Include="..\TestScripts\Operators\Ampersand\ASTTest.Ops.Ampersand1.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Addr\ASTTest.AddrOp.Addr1.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Addr\ASTTest.AddrOp.Addr2.pas"/>
+        <DCCReference Include="..\TestScripts\Operators\IfThen\ASTTest.Ops.IfThen1.pas"/>
+        <DCCReference Include="..\TestScripts\Operators\IfThen\ASTTest.Ops.IfThen2.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Class1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenResult.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.Methods.pas"/>
@@ -378,6 +380,7 @@
         <DCCReference Include="..\TestScripts\Ranges\ASTTest.Ranges.EnumRange1.pas"/>
         <DCCReference Include="..\TestScripts\Arrays\ASTTest.Arrays.Implicit1.pas"/>
         <DCCReference Include="..\TestScripts\Arrays\ASTTest.Arrays.OpenArrayImplicits1.pas"/>
+        <DCCReference Include="..\TestScripts\Arrays\ASTTest.Arrays.MultiDimention1.pas"/>
         <DCCReference Include="..\TestScripts\Strings\ASTTest.Strings.ArrayOfChar1.pas"/>
         <DCCReference Include="..\TestScripts\Strings\ASTTest.Strings.ArrayOfChar2.pas"/>
         <BuildConfiguration Include="Base">

@@ -454,6 +454,7 @@ type
     function ParseProcBody(Proc: TASTDelphiProc): TTokenID;
     function ParseOperator(Scope: TScope; Struct: TIDStructure): TTokenID;
     function ParseIfThenStatement(Scope: TScope; const SContext: TSContext): TTokenID;
+    function ParseIfThenOperator(Scope: TScope; const SContext: TSContext; out AExpr: TIDExpression): TTokenID;
     function ParseWhileStatement(Scope: TScope; const SContext: TSContext): TTokenID;
     function ParseRepeatStatement(Scope: TScope; const SContext: TSContext): TTokenID;
     function ParseWithStatement(Scope: TScope; const SContext: TSContext): TTokenID;
@@ -6703,6 +6704,13 @@ begin
         Status := EContext.RPNPushOperator(opIs);
         ASTE.AddSubItem(TASTOpCastCheck);
       end;
+      token_if: begin
+        var LResultExpr: TIDExpression;
+        Result := ParseIfThenOperator(Scope, SContext, {out} LResultExpr);
+        EContext.RPNPushExpression(LResultExpr);
+        Status := rpOperand;
+        continue;
+      end;
       token_as: begin
         CheckLeftOperand(Status);
         Status := EContext.RPNPushOperator(opAs);
@@ -7350,6 +7358,44 @@ begin
   KW := SContext.Add(TASTKWGoTo) as TASTKWGoTo;
   KW.LabelDecl := LDecl;
   Result := Lexer_NextToken(Scope);
+end;
+
+function TASTDelphiUnit.ParseIfThenOperator(Scope: TScope; const SContext: TSContext; out AExpr: TIDExpression): TTokenID;
+var
+  EContext: TEContext;
+  ThenSContext: TSContext;
+  ElseSContext: TSContext;
+  CondExpr: TASTExpression;
+begin
+  InitEContext(EContext, SContext, ExprRValue);
+  Lexer_NextToken(Scope);
+  Result := ParseExpression(Scope, SContext, EContext, CondExpr);
+  CheckAndCallFuncImplicit(EContext);
+  var LCondExpression := EContext.Result;
+  CheckEmptyExpression(LCondExpression);
+  CheckBooleanExpression(LCondExpression, {AUseImplicitCast:} True);
+
+  Lexer_MatchToken(Result, token_then);
+
+  EContext.Reset;
+  Lexer_NextToken(Scope);
+  Result := ParseExpression(Scope, SContext, EContext, CondExpr);
+  CheckAndCallFuncImplicit(EContext);
+  var LLeftExpression := EContext.Result;
+
+  Lexer_MatchToken(Result, token_else);
+
+  EContext.Reset;
+  Lexer_NextToken(Scope);
+  Result := ParseExpression(Scope, SContext, EContext, CondExpr);
+  CheckAndCallFuncImplicit(EContext);
+  var LRightExpression := EContext.Result;
+
+  MatchImplicit3(SContext, LLeftExpression, LRightExpression.DataType);
+  MatchImplicit3(SContext, LRightExpression, LLeftExpression.DataType);
+
+  // todo: get a common type?
+  AExpr := LLeftExpression;
 end;
 
 function TASTDelphiUnit.ParseIfThenStatement(Scope: TScope; const SContext: TSContext): TTokenID;
