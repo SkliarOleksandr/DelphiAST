@@ -152,7 +152,6 @@ type
     UnitsFullPathCheck: TCheckBox;
     ShowProgressCheck: TCheckBox;
     DelphiDirComboBox: TComboBox;
-    ParseRtlCommonCheck: TCheckBox;
     ParseSelectedTestAction: TAction;
     ParseSelected1: TMenuItem;
     N4: TMenuItem;
@@ -504,8 +503,7 @@ begin
   var LUsesUntis: string := '';
 
   AddDelphiUnits({var} LUsesUntis, 'rtl\sys');
-  if ParseRtlCommonCheck.Checked then
-    AddDelphiUnits({var} LUsesUntis, 'rtl\common');
+  AddDelphiUnits({var} LUsesUntis, 'rtl\common');
 
   var RTLUsesSourceText :=
   'unit RTLParseTest; '#10#13 +

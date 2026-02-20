@@ -47,6 +47,7 @@ uses
 // System.JSON.Converters
 // System.JSON.Writers
 // System.Win.ScktComp
+// System.Win.Notification
 // REST.JsonReflect
 // system.Types
 // system.TypInfo
@@ -181,7 +182,7 @@ type
     function GetCurrentParsedFileName(OnlyFileName: Boolean): string;
     class function CreateRangeType(Scope: TScope; LoBound, HiBound: Integer): TIDRangeType; static;
     class procedure AddSelfParameter(AProcScope: TProcScope; Struct: TIDStructure; ClassMethod: Boolean); static; inline;
-    function AddResultParameter(ParamsScope: TParamsScope; DataType: TIDType): TIDVariable;
+    function AddResultParameter(ParamsScope: TParamsScope; DataType: TIDType): TIDParam;
     procedure CheckCorrectEndCondStatemet(var Token: TTokenID);
   public
     property Package: IASTDelphiProject read fPackage;
@@ -2536,21 +2537,17 @@ begin
   var Source := EContext.RPNPopExpression;
   var Dest := EContext.RPNPopExpression;
 
+  var LProc := EContext.Proc;
+  if (Dest.Declaration = LProc) and Assigned(LProc.ResultParam) then
+    Dest := TIDExpression.Create(LProc.ResultParam, Dest.TextPosition);
+
   {check Implicit}
   var NewSrc := MatchImplicit3(EContext.SContext, Source, Dest.DataType, {AAbortIfError:} False);
   if not Assigned(NewSrc) then
   begin
-    // a case when the current function name is used as the result variable
-    var LCurrentProc := EContext.SContext.Proc;
-    if (Dest.Declaration = LCurrentProc) and Assigned(LCurrentProc.ResultType) then
-    begin
-      MatchImplicit3(EContext.SContext, Source, LCurrentProc.ResultType);
-    end else
-    begin
-      // for debug
-      MatchImplicit3(EContext.SContext, Source, Dest.DataType, {AAbortIfError:} False);
-      ERRORS.E2010_INCOMPATIBLE_TYPES(Self, Dest.DataType, Source.DataType, Source.TextPosition);
-    end;
+    // for debug
+    MatchImplicit3(EContext.SContext, Source, Dest.DataType, {AAbortIfError:} False);
+    ERRORS.E2010_INCOMPATIBLE_TYPES(Self, Dest.DataType, Source.DataType, Source.TextPosition);
   end else
     CheckVarExpressionAssign(Dest);
 end;
@@ -3811,7 +3808,7 @@ begin
       Exit;
     end;
 
-    if Assigned(Decl) and (Decl.ItemType = itType) then
+    if Assigned(Decl) then
       Exit(Source);
 
     // if the type is an alias, let's try to find operators in a linked type
@@ -4345,15 +4342,15 @@ begin
   end;
 end;
 
-function TASTDelphiUnit.AddResultParameter(ParamsScope: TParamsScope; DataType: TIDType): TIDVariable;
+function TASTDelphiUnit.AddResultParameter(ParamsScope: TParamsScope; DataType: TIDType): TIDParam;
 var
   Decl: TIDDeclaration;
 begin
-  Result := TIDVariable.CreateAsAnonymous(ParamsScope);
+  Result := TIDParam.CreateAsAnonymous(ParamsScope);
 
   Decl := ParamsScope.FindID('Result');
   if Assigned(Decl) then
-    Result.Name := '$Result' // just a flag that Result was redeclared, should be cheched later
+    Result.Name := '$Result' // just a flag that Result was redeclared, should be checked later
   else
     Result.Name := 'Result';
 
@@ -4727,7 +4724,7 @@ begin
     Lexer_MatchToken(Result, token_colon);
     // парсим тип возвращаемого значения
     Result := ParseTypeSpec(ProcScope, {out} ResultType);
-    AddResultParameter(ProcScope.ParamsScope, ResultType);
+    ProcDecl.ResultParam := AddResultParameter(ProcScope.ParamsScope, ResultType);
   end else
     ResultType := nil;
 
@@ -7946,6 +7943,7 @@ var
   ID: TIdentifier;
   ProcScope: TProcScope;
   ResultType: TIDType;
+  LResultParam: TIDParam;
   Proc, ForwardDecl: TASTDelphiProc;
   ForwardDeclNode: TIDList.PAVLNode;
   FwdDeclState: TFwdDeclState;
@@ -7970,13 +7968,14 @@ begin
   end;
 
   // parse result type
+  ResultType := nil;
+  LResultParam := nil;
   if ProcType = ptFunc then
   begin
     Lexer_MatchToken(Result, token_colon);
     Result := ParseTypeSpec(ProcScope, ResultType);
-    AddResultParameter(ProcScope.ParamsScope, ResultType);
-  end else
-    ResultType := nil;
+    LResultParam := AddResultParameter(ProcScope.ParamsScope, ResultType);
+  end;
 
   if Result = token_semicolon then
     Result := Lexer_NextToken(Scope)
@@ -8051,6 +8050,7 @@ begin
   Proc := TASTDelphiProc.Create(Scope, ID);
   Proc.EntryScope := ProcScope;
   Proc.ResultType := ResultType;
+  Proc.ResultParam := LResultParam;
   Proc.ExplicitParams := ProcScope.ExplicitParams;
   Proc.Struct := Struct;
   Proc.CallConvention := CallConv;
@@ -8081,6 +8081,7 @@ var
   ID: TIdentifier;
   ProcScope: TProcScope;
   ResultType: TIDType;
+  LResultParam: TIDParam;
   GenericParams: TIDTypeArray;
   Proc, ForwardDecl: TASTDelphiProc;
   ForwardDeclNode: TIDList.PAVLNode;
@@ -8118,13 +8119,14 @@ begin
   end;
 
   // parse result type
+  ResultType := nil;
+  LResultParam := nil;
   if ProcType <= ptStaticFunc then
   begin
     Lexer_MatchToken(Result, token_colon);
     Result := ParseTypeSpec(ProcScope, ResultType);
-    AddResultParameter(ProcScope.ParamsScope, ResultType);
-  end else
-    ResultType := nil;
+    LResultParam := AddResultParameter(ProcScope.ParamsScope, ResultType);
+  end;
 
   if Result = token_semicolon then
     Result := Lexer_NextToken(Scope)
@@ -8269,6 +8271,7 @@ begin
       Proc.GenericDescriptor := TGenericDescriptor.Create(Scope, GenericParams);
     Proc.EntryScope := ProcScope;
     Proc.ResultType := ResultType;
+    Proc.ResultParam := LResultParam;
     ProcScope.Proc := Proc;
 
     if Scope.ScopeClass = scInterface then
@@ -8390,6 +8393,7 @@ type
   TFwdDeclState = (dsNew, dsDifferent, dsSame);
 var
   ResultType: TIDType;
+  LResultParam: TIDParam;
   Proc, ForwardDecl: TASTDelphiProc;
   ForwardDeclNode: TIDList.PAVLNode;
   FwdDeclState: TFwdDeclState;
@@ -8407,17 +8411,14 @@ begin
   end;
 
   // parse return type
-  if ProcType = ptFunc then
+  ResultType := nil;
+  LResultParam := nil;
+  if (ProcType = ptFunc) and (Result <> token_semicolon) then
   begin
-    if Result <> token_semicolon then
-    begin
-      Lexer_MatchToken(Result, token_colon);
-      Result := ParseTypeSpec(ProcScope, ResultType);
-      AddResultParameter(ProcScope.ParamsScope, ResultType);
-    end else
-      ResultType := nil;
-  end else
-    ResultType := nil;
+    Lexer_MatchToken(Result, token_colon);
+    Result := ParseTypeSpec(ProcScope, ResultType);
+    LResultParam := AddResultParameter(ProcScope.ParamsScope, ResultType);
+  end;
 
   if Result = token_semicolon then
     Result := Lexer_NextToken(Scope);
@@ -8547,6 +8548,7 @@ begin
     Proc := TASTDelphiProc.Create(Scope, ID);
     Proc.EntryScope := ProcScope;
     Proc.ResultType := ResultType;
+    Proc.ResultParam := LResultParam;
     ProcScope.Proc := Proc;
 
     if Scope.ScopeClass = scInterface then
@@ -8608,6 +8610,7 @@ type
   TFwdDeclState = (dsNew, dsDifferent, dsSame);
 var
   ResultType: TIDType;
+  LResultParam: TIDParam;
   Proc, ForwardDecl: TASTDelphiProc;
   ForwardDeclNode: TIDList.PAVLNode;
   FwdDeclState: TFwdDeclState;
@@ -8623,18 +8626,15 @@ begin
     Result := Lexer_NextToken(Scope);
   end;
 
+  ResultType := nil;
+  LResultParam := nil;
   // parse return type
-  if ProcType = ptFunc then
+  if (ProcType = ptFunc) and (Result <> token_semicolon) then
   begin
-    if Result <> token_semicolon then
-    begin
-      Lexer_MatchToken(Result, token_colon);
-      Result := ParseTypeSpec(ProcScope, ResultType);
-      AddResultParameter(ProcScope.ParamsScope, ResultType);
-    end else
-      ResultType := nil;
-  end else
-    ResultType := nil;
+    Lexer_MatchToken(Result, token_colon);
+    Result := ParseTypeSpec(ProcScope, ResultType);
+    LResultParam := AddResultParameter(ProcScope.ParamsScope, ResultType);
+  end;
 
   if Result = token_semicolon then
     Result := Lexer_NextToken(Scope)
@@ -8753,6 +8753,7 @@ begin
     Proc := TASTDelphiProc.Create(Scope, ID);
     Proc.EntryScope := ProcScope;
     Proc.ResultType := ResultType;
+    Proc.ResultParam := LResultParam;
     ProcScope.Proc := Proc;
 
     if Scope.ScopeClass = scInterface then

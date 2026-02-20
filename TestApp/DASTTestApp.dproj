@@ -295,6 +295,7 @@
         <DCCReference Include="..\TestScripts\Procedures\Proc Types\ASTTest.ProcTypes.ProcType1.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\Proc Types\ASTTest.ProcTypes.ProcType2.pas"/>
         <DCCReference Include="..\TestScripts\Procedures\Proc Types\ASTTest.ProcTypes.ProcType3.pas"/>
+        <DCCReference Include="..\TestScripts\Procedures\ASTTest.Procs.FuncNameAsResult1.pas"/>
         <DCCReference Include="..\TestScripts\Classes\ASTTest.Classes.Base.pas"/>
         <DCCReference Include="..\TestScripts\Classes\Constructors\ASTTest.Classes.Construct1.pas"/>
         <DCCReference Include="..\TestScripts\Classes\Constructors\ASTTest.Classes.Construct2.pas"/>

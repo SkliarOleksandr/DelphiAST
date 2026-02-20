@@ -1801,7 +1801,6 @@ type
     function GetMethodIndex: Integer;
     function GetSelfParam: TIDParam;
     function GetSelfParamExpression: TIDExpression;
-    function GetResultParamExpression: TIDExpression;
     function GetIsClassMethod: Boolean; inline;
     function GetIsConstructor: Boolean; inline;
     function GetIsDestructor: Boolean;
@@ -1847,6 +1846,7 @@ type
     property ParamsScope: TParamsScope read GetParamsScope;
     property ParamsCount: Integer read GetParamsCount;
     property ResultType: TIDType read FResultType write FResultType;
+    property ResultParam: TIDParam read FResultParam write FResultParam;
     property Flags: TProcFlags read FProcFlags write FProcFlags;
     property Struct: TIDStructure read FStruct write FStruct;
     property SelfParam: TIDParam read GetSelfParam;
@@ -1858,10 +1858,7 @@ type
     // returns count of explicit generic params (declared in <...>)
     property GenericParamsCount: Integer read GetGenericParamsCount;
 
-    property ResultParamExpression: TIDExpression read GetResultParamExpression;
-
     procedure MakeSelfParam;
-    procedure SetResult(DataType: TIDType);
     procedure AddParam(const Param: TIDParam); overload;
     function AddParam(const Name: string; DataType: TIDType): TIDParam; overload;
     function AddParam(const Name: string; DataType: TIDType; Flags: TVariableFlags; DefaultValue: TIDExpression = nil): TIDParam; overload;
@@ -3157,14 +3154,6 @@ begin
   FExplicitParams := Value;
 end;
 
-procedure TIDProcedure.SetResult(DataType: TIDType);
-begin
-  FResultParam := TIDParam.Create(EntryScope, Identifier('Result', ID.TextPosition));
-  FResultParam.DataType := DataType;
-  FResultParam.IncludeFlags([VarParameter, VarOut, VarHiddenParam, VarResult]);
-  FResultType := DataType;
-end;
-
 function TIDProcedure.Signature2Str(AIncludeParamNames: Boolean): string;
 
  function ParamFlagToStr(AParam: TIDParam): string;
@@ -3385,14 +3374,6 @@ begin
 
   if pfClass in Flags  then
     Result := 'class ' + Result;
-end;
-
-function TIDProcedure.GetResultParamExpression: TIDExpression;
-begin
-  if Assigned(ResultType) then
-    Result := TIDExpression.Create(FResultParam)
-  else
-    Result := nil;
 end;
 
 procedure TIDProcedure.CreateProcedureTypeIfNeed(Scope: TScope);
