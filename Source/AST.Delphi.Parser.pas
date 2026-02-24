@@ -48,6 +48,7 @@ uses
 // System.JSON.Writers
 // System.Win.ScktComp
 // System.Win.Notification
+// System.Win.InternetExplorer
 // REST.JsonReflect
 // system.Types
 // system.TypInfo
@@ -2504,9 +2505,16 @@ begin
     Result := GetTMPVarExpr(EContext.SContext, DataType, Expr.TextPosition);
     Result.AsVariable.Absolute := Expr.AsVariable;
   end else
+  if Expr.IsVariable then
   begin
+    // todo: rework for proc types
     var LResultVar := GetTMPVar(EContext.SContext, DataType);
     Result := TIDAddrExpression.Create(LResultVar, Expr);
+  end else
+  begin
+    ERRORS.E2036_VARIABLE_REQUIRED(Self, Expr.TextPosition);
+    // keep parsing
+    Result := GetTMPVarExpr(EContext.SContext, Sys._UnknownType, Expr.TextPosition);
   end;
 end;
 
@@ -9920,6 +9928,7 @@ begin
         end else
         if (Decl.ItemType = itProcedure) and
            not Assigned(LCallExpr.Instance) and
+           Assigned(LCurProc) and
            Assigned(LCurProc.Struct) and
            Assigned(TIDProcedure(Decl).Struct) and
            LCurProc.Struct.IsInheritsForm(TIDProcedure(Decl).Struct) then
@@ -10344,7 +10353,10 @@ begin
     end else
     begin
       {after "inherited" keyword there is no indentifier}
-      InheritedProc := Ancestor.FindMember(Proc.Name) as TIDProcedure;
+      InheritedProc := Proc.InheritedProc;
+      if not Assigned(InheritedProc) then
+        InheritedProc := Ancestor.FindMember(Proc.Name) as TIDProcedure;
+
       if InheritedProc is TIDProcedure then
       begin
         ArgsCnt := Length(Proc.ExplicitParams);
