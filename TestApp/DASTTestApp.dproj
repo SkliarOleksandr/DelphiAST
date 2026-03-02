@@ -258,6 +258,8 @@
         <DCCReference Include="..\TestScripts\Generics\Methods\ASTTest.Generics.GenericMethod2.pas"/>
         <DCCReference Include="..\TestScripts\Generics\Methods\ASTTest.Generics.GenericMethod3.pas"/>
         <DCCReference Include="..\TestScripts\Generics\Methods\ASTTest.Generics.GenericMethod4.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\Methods\ASTTest.Generics.GenericMethod5.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\Methods\ASTTest.Generics.GenericMethod6.pas"/>
         <DCCReference Include="..\TestScripts\Generics\Interfaces\ASTTest.Generics.IntfImpl1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\Proc Types\ASTTest.Generics.ProcType1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\Proc Types\ASTTest.Generics.ProcType2.pas"/>
@@ -375,6 +377,7 @@
         <DCCReference Include="..\TestScripts\Other\ASTTest.Other.Deprecated1.pas"/>
         <DCCReference Include="..\TestScripts\Other\ASTTest.Other.Platform1.pas"/>
         <DCCReference Include="..\TestScripts\Other\ASTTest.Other.PlatformAndDeprecatedMix.pas"/>
+        <DCCReference Include="..\TestScripts\Other\ASTTest.Other.UnitBeginEnd1.pas"/>
         <DCCReference Include="..\TestScripts\Consts\ASTTest.Consts.DateTime1.pas"/>
         <DCCReference Include="..\TestScripts\RTL\ASTTest.RTL.FileTypes1.pas"/>
         <DCCReference Include="..\TestScripts\RTL\ASTTest.RTL.StrHelper1.pas"/>

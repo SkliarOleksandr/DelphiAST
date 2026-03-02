@@ -1798,6 +1798,7 @@ type
     function GetProcKindName: string;
     function GetIsStatic: Boolean; inline;
     function GetDefaultParamsCount: Integer;
+    function GetRequiredParamsCount: Integer;
     function GetMethodIndex: Integer;
     function GetSelfParam: TIDParam;
     function GetSelfParamExpression: TIDExpression;
@@ -1880,6 +1881,7 @@ type
     property IsVarArgs: Boolean read GetIsVarArgs;
     property ProcKindName: string read GetProcKindName;
     property DefaultParamsCount: Integer read GetDefaultParamsCount;
+    property RequiredParamsCount: Integer read GetRequiredParamsCount;
     property VirtualIndex: Integer read FVirtualIndex write FVirtualIndex;
     property MethodIndex: Integer read GetMethodIndex;
     property GenericPrototype: TIDProcedure read FGenericPrototype write FGenericPrototype;
@@ -3244,6 +3246,17 @@ begin
   for i := 0 to Length(FExplicitParams) - 1 do
     if Assigned(FExplicitParams[i].DefaultValue) then
       Inc(Result);
+end;
+
+function TIDProcedure.GetRequiredParamsCount: Integer;
+begin
+  Result := 0;
+  for var LIndex := 0 to Length(FExplicitParams) - 1 do
+  begin
+    if Assigned(FExplicitParams[LIndex].DefaultValue) then
+      Break;
+    Inc(Result);
+  end;
 end;
 
 function GenericArgsAsText(const AArguments: TIDExpressions): string; overload;

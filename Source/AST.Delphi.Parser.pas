@@ -1856,13 +1856,14 @@ function InferImplicitGenericArgs(AProc: TIDProcedure; const ACallArgs: TIDExpre
 
 begin
   var LDescriptor := AProc.GenericDescriptor;
-  Result := (AProc.ParamsCount = Length(ACallArgs));
+  // generic types inferring considers required params only
+  Result := (AProc.RequiredParamsCount = Length(ACallArgs));
   if Result then
   begin
     // set generic array len according to proc params
     var LGenericArgs: TIDExpressions;
     SetLength(LGenericArgs, LDescriptor.ParamsCount);
-    for var LIndex := 0 to AProc.ParamsCount - 1 do
+    for var LIndex := 0 to AProc.RequiredParamsCount - 1 do
     begin
       var LArg := ACallArgs[LIndex];
       var LParam := AProc.ExplicitParams[LIndex];
@@ -6801,7 +6802,6 @@ begin
   fGenericInstantiations := TOrderedDictionary<string, TIDType>.Create;
   fDefines := TDefines.Create();
   fPackage := Project as IASTDelphiProject;
-  fUnitSContext := TSContext.Create(Self, IntfScope);
   fErrors := TASTDelphiErrors.Create(Lexer);
   fCache := TDeclCache.Create;
   fForwardTypes := TList<TIDType>.Create;
@@ -6818,6 +6818,8 @@ begin
 
   FFinalProc := TASTDelphiProc.CreateAsSystem(ImplScope, '$finalization');
   TASTDelphiProc(FFinalProc).Body := TASTBlock.Create(FFinalProc);
+
+  fUnitSContext := TSContext.Create(Self, IntfScope, TASTDelphiProc(fInitProc), TASTDelphiProc(fInitProc).Body);
 end;
 
 function TASTDelphiUnit.CreateAnonymousConstant(Scope: TScope; var EContext: TEContext; const ID: TIdentifier;
@@ -6837,15 +6839,7 @@ begin
   Value := ID.Name;
   case IdentifierType of
     itChar: CItem := TIDCharConstant.CreateAsAnonymous(Scope, Sys._WideChar, Value[1]);
-    itString: begin
-        // если чарсет метаданных равен ASCII, все строковые константы
-        // удовлетворающе набору ASCII, создаются по умолчанию с типом AnsiString
-        if (Package.RTTICharset = RTTICharsetASCII) and IsAnsiString(Value) then
-          DataType := Sys._AnsiString
-        else
-          DataType := Sys._UnicodeString;
-      CItem := TIDStringConstant.CreateAsAnonymous(Scope, DataType, Value);
-    end;
+    itString: CItem := TIDStringConstant.CreateAsAnonymous(Scope, Sys._UnicodeString, Value);
     itInteger: begin
       if Value[1] = '#' then begin
         Value := Copy(Value, 2, Length(Value) - 1);
