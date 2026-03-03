@@ -738,6 +738,7 @@ var
 begin
   // читаем аргумент
   Expr := EContext.RPNPopExpression();
+  Expr := TASTDelphiUnit.CheckAndCallFuncImplicit(EContext, Expr);
 
   UN := GetUnit(EContext);
   UN.CheckEmptyExpression(Expr);
@@ -745,7 +746,7 @@ begin
   Decl := Expr.Declaration;
   case Decl.ItemType of
     itType: DataType := Decl as TIDType;
-    itVar, itConst: DataType := Decl.DataType;
+    itVar, itConst, itProperty: DataType := Decl.DataType;
   else
     UN.ERRORS.ORDINAL_TYPE_REQUIRED(Expr.TextPosition);
     Exit(nil);
@@ -792,6 +793,7 @@ var
 begin
   // читаем аргумент
   Expr := EContext.RPNPopExpression();
+  Expr := TASTDelphiUnit.CheckAndCallFuncImplicit(EContext, Expr);
 
   UN := GetUnit(EContext);
   UN.CheckEmptyExpression(Expr);
@@ -799,7 +801,7 @@ begin
   Decl := Expr.Declaration;
   case Decl.ItemType of
     itType: DataType := Decl as TIDType;
-    itVar, itConst: DataType := Decl.DataType;
+    itVar, itConst, itProperty: DataType := Decl.DataType;
   else
     UN.ERRORS.ORDINAL_TYPE_REQUIRED(Expr.TextPosition);
     Exit(nil);

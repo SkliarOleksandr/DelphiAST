@@ -153,12 +153,6 @@ type
     function Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean; override;
   end;
 
-  {implicit Array -> Any}
-  TSysImplicitArrayToAny = class(TSysOpImplicit)
-  public
-    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
-  end;
-
   {implicit Array <- Any}
   TSysImplicitArrayFromAny = class(TSysOpImplicit)
   public
@@ -696,26 +690,6 @@ end;
 function TSysExplicitClassOfFromAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
   Result := Dst.DataTypeID in [dtPointer, dtNativeInt, dtNativeUInt];
-end;
-
-{ TSysImplicitArrayToAny }
-
-function TSysImplicitArrayToAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
-var
-  SrcElType, DstElType: TIDType;
-begin
-  Result := False;
-//  SrcElType := (Src as TIDArray).ElementDataType;
-//  if Dst is TIDArray then
-//  begin
-//    DstElType := TIDArray(Dst).ElementDataType;
-//    Result := ({(Dst.DataTypeID = dtOpenArray) and} SameTypes(SrcElType, DstElType)) or
-//               (SrcElType.IsGeneric and DstElType.IsGeneric);
-//  end else begin
-//    Result :=
-//      ((Dst = SYSUnit._PAnsiChar) and (SrcElType = SYSUnit._AnsiChar)) or
-//      ((Dst = SYSUnit._PWideChar) and (SrcElType = SYSUnit._WideChar));
-//  end;
 end;
 
 { TSysImplicitArrayFromAny }

@@ -88,7 +88,6 @@ type
     ImplicitAnsiCharToWideChar,
     ImplicitMetaClassToGUID,
     ImplicitClassToClass,
-    ImplicitArrayToAny,
     ImplicitArrayFromAny,
     ImplicitSetFromAny,
     ImplicitNullPtrToAny,
@@ -1735,7 +1734,6 @@ begin
   ImplicitAnsiCharToWideChar := TSysImplicitAnsiCharToWideChar.CreateAsSystem(Scope);
   ImplicitMetaClassToGUID := TSysImplicitMetaClassToGUID.CreateAsSystem(Scope);
   ImplicitClassToClass := TSysImplicitClassToClass.CreateAsSystem(Scope);
-  ImplicitArrayToAny := TSysImplicitArrayToAny.CreateAsSystem(Scope);
   ImplicitArrayFromAny := TSysImplicitArrayFromAny.CreateAsSystem(Scope);
   ImplicitSetFromAny := TSysImplicitSetFromAny.CreateAsSystem(Scope);
   ImplicitNullPtrToAny := TSysImplicitNullPtrToAny.CreateAsSystem(Scope);

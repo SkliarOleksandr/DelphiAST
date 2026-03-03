@@ -49,6 +49,9 @@ uses
 // System.Win.ScktComp
 // System.Win.Notification
 // System.Win.InternetExplorer
+// System.Net.HttpClient
+// System.Net.URLClient
+// System.Net.Mime
 // REST.JsonReflect
 // system.Types
 // system.TypInfo
@@ -139,7 +142,7 @@ type
     property Sys: PDelphiSystemDeclarations read fSysDecls;
     procedure CheckLeftOperand(const Status: TRPNStatus);
     class procedure CheckAndCallFuncImplicit(const EContext: TEContext); overload; static;
-    function CheckAndCallFuncImplicit(const SContext: TSContext; Expr: TIDExpression; out WasCall: Boolean): TIDExpression; overload;
+    class function CheckAndCallFuncImplicit(const SContext: TSContext; Expr: TIDExpression; out WasCall: Boolean): TIDExpression; overload;
     class function CheckAndCallFuncImplicit(const EContext: TEContext; Expr: TIDExpression): TIDExpression; overload; static;
 
     function CreateAnonymousConstant(Scope: TScope; var EContext: TEContext;
@@ -197,7 +200,7 @@ type
     class function GetTMPRefExpr(const SContext: TSContext; DataType: TIDType): TIDExpression; overload; inline; static;
     class function GetTMPRefExpr(const SContext: TSContext; DataType: TIDType; const TextPos: TTextPosition): TIDExpression; overload; inline; static;
     class function GetStaticTMPVar(AScope: TScope; DataType: TIDType; VarFlags: TVariableFlags = []): TIDVariable; static;
-    function GetOverloadProcForImplicitCall(ACallExpr: TIDCallExpression): TIDProcedure;
+    class function FindOverloadProcForImplicitCall(const AModule: IASTModule; ACallExpr: TIDCallExpression): TIDProcedure;
     function GetBuiltins: IDelphiBuiltInTypes;
     property Builtins: IDelphiBuiltInTypes read GetBuiltins;
     property IntfHelpers: THelperTree read fIntfHelpers;
@@ -3802,6 +3805,7 @@ begin
         Result := TSysTypeCast(Decl).Match(SContext, Source, ADstType);
         if Assigned(Result) then
           Exit;
+        Decl := nil;
       end else
         Exit(Source);
     end;
@@ -4387,7 +4391,7 @@ begin
   AProcScope.ParamsScope.SelfParam := SelfParam;
 end;
 
-function TASTDelphiUnit.GetOverloadProcForImplicitCall(ACallExpr: TIDCallExpression): TIDProcedure;
+class function TASTDelphiUnit.FindOverloadProcForImplicitCall(const AModule: IASTModule; ACallExpr: TIDCallExpression): TIDProcedure;
 
   function InArray(const AArray: TIDProcArray; AProc: TIDProcedure): Boolean;
   begin
@@ -4423,14 +4427,12 @@ begin
     Exit;
 
   if LMatchedCount > 1 then
-    TASTDelphiErrors.E2251_AMBIGUOUS_OVERLOADED_CALL(Self, ACallExpr)
+    TASTDelphiErrors.E2251_AMBIGUOUS_OVERLOADED_CALL(AModule, ACallExpr)
   else
-    TASTDelphiErrors.E2250_NO_OVERLOADED_PROC_FOR_THESE_ARGUMENTS(Self, ACallExpr);
-
-  Result := Sys._UnknownProcedure;
+    Result := nil;
 end;
 
-function TASTDelphiUnit.CheckAndCallFuncImplicit(const SContext: TSContext; Expr: TIDExpression; out WasCall: Boolean): TIDExpression;
+class function TASTDelphiUnit.CheckAndCallFuncImplicit(const SContext: TSContext; Expr: TIDExpression; out WasCall: Boolean): TIDExpression;
 begin
   WasCall := False;
   case Expr.ItemType of
@@ -4439,17 +4441,21 @@ begin
       if Expr is TIDCallExpression then
       begin
         var LProcExpr := TIDCallExpression(Expr);
-        var LProc := GetOverloadProcForImplicitCall(LProcExpr);
-        var LResultType := LProc.ResultType;
-        if Assigned(LResultType) or (pfConstructor in LProc.Flags) then
+        var LProc := FindOverloadProcForImplicitCall(SContext.Module, LProcExpr);
+        if Assigned(LProc) then
         begin
-          WasCall := True;
-          if (pfConstructor in LProc.Flags) then
-            LResultType := LProcExpr.Instance.AsType;
+          var LResultType := LProc.ResultType;
+          if Assigned(LResultType) or (pfConstructor in LProc.Flags) then
+          begin
+            WasCall := True;
+            if (pfConstructor in LProc.Flags) then
+              LResultType := LProcExpr.Instance.AsType;
 
-          Result := GetTMPVarExpr(SContext, LResultType, Expr.TextPosition);
-          Exit;
-        end;
+            Result := GetTMPVarExpr(SContext, LResultType, Expr.TextPosition);
+            Exit;
+          end;
+        end else
+          Result := Expr;
       end;
     end;
     itVar, itConst: begin
@@ -4675,23 +4681,13 @@ begin
 
     if AResolveCalls then
     begin
-      if Source.ItemType = itProcedure then
+      var LWasCall := False;
+      Source := CheckAndCallFuncImplicit(SContext, Source, {out} LWasCall);
+      if LWasCall then
       begin
-        if Assigned(Source.AsProcedure.ResultType) then
-        begin
-          var AResultExpr := TIDExpression.Create(SContext.Proc.GetTMPVar(SContext.Scope, Source.AsProcedure.ResultType), Source.TextPosition);
-          Exit(CheckImplicit(SContext, AResultExpr, ADstType));
-        end;
-      end;
-
-      if (Source.ItemType = itVar) and (Source.DataTypeID = dtProcType) then
-      begin
-        var AResultType := TIDProcType(Source.DataType).ResultType;
-        if Assigned(AResultType) then
-        begin
-          var AResultExpr := TIDExpression.Create(SContext.Proc.GetTMPVar(SContext.Scope,AResultType), Source.TextPosition);
-          Exit(CheckImplicit(SContext, AResultExpr, ADstType));
-        end;
+        Result := CheckImplicit(SContext, Source, ADstType);
+        if Assigned(Result) then
+          Exit;
       end;
     end;
 
@@ -5699,15 +5695,21 @@ begin
     end;
     CheckConstExpression(LExpr);
 
-    // the const is an interface guid
     case LExpr.ItemType of
       itType: begin
-        if LExpr.AsType.DataTypeID = dtInterface then
+        var LType := LExpr.AsType;
+        // the const is an interface guid
+        if LType.DataTypeID = dtInterface then
         begin
-          var LIntfDecl := LExpr.AsType as TIDInterface;
+          var LIntfDecl := TIDInterface(LType);
           LConst := LIntfDecl.GuidDecl;
           if not Assigned(LConst) then
             ERRORS.E2232_INTERFACE_HAS_NO_INTERFACE_IDENTIFICATION(Self, LIntfDecl);
+        end else
+        if LType.DataTypeID = dtClass then
+        begin
+          LConst := TIDClassTypeConstant.Create(Scope, TIdentifier.Empty, LExplicitType, LType);
+          LConst.ExplicitDataType := LExplicitType;
         end else
         begin
           ERRORS.E2026_CONSTANT_EXPRESSION_EXPECTED(Self, LExpr.TextPosition);
@@ -5729,6 +5731,7 @@ begin
       LConst.ID := LConstID
     else begin
       // create a const alias
+      // todo: rework - remove a copy
       var LNewConst := LConst.MakeCopy(Scope) as TIDConstant;
       LNewConst.ID := LConstID;
       LNewConst.DataType := LConst.DataType;
@@ -7159,7 +7162,9 @@ begin
         else
           ERRORS.GENERIC_INVALID_CONSTRAINT(Result);
         end;
-        AConstraintType := TSYSTEMUnit(SysUnit)._TObject;
+        // asssign the constraint type if not assigned previosly
+        if not Assigned(AConstraintType) then
+          AConstraintType := TSYSTEMUnit(SysUnit)._TObject;
       end;
       token_constructor: begin
         case AConstraint of
@@ -7169,7 +7174,9 @@ begin
         else
           ERRORS.GENERIC_INVALID_CONSTRAINT(Result);
         end;
-        AConstraintType := TSYSTEMUnit(SysUnit)._TObject;
+        // asssign the constraint type if not assigned previosly
+        if not Assigned(AConstraintType) then
+          AConstraintType := TSYSTEMUnit(SysUnit)._TObject;
       end;
       token_record: begin
         if AConstraint = gsNone then
@@ -9938,11 +9945,15 @@ begin
         // in case of generic method, we have to instantiate it before (if possible)
         if LCallExpr.CanInstantiate then
         begin
-          var LProc := GetOverloadProcForImplicitCall(LCallExpr);
-          Decl := InstantiateGenericProc(Scope, LProc, LCallExpr.GenericArgs);
-          LCallExpr.Declaration := Decl;
-          //LCallExpr.GenericArgs := nil;
-          LCallExpr.CanInstantiate := False;
+          var LProc := FindOverloadProcForImplicitCall(Self, LCallExpr);
+          if Assigned(LProc) then
+          begin
+            Decl := InstantiateGenericProc(Scope, LProc, LCallExpr.GenericArgs);
+            LCallExpr.Declaration := Decl;
+            //LCallExpr.GenericArgs := nil;
+            LCallExpr.CanInstantiate := False;
+          end else
+            ERRORS.E2250_NO_OVERLOADED_PROC_FOR_THESE_ARGUMENTS(Self, LCallExpr);
         end;
 
         // workaround for calling paramless constuctor

@@ -1241,6 +1241,12 @@ type
     function AsString: string; override;
   end;
 
+  {class-type constant}
+  TIDClassTypeConstant = class(TIDXXXConstant<TIDType>)
+  public
+    function AsString: string; override;
+  end;
+
   {array constant}
   TIDDynArrayConstant = class(TIDXXXConstant<TIDExpressions>)
   private
@@ -5961,7 +5967,6 @@ begin
   inherited;
   OverloadImplicitTo(Self);
   // todo: remove
-  OverloadImplicitToAny(SYSUnit.Operators.ImplicitArrayToAny);
   OverloadImplicitFromAny(SYSUnit.Operators.ImplicitArrayFromAny);
   AddBinarySysOperator(opIn, SYSUnit.Operators.Ordinal_In_Set);
 end;
@@ -6725,9 +6730,16 @@ end;
 
 function TIDDynArray.MatchImplicitFrom(ASrc: TIDType): Boolean;
 begin
-  Result :=
-    (ASrc.DataTypeID = dtSet) and ASrc.IsAnonymous and
-    ((ASrc as TIDSet).BaseType = ElementDataType);
+  if ASrc.IsAnonymous then
+  begin
+    case ASrc.DataTypeID of
+      dtDynArray: Result := SameTypes(ElementDataType, TIDArray(ASrc).ElementDataType);
+      dtSet: Result := SameTypes(ElementDataType, TIDSet(ASrc).BaseType);
+    else
+      Result := False;
+    end;
+  end else
+    Result := False;
 end;
 
 function TIDDynArray.SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType;
@@ -9744,6 +9756,13 @@ end;
 { TIDProceduralConstant }
 
 function TIDProceduralConstant.AsString: string;
+begin
+  Result := FValue.Name;
+end;
+
+{ TIDClassTypeConstant }
+
+function TIDClassTypeConstant.AsString: string;
 begin
   Result := FValue.Name;
 end;
