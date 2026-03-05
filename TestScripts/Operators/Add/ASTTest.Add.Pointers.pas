@@ -16,7 +16,7 @@ begin
   LPAChar := nil;
   LPWChar := nil;
   LUInt32 := 1;
-    
+
   LPAChar := LPAChar + 1;
   LPWChar := LPWChar + 1;
 

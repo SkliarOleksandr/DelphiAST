@@ -52,12 +52,15 @@ uses
   ASTTest.Sub.Integer in '..\TestScripts\Operators\Substruct\ASTTest.Sub.Integer.pas',
   ASTTest.Ops.AddUnar1 in '..\TestScripts\Operators\Add\ASTTest.Ops.AddUnar1.pas',
   ASTTest.Add.Pointers in '..\TestScripts\Operators\Add\ASTTest.Add.Pointers.pas',
+  ASTTest.Ops.AddPAChar in '..\TestScripts\Operators\Add\ASTTest.Ops.AddPAChar.pas',
+  ASTTest.Ops.AddPUChar in '..\TestScripts\Operators\Add\ASTTest.Ops.AddPUChar.pas',
   ASTTest.Cmp.Pointers in '..\TestScripts\Operators\Compare\ASTTest.Cmp.Pointers.pas',
   ASTTest.Operators.Neg1 in '..\TestScripts\Operators\Neg\ASTTest.Operators.Neg1.pas',
   ASTTest.Ops.OverloadInHelper1 in '..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadInHelper1.pas',
   ASTTest.Ops.ImplicitAsExplicit1 in '..\TestScripts\Operators\Overload\ASTTest.Ops.ImplicitAsExplicit1.pas',
   ASTTest.Ops.OverloadWithImplicitCast in '..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadWithImplicitCast.pas',
   ASTTest.Ops.OverloadLessThan1 in '..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadLessThan1.pas',
+  ASTTest.Ops.OverloadBinOps in '..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadBinOps.pas',
   ASTTest.Ops.Ampersand1 in '..\TestScripts\Operators\Ampersand\ASTTest.Ops.Ampersand1.pas',
   ASTTest.AddrOp.Addr1 in '..\TestScripts\Operators\Addr\ASTTest.AddrOp.Addr1.pas',
   ASTTest.AddrOp.Addr2 in '..\TestScripts\Operators\Addr\ASTTest.AddrOp.Addr2.pas',
@@ -261,7 +264,9 @@ uses
   ASTTest.Arrays.OpenArrayOfConst2 in '..\TestScripts\Arrays\ASTTest.Arrays.OpenArrayOfConst2.pas',
   ASTTest.Arrays.MultiDimention1 in '..\TestScripts\Arrays\ASTTest.Arrays.MultiDimention1.pas',
   ASTTest.Strings.ArrayOfChar1 in '..\TestScripts\Strings\ASTTest.Strings.ArrayOfChar1.pas',
-  ASTTest.Strings.ArrayOfChar2 in '..\TestScripts\Strings\ASTTest.Strings.ArrayOfChar2.pas';
+  ASTTest.Strings.ArrayOfChar2 in '..\TestScripts\Strings\ASTTest.Strings.ArrayOfChar2.pas',
+  ASTTest.Cond.UnknownVar2 in '..\TestScripts\Cond Compile\ASTTest.Cond.UnknownVar2.pas',
+  ASTTest.Cond.UnknownVar1 in '..\TestScripts\Cond Compile\ASTTest.Cond.UnknownVar1.pas';
 
 {$R *.res}
 

@@ -512,6 +512,8 @@ type
     function MatchExplicitTo(ADst: TIDType): Boolean; virtual;
     function MatchExplicitFrom(ASrc: TIDType): Boolean; virtual;
 
+    function IsConstTypeEqual(ADst: TIDType): Boolean; virtual;
+
     function TryGetEnumerator(out AItemDataType: TIDType): Boolean; virtual;
     function ToJson: TJsonASTDeclaration; override;
     function GetASTTypeKind: string; virtual;
@@ -817,6 +819,7 @@ type
                                 AContext: TGenericInstantiateContext): TIDDeclaration; override;
 
     procedure AncestorsDecl2Str(ABuilder: TStringBuilder); virtual;
+    procedure Decl2StrMembers(ABuilder: TStringBuilder; ANestedLevel: Integer); virtual;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
 
     function DoesGenericUseParams(const AParams: TIDTypeArray): Boolean; override;
@@ -843,8 +846,7 @@ type
     property StaticConstructor: TIDProcedure read FStaticConstructor write FStaticConstructor;
     property StaticDestructor: TIDProcedure read FStaticDestructor write FStaticDestructor;
     procedure AddCase(const AFields: TIDFieldArray);
-    procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
-
+    procedure Decl2StrMembers(ABuilder: TStringBuilder; ANestedLevel: Integer); override;
     function ASTJsonDeclClass: TASTJsonDeclClass; override;
   end;
 
@@ -1099,6 +1101,7 @@ type
   TIDConstant = class(TIDDeclaration)
   private
     FExplicitDataType: TIDType;
+    FDataTypeAjusted: Boolean;
     procedure SetExplicitDataType(const Value: TIDType);
   protected
     function GetDisplayName: string; override;
@@ -1118,6 +1121,7 @@ type
     function AsVariant: Variant; virtual; abstract;
     function CompareTo(Constant: TIDConstant): Integer; virtual; abstract;
     function CanBeTreatedAsVariable: Boolean;
+    function TryAdjustDataTypeTo(ADataType: TIDType): Boolean;
     procedure IncRefCount(RCPath: UInt32); override;
     procedure DecRefCount(RCPath: UInt32); override;
     procedure Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer = 0; AAppendName: Boolean = True); override;
@@ -3378,7 +3382,7 @@ end;
 function TIDProcedure.GetProcKindName: string;
 begin
   if pfOperator in Flags then
-    Result := 'operator'
+    Result := 'class operator'
   else
   if pfConstructor in Flags then
     Result := 'constructor'
@@ -4105,6 +4109,11 @@ begin
     Result := Self;
 end;
 
+function TIDType.IsConstTypeEqual(ADst: TIDType): Boolean;
+begin
+  Result := False;
+end;
+
 function TIDType.IsNewTypeFrom(AOrigin: TIDType): Boolean;
 begin
   Result := (fOriginal = AOrigin);
@@ -4565,6 +4574,16 @@ begin
   if Assigned(FExplicitDataType) then
     AbortWorkInternal('Constant explicit type already assigned');
   FExplicitDataType := Value;
+end;
+
+function TIDConstant.TryAdjustDataTypeTo(ADataType: TIDType): Boolean;
+begin
+  Result := not FDataTypeAjusted and DataType.IsConstTypeEqual(ADataType);
+  if Result then
+  begin
+    DataType := ADataType;
+    FDataTypeAjusted := True;
+  end;
 end;
 
 { TIDXXXConstant<T> }
@@ -5519,6 +5538,26 @@ begin
   end;
 end;
 
+procedure TIDStructure.Decl2StrMembers(ABuilder: TStringBuilder; ANestedLevel: Integer);
+begin
+  for var LIndex := 0  to fMembers.Count - 1 do
+  begin
+    var LDecl := fMembers.Items[LIndex];
+    if not (LDecl is TIDGenericParam) then
+    begin
+      // skip weak aliases
+      // if LDecl.Scope = Members then
+      begin
+        ABuilder.Append(sLineBreak);
+        if LDecl.ItemType = itProcedure then
+          TIDProcedure(LDecl).Decl2StrAllOverloads(ABuilder, ANestedLevel + 1)
+        else
+          LDecl.Decl2Str(ABuilder, ANestedLevel + 1);
+      end;
+    end;
+  end;
+end;
+
 procedure TIDStructure.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
 begin
   inherited;
@@ -5528,30 +5567,13 @@ begin
 
   if not NeedForward then
   begin
-    for var LIndex := 0  to fMembers.Count - 1 do
-    begin
-      var LDecl := fMembers.Items[LIndex];
-      if not (LDecl is TIDGenericParam) then
-      begin
-        // skip weak aliases
-        // if LDecl.Scope = Members then
-        begin
-          ABuilder.Append(sLineBreak);
-          if LDecl.ItemType = itProcedure then
-            TIDProcedure(LDecl).Decl2StrAllOverloads(ABuilder, ANestedLevel + 1)
-          else
-            LDecl.Decl2Str(ABuilder, ANestedLevel + 1);
-        end;
-      end;
-    end;
+    Decl2StrMembers(ABuilder, ANestedLevel);
 
     ABuilder.Append(sLineBreak);
     ABuilder.Append(' ', ANestedLevel*2);
     ABuilder.Append('end');
   end else
     ABuilder.Append(';');
-
-  // ABuilder.Append(Format('[$%p]', [Pointer(Self)]));
 
   GenericInstances2Str(ABuilder, ANestedLevel);
 end;
@@ -6454,9 +6476,15 @@ begin
   OverloadExplicitToAny(SYSUnit.Operators.ExplicitRecordToAny);
 end;
 
-procedure TIDRecord.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
+procedure TIDRecord.Decl2StrMembers(ABuilder: TStringBuilder; ANestedLevel: Integer);
 begin
   inherited;
+  for var LIndex := 0 to fOperators.Count - 1 do
+  begin
+    ABuilder.Append(sLineBreak);
+    var LDecl := fOperators.Items[LIndex];
+    TIDProcedure(LDecl).Decl2StrAllOverloads(ABuilder, ANestedLevel + 1)
+  end;
   // TODO: case records
 end;
 

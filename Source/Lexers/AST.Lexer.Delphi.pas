@@ -72,6 +72,7 @@ type
     tokenD_export,                  // directive: export
     tokenD_exports,                 // directive: exports
     tokenD_external,                // directive: external
+    tokenD_local,                   // directive: local
     tokenD_name  {=50},             // directive: name
     token_interface,                // keyword: interface
     token_dispinterface,            // keyword: dispinterface
@@ -503,6 +504,7 @@ begin
   RegisterToken('implements', tokenD_implements, tcWeakKeyword);
   RegisterToken('library', token_library);
   RegisterToken('label', token_label);
+  RegisterToken('local', tokenD_local, tcWeakKeyword);
   RegisterToken('mod', token_mod);
   RegisterToken('message', tokenD_message, tcWeakKeyword);
   RegisterToken('not', token_not);

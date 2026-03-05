@@ -56,13 +56,13 @@ type
     fProcessProc: TRPNPocessProc;
     fPosition: TExpessionPosition;      // позиция выражения (Nested, LValue, RValue...);
     fSContext: TASTSContext<TProcType>;
+    fScope: TScope;                     // scope of current context
     procedure RPNCheckInputSize;
     function GetExpression: TIDExpression;
     function GetProc: TProcType;
-    function GetScope: TScope;
     function GetModule: IASTModule;
   public
-    procedure Initialize(const SContext: TASTSContext<TProcType>; const ProcessProc: TRPNPocessProc);
+    procedure Initialize(AScope: TScope; const SContext: TASTSContext<TProcType>; const ProcessProc: TRPNPocessProc);
     procedure Reset;                    // clear RPN stack and reinit
     procedure RPNPushExpression(Expr: TIDExpression);
     procedure RPNError(Status: TRPNError);
@@ -82,7 +82,7 @@ type
     property EPosition: TExpessionPosition read fPosition write fPosition;
     property SContext: TASTSContext<TProcType> read fSContext;
     property Proc: TProcType read GetProc;
-    property Scope: TScope read GetScope;
+    property Scope: TScope read fScope;
     property Module: IASTModule read GetModule;
   end;
 
@@ -265,12 +265,7 @@ begin
   Result := fSContext.fProc;
 end;
 
-function TASTEContext<TProcType>.GetScope: TScope;
-begin
-  Result := fSContext.Scope;
-end;
-
-procedure TASTEContext<TProcType>.Initialize(const SContext: TASTSContext<TProcType>; const ProcessProc: TRPNPocessProc);
+procedure TASTEContext<TProcType>.Initialize(AScope: TScope; const SContext: TASTSContext<TProcType>; const ProcessProc: TRPNPocessProc);
 begin
   SetLength(fRPNOArray, 4);
   fRPNOArrayLen := 4;
@@ -282,6 +277,7 @@ begin
   fRPNPrevPriority := 0;
   fProcessProc := ProcessProc;
   fSContext := SContext;
+  fScope := AScope;
 end;
 
 procedure TASTEContext<TProcType>.RPNEraiseTopOperator;

@@ -767,9 +767,11 @@ begin
   AddBinarOperator(opAdd, _UnicodeString, _WideChar, _UnicodeString);
   AddBinarOperator(opAdd, _UnicodeString, _PWideChar, _UnicodeString);
 
-  AddBinarOperator(opAdd, _PWideChar, _PWideChar, _UnicodeString);
   AddBinarOperator(opAdd, _PWideChar, _WideChar, _UnicodeString);
   AddBinarOperator(opAdd, _PWideChar, _UnicodeString, _UnicodeString);
+
+  AddBinarOperator(opAdd, _PAnsiChar, _AnsiChar, _AnsiString);
+  AddBinarOperator(opAdd, _PAnsiChar, _AnsiString, _AnsiString);
 
   AddBinarOperator(opAdd, _WideChar, _WideChar, _UnicodeString);
   AddBinarOperator(opAdd, _WideChar, _PWideChar, _UnicodeString);

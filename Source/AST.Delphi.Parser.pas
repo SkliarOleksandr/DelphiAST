@@ -147,7 +147,7 @@ type
 
     function CreateAnonymousConstant(Scope: TScope; var EContext: TEContext;
       const ID: TIdentifier; IdentifierType: TIdentifierType): TIDExpression;
-    procedure InitEContext(out EContext: TEContext; const SContext: TSContext; EPosition: TExpessionPosition); overload; inline;
+    procedure InitEContext(out EContext: TEContext; AScope: TScope; const SContext: TSContext; EPosition: TExpessionPosition); overload; inline;
     procedure AddType(const Decl: TIDType);
     class function CheckExplicit(const SContext: TSContext; const ASrcType, ADstType: TIDType; out ExplicitOp: TIDDeclaration): Boolean; overload; static;
     function MatchExplicit(const SContext: TSContext; const Source: TIDExpression; ADstType: TIDType; out Explicit: TIDDeclaration): TIDExpression; overload;
@@ -176,6 +176,7 @@ type
     function ProcSpec_CDecl(Scope: TScope; var CallConvention: TCallConvention): TTokenID;
     function ProcSpec_Message(Scope: TScope; var Flags: TProcFlags): TTokenID;
     function ProcSpec_Noreturn(Scope: TScope; var Flags: TProcFlags): TTokenID;
+    function ProcSpec_Local(Scope: TScope; var Flags: TProcFlags): TTokenID;
 
     function InstantiateGenericType(AScope: TScope; AGenericType: TIDType;
                                     const AGenericArgs: TIDTypeArray): TIDType;
@@ -207,6 +208,7 @@ type
   protected
     function GetSource: string; override;
     function GetErrors: TASTDelphiErrors;
+    function GetIncludeName: string;
     function GetSystemDeclarations: PDelphiSystemDeclarations; virtual;
     procedure CheckLabelExpression(const Expr: TIDExpression); overload;
     procedure CheckLabelExpression(const Decl: TIDDeclaration); overload;
@@ -514,7 +516,7 @@ type
     function ParseCondWarn(Scope: TScope): TTokenID;
     function ParseCondError(Scope: TScope): TTokenID;
     function ParseCondMessage(Scope: TScope): TTokenID;
-    function ParseCondIf(Scope: TScope; out ExpressionResult: TCondIFValue): TTokenID;
+    function ParseCondIf(var Scope: TScope; out ExpressionResult: TCondIFValue): TTokenID;
     function ParseCondOptSet(Scope: TScope): TTokenID;
     procedure ParseCondDefine(Scope: TScope; add_define: Boolean);
     function ParseCondOptions(Scope: TScope): TTokenID;
@@ -527,6 +529,7 @@ type
     procedure GenericInstancesToStr(AStrBuilder: TStringBuilder);
 
     property Source: string read GetSource;
+    property IncludeName: string read GetIncludeName;
     function DoParse(Scope: TScope; AFirstToken: TTokenID; ACompileIntfOnly: Boolean): TCompilerResult;
     function Compile(ACompileIntfOnly: Boolean; RunPostCompile: Boolean = True): TCompilerResult; override;
     function CompileIntfOnly: TCompilerResult; override;
@@ -636,7 +639,6 @@ end;
 function TASTDelphiUnit.ParseStatements(Scope: TScope; const SContext: TSContext; IsBlock: Boolean): TTokenID;
 var
   LEContext: TEContext;
-  NewScope: TScope;
   AST: TASTItem;
 begin
   //     ASTE.AddDeclItem(Expr.Declaration, Expr.TextPosition);
@@ -653,7 +655,7 @@ begin
       {BEGIN}
       token_begin: begin
         Lexer_NextToken(Scope);
-        NewScope := TBlockScope.Create(stLocal, Scope);
+        var NewScope := TBlockScope.Create(stLocal, Scope);
         Result := ParseStatements(NewScope, SContext, {IsBlock:} True);
         Lexer_MatchToken(Result, token_end);
         Result := Lexer_NextToken(Scope);
@@ -711,13 +713,13 @@ begin
       {IDENTIFIER, OPEN ROUND}
       token_identifier, token_inherited, token_openround:
       begin
-        InitEContext({out} LEContext, SContext, ExprLValue);
+        InitEContext({out} LEContext, Scope, SContext, ExprLValue);
         begin
           var ASTEDst, ASTESrc: TASTExpression;
           Result := ParseExpression(Scope, SContext, LEContext, ASTEDst);
           if Result = token_assign then begin
             var REContext: TEContext;
-            InitEContext(REContext, SContext, ExprRValue);
+            InitEContext(REContext, Scope, SContext, ExprRValue);
             Lexer_NextToken(Scope);
             Result := ParseExpression(Scope, SContext, REContext, ASTESrc);
 
@@ -1389,7 +1391,7 @@ begin
   //ASTCall := ASTE.AddOperation<TASTOpCallProc>;
   //ASTCall.Proc := CallExpr.Declaration;
   ArgumentsCount := 0;
-  InitEContext(InnerEContext, EContext.SContext, ExprNested);
+  InitEContext(InnerEContext, Scope, EContext.SContext, ExprNested);
   {цикл парсинга аргументов}
   while true do begin
     Result := Lexer_NextToken(Scope);
@@ -1538,7 +1540,7 @@ begin
   begin
     ParamsBeginPos := Lexer.SourcePosition;
     ParamsBeginRow := Lexer.LinePosition.Row;
-    InitEContext(InnerEContext, EContext.SContext, ExprNested);
+    InitEContext(InnerEContext, Scope, EContext.SContext, ExprNested);
     while True do begin
       Lexer_NextToken(Scope);
       Result := ParseExpression(Scope, SContext, InnerEContext, ASTExpr);
@@ -1749,7 +1751,7 @@ begin
   KW := SContext.Add(TASTKWWhile) as TASTKWWhile;
 
   // loop expression
-  InitEContext(EContext, SContext, ExprRValue);
+  InitEContext(EContext, Scope, SContext, ExprRValue);
   Lexer_NextToken(Scope);
   Result := ParseExpression(Scope, SContext, EContext, ASTExpr);
   KW.Expression := ASTExpr;
@@ -1785,7 +1787,7 @@ begin
   BodySContext := SContext.MakeChild(Scope, KW.Body);
   while True do begin
     Result := Lexer_NextToken(Scope);
-    InitEContext(EContext, SContext, ExprRValue);
+    InitEContext(EContext, Scope, SContext, ExprRValue);
     Lexer_MatchToken(Result, token_identifier);
     Result := ParseExpression(Scope, SContext, EContext, ASTExpr);
     KW.AddExpression(ASTExpr);
@@ -2323,16 +2325,6 @@ begin
       if WasCall then
         Result := FindBinaryOperator(SContext, OpID, Left, Right);
     end;
-
-    if not Assigned(Result) then
-    begin
-      // for debug:
-      DoMatchBinarOperator(SContext, OpID, Left, Right);
-
-      ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Self, Left);
-      // return "unknown" to keep parsing
-      Result := Sys._UnknownVariable;
-    end;
   end;
 end;
 
@@ -2364,7 +2356,7 @@ begin
       var LMinCommonFactor := Min(LLeftImplicitFactor, LRightImplicitFactor);
       if LMinCommonFactor > LBetterFactor then
       begin
-        BetterFactor := LBetterFactor;
+        BetterFactor := LMinCommonFactor;
         Result := LItemPtr.OpDecl;
       end;
     end;
@@ -2397,10 +2389,16 @@ begin
 
       Op := FindBinaryOperator(EContext.SContext, OpID, Left, Right);
 
-      if Op = Sys._UnknownVariable then
+      if not Assigned(Op) then
       begin
         // return "unknown" to keep parsing
-        Result := CreateUnknownExpr(Right.TextPosition);
+        if EContext.Scope is TConditionalScope then
+          Result := Sys._FalseExpression
+        else begin
+          ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Self, Left);
+          Result := CreateUnknownExpr(Right.TextPosition)
+        end;
+
         Exit;
       end;
 
@@ -3050,6 +3048,11 @@ begin
   Result := fErrors;
 end;
 
+function TASTDelphiUnit.GetIncludeName: string;
+begin
+  Result := Lexer.IncludeFileName;
+end;
+
 procedure TASTDelphiUnit.EnumDeclarations(const AEnumProc: TEnumASTDeclProc; AUnitScope: TUnitScopeKind);
 begin
   if AUnitScope in [scopeBoth, scopeInterface] then
@@ -3116,9 +3119,9 @@ begin
   Result := TIDExpression.Create(GetTMPRef(SContext, DataType));
 end;
 
-procedure TASTDelphiUnit.InitEContext(out EContext: TEContext; const SContext: TSContext; EPosition: TExpessionPosition);
+procedure TASTDelphiUnit.InitEContext(out EContext: TEContext; AScope: TScope; const SContext: TSContext; EPosition: TExpessionPosition);
 begin
-  EContext.Initialize(SContext, Process_operators);
+  EContext.Initialize(AScope, SContext, Process_operators);
   EContext.EPosition := EPosition;
 end;
 
@@ -3637,7 +3640,7 @@ begin
 
       for i := 0 to ACnt - 1 do begin
         SExpr := CArray.Value[i];
-        InitEContext(EContext, SContext, ExprNested);
+        InitEContext(EContext, SContext.Scope, SContext, ExprNested);
         Expr := TIDMultiExpression.CreateAnonymous(DstElementDT, [Result, IntConstExpression(SContext, i)]);
         EContext.RPNPushExpression(Expr);
         EContext.RPNPushExpression(SExpr);
@@ -3921,7 +3924,6 @@ end;
 function TASTDelphiUnit.MatchBinarOperator(Op: TOperatorID; var Left, Right: TIDExpression): TIDDeclaration;
 var
   LeftDT, RightDT: TIDType;
-  L2RImplicit, R2LImplicit: TIDDeclaration;
 begin
   if Left.ItemType <> itType then LeftDT := Left.DataType else LeftDT := Left.AsType;
   if Right.ItemType <> itType then RightDT := Right.DataType else RightDT := Right.AsType;
@@ -3947,6 +3949,20 @@ begin
     Result := RightDT.FindSystemBinarOperatorRight(Op, LeftDT);
     if Assigned(Result) then
       Exit;
+
+    // 5. If Left is an anonymous constant, try to ajust type to the Left operand
+    if Left.IsAnonymousConst and Left.AsConst.TryAdjustDataTypeTo(RightDT) then
+    begin
+      LeftDT := RightDT;
+      Continue;
+    end;
+
+    // 6. If Right is an anonymous constant, try to ajust type to the Right operand
+    if Right.IsAnonymousConst and Right.AsConst.TryAdjustDataTypeTo(LeftDT) then
+    begin
+      RightDT := LeftDT;
+      Continue;
+    end;
 
     // if the type is an alias, let's try to find operators in a linked type
     if LeftDT.IsAlias then
@@ -4847,7 +4863,7 @@ begin
   var Op: TASTOpArrayAccess := ASTE.AddOperation<TASTOpArrayAccess>;
 
   IdxCount := 0;
-  InitEContext(InnerEContext, EContext.SContext, ExprNested);
+  InitEContext(InnerEContext, Scope, EContext.SContext, ExprNested);
   var Indexes: TIDExpressions := [];
   // parse array indexes
   while True do begin
@@ -5136,7 +5152,7 @@ var
   ASTE: TASTExpression;
 begin
   SContext := fUnitSContext;
-  InitEContext(EContext, SContext, ExprRValue);
+  InitEContext(EContext, Scope, SContext, ExprRValue);
   Lexer_NextToken(Scope);
   Result := ParseExpression(Scope, SContext, EContext, ASTE);
   LExpr := EContext.Result;
@@ -5208,7 +5224,7 @@ var
   ASTE: TASTExpression;
 begin
   SContext := fUnitSContext;
-  InitEContext(EContext, SContext, ExprRValue);
+  InitEContext(EContext, Scope, SContext, ExprRValue);
   Lexer_NextToken(Scope);
   Result := ParseExpression(Scope, SContext, EContext, {out} ASTE);
   LExpr := EContext.Result;
@@ -5258,7 +5274,7 @@ var
   ASTE: TASTExpression;
 begin
   SContext := fUnitSContext;
-  InitEContext(EContext, SContext, ExprRValue);
+  InitEContext(EContext, Scope, SContext, ExprRValue);
   Lexer_NextToken(Scope);
   Result := ParseExpression(Scope, SContext, {var} EContext, {out} ASTE);
   LExpr := EContext.Result;
@@ -5307,14 +5323,14 @@ begin
   Result := Lexer_NextToken(Scope);
 end;
 
-function TASTDelphiUnit.ParseCondIf(Scope: TScope; out ExpressionResult: TCondIFValue): TTokenID;
+function TASTDelphiUnit.ParseCondIf(var Scope: TScope; out ExpressionResult: TCondIFValue): TTokenID;
 var
   Expr: TIDExpression;
-  CondScope: TConditionalScope;
 begin
-  CondScope := TConditionalScope.Create(TScopeType.stLocal, Scope);
+  // create a conditional scope and replace the current one
+  Scope := TConditionalScope.Create(TScopeType.stLocal, Scope);
   Lexer.NextToken;
-  Result := ParseConstExpression(CondScope, Expr, ExprRValue);
+  Result := ParseConstExpression(Scope, Expr, ExprRValue);
   if Expr.DataTypeID <> dtGeneric then
   begin
     CheckBooleanExpression(Expr);
@@ -5505,7 +5521,8 @@ begin
         if fCondStack.Top then
           Result := SkipToElseOrEnd(True)
         else begin
-          Result := ParseCondIf(Scope, ExprResult);
+          // the scope will be replaced here
+          Result := ParseCondIf({var} Scope, ExprResult);
           fCondStack.Top := (ExprResult = condIfTrue);
           case ExprResult of
             condIFFalse: Result := SkipToElseOrEnd(False);
@@ -5518,6 +5535,9 @@ begin
       // {$endif ...}
       token_cond_end: begin
         fCondStack.Pop;
+        // get the scope back
+        if Scope is TConditionalScope then
+          Scope := Scope.Parent;
         {skip optional condition}
         repeat
           Result := Lexer.NextToken;
@@ -5571,7 +5591,8 @@ begin
       //////////////////////////////////////////
       // {$if ...}
       token_cond_if: begin
-        Result := ParseCondIf(Scope, ExprResult);
+        // the scope will be replaced here
+        Result := ParseCondIf({var} Scope, ExprResult);
         fCondStack.Push(ExprResult = condIfTrue);
         case ExprResult of
           condIFFalse: Result := SkipToElseOrEnd(False);
@@ -5620,7 +5641,7 @@ var
   EContext: TEContext;
   ASTE: TASTExpression;
 begin
-  InitEContext(EContext, fUnitSContext, EPosition);
+  InitEContext(EContext, Scope, fUnitSContext, EPosition);
   Result := ParseExpression(Scope, fUnitSContext, EContext, ASTE);
   CheckEndOfFile(Result);
   Expr := EContext.Result;
@@ -5999,7 +6020,7 @@ begin
 
   // NeedCMPCode := False;
   // CASE выражение
-  InitEContext(EContext, SContext, ExprRValue);
+  InitEContext(EContext, Scope, SContext, ExprRValue);
   Lexer_NextToken(Scope);
   Result := ParseExpression(Scope, SContext, EContext, ASTExpr);
   KW.Expression := ASTExpr;
@@ -6021,7 +6042,7 @@ begin
 
   while Result <> token_end do
   begin
-    InitEContext(EContext, SContext, ExprRValue);
+    InitEContext(EContext, Scope, SContext, ExprRValue);
     if Result <> token_else then
     begin
       while True do begin
@@ -6453,7 +6474,7 @@ var
   TargetType: TIDType;
   ASTE: TASTExpression;
 begin
-  InitEContext(EContext, SContext, ExprNested);
+  InitEContext(EContext, Scope, SContext, ExprNested);
   Lexer_NextToken(Scope);
   Result := ParseExpression(Scope, SContext, EContext, ASTE);
   SrcExpr := EContext.RPNPopExpression();
@@ -6945,7 +6966,7 @@ begin
   KW := SContext.Add(TASTKWForIn) as TASTKWForIn;
   KW.VarExpr := ASTExpr;
   // парсим выражение-коллекцию
-  InitEContext(EContext, SContext, ExprRValue);
+  InitEContext(EContext, Scope, SContext, ExprRValue);
   Lexer_NextToken(Scope);
   Result := ParseExpression(Scope, SContext, EContext, ASTExpr);
   KW.ListExpr := ASTExpr;
@@ -7012,7 +7033,7 @@ begin
     NewScope := nil;
   end;
 
-  InitEContext(EContext, SContext, ExprRValue);
+  InitEContext(EContext, Scope, SContext, ExprRValue);
   LExpr := TIDExpression.Create(LoopVar, ID.TextPosition);
   EContext.RPNPushExpression(LExpr);
 
@@ -7079,7 +7100,7 @@ begin
   end;
 
   // конечное значение
-  InitEContext(EContext, SContext, ExprRValue);
+  InitEContext(EContext, Scope, SContext, ExprRValue);
   Lexer_NextToken(Scope);
   Result := ParseExpression(Scope, SContext, EContext, ASTExpr);
   KW.ExprTo := ASTExpr;
@@ -7114,7 +7135,7 @@ begin
   ArgsCount := 0;
   ACanInstantiate := False;
   while true do begin
-    InitEContext(EContext, SContext, ExprNestedGeneric);
+    InitEContext(EContext, Scope, SContext, ExprNestedGeneric);
     Lexer_NextToken(Scope);
     Result := ParseExpression(Scope, SContext, EContext, ASTE);
     Expr := EContext.Result;
@@ -7373,7 +7394,7 @@ var
   ElseSContext: TSContext;
   CondExpr: TASTExpression;
 begin
-  InitEContext(EContext, SContext, ExprRValue);
+  InitEContext(EContext, Scope, SContext, ExprRValue);
   Lexer_NextToken(Scope);
   Result := ParseExpression(Scope, SContext, EContext, CondExpr);
   CheckAndCallFuncImplicit(EContext);
@@ -7415,7 +7436,7 @@ var
   CondExpr: TASTExpression;
 begin
   KW := SContext.Add(TASTKWIF) as TASTKWIF;
-  InitEContext(EContext, SContext, ExprRValue);
+  InitEContext(EContext, Scope, SContext, ExprRValue);
   Lexer_NextToken(Scope);
   Result := ParseExpression(Scope, SContext, EContext, CondExpr);
   KW.Expression := CondExpr;
@@ -7501,7 +7522,7 @@ begin
       if LVarCount > 1 then
         ERRORS.E2196_CANNOT_INIT_MULTIPLE_VARS(LVarID.TextPosition);
 
-      InitEContext(EContext, SContext, ExprRValue);
+      InitEContext(EContext, Scope, SContext, ExprRValue);
       // prepare variable (dest) expression and put to the RPN stack
       var LVarExpr := TIDExpression.Create(Variable, Variable.TextPosition);
       EContext.RPNPushExpression(LVarExpr);
@@ -8448,6 +8469,7 @@ begin
       tokenD_fastcall: Result := ProcSpec_FastCall(Scope, CallConv);
       tokenD_cdecl: Result := ProcSpec_CDecl(Scope, CallConv);
       tokenD_register: Result := ProcSpec_Register(Scope, CallConv);
+      tokenD_local: Result := ProcSpec_Local(Scope, ProcFlags);
       tokenD_assembler: begin
         // deprecated directive, just for compatibility
         Lexer_ReadSemicolon(Scope);
@@ -9184,7 +9206,7 @@ var
   KW: TASTKWRaise;
 begin
   Lexer_NextToken(Scope);
-  InitEContext(EContext, SContext, ExprRValue);
+  InitEContext(EContext, Scope, SContext, ExprRValue);
   Result := ParseExpression(Scope, SContext, EContext, ASTExpr);
   EExcept := EContext.Result;
   if Assigned(EExcept) then
@@ -9196,7 +9218,7 @@ begin
   if Lexer_AmbiguousId = token_at then
   begin
     Lexer_NextToken(Scope);
-    InitEContext(EContext, SContext, ExprRValue);
+    InitEContext(EContext, Scope, SContext, ExprRValue);
     Result := ParseExpression(Scope, SContext, EContext, ASTExpr);
     EAtAddr := EContext.Result;
     if Assigned(EExcept) then
@@ -9459,7 +9481,7 @@ begin
   Lexer_MatchToken(Result, token_until);
 
   // выражение цикла
-  InitEContext(EContext, SContext, ExprRValue);
+  InitEContext(EContext, Scope, SContext, ExprRValue);
   Lexer_NextToken(Scope);
   Result := ParseExpression(Scope, SContext, EContext, ASTExpr);
   KW.Expression := ASTExpr;
@@ -9493,6 +9515,13 @@ begin
   Result := Lexer_NextToken(Scope);
   if Result = token_semicolon then
     Result := Lexer_NextToken(Scope);
+end;
+
+function TASTDelphiUnit.ProcSpec_Local(Scope: TScope; var Flags: TProcFlags): TTokenID;
+begin
+  // deprecated directive
+  Lexer_ReadSemicolon(Scope);
+  Result := Lexer_NextToken(Scope);
 end;
 
 function TASTDelphiUnit.ProcSpec_Message(Scope: TScope; var Flags: TProcFlags): TTokenID;
@@ -9823,7 +9852,7 @@ function TASTDelphiUnit.ParseIdentifier(Scope, SearchScope: TScope;
     Lexer.SaveState(LParserPosition);
     try
       Lexer_NextToken(Scope);
-      InitEContext(LEContext, EContext.SContext, ExprNestedGeneric);
+      InitEContext(LEContext, Scope, EContext.SContext, ExprNestedGeneric);
       LToken := ParseExpression(Scope, ASContext, LEContext, {out} LASTExpr);
       Result := LToken in [token_coma, token_above];
     finally
@@ -9860,10 +9889,10 @@ begin
   if Result = token_less then
   begin
     // Expression like Exr1 < Expr2 ... can have two options:
-    //   1. simple bollean expression: if Expr1<Expr2 then...
+    //   1. simple bollean expression: if Expr1<Expr2 then... (operator "<" can be overloaded for types!)
     //   2. gneric type instantiation: if GenericType<Integer>... then...
-    // There is no simple way to select the right option, than try to parse first expression and then get back
-    if not Assigned(Decl) or IsGenericTypeSpecification(Scope, EContext.SContext) then
+    // There is no simple way to go the right option, than try to parse first expression and then get back if it's wrong way
+    if IsGenericTypeSpecification(Scope, EContext.SContext) then
       Result := ParseGenericMember(Scope, PMContext, EContext.SContext, StrictSearch, {out} Decl);
   end;
 
@@ -10247,7 +10276,7 @@ var
 begin
   ArgumentsCount := 0;
   SContext := addr(EContext.SContext);
-  InitEContext(InnerEContext, SContext^, ExprNested);
+  InitEContext(InnerEContext, Scope, SContext^, ExprNested);
   {цикл парсинга аргументов}
   while true do begin
     Lexer_NextToken(Scope);
@@ -10529,7 +10558,7 @@ begin
     if Scope.ScopeType = stLocal then
       Result := ParseConstExpression(Scope, DefaultValue, ExprRValue)
     else begin
-      InitEContext(EContext, SContext, ExprRValue);
+      InitEContext(EContext, Scope, SContext, ExprRValue);
       Result := ParseExpression(Scope, SContext, EContext, ASTE);
       DefaultValue := EContext.Result;
     end;
@@ -10634,7 +10663,7 @@ begin
       end;
     else
       Lexer_NextToken(Scope);
-      InitEContext(EContext, fUnitSContext, ExprRValue);
+      InitEContext(EContext, Scope, fUnitSContext, ExprRValue);
       Result := ParseExpression(Scope, fUnitSContext, EContext, ASTE);
       CheckEndOfFile(Result);
       Expr := EContext.Result;
@@ -10947,7 +10976,7 @@ begin
   IsStatic := True;
   SetLength(SItems, Capacity);
   var SContext := EContext.SContext;
-  InitEContext(InnerEContext, SContext, ExprNested);
+  InitEContext(InnerEContext, Scope, SContext, ExprNested);
   while True do begin
     Lexer_NextToken(Scope);
     Token := ParseExpression(Scope, SContext, InnerEContext, {out} ASTExpr);

@@ -3,6 +3,7 @@ unit DefaultTest;
 interface
 
 //uses System.Types;
+uses System.AnsiStrings;
 //uses System.Generics.Defaults;
 //uses System.SyncObjs;
 //uses System.Generics.Collections;
@@ -11,7 +12,8 @@ interface
 //uses System.JSON.Types;
 //uses System.JSON.Readers;
 //uses System.UIConsts;
-uses System.Win.ComObjWrapper;
+//uses System.Win.ComObjWrapper;
+//uses System.JSON.Converters;
 //uses Vcl.Graphics;
 //uses System.SysUtils;
 //uses System.Rtti;
@@ -20,6 +22,7 @@ uses System.Win.ComObjWrapper;
 //uses FireDac.Comp.Client;
 //uses System.Internal.DebugUtils;
 //uses System.Classes;
+//uses System.Net.Mime;
 //uses System.Json;
 //uses System.Hash;
 //uses System.Threading;

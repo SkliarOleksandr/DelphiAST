@@ -216,9 +216,11 @@ type
    end;
 
    TBuiltin_UnicodeChar = class(TIDOrdinal)
+    function IsConstTypeEqual(ADst: TIDType): Boolean; override;
    end;
 
    TBuiltin_AnsiChar = class(TIDOrdinal)
+    function IsConstTypeEqual(ADst: TIDType): Boolean; override;
    end;
 
   TBuiltin_Extended = class(TBuiltin_FltType)
@@ -967,6 +969,20 @@ begin
   else
     Result := inherited;
   end;
+end;
+
+{ TBuiltin_UnicodeChar }
+
+function TBuiltin_UnicodeChar.IsConstTypeEqual(ADst: TIDType): Boolean;
+begin
+  Result := (ADst.DataTypeID = dtAnsiChar);
+end;
+
+{ TBuiltin_AnsiChar }
+
+function TBuiltin_AnsiChar.IsConstTypeEqual(ADst: TIDType): Boolean;
+begin
+  Result := (ADst.DataTypeID = dtChar);
 end;
 
 end.

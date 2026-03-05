@@ -185,12 +185,15 @@
         <DCCReference Include="..\TestScripts\Operators\Substruct\ASTTest.Sub.Integer.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Add\ASTTest.Ops.AddUnar1.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Add\ASTTest.Add.Pointers.pas"/>
+        <DCCReference Include="..\TestScripts\Operators\Add\ASTTest.Ops.AddPAChar.pas"/>
+        <DCCReference Include="..\TestScripts\Operators\Add\ASTTest.Ops.AddPUChar.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Compare\ASTTest.Cmp.Pointers.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Neg\ASTTest.Operators.Neg1.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadInHelper1.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Overload\ASTTest.Ops.ImplicitAsExplicit1.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadWithImplicitCast.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadLessThan1.pas"/>
+        <DCCReference Include="..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadBinOps.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Ampersand\ASTTest.Ops.Ampersand1.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Addr\ASTTest.AddrOp.Addr1.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Addr\ASTTest.AddrOp.Addr2.pas"/>
@@ -395,6 +398,8 @@
         <DCCReference Include="..\TestScripts\Arrays\ASTTest.Arrays.MultiDimention1.pas"/>
         <DCCReference Include="..\TestScripts\Strings\ASTTest.Strings.ArrayOfChar1.pas"/>
         <DCCReference Include="..\TestScripts\Strings\ASTTest.Strings.ArrayOfChar2.pas"/>
+        <DCCReference Include="..\TestScripts\Cond Compile\ASTTest.Cond.UnknownVar2.pas"/>
+        <DCCReference Include="..\TestScripts\Cond Compile\ASTTest.Cond.UnknownVar1.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

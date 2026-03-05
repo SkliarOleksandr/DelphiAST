@@ -594,10 +594,17 @@ begin
   end else
     AbortWorkInternal('Const Calc: invalid arguments', L.SourcePosition);
 
-  if not Assigned(Constant) then
-    AbortWork('Operation %s not supported for constants', [OperatorFullName(Operation)], L.SourcePosition);
-
-  Result := TIDExpression.Create(Constant, Right.TextPosition);
+  if Assigned(Constant) then
+    Result := TIDExpression.Create(Constant, Right.TextPosition)
+  else
+  begin
+    if (AScope is TConditionalScope) then
+      Result := TIDExpression.Create(Sys._False, Right.TextPosition)
+    else begin
+      TASTDelphiErrors.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(fModule, Left);
+      Result := TIDExpression.Create(Sys._UnknownConstant, Right.TextPosition);
+    end;
+  end;
 end;
 
 { TExpressionCalculator }

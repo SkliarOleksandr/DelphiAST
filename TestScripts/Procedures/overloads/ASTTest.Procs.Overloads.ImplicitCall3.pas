@@ -18,12 +18,13 @@ procedure DoSmth(AStr: pointer);
 begin
 end;
 
-procedure Main;
 var
-  LStr: pointer;
+  Ptr: pointer;
+
+procedure Main;
 begin
-  LStr := GetData;  // case 1
-  DoSmth(GetData);  // case 2
+  Ptr := GetData;  // case 1
+  DoSmth(GetData); // case 2
 end;
 
 end.
