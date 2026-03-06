@@ -262,6 +262,7 @@ type
     //fGenericPartial: Boolean;
     procedure SetGenericDescriptor(const Value: IGenericDescriptor);
     function GetIsGenericInstantiation: Boolean; virtual;
+    function GetIsGenericInstancePartial: Boolean; virtual;
   protected
     procedure GenericInstances2Str(ABuilder: TStringBuilder; ANestedLevel: Integer);
     function GetGenericName: string;
@@ -272,6 +273,7 @@ type
 
     property GenericName: string read GetGenericName;
     property IsGenericInstantiation: Boolean read GetIsGenericInstantiation;
+    property IsGenericInstancePartial: Boolean read GetIsGenericInstancePartial;
   end;
 
   // TODO: remove
@@ -2957,6 +2959,17 @@ begin
   end;
 end;
 
+function TIDDeclarationGeneric.GetIsGenericInstancePartial: Boolean;
+begin
+  Result := False;
+  for var LIndex := 0 to Length(FGenericArgs) - 1 do
+  begin
+    var LArg := FGenericArgs[LIndex];
+    if LArg.IsGeneric or LArg.IsGenericInstancePartial then
+      Exit(True);
+  end;
+end;
+
 function TIDDeclarationGeneric.GetIsGenericInstantiation: Boolean;
 begin
   Result := Assigned(FGenericArgs);
@@ -3604,6 +3617,9 @@ end;
 function TIDProcedure.InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                          AContext: TGenericInstantiateContext): TIDDeclaration;
 begin
+  // todo: we need to distinguish two cases:
+  // 1. Instantiate a method in a generic struct
+  // 2. Instantiate a generic method (with its own generic params) in a struct
   Result := InstantiateGenericProc(ADstScope, ADstStruct, AContext);
 end;
 
@@ -5423,8 +5439,8 @@ end;
 function TIDStructure.GetIsGeneric: Boolean;
 begin
   Result := Assigned(fGenericDescriptor) or
-            Assigned(FGenericArgs) or
-            (Assigned(fAncestor) and fAncestor.IsGenericInstantiation);
+            IsGenericInstancePartial or
+            (Assigned(fAncestor) and fAncestor.IsGenericInstancePartial);
 end;
 
 function TIDStructure.GetIsManaged: Boolean;

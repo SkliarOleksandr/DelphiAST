@@ -10645,8 +10645,9 @@ begin
   i := 0;
   Lexer_MatchCurToken(token_openround);
   SetLength(Expressions, Struct.FieldsCount);
-  Lexer_NextToken(Scope);
-  while True do begin
+  Result := Lexer_NextToken(Scope);
+  while Result = token_identifier do
+  begin
     Lexer_ReadCurrIdentifier(ID);
     Lexer_ReadToken(Scope, token_colon);
     Field := Struct.FindField(ID.Name);
