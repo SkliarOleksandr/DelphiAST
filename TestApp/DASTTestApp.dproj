@@ -194,6 +194,7 @@
         <DCCReference Include="..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadWithImplicitCast.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadLessThan1.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadBinOps.pas"/>
+        <DCCReference Include="..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadCmpGeneric1.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Ampersand\ASTTest.Ops.Ampersand1.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Addr\ASTTest.AddrOp.Addr1.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Addr\ASTTest.AddrOp.Addr2.pas"/>

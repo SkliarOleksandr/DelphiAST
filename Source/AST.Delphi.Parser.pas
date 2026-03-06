@@ -2395,6 +2395,9 @@ begin
         if EContext.Scope is TConditionalScope then
           Result := Sys._FalseExpression
         else begin
+          // for debug
+          FindBinaryOperator(EContext.SContext, OpID, Left, Right);
+
           ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Self, Left);
           Result := CreateUnknownExpr(Right.TextPosition)
         end;
@@ -8900,7 +8903,7 @@ begin
     Result := Lexer_NextToken(AScope);
     if Result = token_less then
     begin
-      if AProcType = ptOperator then
+      if (AProcType = ptOperator) and (AScope.ScopeClass = scInterface ) then
         ERRORS.E2529_TYPE_PARAMETERS_NOT_ALLOWED_ON_OPERATOR(Self, Lexer_Position);
 // todo:
 //      else
@@ -9118,6 +9121,7 @@ begin
   if not Assigned(Proc) then
   begin
     Proc := TIDOperator.Create(Struct.Operators, ID, LOperatorDef.OpID);
+    Proc.EntryScope := ProcScope;
     Proc.ResultType := ResultType;
     Proc.ExplicitParams := ProcScope.ExplicitParams;
     Proc.Struct := Struct;
@@ -9190,11 +9194,6 @@ begin
       Result := Lexer_NextToken(Scope);
       Break;
     end;
-    //token_identifier: AbortWork(sKeywordExpected, Lexer_Position);
-  {else
-    if Scope.ScopeClass <> scInterface then
-      ERRORS.PROC_NEED_BODY;
-    Break;}
   end;
 end;
 

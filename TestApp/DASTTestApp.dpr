@@ -61,6 +61,7 @@ uses
   ASTTest.Ops.OverloadWithImplicitCast in '..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadWithImplicitCast.pas',
   ASTTest.Ops.OverloadLessThan1 in '..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadLessThan1.pas',
   ASTTest.Ops.OverloadBinOps in '..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadBinOps.pas',
+  ASTTest.Ops.OverloadCmpGeneric1 in '..\TestScripts\Operators\Overload\ASTTest.Ops.OverloadCmpGeneric1.pas',
   ASTTest.Ops.Ampersand1 in '..\TestScripts\Operators\Ampersand\ASTTest.Ops.Ampersand1.pas',
   ASTTest.AddrOp.Addr1 in '..\TestScripts\Operators\Addr\ASTTest.AddrOp.Addr1.pas',
   ASTTest.AddrOp.Addr2 in '..\TestScripts\Operators\Addr\ASTTest.AddrOp.Addr2.pas',

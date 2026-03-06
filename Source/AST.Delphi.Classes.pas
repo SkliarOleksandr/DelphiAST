@@ -815,6 +815,9 @@ type
     procedure InstantiateGenericAncestors(ADstScope: TScope; ADstStruct: TIDStructure;
                                           AContext: TGenericInstantiateContext); virtual;
 
+    procedure InstantiateGenericOperators(ADstScope: TScope; ANewStruct: TIDStructure;
+      ADstStruct: TIDStructure; AContext: TGenericInstantiateContext); virtual;
+
     function InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                 AContext: TGenericInstantiateContext): TIDDeclaration; override;
 
@@ -1936,12 +1939,15 @@ type
   private
     FOperator: TOperatorID;
     function GetRightOperand: TIDType;
+    function GetOperatorKind: TOperatorType;
   public
-    constructor Create(Scope: TScope; const ID: TIdentifier; &Operator: TOperatorID); reintroduce;
+    constructor Create(Scope: TScope; const ID: TIdentifier; AOperatorID: TOperatorID); reintroduce;
     constructor CreateAsSystem(Scope: TScope); reintroduce;
     /////////////////////////////////////////////////////////////////////////////////////////
     property RightOperand: TIDType read GetRightOperand;
     property OperatorID: TOperatorID read FOperator;
+    property OperatorKind: TOperatorType read GetOperatorKind;
+    function MakeCopy(AScope: TScope): TIDDeclaration; override;
   end;
 
 
@@ -2589,7 +2595,7 @@ end;
 
 procedure TScope.AddProcedure(ADeclaration: TIDProcedure; AddOverload: Boolean = False);
 begin
-  if not AddOverload and not InsertID(ADeclaration) then
+  if not InsertID(ADeclaration) and not AddOverload then
     AbortWork(sIdentifierRedeclaredFmt, [ADeclaration.DisplayName], ADeclaration.SourcePosition);
   Inc(FProcCount);
 end;
@@ -4352,7 +4358,8 @@ end;
 
 procedure TIDType.OverloadBinarOperator(Op: TOperatorID; Declaration: TIDOperator);
 begin
-  OverloadBinarOperator2(Op, Declaration.ExplicitParams[1].DataType, Declaration);
+  OverloadBinarOperator(Op, Declaration.ExplicitParams[0].DataType,
+                            Declaration.ExplicitParams[1].DataType, Declaration);
 end;
 
 procedure TIDType.OverloadExplicitTo(const Destination: TIDDeclaration);
@@ -5149,10 +5156,10 @@ end;
 
 { TIDOperator }
 
-constructor TIDOperator.Create(Scope: TScope; const ID: TIdentifier; &Operator: TOperatorID);
+constructor TIDOperator.Create(Scope: TScope; const ID: TIdentifier; AOperatorID: TOperatorID);
 begin
   inherited Create(Scope, ID);
-  FOperator := &Operator;
+  FOperator := AOperatorID;
 end;
 
 constructor TIDOperator.CreateAsSystem(Scope: TScope);
@@ -5161,9 +5168,20 @@ begin
   ItemType := itSysOperator;
 end;
 
+function TIDOperator.GetOperatorKind: TOperatorType;
+begin
+  Result := cOperatorTypes[FOperator];
+end;
+
 function TIDOperator.GetRightOperand: TIDType;
 begin
   Result := ExplicitParams[0].DataType;
+end;
+
+function TIDOperator.MakeCopy(AScope: TScope): TIDDeclaration;
+begin
+  Result := inherited MakeCopy(AScope);
+  TIDOperator(Result).FOperator := OperatorID;
 end;
 
 { TItemStack }
@@ -5446,6 +5464,30 @@ begin
   end;
 end;
 
+procedure TIDStructure.InstantiateGenericOperators(ADstScope: TScope; ANewStruct: TIDStructure; ADstStruct: TIDStructure;
+  AContext: TGenericInstantiateContext);
+begin
+  for var LIndex := 0 to fOperators.Count - 1 do
+  begin
+    var LLastNewOperator: TIDOperator := nil;
+    var LOperator := fOperators.Items[LIndex] as TIDProcedure;
+    repeat
+      var LNewOperator := LOperator.InstantiateGeneric(ANewStruct.Members, ANewStruct, AContext) as TIDOperator;
+      ANewStruct.Operators.AddProcedure(LNewOperator, {AddOverload:} Assigned(LLastNewOperator));
+      if LNewOperator.OperatorKind = opBinary then
+        ANewStruct.OverloadBinarOperator(LNewOperator.OperatorID, LNewOperator)
+      else
+        ANewStruct.OverloadUnarOperator(LNewOperator.OperatorID, LNewOperator);
+
+      if Assigned(LLastNewOperator) then
+        LLastNewOperator.PrevOverload := LNewOperator;
+      LLastNewOperator := LNewOperator;
+
+      LOperator := LOperator.PrevOverload;
+    until not Assigned(LOperator);
+  end;
+end;
+
 function TIDStructure.InstantiateGeneric(ADstScope: TScope; ADstStruct: TIDStructure;
                                          AContext: TGenericInstantiateContext): TIDDeclaration;
 
@@ -5527,6 +5569,9 @@ begin
         end;
       end;
     end;
+
+    // instantiate overload operators
+    InstantiateGenericOperators(ADstScope, LNewStruct, ADstStruct, AContext);
 
     // set default indexed propery (if exists)
     if Assigned(DefaultProperty) then
@@ -6382,6 +6427,7 @@ begin
     Exit;
   inherited CreateStandardOperators;
 
+  // todo: move to system types unit
   OverloadBinarOperator2(opSubtract, Self, SYSUnit._Int32);
 
   OverloadBinarOperator2(opAdd, SYSUnit._Int8, Self);
