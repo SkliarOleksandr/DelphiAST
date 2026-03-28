@@ -23,7 +23,8 @@ implementation
 
 procedure Main;
 begin
-  //MyObj.Root.Next := MyObj;
+  // todo: fix
+  // MyObj.Root.Next := MyObj.NextPtr;
 end;
 
 end.

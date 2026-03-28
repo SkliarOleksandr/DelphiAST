@@ -2274,7 +2274,8 @@ uses AST.Delphi.System,
      AST.Delphi.SysFunctions,
      AST.Delphi.SysOperators,
      AST.Parser.Log,
-     AST.Delphi.JsonSchema;
+     AST.Delphi.JsonSchema,
+     AST.Delphi.SysTypes;
 
 procedure TypeNameToString(AType: TIDType; ABuilder: TStringBuilder);
 begin
@@ -3981,10 +3982,8 @@ end;
 function TIDType.GetDefaultReference(Scope: TScope): TIDType;
 begin
   if not Assigned(FDefaultReference) then
-  begin
-    FDefaultReference := TIDPointer.CreateAsAnonymous(Scope, Self);
+    FDefaultReference := TBuiltin_TypedPointer.CreateAsAnonymous(Scope, Self);
 
-  end;
   Result := FDefaultReference;
 end;
 
@@ -6471,8 +6470,6 @@ begin
   OverloadBinarOperator2(opSubtract, SYSUnit._UInt32, Self);
   OverloadBinarOperator2(opSubtract, SYSUnit._UInt64, Self);
   OverloadBinarOperator2(opSubtract, SYSUnit._NativeUInt, Self);
-
-  OverloadImplicitToAny(SYSUnit.Operators.ImplicitPointerToAny);
 end;
 
 procedure TIDPointer.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);

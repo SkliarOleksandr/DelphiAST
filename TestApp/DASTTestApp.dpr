@@ -47,6 +47,7 @@ uses
   AST.Delphi.JsonSchema in '..\Source\AST.Delphi.JsonSchema.pas',
   ASTTest.Implicit.Pointers1 in '..\TestScripts\Implict\ASTTest.Implicit.Pointers1.pas',
   ASTTest.Implicit.Pointers2 in '..\TestScripts\Implict\ASTTest.Implicit.Pointers2.pas',
+  ASTTest.Implicit.Pointers3 in '..\TestScripts\Implict\ASTTest.Implicit.Pointers3.pas',
   ASTTest.Implicit.Integer in '..\TestScripts\Implict\ASTTest.Implicit.Integer.pas',
   ASTTest.Cmp.Strings in '..\TestScripts\Operators\Compare\ASTTest.Cmp.Strings.pas',
   ASTTest.Cmp.PChars in '..\TestScripts\Operators\Compare\ASTTest.Cmp.PChars.pas',

@@ -17,6 +17,8 @@ type
 
   PByte = ^Byte;
 
+  TProc = procedure;
+
 var
   Ptr: Pointer;
   BytePtr: PByte;
@@ -25,6 +27,7 @@ var
   Intf: IIntf;
   Obj: TObj;
   ObjClass: TObjClass;
+  ProcPtr: TProc;
 
 implementation
 
@@ -35,7 +38,7 @@ begin
   Ptr := Intf;
   Ptr := Obj;
   Ptr := ObjClass;
+  // Ptr := ProcPtr; // requires explicit @ operator
 end;
-
 
 end.

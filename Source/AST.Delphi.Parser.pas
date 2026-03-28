@@ -2496,9 +2496,10 @@ begin
   begin
     // resourcestring -> PResStringRec support
     var LConst := TIDPointerConstant.CreateAsAnonymous(EContext.Scope, {DataType:} nil, Expr.Declaration);
-    if Expr.DataTypeID in [dtString, dtAnsiString] then
-      LConst.DataType := Sys._ResStringRecord
-    else
+// todo: is it needed?
+//    if Expr.DataTypeID in [dtString, dtAnsiString] then
+//      LConst.DataType := Sys._ResStringRecord
+//    else
       LConst.DataType := Sys._PointerType;
 
     LConst.TextPosition := Expr.TextPosition;
@@ -7834,13 +7835,13 @@ begin
          (Decl.ReferenceType = TStructScope(Scope).Struct) then
         Decl.NeedForward := True;
     end else begin
-      Decl := TIDPointer.Create(Scope, ID);
+      Decl := TBuiltin_TypedPointer.Create(Scope, ID);
       Decl.ReferenceType := DataType;
       Scope.AddType(Decl);
     end;
   end else begin
     // if not, postpone it to first using
-    Decl := TIDPointer.Create(Scope, ID);
+    Decl := TBuiltin_TypedPointer.Create(Scope, ID);
     Decl.ForwardID := TmpID;
     Decl.NeedForward := True;
     fForwardTypes.Add(Decl);

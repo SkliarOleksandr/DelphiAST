@@ -24,9 +24,10 @@ type
   
   PInteger = ^Integer;
   
-  {$POINTERMATH ON}
   PByte = ^Byte;
-  {$POINTERMATH OFF}
+
+  TProc = procedure;
+  PProc = ^TProc;
 
 procedure Test;
 var
@@ -38,6 +39,7 @@ var
   LPWChr: PWideChar;
   LPIntf: PIntf;
   LPObj: PObj;
+  LPProc: PProc;
 begin
   LPtr := nil;
   LPByte := LPtr;
@@ -47,6 +49,7 @@ begin
   LPWChr := LPtr;
   LPInt := LPtr;
   LPObj := LPtr;
+  LPProc := LPtr;
 end;
 
 end.

@@ -77,7 +77,6 @@ type
     ImplicitStringToGUID,
     ImplicitStringToPChar,
     ImplicitAnsiStringToString,
-    ImplicitPointerToAny,
     ImplicitUntypedFromAny,
     ImplicitClosureToTMethod,
     ImplicitCharToAnsiString,
@@ -1717,7 +1716,6 @@ begin
   ImplicitStringToGUID := TSysImplicitStringToGUID.CreateAsSystem(Scope);
   ImplicitStringToPChar := TSysImplicitStringToPChar.CreateAsSystem(Scope);
   ImplicitAnsiStringToString := TSysImplicitAnsiStringToString.CreateAsSystem(Scope);
-  ImplicitPointerToAny := TSysImplicitPointerToAny.CreateAsSystem(Scope);
   ImplicitUntypedFromAny := TSysImplicitUntypedFromAny.CreateAsSystem(Scope);
   ImplicitClosureToTMethod := TSysImplicitClosureToTMethod.CreateAsSystem(Scope);
   ImplicitCharToAnsiString := TSysImplicitCharToAnsiString.CreateAsSystem(Scope);

@@ -159,13 +159,6 @@ type
     function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
   end;
 
-  {implicit Pointer -> Any}
-  TSysImplicitPointerToAny = class(TSysOpImplicit)
-  public
-    function Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration; override;
-    function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
-  end;
-
   {implicit Range <- Any}
   TSysImplicitRangeFromAny = class(TSysOpImplicit)
   public
@@ -664,21 +657,6 @@ end;
 function TSysExplicitClassOfToAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
 begin
   Result := Dst.DataTypeID in [dtClassOf, dtPointer];
-end;
-
-{ TSysImplicitPointerToAny }
-
-function TSysImplicitPointerToAny.Check(const SContext: TSContext; const Src: TIDExpression; const Dst: TIDType): TIDDeclaration;
-begin
-  if Dst.DataTypeID in [dtPointer, dtPAnsiChar, dtPWideChar, dtClassOf, dtClass] then
-    Result := Dst
-  else
-    Result := nil;
-end;
-
-function TSysImplicitPointerToAny.Check(const SContext: TSContext; const Src, Dst: TIDType): Boolean;
-begin
-  Result := (Dst.DataTypeID = dtPointer);
 end;
 
 { TSysExplicitClassOfFromAny }

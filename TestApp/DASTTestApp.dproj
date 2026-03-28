@@ -180,6 +180,7 @@
         <DCCReference Include="..\Source\AST.Delphi.JsonSchema.pas"/>
         <DCCReference Include="..\TestScripts\Implict\ASTTest.Implicit.Pointers1.pas"/>
         <DCCReference Include="..\TestScripts\Implict\ASTTest.Implicit.Pointers2.pas"/>
+        <DCCReference Include="..\TestScripts\Implict\ASTTest.Implicit.Pointers3.pas"/>
         <DCCReference Include="..\TestScripts\Implict\ASTTest.Implicit.Integer.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Compare\ASTTest.Cmp.Strings.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Compare\ASTTest.Cmp.PChars.pas"/>
