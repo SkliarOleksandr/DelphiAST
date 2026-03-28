@@ -166,12 +166,6 @@ type
     function Check(const SContext: TSContext; const Src: TIDType; const Dst: TIDType): Boolean; override;
   end;
 
-  {implicit Pointer <- Any}
-  TSysImplicitPointerFromAny = class(TSysOpImplicit)
-  public
-    function Check(const SContext: TSContext; const ASrc: TIDType; const ADst: TIDType): Boolean; override;
-  end;
-
   {implicit Range <- Any}
   TSysImplicitRangeFromAny = class(TSysOpImplicit)
   public
@@ -416,12 +410,14 @@ type
 
 implementation
 
-uses AST.Delphi.DataTypes,
-     AST.Parser.Utils,
-     AST.Delphi.Parser,
-     AST.Delphi.Errors,
-     AST.Pascal.Parser,
-     AST.Delphi.System;
+uses
+  System.SysUtils,
+  AST.Delphi.DataTypes,
+  AST.Parser.Utils,
+  AST.Delphi.Parser,
+  AST.Delphi.Errors,
+  AST.Pascal.Parser,
+  AST.Delphi.System;
 
 { TSysOperator }
 
@@ -955,25 +951,6 @@ begin
     Result := Src
   else
     Result := nil;
-end;
-
-{ TSysImplicitPointerFromAny }
-
-function TSysImplicitPointerFromAny.Check(const SContext: TSContext; const ASrc, ADst: TIDType): Boolean;
-begin
-  Result := (
-    (
-      (ADst.DataTypeID in [dtPAnsiChar]) and
-      (ASrc.DataTypeID = dtStaticArray) and
-      (TIDStaticArray(ASrc).ElementDataType = SYSUnit._AnsiChar)
-    ) or
-    (
-      (ADst.DataTypeID in [dtPWideChar]) and
-      (ASrc.DataTypeID = dtStaticArray) and
-      (TIDStaticArray(ASrc).ElementDataType = SYSUnit._WideChar)
-    ) or
-      (ASrc.DataTypeID in [dtDynArray, dtClass, dtClassOf, dtInterface])
-  );
 end;
 
 { TSysExplicitRecordToAny }

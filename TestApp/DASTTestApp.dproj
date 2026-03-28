@@ -1,7 +1,7 @@
 ﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{3C2A4704-BAD3-42B6-8C41-69D707A46C18}</ProjectGuid>
-        <ProjectVersion>20.3</ProjectVersion>
+        <ProjectVersion>20.4</ProjectVersion>
         <FrameworkType>VCL</FrameworkType>
         <MainSource>DASTTestApp.dpr</MainSource>
         <Base>True</Base>
@@ -178,7 +178,8 @@
         <DCCReference Include="AST.Utils.CmdLineParser.pas"/>
         <DCCReference Include="..\Source\AST.JsonSchema.pas"/>
         <DCCReference Include="..\Source\AST.Delphi.JsonSchema.pas"/>
-        <DCCReference Include="..\TestScripts\Implict\ASTTest.Implicit.Pointers.pas"/>
+        <DCCReference Include="..\TestScripts\Implict\ASTTest.Implicit.Pointers1.pas"/>
+        <DCCReference Include="..\TestScripts\Implict\ASTTest.Implicit.Pointers2.pas"/>
         <DCCReference Include="..\TestScripts\Implict\ASTTest.Implicit.Integer.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Compare\ASTTest.Cmp.Strings.pas"/>
         <DCCReference Include="..\TestScripts\Operators\Compare\ASTTest.Cmp.PChars.pas"/>
@@ -242,6 +243,9 @@
         <DCCReference Include="..\TestScripts\Generics\Instantiation\ASTTest.Generics.InstantiationPointers1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\Instantiation\ASTTest.Generics.GenericInstantiation0_6.pas"/>
         <DCCReference Include="..\TestScripts\Generics\Instantiation\ASTTest.Generics.InstantiationMethodOverride1.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\Instantiation\ASTTest.Generics.InstantiationNestedPtrType1.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\Instantiation\ASTTest.Generics.InstantiationNestedFwdType1.pas"/>
+        <DCCReference Include="..\TestScripts\Generics\Instantiation\ASTTest.Generics.InstantiationNestedFwdType2.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenericInstantiation1.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenericInstantiation2.pas"/>
         <DCCReference Include="..\TestScripts\Generics\ASTTest.Generics.GenericInstantiation3.pas"/>

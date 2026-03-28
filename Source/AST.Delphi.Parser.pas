@@ -295,7 +295,6 @@ type
     procedure CheckExceptionType(Decl: TIDDeclaration);
     procedure CheckClassExpression(Expression: TIDExpression); inline;
     class procedure CheckSetType(Expression: TIDExpression); static; inline;
-    procedure CheckClassOrIntfType(Expression: TIDExpression); overload;
     procedure CheckClassOrClassOfOrIntfType(ATypeExpression: TIDExpression); overload;
     procedure CheckClassOrIntfType(DataType: TIDType; const TextPosition: TTextPosition); overload;
     procedure CheckInterfaceType(Expression: TIDExpression); inline;
@@ -6243,7 +6242,7 @@ begin
 
     if Assigned(LFwdDecl) and (LFwdDecl.Scope = Scope) then
     begin
-      // check existing declration is a forward declaration (none: can be an alias)
+      // check existing declration is a forward declaration (note: can be an alias)
       if (LFwdDecl is ATypeClass) then
       begin
         if LFwdDecl.NeedForward then
@@ -8141,9 +8140,6 @@ begin
     Exit;
   end;
 
-  if ProcType in [ptFunc, ptProc, ptClassFunc, ptClassProc, ptConstructor, ptDestructor] then
-    AddSelfParameter(ProcScope, Struct, (ProcType = ptClassProc) or (ProcType = ptClassFunc));
-
   // parse parameters
   if Result = token_openround then
   begin
@@ -8213,6 +8209,10 @@ begin
       break;
     end;
   end;
+
+  if (ProcType in [ptFunc, ptProc, ptClassFunc, ptClassProc, ptConstructor, ptDestructor]) and
+     not (pfStatic in ProcFlags) then
+    AddSelfParameter(ProcScope, Struct, (ProcType = ptClassProc) or (ProcType = ptClassFunc));
 
   ForwardDeclNode := nil;
   // search the procedure forward declaration
@@ -11311,17 +11311,6 @@ begin
     ERRORS.E2205_INTERFACE_TYPE_REQUIRED(Self, Expression.TextPosition);
 end;
 
-procedure TASTDelphiUnit.CheckClassOrIntfType(Expression: TIDExpression);
-var
-  Decl: TIDDeclaration;
-begin
-  Decl := Expression.Declaration;
-  if (Decl.ItemType = itType) and
-     (TIDType(Decl).IsClass or
-      TIDType(Decl).IsInterface) then Exit;
-  ERRORS.CLASS_OR_INTF_TYPE_REQUIRED(Expression.TextPosition);
-end;
-
 procedure TASTDelphiUnit.CheckClassOrClassOfOrIntfType(ATypeExpression: TIDExpression);
 var
   Decl: TIDDeclaration;
@@ -11342,10 +11331,8 @@ end;
 
 procedure TASTDelphiUnit.CheckClassOrIntfType(DataType: TIDType; const TextPosition: TTextPosition);
 begin
-  if DataType.IsClass or
-     DataType.IsInterface then
-    Exit;
-  ERRORS.CLASS_OR_INTF_TYPE_REQUIRED(TextPosition);
+  if not (DataType.IsClass or DataType.IsInterface) then
+    ERRORS.E2015_OPERATOR_NOT_APPLICABLE_TO_THIS_OPERAND_TYPE(Self, TextPosition);
 end;
 
 procedure TASTDelphiUnit.CheckClassType(Expression: TIDExpression);

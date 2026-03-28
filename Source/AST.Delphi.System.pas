@@ -78,7 +78,6 @@ type
     ImplicitStringToPChar,
     ImplicitAnsiStringToString,
     ImplicitPointerToAny,
-    ImplicitPointerFromAny,
     ImplicitUntypedFromAny,
     ImplicitClosureToTMethod,
     ImplicitCharToAnsiString,
@@ -170,7 +169,6 @@ type
     function RegisterOrdinal(const TypeName: string; DataType: TDataTypeID; LowBound: Int64; HighBound: UInt64;
                              ATypeClass: TIDOrdinalTypeClass): TIDType;
     function RegisterTypeAlias(const TypeName: string; OriginalType: TIDType): TIDType;
-    function RegisterPointer(const TypeName: string; TargetType: TIDType): TIDPointer;
     function RegisterConstInt(const Name: string; DataType: TIDType; Value: Int64): TIDIntConstant;
     function RegisterConstStr(Scope: TScope; const Name: string; const Value: string ): TIDStringConstant;
     function RegisterVariable(Scope: TScope; const Name: string; DataType: TIDType): TIDVariable;
@@ -1020,7 +1018,9 @@ begin
   InsertToScope(fDecls._GuidType);
   AddType(fDecls._GuidType);
   //===============================================================
-  fDecls._PointerType := RegisterPointer('Pointer', nil);
+  fDecls._PointerType := TBuiltin_UnTypedPointer.CreateAsSystem(IntfScope, 'Pointer');
+  InsertToScope(fDecls._PointerType);
+  AddType(fDecls._PointerType);
   //===============================================================
 
   // null ptr type (special type for "nil" constant)
@@ -1703,14 +1703,6 @@ begin
   InsertToScope(Result);
 end;
 
-function TSYSTEMUnit.RegisterPointer(const TypeName: string; TargetType: TIDType): TIDPointer;
-begin
-  Result := TIDPointer.CreateAsSystem(IntfScope, TypeName);
-  Result.ReferenceType := TargetType;
-  InsertToScope(Result);
-  AddType(Result);
-end;
-
 { TSystemOperatos }
 
 procedure TSystemOperatos.Init(Scope: TScope);
@@ -1726,7 +1718,6 @@ begin
   ImplicitStringToPChar := TSysImplicitStringToPChar.CreateAsSystem(Scope);
   ImplicitAnsiStringToString := TSysImplicitAnsiStringToString.CreateAsSystem(Scope);
   ImplicitPointerToAny := TSysImplicitPointerToAny.CreateAsSystem(Scope);
-  ImplicitPointerFromAny := TSysImplicitPointerFromAny.CreateAsSystem(Scope);
   ImplicitUntypedFromAny := TSysImplicitUntypedFromAny.CreateAsSystem(Scope);
   ImplicitClosureToTMethod := TSysImplicitClosureToTMethod.CreateAsSystem(Scope);
   ImplicitCharToAnsiString := TSysImplicitCharToAnsiString.CreateAsSystem(Scope);

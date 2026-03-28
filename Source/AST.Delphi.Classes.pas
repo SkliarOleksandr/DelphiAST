@@ -3549,7 +3549,7 @@ begin
  // todo:
 end;
 
-function InternalInstantiateGenericType(AScope: TScope; AGenericType: TIDType;
+function InternalInstantiateGenericType(AScope: TScope; AGenericType: TIDType; ADstStruct: TIDStructure;
                                         AContext: TGenericInstantiateContext): TIDType; forward;
 
 function InstantiateParams(ANewScope: TScope;
@@ -3565,7 +3565,7 @@ begin
     var LParamType := AParam.DataType;
     // if a param data type is generic and belongs current context, instantiate it
     if LParamType.DoesGenericUseParams(AContext.Params) then
-      AParam.DataType := InternalInstantiateGenericType(ANewScope, LParamType, AContext);
+      AParam.DataType := InternalInstantiateGenericType(ANewScope, LParamType, ADstStruct, AContext);
     Result[AIndex] := AParam;
   end;
 end;
@@ -3582,7 +3582,7 @@ begin
   // todo: what about implicit params (self, open array len, etc)?
   LNewProc.ExplicitParams := InstantiateParams(LNewProc.FEntryScope, ADstStruct, ExplicitParams, AContext);
   if Assigned(ResultType) and ResultType.DoesGenericUseParams(AContext.Params) then
-    LNewProc.ResultType := InternalInstantiateGenericType(ADstScope, ResultType, AContext)
+    LNewProc.ResultType := InternalInstantiateGenericType(ADstScope, ResultType, ADstStruct, AContext)
   else
     LNewProc.ResultType := ResultType;
 
@@ -4155,7 +4155,7 @@ begin
   end;
 end;
 
-function InternalInstantiateGenericType(AScope: TScope; AGenericType: TIDType;
+function InternalInstantiateGenericType(AScope: TScope; AGenericType: TIDType; ADstStruct: TIDStructure;
                                         AContext: TGenericInstantiateContext): TIDType;
 var
   LContext: TGenericInstantiateContext;
@@ -4167,7 +4167,7 @@ begin
   //   AContext - outer instantiation context
   //   LContext - inner instantiation context
 
-  Result := AGenericType.MustBeInstantiated(AContext.DstDecl as TIDStructure, AContext) as TIDType;
+  Result := AGenericType.MustBeInstantiated(ADstStruct, AContext) as TIDType;
 
   if Assigned(Result) then
     Exit;
@@ -4190,7 +4190,7 @@ begin
       begin
         // if an arg is generic one, go recursion
         if LArg.IsGeneric then
-          LArg := InternalInstantiateGenericType(AScope, LArg, AContext);
+          LArg := InternalInstantiateGenericType(AScope, LArg, ADstStruct, AContext);
 
         LNeededGenericArgs := LNeededGenericArgs + [LArg];
       end;
@@ -4235,8 +4235,9 @@ begin
     LContext.DstID.Name := AGenericType.GenericName;
     LContext.DstID.TextPosition := AGenericType.TextPosition;
     LContext.ExistingInstance := LExistingInstance;
+    LContext.DstDecl := nil; // will be created & assigned in InstantiateGeneric() method
 
-    Result := AGenericType.InstantiateGeneric(AScope, {ADstStruct:} nil, LContext) as TIDType;
+    Result := AGenericType.InstantiateGeneric(AScope, ADstStruct, LContext) as TIDType;
   finally
     LContext.Free;
   end;
@@ -4704,7 +4705,7 @@ begin
     Result.DataType := DataType.InstantiateGeneric(ADstScope, ADstStruct, AContext) as TIDType
   else
   if DataType.DoesGenericUseParams(AContext.Params) then
-    Result.DataType := InternalInstantiateGenericType(ADstScope, DataType, AContext);
+    Result.DataType := InternalInstantiateGenericType(ADstScope, DataType, ADstStruct, AContext);
 
   LogEnd('inst [type: %s, dst: %s]', [ClassName, Result.DisplayName]);
 end;
@@ -5476,7 +5477,7 @@ begin
   begin
     // use actual original scope as for generic ancestors
     var LParentScope := fAncestor.Scope;
-    ADstStruct.Ancestor := InternalInstantiateGenericType(LParentScope, fAncestor, AContext) as TIDStructure;
+    ADstStruct.Ancestor := InternalInstantiateGenericType(LParentScope, fAncestor, ADstStruct, AContext) as TIDStructure;
   end;
 end;
 
@@ -5548,6 +5549,7 @@ begin
         LNewStruct.FGenericArgs := AContext.Args;
       end;
 
+      // now the destination struct can be assigned for farther use
       AContext.DstDecl := LNewStruct;
 
       // instantiate the ancestor(and implemented interfaces)
@@ -5567,7 +5569,7 @@ begin
           LNewMember := LMember.InstantiateGeneric(LNewStruct.Members, LNewStruct, AContext)
         else begin
           if TIDType(LMember).DoesGenericUseParams(AContext.Params) then
-            LNewMember := InternalInstantiateGenericType(LNewStruct.Members, LMember as TIDType, AContext)
+            LNewMember := InternalInstantiateGenericType(LNewStruct.Members, LMember as TIDType, LNewStruct, AContext)
           else
             LNewMember := LMember;
         end;
@@ -6195,7 +6197,7 @@ begin
     end;
     // instantiate array element type
     if ElementDataType.DoesGenericUseParams(AContext.Params) then
-      LNewArray.ElementDataType := InternalInstantiateGenericType(ADstScope, ElementDataType, AContext);
+      LNewArray.ElementDataType := InternalInstantiateGenericType(ADstScope, ElementDataType, ADstStruct, AContext);
 
     Result := LNewArray;
 
@@ -6471,7 +6473,6 @@ begin
   OverloadBinarOperator2(opSubtract, SYSUnit._NativeUInt, Self);
 
   OverloadImplicitToAny(SYSUnit.Operators.ImplicitPointerToAny);
-  OverloadImplicitFromAny(SYSUnit.Operators.ImplicitPointerFromAny);
 end;
 
 procedure TIDPointer.Decl2Str(ABuilder: TStringBuilder; ANestedLevel: Integer; AAppendName: Boolean);
@@ -6521,7 +6522,7 @@ begin
         Scope.AddType(LNewPtr);
     end;
 
-    LNewPtr.ReferenceType := InternalInstantiateGenericType(ADstScope, ReferenceType, AContext);
+    LNewPtr.ReferenceType := InternalInstantiateGenericType(ADstScope, ReferenceType, ADstStruct, AContext);
 
     Result := LNewPtr;
     LogEnd('inst [type: %s, dst: %s]', [ClassName, Result.DisplayName]);
@@ -7806,7 +7807,7 @@ begin
     // instantiate params and result type
     LNewType.Params := InstantiateParams(ADstScope, ADstStruct, Params, AContext);
     if Assigned(ResultType) and ResultType.DoesGenericUseParams(AContext.Params) then
-      LNewType.ResultType := InternalInstantiateGenericType(ADstScope, ResultType, AContext)
+      LNewType.ResultType := InternalInstantiateGenericType(ADstScope, ResultType, ADstStruct, AContext)
     else
       LNewType.ResultType := ResultType;
 
@@ -8195,7 +8196,7 @@ begin
   LogBegin('inst [type: %s, src: %s]', [ClassName, Name]);
 
   var LNewProp := MakeCopy(ADstScope) as TIDProperty;
-  LNewProp.DataType := InternalInstantiateGenericType(ADstScope, DataType, AContext);
+  LNewProp.DataType := InternalInstantiateGenericType(ADstScope, DataType, ADstStruct, AContext);
 
   // instantiate indexed params
   if Assigned(FParams) and (FParams.Count > 0) then
@@ -8205,7 +8206,7 @@ begin
     begin
       var LNewParam := FParams.Items[LIndex].MakeCopy(LNewProp.Params) as TIDParam;
       if LNewParam.IsGeneric then
-        LNewParam.DataType := InternalInstantiateGenericType(ADstScope, LNewParam.DataType, AContext);
+        LNewParam.DataType := InternalInstantiateGenericType(ADstScope, LNewParam.DataType, ADstStruct, AContext);
       LNewProp.Params.AddExplicitParam(LNewParam);
     end;
   end;
@@ -8922,7 +8923,7 @@ begin
     begin
       var LIntf := FInterfaces[LIntfIndex];
       if LIntf.IsGeneric then
-        LIntf := InternalInstantiateGenericType(ADstScope, LIntf, AContext) as TIDInterface;
+        LIntf := InternalInstantiateGenericType(ADstScope, LIntf, ADstStruct, AContext) as TIDInterface;
 
       TIDClass(ADstStruct).AddInterface(LIntf);
     end;

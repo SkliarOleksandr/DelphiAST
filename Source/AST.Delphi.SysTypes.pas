@@ -181,6 +181,10 @@ type
     function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
   end;
 
+  TBuiltin_UnTypedPointer = class(TIDPointer)
+    function MatchImplicitFrom(ASrc: TIDType): Boolean; override;
+  end;
+
   TBuiltin_TypedPointer = class(TIDPointer)
     function SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType; override;
     function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
@@ -271,12 +275,14 @@ type
   public
     function SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType; override;
     function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
+    function MatchImplicitFrom(ASrc: TIDType): Boolean; override;
   end;
 
   TBuiltin_PWideChar = class(TBuiltin_TypedPointer)
   public
     function SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType; override;
     function SysBinarOperatorRight(AOpID: TOperatorID; ALeft: TIDType): TIDType; override;
+    function MatchImplicitFrom(ASrc: TIDType): Boolean; override;
   end;
 
 
@@ -825,6 +831,15 @@ end;
 
 { TBuiltin_PAnsiChar }
 
+function TBuiltin_PAnsiChar.MatchImplicitFrom(ASrc: TIDType): Boolean;
+begin
+  Result :=
+    (
+      (ASrc.DataTypeID = dtStaticArray) and
+      (TIDStaticArray(ASrc).ElementDataType = SYSUnit._AnsiChar)
+    ) or inherited;
+end;
+
 function TBuiltin_PAnsiChar.SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType;
 begin
   case AOpID of
@@ -854,6 +869,15 @@ begin
 end;
 
 { TBuiltin_PWideChar }
+
+function TBuiltin_PWideChar.MatchImplicitFrom(ASrc: TIDType): Boolean;
+begin
+  Result :=
+    (
+      (ASrc.DataTypeID = dtStaticArray) and
+      (TIDStaticArray(ASrc).ElementDataType = SYSUnit._WideChar)
+    ) or inherited;
+end;
 
 function TBuiltin_PWideChar.SysBinarOperatorLeft(AOpID: TOperatorID; ARight: TIDType): TIDType;
 begin
@@ -983,6 +1007,13 @@ end;
 function TBuiltin_AnsiChar.IsConstTypeEqual(ADst: TIDType): Boolean;
 begin
   Result := (ADst.DataTypeID = dtChar);
+end;
+
+{ TBuiltin_UnTypedPointer }
+
+function TBuiltin_UnTypedPointer.MatchImplicitFrom(ASrc: TIDType): Boolean;
+begin
+  Result := (ASrc.DataTypeID in [dtDynArray, dtClass, dtClassOf, dtInterface]);
 end;
 
 end.
